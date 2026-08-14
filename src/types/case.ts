@@ -85,6 +85,30 @@ export interface CaseAnalysis {
   disclaimer: string;
 }
 
+export interface CaseAccessState {
+  level: "preview" | "full";
+  previewLimit: number;
+  requiresRegistration: boolean;
+  requiresUpgrade: boolean;
+  canExport: boolean;
+}
+
+export interface PersistedCaseResponse {
+  caseId: string | null;
+  analysis: CaseAnalysis | null;
+  access: CaseAccessState;
+}
+
+export interface PublicPlan {
+  key: string;
+  name: string;
+  description: string;
+  monthlyUsd: number;
+  yearlyUsd?: number | null;
+  features: string[];
+  recommended?: boolean;
+}
+
 export interface CaseInput {
   narrative: string;
   goals: CaseGoal[];

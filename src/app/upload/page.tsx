@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { ArrowRight, ArrowLeft, Upload, X, FileText, Loader2 } from "lucide-react";
 import Disclaimer from "@/components/Disclaimer";
 
@@ -32,8 +33,9 @@ interface UploadedFile {
   size: number;
 }
 
-export default function UploadPage() {
+function UploadPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -92,6 +94,8 @@ export default function UploadPage() {
     setAnalyzing(true);
     try {
       const stored = sessionStorage.getItem("caseInput");
+      const activeCaseId =
+        searchParams.get("caseId") ?? sessionStorage.getItem("activeCaseId");
       if (!stored) {
         router.push("/onboarding");
         return;
@@ -102,7 +106,7 @@ export default function UploadPage() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...caseInput, documents }),
+        body: JSON.stringify({ caseId: activeCaseId, ...caseInput, documents }),
       });
 
       if (!res.ok) {
@@ -112,9 +116,14 @@ export default function UploadPage() {
         return;
       }
 
-      const analysis = await res.json();
-      sessionStorage.setItem("caseAnalysis", JSON.stringify(analysis));
-      router.push("/dashboard");
+      const payload = await res.json();
+      if (payload.caseId) {
+        sessionStorage.setItem("activeCaseId", payload.caseId);
+      }
+      sessionStorage.setItem("caseAnalysis", JSON.stringify(payload.analysis ?? payload));
+      router.push(
+        payload.caseId ? `/dashboard?caseId=${payload.caseId}` : "/dashboard"
+      );
     } catch {
       alert("An error occurred. Please try again.");
       setAnalyzing(false);
@@ -125,7 +134,7 @@ export default function UploadPage() {
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between">
-          <a href="/" className="text-xl font-bold text-blue-700">MyImmigration</a>
+          <Link href="/" className="text-xl font-bold text-blue-700">MyImmigration</Link>
           <span className="text-sm text-slate-500">Step 3 of 3</span>
         </div>
       </header>
@@ -217,10 +226,10 @@ export default function UploadPage() {
 
         {/* Navigation */}
         <div className="mt-8 flex items-center justify-between">
-          <a href="/onboarding" className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
+          <Link href="/onboarding" className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
             <ArrowLeft className="h-4 w-4" />
             Back
-          </a>
+          </Link>
           <button
             onClick={handleAnalyze}
             disabled={analyzing}
@@ -246,5 +255,19 @@ export default function UploadPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function UploadPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <p className="text-slate-500">Loading upload flow...</p>
+        </div>
+      }
+    >
+      <UploadPageContent />
+    </Suspense>
   );
 }

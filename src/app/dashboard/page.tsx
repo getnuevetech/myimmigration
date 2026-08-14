@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -12,8 +13,9 @@ import {
   Download,
   RefreshCw,
   Calendar,
+  Lock,
 } from "lucide-react";
-import { CaseAnalysis, CaseFinding, TimelineEvent } from "@/types/case";
+import { CaseAccessState, CaseAnalysis, CaseFinding, TimelineEvent } from "@/types/case";
 import CaseHealthBadge from "@/components/CaseHealthBadge";
 import Disclaimer from "@/components/Disclaimer";
 
@@ -120,20 +122,91 @@ function exportCasePackage(analysis: CaseAnalysis) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const router = useRouter();
-  const [analysis, setAnalysis] = useState<CaseAnalysis | null>(null);
+  const searchParams = useSearchParams();
+  const [analysis, setAnalysis] = useState<CaseAnalysis | null>(() => {
+    if (typeof window === "undefined") return null;
+    const stored = sessionStorage.getItem("caseAnalysis");
+    return stored ? (JSON.parse(stored) as CaseAnalysis) : null;
+  });
+  const [access, setAccess] = useState<CaseAccessState>({
+    level: "full",
+    previewLimit: 1,
+    requiresRegistration: false,
+    requiresUpgrade: false,
+    canExport: true,
+  });
+  const [loading, setLoading] = useState(true);
+
+  const caseId = searchParams.get("caseId");
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("caseAnalysis");
-    if (stored) {
-      setAnalysis(JSON.parse(stored));
-    } else {
+    let cancelled = false;
+
+    async function loadCase() {
+      if (!caseId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/cases/${caseId}`);
+        if (!res.ok) {
+          setLoading(false);
+          return;
+        }
+
+        const payload = await res.json();
+        if (cancelled) return;
+
+        if (payload.analysis) {
+          setAnalysis(payload.analysis);
+          sessionStorage.setItem("caseAnalysis", JSON.stringify(payload.analysis));
+        }
+        if (payload.access) {
+          setAccess(payload.access);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadCase();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId]);
+
+  useEffect(() => {
+    if (!loading && !analysis) {
       router.push("/onboarding");
     }
-  }, [router]);
+  }, [analysis, loading, router]);
 
-  if (!analysis) {
+  const visibleAnalysis = useMemo(() => {
+    if (!analysis) return null;
+    if (access.level === "full") return analysis;
+
+    const previewLimit = Math.max(access.previewLimit, 1);
+    return {
+      ...analysis,
+      importantFindings: analysis.importantFindings.slice(0, previewLimit),
+      timeline: analysis.timeline.slice(0, Math.max(2, previewLimit * 2)),
+      findings: analysis.findings.slice(0, previewLimit),
+      inconsistencies: analysis.inconsistencies.slice(0, previewLimit),
+      nextSteps: analysis.nextSteps.slice(0, previewLimit),
+      documentsMissing: analysis.documentsMissing.slice(0, previewLimit),
+      plainLanguageSummary:
+        analysis.plainLanguageSummary.split("\n").filter(Boolean).slice(0, 1).join("\n") ||
+        analysis.plainLanguageSummary,
+    };
+  }, [access, analysis]);
+
+  if (loading || !visibleAnalysis) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <p className="text-slate-500">Loading your case...</p>
@@ -146,45 +219,77 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="border-b border-slate-200 bg-white sticky top-0 z-10">
         <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between">
-          <a href="/" className="text-xl font-bold text-blue-700">MyImmigration</a>
+          <Link href="/" className="text-xl font-bold text-blue-700">MyImmigration</Link>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => exportCasePackage(analysis)}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              onClick={() => exportCasePackage(visibleAnalysis)}
+              disabled={!access.canExport}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
             >
               <Download className="h-4 w-4" />
-              Export Case Package
+              {access.canExport ? "Export Case Package" : "Export Locked"}
             </button>
-            <a
+            <Link
               href="/onboarding"
               className="flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 transition-colors"
             >
               <RefreshCw className="h-4 w-4" />
               New Analysis
-            </a>
+            </Link>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-10 space-y-8">
-        {/* Case Overview Card */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        {access.level === "preview" && (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-blue-700">Preview mode</p>
+                <h2 className="mt-1 text-xl font-bold text-slate-900">
+                  Unlock the full case dashboard
+                </h2>
+                <p className="mt-1 text-sm text-slate-700">
+                  Your guest preview is saved. Continue with email to attach this case to your
+                  account and see the full structured analysis.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Link
+                  href={caseId ? `/continue?caseId=${caseId}` : "/continue"}
+                  className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
+                >
+                  Continue with email
+                </Link>
+                <Link
+                  href="/pricing"
+                  className="rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                >
+                  View plans
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* Case Overview Card */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your Case</p>
               <h1 className="mt-1 text-2xl font-bold text-slate-900">Current Situation</h1>
-              <p className="mt-1 text-slate-600">{analysis.currentSituation}</p>
+              <p className="mt-1 text-slate-600">{visibleAnalysis.currentSituation}</p>
             </div>
-            <CaseHealthBadge health={analysis.caseHealth} />
+            <CaseHealthBadge health={visibleAnalysis.caseHealth} />
           </div>
 
           {/* Stats row */}
           <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: "Documents Reviewed", value: analysis.documentsReviewed, icon: FileText, color: "text-blue-600" },
-              { label: "Possibly Missing", value: analysis.documentsMissing.length, icon: AlertTriangle, color: "text-yellow-600" },
-              { label: "Issues Detected", value: analysis.majorIssues, icon: XCircle, color: analysis.majorIssues > 0 ? "text-red-600" : "text-green-600" },
-              { label: "Upcoming Deadlines", value: analysis.deadlines.length, icon: Calendar, color: analysis.deadlines.length > 0 ? "text-orange-600" : "text-green-600" },
+              { label: "Documents Reviewed", value: visibleAnalysis.documentsReviewed, icon: FileText, color: "text-blue-600" },
+              { label: "Possibly Missing", value: visibleAnalysis.documentsMissing.length, icon: AlertTriangle, color: "text-yellow-600" },
+              { label: "Issues Detected", value: visibleAnalysis.majorIssues, icon: XCircle, color: visibleAnalysis.majorIssues > 0 ? "text-red-600" : "text-green-600" },
+              { label: "Upcoming Deadlines", value: visibleAnalysis.deadlines.length, icon: Calendar, color: visibleAnalysis.deadlines.length > 0 ? "text-orange-600" : "text-green-600" },
             ].map(({ label, value, icon: Icon, color }) => (
               <div key={label} className="rounded-xl bg-slate-50 p-4">
                 <Icon className={`h-5 w-5 ${color} mb-2`} />
@@ -195,9 +300,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Deadlines */}
-          {analysis.deadlines.length > 0 && (
+          {visibleAnalysis.deadlines.length > 0 && (
             <div className="mt-4 space-y-2">
-              {analysis.deadlines.map((d, i) => (
+              {visibleAnalysis.deadlines.map((d, i) => (
                 <div key={i} className="flex items-center gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
                   <Clock className="h-4 w-4 text-orange-600 shrink-0" />
                   <div>
@@ -210,9 +315,9 @@ export default function DashboardPage() {
           )}
 
           {/* Important findings */}
-          {analysis.importantFindings.length > 0 && (
+          {visibleAnalysis.importantFindings.length > 0 && (
             <div className="mt-4 space-y-2">
-              {analysis.importantFindings.map((finding, i) => (
+              {visibleAnalysis.importantFindings.map((finding, i) => (
                 <div key={i} className="flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
                   <ChevronRight className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                   <p className="text-sm text-blue-900">{finding}</p>
@@ -227,9 +332,9 @@ export default function DashboardPage() {
           {/* What We Found */}
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900 mb-4">What We Found</h2>
-            {analysis.findings.length > 0 ? (
+            {visibleAnalysis.findings.length > 0 ? (
               <div>
-                {analysis.findings.map((f, i) => (
+                {visibleAnalysis.findings.map((f, i) => (
                   <FindingRow key={i} finding={f} />
                 ))}
               </div>
@@ -241,9 +346,9 @@ export default function DashboardPage() {
           {/* Inconsistencies */}
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900 mb-4">Story vs. Records</h2>
-            {analysis.inconsistencies.length > 0 ? (
+            {visibleAnalysis.inconsistencies.length > 0 ? (
               <div className="space-y-3">
-                {analysis.inconsistencies.map((inc, i) => (
+                {visibleAnalysis.inconsistencies.map((inc, i) => (
                   <div key={i} className={`rounded-lg border p-3 ${
                     inc.severity === "critical"
                       ? "border-red-200 bg-red-50"
@@ -272,11 +377,11 @@ export default function DashboardPage() {
             )}
 
             {/* Missing documents */}
-            {analysis.documentsMissing.length > 0 && (
+            {visibleAnalysis.documentsMissing.length > 0 && (
               <div className="mt-4">
                 <h3 className="text-sm font-semibold text-slate-700 mb-2">Possibly Missing Documents</h3>
                 <div className="space-y-1">
-                  {analysis.documentsMissing.map((doc, i) => (
+                  {visibleAnalysis.documentsMissing.map((doc, i) => (
                     <div key={i} className="flex items-center gap-2 text-sm text-slate-600">
                       <XCircle className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                       {doc}
@@ -292,10 +397,16 @@ export default function DashboardPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-bold text-slate-900 mb-4">What This Means</h2>
           <div className="prose prose-slate prose-sm max-w-none">
-            {analysis.plainLanguageSummary.split("\n").map((para, i) => (
+            {visibleAnalysis.plainLanguageSummary.split("\n").map((para, i) => (
               para.trim() ? <p key={i} className="text-slate-700 leading-relaxed">{para}</p> : null
             ))}
           </div>
+          {access.level === "preview" && (
+            <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              <Lock className="h-4 w-4 text-slate-400" />
+              Full explanation and the rest of your structured analysis unlock after account continuation.
+            </div>
+          )}
         </div>
 
         {/* Next Steps */}
@@ -305,7 +416,7 @@ export default function DashboardPage() {
             These are possibilities for you to investigate — not legal recommendations. An immigration attorney can help determine which, if any, apply to your specific situation.
           </p>
           <div className="space-y-3">
-            {analysis.nextSteps.map((step, i) => (
+            {visibleAnalysis.nextSteps.map((step, i) => (
               <div key={i} className={`rounded-xl border p-4 ${
                 step.recommended
                   ? "border-blue-200 bg-blue-50"
@@ -331,7 +442,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Immigration Timeline */}
-        {analysis.timeline.length > 0 && (
+        {visibleAnalysis.timeline.length > 0 && (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900 mb-2">Immigration Timeline</h2>
             <div className="flex items-center gap-4 mb-5 text-xs text-slate-500">
@@ -340,7 +451,7 @@ export default function DashboardPage() {
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-slate-300 inline-block" />From narrative</span>
             </div>
             <div>
-              {analysis.timeline.map((event, i) => (
+              {visibleAnalysis.timeline.map((event, i) => (
                 <TimelineRow key={i} event={event} />
               ))}
             </div>
@@ -348,7 +459,7 @@ export default function DashboardPage() {
         )}
 
         {/* Disclaimer */}
-        <Disclaimer text={analysis.disclaimer} />
+        <Disclaimer text={visibleAnalysis.disclaimer} />
 
         {/* Attorney CTA */}
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 text-center">
@@ -358,11 +469,12 @@ export default function DashboardPage() {
             timeline, and issue list so they can focus on legal analysis from minute one.
           </p>
           <button
-            onClick={() => exportCasePackage(analysis)}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-800 transition-colors"
+            onClick={() => exportCasePackage(visibleAnalysis)}
+            disabled={!access.canExport}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
           >
             <Download className="h-4 w-4" />
-            Download Attorney Case Package
+            {access.canExport ? "Download Attorney Case Package" : "Export available on higher plans"}
           </button>
         </div>
       </main>
@@ -371,5 +483,19 @@ export default function DashboardPage() {
         © {new Date().getFullYear()} MyImmigration — Case Intelligence Platform. Not a law firm. Not legal advice.
       </footer>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <p className="text-slate-500">Loading your case...</p>
+        </div>
+      }
+    >
+      <DashboardPageContent />
+    </Suspense>
   );
 }
