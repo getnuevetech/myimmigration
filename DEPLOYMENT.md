@@ -10,13 +10,25 @@ Two simple paths:
 
 Requirements: a Linux server with Docker + Compose plugin.
 
+### 1) Database setup (required)
+
+This app needs PostgreSQL.  
+Create a PostgreSQL database first (recommended: managed DB like Neon/Supabase/RDS), then copy the connection string.
+
+In `.env`, set:
+
+```bash
+DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/myimmigration?schema=public
+OPENAI_API_KEY=your_openai_key
+```
+
 ```bash
 # On the server
 git clone https://github.com/getnuevetech/myimmigration.git
 cd myimmigration
 
 cp .env.example .env
-# edit .env and set at least OPENAI_API_KEY (and any values your setup needs)
+# edit .env and set DATABASE_URL + OPENAI_API_KEY
 
 docker compose pull
 docker compose up -d
@@ -56,11 +68,54 @@ Set these GitHub Actions secrets:
 - `LIGHTSAIL_USER` (usually `ubuntu`)
 - `LIGHTSAIL_SSH_KEY` (private key PEM content)
 
-For first-time server setup:
-1. Create an Ubuntu Lightsail instance
-2. Open firewall port `3000` (and `80/443` if using a reverse proxy)
-3. Install Docker + Compose plugin
-4. Clone this repo on the server and create `.env`
+### First-time Lightsail setup steps
+
+1. **Create instance**  
+   Lightsail → Create instance → Linux/Unix → Ubuntu 24.04 LTS.
+2. **Attach static IP**  
+   Lightsail → Networking → Static IPs.
+3. **Open firewall ports**  
+   - `3000` (app)
+   - `22` (SSH)
+   - `80/443` only if using HTTPS reverse proxy.
+4. **SSH into server** (usually user `ubuntu`).
+5. **Install Docker + Compose plugin**
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y ca-certificates curl
+curl -fsSL https://get.docker.com | sudo sh
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+```
+
+Log out and log back in so Docker group access applies.
+
+6. **Bootstrap app on server**
+
+```bash
+git clone https://github.com/getnuevetech/myimmigration.git
+cd myimmigration
+cp .env.example .env
+```
+
+Edit `.env` and set at least:
+
+```bash
+DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/myimmigration?schema=public
+OPENAI_API_KEY=your_openai_key
+```
+
+7. **Initial run on server**
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+8. **Enable auto-deploy**
+   Add the 3 GitHub secrets above, then push to `main`.
+   The workflow will build, push, and deploy automatically.
 
 ---
 
@@ -69,6 +124,12 @@ For first-time server setup:
 For internet-facing usage, put Caddy in front:
 
 ```bash
+sudo apt update
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | \
+  sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | \
+  sudo tee /etc/apt/sources.list.d/caddy-stable.list
 sudo apt update
 sudo apt install -y caddy
 ```
