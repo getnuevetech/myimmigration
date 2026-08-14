@@ -20,7 +20,7 @@ An AI-powered immigration case intelligence and preparation platform. Users tell
 ```bash
 npm install
 cp .env.example .env
-# set DATABASE_URL and OPENAI_API_KEY
+# set DATABASE_URL (AI keys can be set in /admin/platform-settings)
 npx prisma generate
 npm run dev
 ```
@@ -28,6 +28,8 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000).
 
 To enable the admin shell route during development, set `ADMIN_PREVIEW_ENABLED=true`.
+
+Set runtime variables (AI keys/models, app URL, auth/payment secrets) at `/admin/platform-settings`.
 
 ## AI Pipeline (redesign foundation)
 

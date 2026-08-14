@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-const ADMIN_MODULES = [
+type AdminModule = {
+  key: string;
+  title: string;
+  description: string;
+  href?: string;
+};
+
+const ADMIN_MODULES: AdminModule[] = [
   {
     key: "ai-providers",
     title: "AI Providers",
@@ -49,6 +56,7 @@ const ADMIN_MODULES = [
     title: "Platform Settings",
     description:
       "Manage runtime configuration values and environment-like variables without hardcoding.",
+    href: "/admin/platform-settings",
   },
 ];
 
@@ -81,9 +89,18 @@ export default function AdminPage() {
             <section key={module.key} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <h2 className="text-sm font-semibold text-slate-900">{module.title}</h2>
               <p className="mt-2 text-sm text-slate-600">{module.description}</p>
-              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-400">
-                Module scaffolded
-              </p>
+              {module.href ? (
+                <Link
+                  href={module.href}
+                  className="mt-3 inline-flex text-xs font-medium uppercase tracking-wide text-blue-600 hover:text-blue-700"
+                >
+                  Open module
+                </Link>
+              ) : (
+                <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Module scaffolded
+                </p>
+              )}
             </section>
           ))}
         </div>

@@ -2,6 +2,7 @@ import { AnalysisStage } from "@prisma/client";
 import { getOpenAIClient } from "@/lib/openai";
 import { mergeStageOutputs, ProviderStageOutput } from "@/lib/analysis/consensus";
 import { getPlatformRuntimeSettings } from "@/lib/platform/settings";
+import { getRuntimeEnvValues } from "@/lib/platform/runtime-env";
 import {
   CaseAnalysis,
   CaseGoal,
@@ -39,20 +40,24 @@ async function runStagePrompt(
   responseAsJson: boolean,
   settings: RuntimeSettings
 ): Promise<{ text: string; verificationRequired: boolean }> {
+  const client = await getOpenAIClient();
+  const runtimeValues = await getRuntimeEnvValues([
+    "OPENAI_DEFAULT_MODEL",
+    `OPENAI_FALLBACK_MODEL_${stage}`,
+  ]);
+  const defaultModel = runtimeValues.get("OPENAI_DEFAULT_MODEL") ?? "gpt-4o";
+  const stageFallbackModel = runtimeValues.get(`OPENAI_FALLBACK_MODEL_${stage}`) ?? defaultModel;
   const candidates = settings.pipeline[stage] ?? [];
 
   const outputs: ProviderStageOutput<{ text: string }>[] = [];
 
   for (const candidate of candidates) {
-    const attemptedModels = [
-      candidate.model,
-      process.env[`OPENAI_FALLBACK_MODEL_${stage}`] ?? "gpt-4o",
-    ];
+    const attemptedModels = [candidate.model, stageFallbackModel];
 
     for (const model of attemptedModels) {
       try {
         const roleAwarePrompt = `${roleInstruction(candidate.role)}\n\n${prompt}`;
-        const response = await getOpenAIClient().chat.completions.create({
+        const response = await client.chat.completions.create({
           model,
           messages: [{ role: "user", content: roleAwarePrompt }],
           ...(responseAsJson ? { response_format: { type: "json_object" as const } } : {}),
@@ -74,8 +79,8 @@ async function runStagePrompt(
   }
 
   if (outputs.length === 0) {
-    const response = await getOpenAIClient().chat.completions.create({
-      model: process.env.OPENAI_DEFAULT_MODEL ?? "gpt-4o",
+    const response = await client.chat.completions.create({
+      model: defaultModel,
       messages: [{ role: "user", content: prompt }],
       ...(responseAsJson ? { response_format: { type: "json_object" as const } } : {}),
       temperature: 0,

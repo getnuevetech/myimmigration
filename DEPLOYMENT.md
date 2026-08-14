@@ -19,7 +19,7 @@ In `.env`, set:
 
 ```bash
 DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/myimmigration?schema=public
-OPENAI_API_KEY=your_openai_key
+ADMIN_PREVIEW_ENABLED=true
 ```
 
 ```bash
@@ -28,7 +28,7 @@ git clone https://github.com/getnuevetech/myimmigration.git
 cd myimmigration
 
 cp .env.example .env
-# edit .env and set DATABASE_URL + OPENAI_API_KEY
+# edit .env and set DATABASE_URL (+ ADMIN_PREVIEW_ENABLED=true for admin access)
 
 # Required if GHCR package is private
 echo <GHCR_TOKEN_WITH_READ_PACKAGES> | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
@@ -36,6 +36,11 @@ echo <GHCR_TOKEN_WITH_READ_PACKAGES> | docker login ghcr.io -u <GITHUB_USERNAME>
 docker compose pull
 docker compose up -d
 ```
+
+Then open `/admin/platform-settings` and set:
+- `OPENAI_API_KEY`
+- `OPENAI_DEFAULT_MODEL` (optional but recommended)
+- any other runtime variables you want to manage from admin
 
 App will be available at:
 - `http://<server-ip>:3000`
@@ -110,7 +115,7 @@ Edit `.env` and set at least:
 
 ```bash
 DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/myimmigration?schema=public
-OPENAI_API_KEY=your_openai_key
+ADMIN_PREVIEW_ENABLED=true
 ```
 
 7. **Initial run on server**
@@ -122,6 +127,8 @@ echo <GHCR_TOKEN_WITH_READ_PACKAGES> | docker login ghcr.io -u <GITHUB_USERNAME>
 docker compose pull
 docker compose up -d
 ```
+
+Open `/admin/platform-settings` and configure AI/runtime values there.
 
 8. **Enable auto-deploy**
    Add these GitHub Actions secrets:
