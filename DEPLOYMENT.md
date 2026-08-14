@@ -9,7 +9,7 @@ The app is containerized via Docker and deployed to an AWS Lightsail instance. A
 ## 1. Create an AWS Lightsail Instance
 
 1. Go to [AWS Lightsail](https://lightsail.aws.amazon.com/) → **Create instance**
-2. Choose **Linux/Unix** → **OS Only** → **Amazon Linux 2023** (or Ubuntu 22.04)
+2. Choose **Linux/Unix** → **OS Only** → **Ubuntu 24.04 LTS**
 3. Select a plan — **$10/month (2 GB RAM)** is sufficient to start
 4. Name it (e.g., `myimmigration-prod`) and click **Create instance**
 
@@ -28,17 +28,21 @@ The app is containerized via Docker and deployed to an AWS Lightsail instance. A
 SSH into the instance (use the Lightsail browser console or your own SSH key):
 
 ```bash
-# Amazon Linux 2023
-sudo dnf update -y
-sudo dnf install -y docker
+# Ubuntu 24.04
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+  sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo ${VERSION_CODENAME}) stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 sudo systemctl enable --now docker
 sudo usermod -aG docker $USER
-
-# Install Docker Compose plugin
-sudo mkdir -p /usr/local/lib/docker/cli-plugins
-sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
-  -o /usr/local/lib/docker/cli-plugins/docker-compose
-sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
 # Log out and back in for group change to take effect
 ```
@@ -50,7 +54,7 @@ sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 Copy `docker-compose.yml` to the server:
 
 ```bash
-scp docker-compose.yml ec2-user@<LIGHTSAIL_IP>:~/docker-compose.yml
+scp docker-compose.yml ubuntu@<LIGHTSAIL_IP>:~/docker-compose.yml
 ```
 
 Or clone the repo directly on the server:
@@ -84,7 +88,7 @@ Add the following secrets in **GitHub → Settings → Secrets and variables →
 | Secret name        | Value                                         |
 |--------------------|-----------------------------------------------|
 | `LIGHTSAIL_HOST`   | Public IP or hostname of your Lightsail instance |
-| `LIGHTSAIL_USER`   | SSH username (e.g., `ec2-user` or `ubuntu`)   |
+| `LIGHTSAIL_USER`   | SSH username (for Ubuntu Lightsail use `ubuntu`) |
 | `LIGHTSAIL_SSH_KEY`| Contents of your private SSH key (PEM format) |
 
 The `GITHUB_TOKEN` secret is provided automatically by GitHub Actions.
@@ -118,7 +122,14 @@ Every push to `main` will:
 Install Caddy on the Lightsail instance for automatic TLS:
 
 ```bash
-sudo dnf install -y caddy   # or use the official install script
+sudo apt update
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | \
+  sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | \
+  sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update
+sudo apt install -y caddy
 ```
 
 Create `/etc/caddy/Caddyfile`:
