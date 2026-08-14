@@ -1,152 +1,91 @@
-# AWS Lightsail + Docker Deployment Guide
+# Deploying MyImmigration to a server
 
-## Overview
-
-The app is containerized via Docker and deployed to an AWS Lightsail instance. A GitHub Actions workflow automatically builds the image, pushes it to GitHub Container Registry (GHCR), and deploys it to Lightsail on every push to `main`.
-
----
-
-## 1. Create an AWS Lightsail Instance
-
-1. Go to [AWS Lightsail](https://lightsail.aws.amazon.com/) → **Create instance**
-2. Choose **Linux/Unix** → **OS Only** → **Ubuntu 24.04 LTS**
-3. Select a plan — **$10/month (2 GB RAM)** is sufficient to start
-4. Name it (e.g., `myimmigration-prod`) and click **Create instance**
+Two simple paths:
+- **Option A:** run directly with Docker Compose on your server
+- **Option B:** keep using GitHub Actions auto-deploy to Lightsail
 
 ---
 
-## 2. Configure Networking
+## Option A — Docker Compose on the server (recommended)
 
-1. In the Lightsail console, go to your instance → **Networking** tab
-2. Add a firewall rule: **TCP port 3000** (or 80/443 if using a reverse proxy)
-3. Note the **Static IP** — attach one under **Networking → Static IPs** so the address doesn't change on reboot
-
----
-
-## 3. Install Docker on the Instance
-
-SSH into the instance (use the Lightsail browser console or your own SSH key):
+Requirements: a Linux server with Docker + Compose plugin.
 
 ```bash
-# Ubuntu 24.04
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y ca-certificates curl gnupg
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
-  sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo ${VERSION_CODENAME}) stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-sudo systemctl enable --now docker
-sudo usermod -aG docker $USER
-
-# Log out and back in for group change to take effect
-```
-
----
-
-## 4. Upload the docker-compose.yml
-
-Copy `docker-compose.yml` to the server:
-
-```bash
-scp docker-compose.yml ubuntu@<LIGHTSAIL_IP>:~/docker-compose.yml
-```
-
-Or clone the repo directly on the server:
-
-```bash
+# On the server
 git clone https://github.com/getnuevetech/myimmigration.git
 cd myimmigration
+
+cp .env.example .env
+# edit .env and set at least OPENAI_API_KEY (and any values your setup needs)
+
+docker compose pull
+docker compose up -d
 ```
 
----
+App will be available at:
+- `http://<server-ip>:3000`
 
-## 5. Set Environment Variables on the Server
-
-Create a `.env` file next to `docker-compose.yml`:
+Useful commands:
 
 ```bash
-# On the Lightsail instance
-cat > .env <<EOF
-OPENAI_API_KEY=sk-...your-key-here...
-EOF
+docker compose logs -f app
+docker compose ps
+docker compose restart app
 ```
 
-> ⚠️ Never commit this file. It is already in `.gitignore`.
-
----
-
-## 6. GitHub Secrets (for CI/CD)
-
-Add the following secrets in **GitHub → Settings → Secrets and variables → Actions**:
-
-| Secret name        | Value                                         |
-|--------------------|-----------------------------------------------|
-| `LIGHTSAIL_HOST`   | Public IP or hostname of your Lightsail instance |
-| `LIGHTSAIL_USER`   | SSH username (for Ubuntu Lightsail use `ubuntu`) |
-| `LIGHTSAIL_SSH_KEY`| Contents of your private SSH key (PEM format) |
-
-The `GITHUB_TOKEN` secret is provided automatically by GitHub Actions.
-
----
-
-## 7. First Manual Deploy
-
-After the server is configured, pull and start the container manually the first time:
+Update to latest:
 
 ```bash
-# On the Lightsail instance
-echo <GITHUB_TOKEN> | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
+git pull
 docker compose pull
 docker compose up -d
 ```
 
 ---
 
-## 8. Automatic Deploys
+## Option B — GitHub Actions auto-deploy to Lightsail
 
-Every push to `main` will:
-1. Build a new Docker image
-2. Push it to `ghcr.io/getnuevetech/myimmigration:latest`
-3. SSH into the Lightsail instance and run `docker compose pull && docker compose up -d`
+This repo already has `.github/workflows/deploy.yml`.
+On every push to `main`, it:
+1. Builds Docker image
+2. Pushes to `ghcr.io/getnuevetech/myimmigration:latest`
+3. SSHes to your server and runs `docker compose pull && docker compose up -d --remove-orphans`
+
+Set these GitHub Actions secrets:
+- `LIGHTSAIL_HOST`
+- `LIGHTSAIL_USER` (usually `ubuntu`)
+- `LIGHTSAIL_SSH_KEY` (private key PEM content)
+
+For first-time server setup:
+1. Create an Ubuntu Lightsail instance
+2. Open firewall port `3000` (and `80/443` if using a reverse proxy)
+3. Install Docker + Compose plugin
+4. Clone this repo on the server and create `.env`
 
 ---
 
-## 9. (Optional) Add HTTPS with Caddy
+## Optional HTTPS (Caddy)
 
-Install Caddy on the Lightsail instance for automatic TLS:
+For internet-facing usage, put Caddy in front:
 
 ```bash
-sudo apt update
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | \
-  sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | \
-  sudo tee /etc/apt/sources.list.d/caddy-stable.list
 sudo apt update
 sudo apt install -y caddy
 ```
 
-Create `/etc/caddy/Caddyfile`:
+`/etc/caddy/Caddyfile`:
 
-```
+```caddy
 yourdomain.com {
-    reverse_proxy localhost:3000
+  reverse_proxy localhost:3000
 }
 ```
 
-Then `sudo systemctl enable --now caddy` and open ports 80 and 443 in the Lightsail firewall.
+Then:
 
----
+```bash
+sudo systemctl enable --now caddy
+sudo systemctl reload caddy
+```
 
-## App URL
-
-After deployment the app is reachable at:
-
-- `http://<LIGHTSAIL_IP>:3000` (without Caddy)
-- `https://yourdomain.com` (with Caddy + DNS pointing to the static IP)
+Point DNS to your server IP and open ports `80` and `443`.
