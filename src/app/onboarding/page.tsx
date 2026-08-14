@@ -14,6 +14,8 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [narrative, setNarrative] = useState("");
   const [selectedGoals, setSelectedGoals] = useState<CaseGoal[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function toggleGoal(goal: CaseGoal) {
     setSelectedGoals((prev) =>
@@ -21,14 +23,39 @@ export default function OnboardingPage() {
     );
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (step === 1 && narrative.trim().length > 20) {
       setStep(2);
-    } else if (step === 2 && selectedGoals.length > 0) {
+      return;
+    }
+
+    if (step === 2 && selectedGoals.length > 0) {
+      setSaving(true);
+      setError(null);
       sessionStorage.setItem(
         "caseInput",
         JSON.stringify({ narrative, goals: selectedGoals })
       );
+
+      try {
+        const res = await fetch("/api/cases/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ narrative, goals: selectedGoals }),
+        });
+        const payload = await res.json();
+
+        if (res.ok && payload.caseId) {
+          sessionStorage.setItem("activeCaseId", payload.caseId);
+          router.push(`/upload?caseId=${payload.caseId}`);
+          return;
+        }
+      } catch {
+        // fall through to session-backed upload
+      }
+
+      setSaving(false);
+      setError("We could not save your case yet, but you can still continue.");
       router.push("/upload");
     }
   }
@@ -81,6 +108,7 @@ export default function OnboardingPage() {
             </div>
 
             <Disclaimer compact />
+            {error && <p className="text-sm text-amber-700">{error}</p>}
           </div>
         )}
 
@@ -137,12 +165,13 @@ export default function OnboardingPage() {
           <button
             onClick={handleNext}
             disabled={
+              saving ||
               (step === 1 && narrative.trim().length <= 20) ||
               (step === 2 && selectedGoals.length === 0)
             }
             className="flex items-center gap-2 rounded-lg bg-blue-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {step === 2 ? "Upload Documents" : "Next"}
+            {step === 2 ? (saving ? "Saving..." : "Upload Documents") : "Next"}
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>

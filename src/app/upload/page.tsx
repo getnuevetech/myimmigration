@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft, Upload, X, FileText, Loader2 } from "lucide-react";
 import Disclaimer from "@/components/Disclaimer";
@@ -35,6 +35,7 @@ interface UploadedFile {
 
 export default function UploadPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -93,6 +94,8 @@ export default function UploadPage() {
     setAnalyzing(true);
     try {
       const stored = sessionStorage.getItem("caseInput");
+      const activeCaseId =
+        searchParams.get("caseId") ?? sessionStorage.getItem("activeCaseId");
       if (!stored) {
         router.push("/onboarding");
         return;
@@ -103,7 +106,7 @@ export default function UploadPage() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...caseInput, documents }),
+        body: JSON.stringify({ caseId: activeCaseId, ...caseInput, documents }),
       });
 
       if (!res.ok) {
@@ -113,9 +116,14 @@ export default function UploadPage() {
         return;
       }
 
-      const analysis = await res.json();
-      sessionStorage.setItem("caseAnalysis", JSON.stringify(analysis));
-      router.push("/dashboard");
+      const payload = await res.json();
+      if (payload.caseId) {
+        sessionStorage.setItem("activeCaseId", payload.caseId);
+      }
+      sessionStorage.setItem("caseAnalysis", JSON.stringify(payload.analysis ?? payload));
+      router.push(
+        payload.caseId ? `/dashboard?caseId=${payload.caseId}` : "/dashboard"
+      );
     } catch {
       alert("An error occurred. Please try again.");
       setAnalyzing(false);
