@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { Suspense, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft, Upload, X, FileText, Loader2 } from "lucide-react";
@@ -33,7 +33,7 @@ interface UploadedFile {
   size: number;
 }
 
-export default function UploadPage() {
+function UploadPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -255,5 +255,19 @@ export default function UploadPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function UploadPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <p className="text-slate-500">Loading upload flow...</p>
+        </div>
+      }
+    >
+      <UploadPageContent />
+    </Suspense>
   );
 }

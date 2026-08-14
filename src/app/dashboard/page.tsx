@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -122,7 +122,7 @@ function exportCasePackage(analysis: CaseAnalysis) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [analysis, setAnalysis] = useState<CaseAnalysis | null>(() => {
@@ -197,6 +197,7 @@ export default function DashboardPage() {
       importantFindings: analysis.importantFindings.slice(0, previewLimit),
       timeline: analysis.timeline.slice(0, Math.max(2, previewLimit * 2)),
       findings: analysis.findings.slice(0, previewLimit),
+      inconsistencies: analysis.inconsistencies.slice(0, previewLimit),
       nextSteps: analysis.nextSteps.slice(0, previewLimit),
       documentsMissing: analysis.documentsMissing.slice(0, previewLimit),
       plainLanguageSummary:
@@ -221,7 +222,7 @@ export default function DashboardPage() {
           <Link href="/" className="text-xl font-bold text-blue-700">MyImmigration</Link>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => exportCasePackage(analysis)}
+              onClick={() => exportCasePackage(visibleAnalysis)}
               disabled={!access.canExport}
               className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
             >
@@ -468,7 +469,7 @@ export default function DashboardPage() {
             timeline, and issue list so they can focus on legal analysis from minute one.
           </p>
           <button
-            onClick={() => exportCasePackage(analysis)}
+            onClick={() => exportCasePackage(visibleAnalysis)}
             disabled={!access.canExport}
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
           >
@@ -482,5 +483,19 @@ export default function DashboardPage() {
         © {new Date().getFullYear()} MyImmigration — Case Intelligence Platform. Not a law firm. Not legal advice.
       </footer>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <p className="text-slate-500">Loading your case...</p>
+        </div>
+      }
+    >
+      <DashboardPageContent />
+    </Suspense>
   );
 }

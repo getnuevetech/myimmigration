@@ -131,6 +131,10 @@ async function ensureDefaultPlanCatalog() {
 }
 
 export async function getPublicPlans(): Promise<PublicPlan[]> {
+  if (!process.env.DATABASE_URL) {
+    return DEFAULT_PLANS;
+  }
+
   try {
     const plans = await prisma.subscriptionPlan.findMany({
       where: { isActive: true },
@@ -154,7 +158,7 @@ export async function getPublicPlans(): Promise<PublicPlan[]> {
       monthlyUsd: plan.monthlyUsd,
       yearlyUsd: plan.yearlyUsd,
       features: plan.features.map((feature) => feature.feature.label),
-      recommended: plan.key === "guided",
+      recommended: plan.rank === 1,
     }));
   } catch {
     return DEFAULT_PLANS;
@@ -162,11 +166,16 @@ export async function getPublicPlans(): Promise<PublicPlan[]> {
 }
 
 export async function ensureFreeSubscriptionForUser(userId: string) {
-  await ensureDefaultPlanCatalog();
-
-  const freePlan = await prisma.subscriptionPlan.findUnique({
+  let freePlan = await prisma.subscriptionPlan.findUnique({
     where: { key: "free" },
   });
+
+  if (!freePlan) {
+    await ensureDefaultPlanCatalog();
+    freePlan = await prisma.subscriptionPlan.findUnique({
+      where: { key: "free" },
+    });
+  }
 
   if (!freePlan) {
     return null;

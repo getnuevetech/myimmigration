@@ -1,31 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function ContinuePage() {
+function ContinuePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [caseId, setCaseId] = useState<string | null>(searchParams.get("caseId"));
-
+  const caseId =
+    searchParams.get("caseId") ??
+    (typeof window !== "undefined" ? sessionStorage.getItem("activeCaseId") : null);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (searchParams.get("caseId")) {
-      setCaseId(searchParams.get("caseId"));
-      return;
-    }
-
-    if (typeof window !== "undefined") {
-      setCaseId(sessionStorage.getItem("activeCaseId"));
-    }
-  }, [searchParams]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -141,5 +131,19 @@ export default function ContinuePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function ContinuePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <p className="text-slate-500">Loading…</p>
+        </div>
+      }
+    >
+      <ContinuePageContent />
+    </Suspense>
   );
 }

@@ -36,22 +36,22 @@ export async function POST(req: NextRequest) {
     const session = await getOrCreateGuestSession();
     const normalizedEmail = email.trim().toLowerCase();
 
-    const user = await prisma.user.upsert({
+    const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail },
-      update: {
-        firstName: firstName?.trim() || undefined,
-        lastName: lastName?.trim() || undefined,
-        mustAcceptTos: false,
-      },
-      create: {
-        email: normalizedEmail,
-        firstName: firstName?.trim() || null,
-        lastName: lastName?.trim() || null,
-        type: "REGULAR",
-        status: "PENDING",
-        mustAcceptTos: false,
-      },
     });
+
+    const user =
+      existingUser ??
+      (await prisma.user.create({
+        data: {
+          email: normalizedEmail,
+          firstName: firstName?.trim() || null,
+          lastName: lastName?.trim() || null,
+          type: "REGULAR",
+          status: "PENDING",
+          mustAcceptTos: false,
+        },
+      }));
 
     await prisma.guestSession.update({
       where: { id: session.id },
