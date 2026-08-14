@@ -17,13 +17,21 @@ const DISCLAIMER =
 /**
  * Agent 1 — Document Intelligence
  * Extracts structured data from each uploaded document's text.
+ * Documents are processed in batches of 5 to avoid token limit overflows.
  */
 export async function runDocumentIntelligence(
   extractedTexts: { name: string; text: string }[]
 ): Promise<DocumentRecord[]> {
   if (extractedTexts.length === 0) return [];
 
-  const prompt = `You are an immigration document intelligence specialist. For each document below, extract:
+  const BATCH_SIZE = 5;
+  const MAX_CHARS_PER_DOC = 1500;
+  const results: DocumentRecord[] = [];
+
+  for (let i = 0; i < extractedTexts.length; i += BATCH_SIZE) {
+    const batch = extractedTexts.slice(i, i + BATCH_SIZE);
+
+    const prompt = `You are an immigration document intelligence specialist. For each document below, extract:
 - formType (e.g. I-797, I-485, I-130, I-765, N-400, I-589, I-94, visa stamp, RFE, NOID, EAD, DS-160)
 - receiptNumber (e.g. MSC2190123456)
 - aNumber (Alien Registration Number, e.g. A123456789)
@@ -32,24 +40,28 @@ export async function runDocumentIntelligence(
 - deadlines (any response deadlines or expiration dates)
 - issues (any problems, conflicts, or requests for evidence mentioned)
 
-Return a JSON array. Each element has: id (use document name), name, formType, receiptNumber, aNumber, dates (string[]), status, deadlines (string[]), issues (string[]).
+Return a JSON object with key "documents" containing an array. Each element has: id (use document name), name, formType, receiptNumber, aNumber, dates (string[]), status, deadlines (string[]), issues (string[]).
 
 Documents:
-${extractedTexts.map((d, i) => `--- Document ${i + 1}: ${d.name} ---\n${d.text.slice(0, 3000)}`).join("\n\n")}`;
+${batch.map((d, j) => `--- Document ${i + j + 1}: ${d.name} ---\n${d.text.slice(0, MAX_CHARS_PER_DOC)}`).join("\n\n")}`;
 
-  const response = await getOpenAIClient().chat.completions.create({
-    model: "gpt-4o",
-    messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
-    temperature: 0,
-  });
+    const response = await getOpenAIClient().chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      temperature: 0,
+    });
 
-  try {
-    const parsed = JSON.parse(response.choices[0].message.content ?? "{}");
-    return (parsed.documents ?? parsed) as DocumentRecord[];
-  } catch {
-    return [];
+    try {
+      const parsed = JSON.parse(response.choices[0].message.content ?? "{}");
+      const docs = parsed.documents ?? parsed;
+      if (Array.isArray(docs)) results.push(...docs);
+    } catch {
+      // Continue with next batch on parse error
+    }
   }
+
+  return results;
 }
 
 /**
@@ -268,13 +280,13 @@ export async function analyzeCase(
   // Agent 1: Document Intelligence
   const documents = await runDocumentIntelligence(documentTexts);
 
-  // Agent 2: Case Reconstruction
-  const timeline = await runCaseReconstruction(narrative, documents);
+  // Agent 2 + 3 run in parallel: Case Reconstruction and Immigration Research
+  const [timeline, research] = await Promise.all([
+    runCaseReconstruction(narrative, documents),
+    runImmigrationResearch(narrative, goals),
+  ]);
 
-  // Agent 3: Immigration Research
-  const research = await runImmigrationResearch(narrative, goals);
-
-  // Agent 4: Case Analyst
+  // Agent 4: Case Analyst (depends on 2 + 3)
   const analysis = await runCaseAnalyst(narrative, goals, documents, timeline, research);
 
   // Agent 5: Explanation Engine

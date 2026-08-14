@@ -55,11 +55,13 @@ export default function UploadPage() {
     });
   }
 
+  const MAX_FILES = 25;
+
   const handleFiles = useCallback(async (fileList: FileList) => {
     setProcessing(true);
+    const incoming = Array.from(fileList);
     const newFiles: UploadedFile[] = [];
-    for (const file of Array.from(fileList)) {
-      if (files.some((f) => f.name === file.name)) continue;
+    for (const file of incoming) {
       const text = await extractTextFromFile(file);
       newFiles.push({
         id: crypto.randomUUID(),
@@ -69,9 +71,18 @@ export default function UploadPage() {
         size: file.size,
       });
     }
-    setFiles((prev) => [...prev, ...newFiles]);
+    setFiles((prev) => {
+      const existingNames = new Set(prev.map((f) => f.name));
+      const deduped = newFiles.filter((f) => !existingNames.has(f.name));
+      const combined = [...prev, ...deduped];
+      if (combined.length > MAX_FILES) {
+        alert(`Maximum ${MAX_FILES} files allowed. Some files were not added.`);
+        return combined.slice(0, MAX_FILES);
+      }
+      return combined;
+    });
     setProcessing(false);
-  }, [files]);
+  }, []);
 
   function removeFile(id: string) {
     setFiles((prev) => prev.filter((f) => f.id !== id));
@@ -193,7 +204,7 @@ export default function UploadPage() {
                   <FileText className="h-4 w-4 text-blue-500 shrink-0" />
                   <span className="flex-1 text-sm text-slate-700 truncate">{f.name}</span>
                   <span className="text-xs text-slate-400">{(f.size / 1024).toFixed(0)} KB</span>
-                  <button onClick={() => removeFile(f.id)} className="text-slate-400 hover:text-red-500">
+                  <button onClick={() => removeFile(f.id)} aria-label={`Remove ${f.name}`} className="text-slate-400 hover:text-red-500">
                     <X className="h-4 w-4" />
                   </button>
                 </div>

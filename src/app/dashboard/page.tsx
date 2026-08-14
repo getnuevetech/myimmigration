@@ -117,7 +117,7 @@ function exportCasePackage(analysis: CaseAnalysis) {
   a.href = url;
   a.download = "immigration-case-package.txt";
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 export default function DashboardPage() {
