@@ -30,6 +30,9 @@ cd myimmigration
 cp .env.example .env
 # edit .env and set DATABASE_URL + OPENAI_API_KEY
 
+# Required if GHCR package is private
+echo <GHCR_TOKEN_WITH_READ_PACKAGES> | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
+
 docker compose pull
 docker compose up -d
 ```
@@ -63,11 +66,6 @@ On every push to `main`, it:
 2. Pushes to `ghcr.io/getnuevetech/myimmigration:latest`
 3. SSHes to your server and runs `docker compose pull && docker compose up -d --remove-orphans`
 
-Set these GitHub Actions secrets:
-- `LIGHTSAIL_HOST`
-- `LIGHTSAIL_USER` (usually `ubuntu`)
-- `LIGHTSAIL_SSH_KEY` (private key PEM content)
-
 ### First-time Lightsail setup steps
 
 1. **Create instance**  
@@ -83,8 +81,17 @@ Set these GitHub Actions secrets:
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y ca-certificates curl
-curl -fsSL https://get.docker.com | sudo sh
+sudo apt install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+  sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo ${VERSION_CODENAME}) stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 sudo systemctl enable --now docker
 sudo usermod -aG docker $USER
 ```
@@ -109,12 +116,20 @@ OPENAI_API_KEY=your_openai_key
 7. **Initial run on server**
 
 ```bash
+# Required if GHCR package is private
+echo <GHCR_TOKEN_WITH_READ_PACKAGES> | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
+
 docker compose pull
 docker compose up -d
 ```
 
 8. **Enable auto-deploy**
-   Add the 3 GitHub secrets above, then push to `main`.
+   Add these GitHub Actions secrets:
+   - `LIGHTSAIL_HOST`
+   - `LIGHTSAIL_USER` (usually `ubuntu`)
+   - `LIGHTSAIL_SSH_KEY` (private key PEM content)
+   
+   Then push to `main`.
    The workflow will build, push, and deploy automatically.
 
 ---
@@ -142,11 +157,11 @@ yourdomain.com {
 }
 ```
 
-Then:
+Before enabling Caddy, make sure ports `80` and `443` are open in the Lightsail firewall (same firewall area used in Option B step 3).  
+Then enable Caddy:
 
 ```bash
 sudo systemctl enable --now caddy
-sudo systemctl reload caddy
 ```
 
-Point DNS to your server IP and open ports `80` and `443`.
+Point DNS to your server static IP.
