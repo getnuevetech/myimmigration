@@ -1,4 +1,7 @@
+import { AnalysisStage } from "@prisma/client";
 import { getOpenAIClient } from "@/lib/openai";
+import { mergeStageOutputs, ProviderStageOutput } from "@/lib/analysis/consensus";
+import { getPlatformRuntimeSettings } from "@/lib/platform/settings";
 import {
   CaseAnalysis,
   CaseGoal,
@@ -11,16 +14,79 @@ import {
   CaseHealth,
 } from "@/types/case";
 
-const DISCLAIMER =
-  "This analysis is for informational and organizational purposes only. It does not constitute legal advice and does not create an attorney-client relationship. Immigration law is complex and fact-specific. Please consult a licensed immigration attorney or accredited representative before making any immigration decisions or filing any forms.";
+type RuntimeSettings = Awaited<ReturnType<typeof getPlatformRuntimeSettings>>;
 
-/**
- * Agent 1 — Document Intelligence
- * Extracts structured data from each uploaded document's text.
- * Documents are processed in batches of 5 to avoid token limit overflows.
- */
+async function runStagePrompt(
+  stage: AnalysisStage,
+  prompt: string,
+  responseAsJson: boolean,
+  settings: RuntimeSettings
+): Promise<{ text: string; verificationRequired: boolean }> {
+  const candidates = settings.pipeline[stage] ?? [];
+
+  const outputs: ProviderStageOutput<{ text: string }>[] = [];
+
+  for (const candidate of candidates) {
+    const attemptedModels = [
+      candidate.model,
+      process.env[`OPENAI_FALLBACK_MODEL_${stage}`] ?? "gpt-4o",
+    ];
+
+    for (const model of attemptedModels) {
+      try {
+        const response = await getOpenAIClient().chat.completions.create({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          ...(responseAsJson ? { response_format: { type: "json_object" as const } } : {}),
+          temperature: 0,
+        });
+
+        outputs.push({
+          stage,
+          providerLabel: candidate.providerLabel,
+          model,
+          role: candidate.role,
+          payload: { text: response.choices[0].message.content ?? "" },
+        });
+        break;
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  if (outputs.length === 0) {
+    const response = await getOpenAIClient().chat.completions.create({
+      model: process.env.OPENAI_DEFAULT_MODEL ?? "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      ...(responseAsJson ? { response_format: { type: "json_object" as const } } : {}),
+      temperature: 0,
+    });
+
+    return {
+      text: response.choices[0].message.content ?? "",
+      verificationRequired: true,
+    };
+  }
+
+  const consensus = mergeStageOutputs(outputs);
+  return {
+    text: consensus.merged.text,
+    verificationRequired: consensus.verificationRequired,
+  };
+}
+
+function tryParseJson<T>(value: string, fallback: T): T {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function runDocumentIntelligence(
-  extractedTexts: { name: string; text: string }[]
+  extractedTexts: { name: string; text: string }[],
+  settings: RuntimeSettings
 ): Promise<DocumentRecord[]> {
   if (extractedTexts.length === 0) return [];
 
@@ -32,45 +98,31 @@ export async function runDocumentIntelligence(
     const batch = extractedTexts.slice(i, i + BATCH_SIZE);
 
     const prompt = `You are an immigration document intelligence specialist. For each document below, extract:
-- formType (e.g. I-797, I-485, I-130, I-765, N-400, I-589, I-94, visa stamp, RFE, NOID, EAD, DS-160)
-- receiptNumber (e.g. MSC2190123456)
-- aNumber (Alien Registration Number, e.g. A123456789)
-- dates (all relevant dates found: filing date, approval date, expiration date, etc.)
-- status (e.g. Approved, Pending, Denied, RFE Issued)
-- deadlines (any response deadlines or expiration dates)
-- issues (any problems, conflicts, or requests for evidence mentioned)
+- formType
+- receiptNumber
+- aNumber
+- dates
+- status
+- deadlines
+- issues
 
 Return a JSON object with key "documents" containing an array. Each element has: id (use document name), name, formType, receiptNumber, aNumber, dates (string[]), status, deadlines (string[]), issues (string[]).
 
 Documents:
 ${batch.map((d, j) => `--- Document ${i + j + 1}: ${d.name} ---\n${d.text.slice(0, MAX_CHARS_PER_DOC)}`).join("\n\n")}`;
 
-    const response = await getOpenAIClient().chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      temperature: 0,
-    });
-
-    try {
-      const parsed = JSON.parse(response.choices[0].message.content ?? "{}");
-      const docs = parsed.documents ?? parsed;
-      if (Array.isArray(docs)) results.push(...docs);
-    } catch {
-      // Continue with next batch on parse error
-    }
+    const stage = await runStagePrompt("DOCUMENT", prompt, true, settings);
+    const parsed = tryParseJson<{ documents?: DocumentRecord[] }>(stage.text, {});
+    if (Array.isArray(parsed.documents)) results.push(...parsed.documents);
   }
 
   return results;
 }
 
-/**
- * Agent 2 — Case Reconstruction
- * Builds a structured timeline from narrative + documents.
- */
 export async function runCaseReconstruction(
   narrative: string,
-  documents: DocumentRecord[]
+  documents: DocumentRecord[],
+  settings: RuntimeSettings
 ): Promise<TimelineEvent[]> {
   const docSummary = documents
     .map(
@@ -79,7 +131,7 @@ export async function runCaseReconstruction(
     )
     .join("\n");
 
-  const prompt = `You are an immigration case reconstruction specialist. Given the person's narrative and their document records, build a chronological immigration timeline.
+  const prompt = `You are an immigration case reconstruction specialist. Build a chronological timeline.
 
 Narrative:
 ${narrative}
@@ -87,70 +139,39 @@ ${narrative}
 Document Records:
 ${docSummary}
 
-Return a JSON object with key "timeline" containing an array of events. Each event: year (4-digit string), date (optional ISO date), event (plain description of what happened), source ("narrative" | "document" | "both"), formType (optional), receiptNumber (optional).
+Return JSON with key "timeline" as array of events: year, date?, event, source ("narrative"|"document"|"both"), formType?, receiptNumber?.`;
 
-Order events chronologically. Include all significant immigration events: entries, visa applications, status changes, filings, approvals, denials, RFEs, interviews, separations, naturalizations, etc.`;
-
-  const response = await getOpenAIClient().chat.completions.create({
-    model: "gpt-4o",
-    messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
-    temperature: 0,
-  });
-
-  try {
-    const parsed = JSON.parse(response.choices[0].message.content ?? "{}");
-    return (parsed.timeline ?? []) as TimelineEvent[];
-  } catch {
-    return [];
-  }
+  const stage = await runStagePrompt("SUMMARY", prompt, true, settings);
+  const parsed = tryParseJson<{ timeline?: TimelineEvent[] }>(stage.text, {});
+  return parsed.timeline ?? [];
 }
 
-/**
- * Agent 3 — Immigration Research
- * Retrieves relevant USCIS policy context for the user's situation.
- * (In production this would use RAG against USCIS Policy Manual; here we use the model's
- * knowledge with a strict instruction to cite authoritative sources only.)
- */
 export async function runImmigrationResearch(
   situation: string,
-  goals: CaseGoal[]
+  goals: CaseGoal[],
+  settings: RuntimeSettings
 ): Promise<string> {
   const goalLabels = goals.map((g) => CASE_GOAL_LABELS[g]).join("; ");
 
-  const prompt = `You are an immigration policy research specialist. Your job is to identify the relevant USCIS policies, form requirements, and regulatory standards that apply to the following situation.
+  const prompt = `You are an immigration policy research specialist.
 
 Situation: ${situation}
 User Goals: ${goalLabels}
 
-Provide a concise research summary covering:
-1. Applicable immigration categories/pathways
-2. Relevant USCIS forms and requirements
-3. Key eligibility standards from the USCIS Policy Manual
-4. Common issues that arise in similar cases
-5. Relevant deadlines or time constraints
+Provide concise summary covering applicable pathways, forms, eligibility standards, common issues, deadlines.
+Cite USCIS Policy Manual, USCIS form instructions, INA, CFR. No legal advice.`;
 
-Cite only authoritative sources (USCIS Policy Manual, USCIS forms instructions, INA, CFR). Do NOT give legal advice. Focus on published government requirements only.`;
-
-  const response = await getOpenAIClient().chat.completions.create({
-    model: "gpt-4o",
-    messages: [{ role: "user", content: prompt }],
-    temperature: 0,
-  });
-
-  return response.choices[0].message.content ?? "";
+  const stage = await runStagePrompt("GOAL", prompt, false, settings);
+  return stage.text;
 }
 
-/**
- * Agent 4 — Case Analyst
- * Cross-compares facts + documents + research + goals to surface issues and options.
- */
 export async function runCaseAnalyst(
   narrative: string,
   goals: CaseGoal[],
   documents: DocumentRecord[],
   timeline: TimelineEvent[],
-  research: string
+  research: string,
+  settings: RuntimeSettings
 ): Promise<{
   caseHealth: CaseHealth;
   currentSituation: string;
@@ -161,19 +182,31 @@ export async function runCaseAnalyst(
   documentsMissing: string[];
   majorIssues: number;
   rawAnalysis: string;
+  verificationRequired?: boolean;
 }> {
   const goalLabels = goals.map((g) => CASE_GOAL_LABELS[g]).join("; ");
   const docSummary = documents
     .map(
       (d) =>
-        `${d.name} (${d.formType ?? "?"}): status=${d.status ?? "?"}, issues=${(d.issues ?? []).join(", ")}`
+        `${d.name} (${d.formType ?? "?"}): status=${d.status ?? "?"}, issues=${
+          (d.issues ?? []).join(", ")
+        }`
     )
     .join("\n");
   const timelineSummary = timeline
     .map((t) => `${t.year}${t.date ? ` (${t.date})` : ""}: ${t.event}`)
     .join("\n");
 
-  const prompt = `You are an immigration case analyst. Analyze this case carefully and return a JSON object.
+  const prompt = `You are an immigration case analyst. Return JSON with:
+- caseHealth: good|needs_attention|critical
+- currentSituation
+- importantFindings
+- deadlines: {label,date}[]
+- findings: {label,status,detail?}[]
+- inconsistencies: {field,narrativeSays,documentSays,severity}[]
+- documentsMissing: string[]
+- majorIssues: number
+- rawAnalysis: 2-3 paragraphs
 
 Narrative: ${narrative}
 Goals: ${goalLabels}
@@ -181,54 +214,30 @@ Documents: ${docSummary}
 Timeline: ${timelineSummary}
 Research Context: ${research.slice(0, 2000)}
 
-Return JSON with:
-- caseHealth: "good" | "needs_attention" | "critical"
-- currentSituation: one sentence describing current immigration situation
-- importantFindings: string[] (up to 5 most important findings)
-- deadlines: array of {label: string, date: string} for any upcoming deadlines
-- findings: array of {label: string, status: "ok"|"warning"|"missing"|"critical", detail?: string}
-  (cover: primary application, supporting evidence, financial evidence, medical exam, petitioner support, address history, prior applications, travel history)
-- inconsistencies: array of {field: string, narrativeSays: string, documentSays: string, severity: "warning"|"critical"}
-  (flag any date/name/status mismatches between narrative and documents)
-- documentsMissing: string[] of document types likely needed but not found
-- majorIssues: number (count of critical/warning issues)
-- rawAnalysis: string (2-3 paragraph analytical summary for the explanation engine)
+Use cautious language and avoid legal advice.`;
 
-IMPORTANT: Do not give legal advice. Note issues as "may need attention" or "appears to be". Use cautious language.`;
+  const stage = await runStagePrompt("SITUATION", prompt, true, settings);
 
-  const response = await getOpenAIClient().chat.completions.create({
-    model: "gpt-4o",
-    messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
-    temperature: 0,
+  return tryParseJson(stage.text, {
+    caseHealth: "needs_attention" as CaseHealth,
+    currentSituation: "Unable to determine current situation.",
+    importantFindings: [],
+    deadlines: [],
+    findings: [],
+    inconsistencies: [],
+    documentsMissing: [],
+    majorIssues: 0,
+    rawAnalysis: "",
+    verificationRequired: stage.verificationRequired,
   });
-
-  try {
-    return JSON.parse(response.choices[0].message.content ?? "{}");
-  } catch {
-    return {
-      caseHealth: "needs_attention",
-      currentSituation: "Unable to determine current situation.",
-      importantFindings: [],
-      deadlines: [],
-      findings: [],
-      inconsistencies: [],
-      documentsMissing: [],
-      majorIssues: 0,
-      rawAnalysis: "",
-    };
-  }
 }
 
-/**
- * Agent 5 — Explanation Engine
- * Converts analytical output into plain language an ordinary immigrant can understand.
- */
 export async function runExplanationEngine(
   rawAnalysis: string,
   goals: CaseGoal[],
   findings: CaseFinding[],
-  inconsistencies: CaseInconsistency[]
+  inconsistencies: CaseInconsistency[],
+  settings: RuntimeSettings
 ): Promise<{ plainLanguageSummary: string; nextSteps: NextStep[] }> {
   const goalLabels = goals.map((g) => CASE_GOAL_LABELS[g]).join("; ");
   const findingsSummary = findings
@@ -236,65 +245,63 @@ export async function runExplanationEngine(
     .join("\n");
   const inconsistenciesSummary =
     inconsistencies.length > 0
-      ? inconsistencies.map((i) => `${i.field}: narrative says "${i.narrativeSays}", document says "${i.documentSays}"`).join("\n")
+      ? inconsistencies
+          .map(
+            (i) =>
+              `${i.field}: narrative says "${i.narrativeSays}", document says "${i.documentSays}"`
+          )
+          .join("\n")
       : "None detected";
 
-  const prompt = `You are an immigration case explanation specialist. Your job is to translate complex immigration analysis into clear, compassionate language that someone with no legal background can understand.
+  const prompt = `You are an immigration case explanation specialist.
 
 Goals: ${goalLabels}
 Analysis: ${rawAnalysis}
 Findings: ${findingsSummary}
 Inconsistencies: ${inconsistenciesSummary}
 
-Return JSON with:
-- plainLanguageSummary: 2-3 paragraphs in plain, warm, reassuring language explaining what is happening with the case, what was found, and what it means for the person. No legal jargon. Use "may", "appears to", "it looks like" language. End with a reminder to consult an immigration attorney.
-- nextSteps: array of {option: string (e.g. "Option A"), title: string, description: string, recommended?: boolean}
-  Provide 2-4 realistic next steps. Use language like "you may want to consider" and "an immigration attorney can help determine whether...". Never say "you qualify for" or "you should file".`;
+Return JSON:
+- plainLanguageSummary (2-3 paragraphs, warm tone, no legal jargon, no legal advice)
+- nextSteps: {option,title,description,recommended?}[]`;
 
-  const response = await getOpenAIClient().chat.completions.create({
-    model: "gpt-4o",
-    messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
-    temperature: 0.3,
+  const stage = await runStagePrompt("PRESENTATION", prompt, true, settings);
+
+  return tryParseJson(stage.text, {
+    plainLanguageSummary:
+      "We were unable to generate a plain language summary. Please review the findings above and consult with an immigration attorney.",
+    nextSteps: [],
   });
-
-  try {
-    return JSON.parse(response.choices[0].message.content ?? "{}");
-  } catch {
-    return {
-      plainLanguageSummary:
-        "We were unable to generate a plain language summary. Please review the findings above and consult with an immigration attorney.",
-      nextSteps: [],
-    };
-  }
 }
 
-/**
- * Orchestrator — runs all 5 agents in sequence and assembles CaseAnalysis.
- */
 export async function analyzeCase(
   narrative: string,
   goals: CaseGoal[],
   documentTexts: { name: string; text: string }[]
 ): Promise<CaseAnalysis> {
-  // Agent 1: Document Intelligence
-  const documents = await runDocumentIntelligence(documentTexts);
+  const settings = await getPlatformRuntimeSettings();
 
-  // Agent 2 + 3 run in parallel: Case Reconstruction and Immigration Research
+  const documents = await runDocumentIntelligence(documentTexts, settings);
+
   const [timeline, research] = await Promise.all([
-    runCaseReconstruction(narrative, documents),
-    runImmigrationResearch(narrative, goals),
+    runCaseReconstruction(narrative, documents, settings),
+    runImmigrationResearch(narrative, goals, settings),
   ]);
 
-  // Agent 4: Case Analyst (depends on 2 + 3)
-  const analysis = await runCaseAnalyst(narrative, goals, documents, timeline, research);
+  const analysis = await runCaseAnalyst(
+    narrative,
+    goals,
+    documents,
+    timeline,
+    research,
+    settings
+  );
 
-  // Agent 5: Explanation Engine
   const explanation = await runExplanationEngine(
     analysis.rawAnalysis,
     goals,
     analysis.findings,
-    analysis.inconsistencies
+    analysis.inconsistencies,
+    settings
   );
 
   return {
@@ -310,6 +317,6 @@ export async function analyzeCase(
     documentsReviewed: documentTexts.length,
     documentsMissing: analysis.documentsMissing,
     majorIssues: analysis.majorIssues,
-    disclaimer: DISCLAIMER,
+    disclaimer: settings.disclaimer,
   };
 }

@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import { DEFAULT_PUBLIC_DISCLAIMER } from "@/lib/platform/constants";
 
 interface DisclaimerProps {
   text?: string;
@@ -6,9 +7,6 @@ interface DisclaimerProps {
 }
 
 export default function Disclaimer({ text, compact = false }: DisclaimerProps) {
-  const defaultText =
-    "This platform is for informational and organizational purposes only. It does not constitute legal advice and does not create an attorney-client relationship. Immigration law is complex and fact-specific. Please consult a licensed immigration attorney or accredited representative before making any immigration decisions or filing any forms.";
-
   return (
     <div
       className={`flex gap-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 ${
@@ -18,7 +16,7 @@ export default function Disclaimer({ text, compact = false }: DisclaimerProps) {
       <AlertTriangle
         className={`shrink-0 ${compact ? "h-3.5 w-3.5 mt-0.5" : "h-4 w-4 mt-0.5"}`}
       />
-      <p>{text ?? defaultText}</p>
+      <p>{text ?? DEFAULT_PUBLIC_DISCLAIMER}</p>
     </div>
   );
 }

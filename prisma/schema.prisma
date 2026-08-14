@@ -1,0 +1,512 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserType {
+  ADMIN
+  REGULAR
+  CONSULTANT
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING
+  SUSPENDED
+  DELETED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum ConsultantAssignmentStatus {
+  PENDING_USER_CONSENT
+  PENDING_CONSULTANT_CONSENT
+  ACTIVE
+  REVOKED
+}
+
+enum AgreementTarget {
+  REGULAR_USER
+  CONSULTANT
+  CONNECTION
+}
+
+enum CaseStatus {
+  DRAFT
+  IN_PROGRESS
+  REVIEW_REQUIRED
+  COMPLETE
+  ARCHIVED
+}
+
+enum AnalysisStage {
+  SUMMARY
+  GOAL
+  DOCUMENT
+  SITUATION
+  PRESENTATION
+}
+
+enum AnalysisRunStatus {
+  RUNNING
+  COMPLETE
+  FAILED
+}
+
+enum StageRole {
+  FACT_EXTRACTOR
+  INTERPRETER
+  SKEPTIC
+  VERIFIER
+  PRESENTER
+}
+
+enum IssueSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum NotificationType {
+  CONSULTANT_REQUIRED
+  CONSENT_REQUIRED
+  SUBSCRIPTION_REQUIRED
+  ANALYSIS_COMPLETE
+  SYSTEM
+}
+
+model Setting {
+  key         String   @id
+  value       String
+  type        String   @default("text")
+  group       String   @default("general")
+  description String?
+  isSecret    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FeatureDef {
+  key         String   @id
+  label       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  planFeatures PlanFeature[]
+}
+
+model SubscriptionPlan {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  monthlyUsd  Int
+  yearlyUsd   Int?
+  isActive    Boolean  @default(true)
+  rank        Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  features      PlanFeature[]
+  subscriptions Subscription[]
+}
+
+model PlanFeature {
+  id         String           @id @default(cuid())
+  planId     String
+  featureKey String
+  enabled    Boolean          @default(false)
+  limitValue Int?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  plan       SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  feature    FeatureDef       @relation(fields: [featureKey], references: [key], onDelete: Cascade)
+
+  @@unique([planId, featureKey])
+}
+
+model PaymentGatewayConfig {
+  id          String   @id @default(cuid())
+  providerKey String   @unique
+  label       String
+  enabled     Boolean  @default(false)
+  configJson  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AiProvider {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String
+  provider    String
+  model       String
+  baseUrl     String?
+  apiKeyRef   String
+  maxTokens   Int?
+  temperature Float?
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pipelineSteps PipelineStep[]
+}
+
+model PipelineStage {
+  id          String        @id @default(cuid())
+  key         AnalysisStage @unique
+  label       String
+  description String?
+  enabled     Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  steps PipelineStep[]
+}
+
+model PipelineStep {
+  id             String        @id @default(cuid())
+  stageId        String
+  providerId     String
+  stageRole      StageRole
+  orderIndex     Int
+  promptTemplate String
+  isRequired     Boolean       @default(true)
+  enabled        Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  stage          PipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  provider       AiProvider    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, providerId, stageRole, orderIndex])
+}
+
+model ContentPage {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  title       String
+  body        String
+  published   Boolean  @default(false)
+  version     Int      @default(1)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User? @relation("ContentPageAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+}
+
+model AgreementVersion {
+  id          String          @id @default(cuid())
+  target      AgreementTarget
+  title       String
+  body        String
+  version     Int
+  active      Boolean         @default(false)
+  createdById String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  createdBy   User?                 @relation("AgreementAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  acceptances AgreementAcceptance[]
+
+  @@unique([target, version])
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  phone         String?
+  passwordHash  String?
+  googleId      String?
+  firstName     String?
+  lastName      String?
+  address       String?
+  bio           String?
+  avatarUrl     String?
+  optionalIdNo  String?
+  type          UserType   @default(REGULAR)
+  status        UserStatus @default(PENDING)
+  emailVerified Boolean    @default(false)
+  mustAcceptTos Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  adminRole             AdminRole?
+  subscriptions         Subscription[]
+  cases                 Case[]
+  documents             Document[]
+  analysisRuns          AnalysisRun[]
+  consultantProfile     ConsultantProfile?
+  consultantAssignments ConsultantAssignment[] @relation("ConsultantAssignments")
+  userAssignments       ConsultantAssignment[] @relation("UserAssignments")
+  notifications         Notification[]
+  agreementAcceptances  AgreementAcceptance[]
+  auditLogs             AuditLog[]
+  contentPages          ContentPage[]          @relation("ContentPageAuthor")
+  authoredAgreements    AgreementVersion[]     @relation("AgreementAuthor")
+  guestSessions         GuestSession[]
+  formSubmissions       FormSubmission[]
+}
+
+model AdminRole {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  name        String
+  description String?
+  scopeJson   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissions AdminPermission[]
+}
+
+model AdminPermission {
+  id        String   @id @default(cuid())
+  roleId    String
+  key       String
+  canView   Boolean  @default(true)
+  canManage Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  role AdminRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, key])
+}
+
+model GuestSession {
+  id            String   @id @default(cuid())
+  sessionToken  String   @unique
+  linkedUserId  String?
+  caseDraftJson String?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  linkedUser User?  @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
+  cases      Case[]
+}
+
+model Case {
+  id                 String     @id @default(cuid())
+  userId             String?
+  guestSessionId     String?
+  title              String?
+  narrative          String
+  goalsJson          String
+  status             CaseStatus @default(IN_PROGRESS)
+  requiresConsultant Boolean    @default(false)
+  summary            String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestSession  GuestSession?  @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
+  documents     Document[]
+  analysisRuns  AnalysisRun[]
+  issues        Issue[]
+  notifications Notification[]
+}
+
+model Document {
+  id            String   @id @default(cuid())
+  userId        String?
+  caseId        String
+  fileName      String
+  mimeType      String?
+  storagePath   String
+  extractedText String?
+  metadataJson  String?
+  uploadedAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  case Case  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model AnalysisRun {
+  id                  String            @id @default(cuid())
+  caseId              String
+  initiatedByUserId   String?
+  status              AnalysisRunStatus @default(RUNNING)
+  summaryResultJson   String?
+  goalResultJson      String?
+  documentResultJson  String?
+  situationResultJson String?
+  presentationJson    String?
+  verificationJson    String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  case        Case                 @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  initiatedBy User?                @relation(fields: [initiatedByUserId], references: [id], onDelete: SetNull)
+  stepResults AnalysisStepResult[]
+}
+
+model AnalysisStepResult {
+  id            String        @id @default(cuid())
+  runId         String
+  stage         AnalysisStage
+  providerLabel String
+  role          StageRole
+  responseJson  String
+  confidence    Float?
+  createdAt     DateTime      @default(now())
+
+  run AnalysisRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}
+
+model Issue {
+  id        String        @id @default(cuid())
+  caseId    String
+  label     String
+  detail    String?
+  severity  IssueSeverity
+  createdAt DateTime      @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  userId           String
+  planId           String
+  status           SubscriptionStatus
+  gatewayProvider  String?
+  gatewayRef       String?
+  currentPeriodEnd DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan         SubscriptionPlan     @relation(fields: [planId], references: [id], onDelete: Restrict)
+  transactions PaymentTransaction[]
+}
+
+model PaymentTransaction {
+  id             String        @id @default(cuid())
+  subscriptionId String
+  amountCents    Int
+  currency       String        @default("USD")
+  status         PaymentStatus
+  gatewayRef     String?
+  detailsJson    String?
+  createdAt      DateTime      @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+}
+
+model ConsultantProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  displayName     String
+  consultantType  String
+  credentialsJson String?
+  specialtiesJson String?
+  languagesJson   String?
+  approved        Boolean   @default(false)
+  approvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ConsultantAssignment {
+  id                  String                     @id @default(cuid())
+  userId              String
+  consultantId        String
+  caseId              String?
+  status              ConsultantAssignmentStatus @default(PENDING_USER_CONSENT)
+  userConsentAt       DateTime?
+  consultantConsentAt DateTime?
+  revokedAt           DateTime?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  user       User @relation("UserAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  consultant User @relation("ConsultantAssignments", fields: [consultantId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model AgreementAcceptance {
+  id           String   @id @default(cuid())
+  userId       String
+  agreementId  String
+  assignmentId String?
+  acceptedAt   DateTime @default(now())
+  ipAddress    String?
+  userAgent    String?
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agreement AgreementVersion @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, agreementId, assignmentId])
+}
+
+model UscisFormTemplate {
+  id               String   @id @default(cuid())
+  formCode         String   @unique
+  title            String
+  wizardSchemaJson String
+  outputSchemaJson String
+  enabled          Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model FormSubmission {
+  id              String   @id @default(cuid())
+  userId          String
+  templateId      String
+  inputDataJson   String
+  generatedOutput String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  caseId    String?
+  type      NotificationType
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  case Case? @relation(fields: [caseId], references: [id], onDelete: SetNull)
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String?
+  action       String
+  targetType   String
+  targetId     String?
+  metadataJson String?
+  createdAt    DateTime @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+}
