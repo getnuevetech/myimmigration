@@ -11,20 +11,12 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold text-blue-700">MyImmigration</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin"
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-            >
-              Admin
-            </Link>
-            <Link
-              href="/onboarding"
-              className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 transition-colors"
-            >
-              Start My Case
-            </Link>
-          </div>
+          <Link
+            href="/onboarding"
+            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 transition-colors"
+          >
+            Start My Case
+          </Link>
         </div>
       </header>
 

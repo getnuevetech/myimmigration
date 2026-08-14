@@ -27,6 +27,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+To enable the admin shell route during development, set `ADMIN_PREVIEW_ENABLED=true`.
+
 ## AI Pipeline (redesign foundation)
 
 | Stage | Intent |
@@ -41,7 +43,7 @@ Current implementation includes deterministic merge behavior and disagreement fl
 
 ## Data model foundation
 
-The repository now includes `prisma/schema.prisma` and `prisma.config.ts` for the redesign baseline. It introduces models for:
+The repository now includes `prisma/schema.prisma` for the redesign baseline. It introduces models for:
 
 - Admin settings and role-based permissions
 - AI providers and stage pipelines
@@ -57,7 +59,7 @@ The repository now includes `prisma/schema.prisma` and `prisma.config.ts` for th
 - **TypeScript**
 - **Tailwind CSS**
 - **OpenAI SDK** (with staged orchestration fallback)
-- **Prisma 7** (schema + generated client foundation)
+- **Prisma 6** (schema + generated client foundation)
 - **Lucide React** (icons)
 
 ## Legal Notice

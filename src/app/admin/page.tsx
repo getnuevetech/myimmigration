@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 const ADMIN_MODULES = [
   {
@@ -52,6 +53,10 @@ const ADMIN_MODULES = [
 ];
 
 export default function AdminPage() {
+  if (process.env.ADMIN_PREVIEW_ENABLED !== "true") {
+    redirect("/");
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">

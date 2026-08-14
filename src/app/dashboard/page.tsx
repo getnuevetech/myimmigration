@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -122,16 +123,17 @@ function exportCasePackage(analysis: CaseAnalysis) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [analysis, setAnalysis] = useState<CaseAnalysis | null>(null);
+  const [analysis] = useState<CaseAnalysis | null>(() => {
+    if (typeof window === "undefined") return null;
+    const stored = sessionStorage.getItem("caseAnalysis");
+    return stored ? (JSON.parse(stored) as CaseAnalysis) : null;
+  });
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("caseAnalysis");
-    if (stored) {
-      setAnalysis(JSON.parse(stored));
-    } else {
+    if (!analysis) {
       router.push("/onboarding");
     }
-  }, [router]);
+  }, [analysis, router]);
 
   if (!analysis) {
     return (
@@ -146,7 +148,7 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="border-b border-slate-200 bg-white sticky top-0 z-10">
         <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between">
-          <a href="/" className="text-xl font-bold text-blue-700">MyImmigration</a>
+          <Link href="/" className="text-xl font-bold text-blue-700">MyImmigration</Link>
           <div className="flex items-center gap-3">
             <button
               onClick={() => exportCasePackage(analysis)}
@@ -155,13 +157,13 @@ export default function DashboardPage() {
               <Download className="h-4 w-4" />
               Export Case Package
             </button>
-            <a
+            <Link
               href="/onboarding"
               className="flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 transition-colors"
             >
               <RefreshCw className="h-4 w-4" />
               New Analysis
-            </a>
+            </Link>
           </div>
         </div>
       </header>

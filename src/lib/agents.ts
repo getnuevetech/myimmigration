@@ -16,6 +16,23 @@ import {
 
 type RuntimeSettings = Awaited<ReturnType<typeof getPlatformRuntimeSettings>>;
 
+function roleInstruction(role: ProviderStageOutput["role"]): string {
+  switch (role) {
+    case "FACT_EXTRACTOR":
+      return "Role: FACT_EXTRACTOR. Return only objective extracted facts and avoid interpretation.";
+    case "INTERPRETER":
+      return "Role: INTERPRETER. Convert facts into clear meaning and practical implications with cautious language.";
+    case "SKEPTIC":
+      return "Role: SKEPTIC. Stress-test assumptions, identify uncertainty, and surface contradictions that need verification.";
+    case "VERIFIER":
+      return "Role: VERIFIER. Confirm consistency and completeness; explicitly note gaps and confidence limits.";
+    case "PRESENTER":
+      return "Role: PRESENTER. Produce user-facing plain language output that remains informational only.";
+    default:
+      return "Role: ANALYST. Keep outputs structured, accurate, and conservative.";
+  }
+}
+
 async function runStagePrompt(
   stage: AnalysisStage,
   prompt: string,
@@ -34,9 +51,10 @@ async function runStagePrompt(
 
     for (const model of attemptedModels) {
       try {
+        const roleAwarePrompt = `${roleInstruction(candidate.role)}\n\n${prompt}`;
         const response = await getOpenAIClient().chat.completions.create({
           model,
-          messages: [{ role: "user", content: prompt }],
+          messages: [{ role: "user", content: roleAwarePrompt }],
           ...(responseAsJson ? { response_format: { type: "json_object" as const } } : {}),
           temperature: 0,
         });
@@ -218,7 +236,7 @@ Use cautious language and avoid legal advice.`;
 
   const stage = await runStagePrompt("SITUATION", prompt, true, settings);
 
-  return tryParseJson(stage.text, {
+  const parsed = tryParseJson(stage.text, {
     caseHealth: "needs_attention" as CaseHealth,
     currentSituation: "Unable to determine current situation.",
     importantFindings: [],
@@ -228,8 +246,11 @@ Use cautious language and avoid legal advice.`;
     documentsMissing: [],
     majorIssues: 0,
     rawAnalysis: "",
-    verificationRequired: stage.verificationRequired,
   });
+  return {
+    ...parsed,
+    verificationRequired: stage.verificationRequired,
+  };
 }
 
 export async function runExplanationEngine(

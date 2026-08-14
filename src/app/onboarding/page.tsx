@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { CaseGoal, CASE_GOAL_LABELS } from "@/types/case";
 import Disclaimer from "@/components/Disclaimer";
@@ -37,7 +38,7 @@ export default function OnboardingPage() {
       {/* Header */}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between">
-          <a href="/" className="text-xl font-bold text-blue-700">MyImmigration</a>
+          <Link href="/" className="text-xl font-bold text-blue-700">MyImmigration</Link>
           <span className="text-sm text-slate-500">Step {step} of 3</span>
         </div>
       </header>
@@ -127,10 +128,10 @@ export default function OnboardingPage() {
               Back
             </button>
           ) : (
-            <a href="/" className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
+            <Link href="/" className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
               <ArrowLeft className="h-4 w-4" />
               Back to home
-            </a>
+            </Link>
           )}
 
           <button

@@ -12,25 +12,25 @@ export type AnalysisPipelineConfig = Record<AnalysisStage, StageModelSelection[]
 
 const DEFAULT_PIPELINE: AnalysisPipelineConfig = {
   SUMMARY: [
-    { providerLabel: "OpenAI", model: "gpt-5.6-sol", role: "FACT_EXTRACTOR" },
-    { providerLabel: "Anthropic", model: "claude-sonnet-5", role: "INTERPRETER" },
-    { providerLabel: "Google", model: "gemini-3.1-pro-preview", role: "VERIFIER" },
+    { providerLabel: "OpenAI", model: "gpt-4o", role: "FACT_EXTRACTOR" },
+    { providerLabel: "OpenAI", model: "gpt-4o", role: "INTERPRETER" },
+    { providerLabel: "OpenAI", model: "gpt-4o", role: "VERIFIER" },
   ],
   GOAL: [
-    { providerLabel: "OpenAI", model: "gpt-5.6-sol", role: "FACT_EXTRACTOR" },
-    { providerLabel: "Anthropic", model: "claude-sonnet-5", role: "INTERPRETER" },
+    { providerLabel: "OpenAI", model: "gpt-4o", role: "FACT_EXTRACTOR" },
+    { providerLabel: "OpenAI", model: "gpt-4o", role: "INTERPRETER" },
   ],
   DOCUMENT: [
-    { providerLabel: "Anthropic", model: "claude-sonnet-5", role: "FACT_EXTRACTOR" },
-    { providerLabel: "Google", model: "gemini-3.1-pro-preview", role: "INTERPRETER" },
-    { providerLabel: "OpenAI", model: "gpt-5.6-sol", role: "VERIFIER" },
+    { providerLabel: "OpenAI", model: "gpt-4o", role: "FACT_EXTRACTOR" },
+    { providerLabel: "OpenAI", model: "gpt-4o", role: "INTERPRETER" },
+    { providerLabel: "OpenAI", model: "gpt-4o", role: "VERIFIER" },
   ],
   SITUATION: [
-    { providerLabel: "OpenAI", model: "gpt-5.6-sol", role: "INTERPRETER" },
-    { providerLabel: "Anthropic", model: "claude-opus-5", role: "SKEPTIC" },
-    { providerLabel: "Google", model: "gemini-3.1-pro-preview", role: "VERIFIER" },
+    { providerLabel: "OpenAI", model: "gpt-4o", role: "INTERPRETER" },
+    { providerLabel: "OpenAI", model: "gpt-4o", role: "SKEPTIC" },
+    { providerLabel: "OpenAI", model: "gpt-4o", role: "VERIFIER" },
   ],
-  PRESENTATION: [{ providerLabel: "OpenAI", model: "gpt-5.6-terra", role: "PRESENTER" }],
+  PRESENTATION: [{ providerLabel: "OpenAI", model: "gpt-4o", role: "PRESENTER" }],
 };
 
 const SETTINGS_KEYS = {
