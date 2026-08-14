@@ -10,6 +10,16 @@ const CASE_WITH_LATEST_ANALYSIS = {
   },
 } satisfies Prisma.CaseInclude;
 
+/** Strip path separators and other dangerous characters from user-supplied filenames. */
+function sanitizeFilename(name: string): string {
+  // Replace path separators and null bytes, then trim leading dots/spaces
+  return name
+    .replace(/[/\\]/g, "_")
+    .replace(/\0/g, "")
+    .replace(/^[.\s]+/, "")
+    || "document";
+}
+
 function createCaseTitle(narrative: string) {
   const normalized = narrative.replace(/\s+/g, " ").trim();
   return normalized.length > 80 ? `${normalized.slice(0, 77)}...` : normalized;
@@ -116,7 +126,7 @@ export async function saveAnalysisForCase(params: {
         caseId: params.caseId,
         userId: params.userId ?? null,
         fileName: document.name,
-        storagePath: `guest-case/${params.caseId}/${document.name}`,
+        storagePath: `guest-case/${params.caseId}/${sanitizeFilename(document.name)}`,
         extractedText: document.text,
       })),
     });

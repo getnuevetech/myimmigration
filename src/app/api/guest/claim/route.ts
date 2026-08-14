@@ -40,18 +40,30 @@ export async function POST(req: NextRequest) {
       where: { email: normalizedEmail },
     });
 
-    const user =
-      existingUser ??
-      (await prisma.user.create({
-        data: {
-          email: normalizedEmail,
-          firstName: firstName?.trim() || null,
-          lastName: lastName?.trim() || null,
-          type: "REGULAR",
-          status: "PENDING",
-          mustAcceptTos: false,
+    // If the email belongs to an existing account, do not silently claim it —
+    // that would allow anyone who knows a victim's email to take over their
+    // account and transfer cases to it without any ownership proof.
+    if (existingUser) {
+      return NextResponse.json(
+        {
+          error:
+            "An account with this email already exists. Please sign in to link your case.",
+          code: "EMAIL_EXISTS",
         },
-      }));
+        { status: 409 }
+      );
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        firstName: firstName?.trim() || null,
+        lastName: lastName?.trim() || null,
+        type: "REGULAR",
+        status: "PENDING",
+        mustAcceptTos: false,
+      },
+    });
 
     await prisma.guestSession.update({
       where: { id: session.id },

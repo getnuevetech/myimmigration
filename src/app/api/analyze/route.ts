@@ -65,11 +65,11 @@ export async function POST(req: NextRequest) {
         caseId: null,
         analysis,
         access: {
-          level: "full",
+          level: "preview",
           previewLimit: 1,
-          requiresRegistration: false,
+          requiresRegistration: true,
           requiresUpgrade: false,
-          canExport: true,
+          canExport: false,
         },
       });
     }
