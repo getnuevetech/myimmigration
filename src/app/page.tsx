@@ -15,6 +15,9 @@ export default async function HomePage() {
             <span className="text-xl font-bold text-orange-700">MyImmigration</span>
           </div>
           <div className="flex items-center gap-3">
+            <Link href="/pricing" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+              Pricing
+            </Link>
             {user ? (
               <>
                 {user.type === "ADMIN" && (
@@ -27,9 +30,14 @@ export default async function HomePage() {
                 </Link>
               </>
             ) : (
-              <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-                Sign in
-              </Link>
+              <>
+                <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                  Sign in
+                </Link>
+                <Link href="/register" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                  Create account
+                </Link>
+              </>
             )}
             <Link
               href="/onboarding"
@@ -60,6 +68,10 @@ export default async function HomePage() {
           </Link>
           <p className="mt-4 text-sm text-slate-500">
             Free to start — no account required
+            {" · "}
+            <Link href="/pricing" className="font-medium text-orange-700 hover:underline">
+              View plans
+            </Link>
           </p>
         </section>
 
@@ -133,6 +145,24 @@ export default async function HomePage() {
       </main>
 
       <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
+        <div className="mb-2 flex justify-center gap-4">
+          <Link href="/pricing" className="hover:text-slate-900">
+            Pricing
+          </Link>
+          <Link href={user ? "/dashboard" : "/login"} className="hover:text-slate-900">
+            {user ? "Dashboard" : "Sign in"}
+          </Link>
+          {!user && (
+            <Link href="/register" className="hover:text-slate-900">
+              Create account
+            </Link>
+          )}
+          {user?.type === "ADMIN" && (
+            <Link href="/admin" className="hover:text-slate-900">
+              Admin
+            </Link>
+          )}
+        </div>
         © {new Date().getFullYear()} MyImmigration — Case Intelligence Platform. Not a law firm. Not legal advice.
       </footer>
     </div>
