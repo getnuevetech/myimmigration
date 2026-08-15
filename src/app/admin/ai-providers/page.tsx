@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { Badge, Card, CardBody, PageHeader } from "@/components/admin-ui";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdmin } from "@/lib/auth";
 
@@ -60,35 +61,25 @@ export default async function AIProvidersPage() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">AI Providers</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Register and enable providers used by the analysis pipeline.
-        </p>
-      </div>
-        <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+      <PageHeader
+        title="AI Providers"
+        subtitle="Register and enable providers used by the analysis pipeline."
+      />
+      <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Register and enable AI provider credentials. Each provider must have its API key configured
           in Platform Settings before it can serve analysis requests.
-        </div>
+      </div>
 
         {KNOWN_PROVIDERS.map((preset) => {
           const existing = providerMap.get(preset.key);
           return (
-            <section
-              key={preset.key}
-              className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
+            <Card key={preset.key}>
+              <CardBody>
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-slate-900">{preset.label}</h2>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    existing?.enabled
-                      ? "bg-green-100 text-green-700"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
-                >
+                <Badge color={existing?.enabled ? "green" : "slate"}>
                   {existing?.enabled ? "Enabled" : existing ? "Disabled" : "Not registered"}
-                </span>
+                </Badge>
               </div>
               <p className="mt-1 text-xs text-slate-500">
                 Provider: <strong>{preset.provider}</strong> · Model:{" "}
@@ -151,7 +142,8 @@ export default async function AIProvidersPage() {
                   </button>
                 </div>
               </form>
-            </section>
+              </CardBody>
+            </Card>
           );
         })}
     </div>

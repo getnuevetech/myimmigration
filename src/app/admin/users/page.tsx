@@ -1,4 +1,5 @@
 import { setUserStatusAction } from "@/actions/admin-users";
+import { Badge, Card, PageHeader } from "@/components/admin-ui";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdmin } from "@/lib/auth";
 
@@ -22,14 +23,12 @@ export default async function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Users</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Review customer accounts, status, subscriptions, and case activity.
-        </p>
-      </div>
+      <PageHeader
+        title="Users"
+        subtitle="Review customer accounts, status, subscriptions, and case activity."
+      />
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <Card className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
             <tr>
@@ -64,15 +63,7 @@ export default async function AdminUsersPage() {
                   {user._count.cases} cases · {user._count.documents} docs
                 </td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      user.status === "ACTIVE"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-amber-100 text-amber-700"
-                    }`}
-                  >
-                    {user.status}
-                  </span>
+                  <Badge color={user.status === "ACTIVE" ? "green" : "amber"}>{user.status}</Badge>
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-500">
                   {user.createdAt.toLocaleDateString("en-US")}
@@ -94,7 +85,7 @@ export default async function AdminUsersPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }

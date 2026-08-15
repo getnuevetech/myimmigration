@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Card, CardBody, PageHeader } from "@/components/admin-ui";
 import { hasAdminPermission, requireAdmin } from "@/lib/auth";
 import type { AdminAreaKey } from "@/lib/admin-areas";
 
@@ -51,22 +52,28 @@ export default async function AdminPage() {
 
   return (
     <div>
+      <PageHeader
+        title="Admin overview"
+        subtitle="Manage users, administrators, AI providers, pipeline behavior, and platform settings."
+      />
       <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
         Admin backend is protected by user sessions and role permissions.
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {modules.map((module) => (
-          <section key={module.key} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">{module.title}</h2>
-            <p className="mt-2 text-sm text-slate-600">{module.description}</p>
-            <Link
-              href={module.href}
-              className="mt-3 inline-flex text-xs font-medium uppercase tracking-wide text-orange-600 hover:text-orange-700"
-            >
-              Open module
-            </Link>
-          </section>
+          <Card key={module.key}>
+            <CardBody>
+              <h2 className="text-sm font-semibold text-slate-900">{module.title}</h2>
+              <p className="mt-2 text-sm text-slate-600">{module.description}</p>
+              <Link
+                href={module.href}
+                className="mt-3 inline-flex text-xs font-medium uppercase tracking-wide text-orange-600 hover:text-orange-700"
+              >
+                Open module
+              </Link>
+            </CardBody>
+          </Card>
         ))}
       </div>
     </div>

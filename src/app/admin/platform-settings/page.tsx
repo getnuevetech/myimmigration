@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { Card, PageHeader } from "@/components/admin-ui";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdmin } from "@/lib/auth";
 import {
@@ -120,16 +121,14 @@ export default async function PlatformSettingsPage() {
 
   return (
     <div className="max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Platform Settings</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Manage runtime variables without hardcoding secrets.
-        </p>
-      </div>
-        <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+      <PageHeader
+        title="Platform Settings"
+        subtitle="Manage runtime variables without hardcoding secrets."
+      />
+      <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Save all runtime variables from admin. Non-secret empty values are cleared. Secret fields keep
           existing values when left blank.
-        </div>
+      </div>
 
         <form action={saveSettings} className="mt-6 space-y-4">
           {ADMIN_MANAGED_ENV_KEYS.map((key) => {
@@ -139,7 +138,7 @@ export default async function PlatformSettingsPage() {
             const currentValue = valueMap.get(key) ?? "";
 
             return (
-              <section key={key} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <Card key={key} className="p-4">
                 <label htmlFor={key} className="text-sm font-semibold text-slate-900">
                   {meta.label}
                 </label>
@@ -159,7 +158,7 @@ export default async function PlatformSettingsPage() {
                   className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none"
                 />
                 <p className="mt-2 text-xs text-slate-400">{key}</p>
-              </section>
+              </Card>
             );
           })}
 
