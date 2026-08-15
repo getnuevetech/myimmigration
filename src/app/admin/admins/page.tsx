@@ -5,9 +5,19 @@ import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 
 function selectedAreas(adminRole: {
+  scopeJson: string;
   permissions: { key: string; canView: boolean; canManage: boolean }[];
 } | null): AdminAreaKey[] {
   const allowed = new Set(ADMIN_AREAS.map((area) => area.key));
+  try {
+    const scope = JSON.parse(adminRole?.scopeJson ?? "{}") as { all?: boolean; areas?: string[] };
+    if (scope.all) return ADMIN_AREAS.map((area) => area.key);
+    if (scope.areas) {
+      return ADMIN_AREAS.map((area) => area.key).filter((key) => scope.areas?.includes(key));
+    }
+  } catch {
+    // Fall back to explicit permission rows below.
+  }
   return (
     adminRole?.permissions
       .filter((permission) => permission.canView && allowed.has(permission.key as AdminAreaKey))

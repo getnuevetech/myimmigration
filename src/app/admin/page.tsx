@@ -12,6 +12,12 @@ type AdminModule = {
 
 const ADMIN_MODULES: AdminModule[] = [
   {
+    key: "admin.cases",
+    title: "Cases",
+    description: "Review submitted case narratives, analysis status, documents, and issue counts.",
+    href: "/admin/cases",
+  },
+  {
     key: "admin.users",
     title: "Users",
     description: "Review users, account status, subscriptions, and case activity.",
@@ -22,6 +28,18 @@ const ADMIN_MODULES: AdminModule[] = [
     title: "Admin Users",
     description: "Create admins and assign backend permissions.",
     href: "/admin/admins",
+  },
+  {
+    key: "admin.consultants",
+    title: "Consultants",
+    description: "Review consultant profiles, approvals, specialties, and account ownership.",
+    href: "/admin/consultants",
+  },
+  {
+    key: "admin.assignments",
+    title: "Assignments",
+    description: "Track consultant-user assignments and consent status.",
+    href: "/admin/assignments",
   },
   {
     key: "admin.ai",
@@ -36,6 +54,48 @@ const ADMIN_MODULES: AdminModule[] = [
     description:
       "Configure stage-by-stage orchestration for summary, goal, document, situation, and presentation analysis.",
     href: "/admin/ai-pipelines",
+  },
+  {
+    key: "admin.plans",
+    title: "Plans & Access",
+    description: "Manage subscription plans, feature access, and plan availability.",
+    href: "/admin/plans",
+  },
+  {
+    key: "admin.payments",
+    title: "Payment Gateways",
+    description: "Review configured payment gateway records and gateway state.",
+    href: "/admin/payments",
+  },
+  {
+    key: "admin.transactions",
+    title: "Transactions",
+    description: "Review payment transaction history and statuses.",
+    href: "/admin/transactions",
+  },
+  {
+    key: "admin.content",
+    title: "Content & Agreements",
+    description: "Review content pages and agreement versions.",
+    href: "/admin/content",
+  },
+  {
+    key: "admin.forms",
+    title: "USCIS Forms",
+    description: "Review USCIS form templates and generated submissions.",
+    href: "/admin/forms",
+  },
+  {
+    key: "admin.notifications",
+    title: "Notifications",
+    description: "Inspect system and user notification records.",
+    href: "/admin/notifications",
+  },
+  {
+    key: "admin.logs",
+    title: "Audit Logs",
+    description: "Inspect audit events written by backend operations.",
+    href: "/admin/logs",
   },
   {
     key: "admin.settings",

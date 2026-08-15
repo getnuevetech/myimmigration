@@ -200,6 +200,16 @@ export function hasAdminPermission(
 ): boolean {
   if (!isAdmin(user)) return false;
   if (!areaKey) return true;
+  try {
+    const scope = JSON.parse(user.adminRole?.scopeJson ?? "{}") as {
+      all?: boolean;
+      areas?: string[];
+    };
+    if (scope.all) return true;
+    if (scope.areas?.includes(areaKey)) return true;
+  } catch {
+    // Fall back to explicit permission rows below.
+  }
   return (
     user.adminRole?.permissions.some(
       (permission) =>
