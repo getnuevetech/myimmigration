@@ -138,7 +138,7 @@ export default async function PlatformSettingsPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-8">
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Save all runtime variables from admin. Non-secret empty values are cleared. Secret fields keep
           existing values when left blank.
         </div>
@@ -168,7 +168,7 @@ export default async function PlatformSettingsPage() {
                         : "Enter value"
                       : "Enter value"
                   }
-                  className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+                  className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none"
                 />
                 <p className="mt-2 text-xs text-slate-400">{key}</p>
               </section>
@@ -177,7 +177,7 @@ export default async function PlatformSettingsPage() {
 
           <button
             type="submit"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
           >
             Save settings
           </button>

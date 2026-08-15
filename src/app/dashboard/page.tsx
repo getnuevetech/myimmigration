@@ -43,13 +43,13 @@ function TimelineRow({ event }: { event: TimelineEvent }) {
     <div className="flex gap-4">
       <div className="flex flex-col items-center">
         <div className={`h-3 w-3 rounded-full mt-1 shrink-0 ${
-          event.source === "document" ? "bg-blue-500" :
+          event.source === "document" ? "bg-orange-500" :
           event.source === "both" ? "bg-green-500" : "bg-slate-300"
         }`} />
         <div className="w-px flex-1 bg-slate-200 mt-1" />
       </div>
       <div className="pb-4 min-w-0">
-        <p className="text-xs font-semibold text-blue-600">{event.year}{event.date ? ` · ${event.date}` : ""}</p>
+        <p className="text-xs font-semibold text-orange-600">{event.year}{event.date ? ` · ${event.date}` : ""}</p>
         <p className="text-sm text-slate-800 mt-0.5">{event.event}</p>
         {event.formType && (
           <span className="mt-1 inline-block text-xs bg-slate-100 text-slate-500 rounded px-1.5 py-0.5">
@@ -219,7 +219,7 @@ function DashboardPageContent() {
       {/* Header */}
       <header className="border-b border-slate-200 bg-white sticky top-0 z-10">
         <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-blue-700">MyImmigration</Link>
+          <Link href="/" className="text-xl font-bold text-orange-700">MyImmigration</Link>
           <div className="flex items-center gap-3">
             <button
               onClick={() => exportCasePackage(visibleAnalysis)}
@@ -231,7 +231,7 @@ function DashboardPageContent() {
             </button>
             <Link
               href="/onboarding"
-              className="flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 transition-colors"
+              className="flex items-center gap-2 rounded-lg bg-orange-700 px-4 py-2 text-sm font-medium text-white hover:bg-orange-800 transition-colors"
             >
               <RefreshCw className="h-4 w-4" />
               New Analysis
@@ -242,10 +242,10 @@ function DashboardPageContent() {
 
       <main className="mx-auto max-w-5xl px-4 py-10 space-y-8">
         {access.level === "preview" && (
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-blue-700">Preview mode</p>
+                <p className="text-sm font-semibold text-orange-700">Preview mode</p>
                 <h2 className="mt-1 text-xl font-bold text-slate-900">
                   Unlock the full case dashboard
                 </h2>
@@ -257,13 +257,13 @@ function DashboardPageContent() {
               <div className="flex gap-3">
                 <Link
                   href={caseId ? `/continue?caseId=${caseId}` : "/continue"}
-                  className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
+                  className="rounded-lg bg-orange-700 px-4 py-2 text-sm font-medium text-white hover:bg-orange-800"
                 >
                   Continue with email
                 </Link>
                 <Link
                   href="/pricing"
-                  className="rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                  className="rounded-lg border border-orange-200 bg-white px-4 py-2 text-sm font-medium text-orange-700 hover:bg-orange-100"
                 >
                   View plans
                 </Link>
@@ -286,7 +286,7 @@ function DashboardPageContent() {
           {/* Stats row */}
           <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: "Documents Reviewed", value: visibleAnalysis.documentsReviewed, icon: FileText, color: "text-blue-600" },
+              { label: "Documents Reviewed", value: visibleAnalysis.documentsReviewed, icon: FileText, color: "text-orange-600" },
               { label: "Possibly Missing", value: visibleAnalysis.documentsMissing.length, icon: AlertTriangle, color: "text-yellow-600" },
               { label: "Issues Detected", value: visibleAnalysis.majorIssues, icon: XCircle, color: visibleAnalysis.majorIssues > 0 ? "text-red-600" : "text-green-600" },
               { label: "Upcoming Deadlines", value: visibleAnalysis.deadlines.length, icon: Calendar, color: visibleAnalysis.deadlines.length > 0 ? "text-orange-600" : "text-green-600" },
@@ -318,9 +318,9 @@ function DashboardPageContent() {
           {visibleAnalysis.importantFindings.length > 0 && (
             <div className="mt-4 space-y-2">
               {visibleAnalysis.importantFindings.map((finding, i) => (
-                <div key={i} className="flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
-                  <ChevronRight className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-                  <p className="text-sm text-blue-900">{finding}</p>
+                <div key={i} className="flex items-start gap-3 rounded-lg border border-orange-100 bg-orange-50 px-4 py-3">
+                  <ChevronRight className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-orange-900">{finding}</p>
                 </div>
               ))}
             </div>
@@ -419,17 +419,17 @@ function DashboardPageContent() {
             {visibleAnalysis.nextSteps.map((step, i) => (
               <div key={i} className={`rounded-xl border p-4 ${
                 step.recommended
-                  ? "border-blue-200 bg-blue-50"
+                  ? "border-orange-200 bg-orange-50"
                   : "border-slate-200 bg-slate-50"
               }`}>
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`text-xs font-bold uppercase tracking-wide ${
-                    step.recommended ? "text-blue-600" : "text-slate-500"
+                    step.recommended ? "text-orange-600" : "text-slate-500"
                   }`}>
                     {step.option}
                   </span>
                   {step.recommended && (
-                    <span className="rounded-full bg-blue-100 text-blue-700 text-xs px-2 py-0.5 font-medium">
+                    <span className="rounded-full bg-orange-100 text-orange-700 text-xs px-2 py-0.5 font-medium">
                       Suggested
                     </span>
                   )}
@@ -446,7 +446,7 @@ function DashboardPageContent() {
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900 mb-2">Immigration Timeline</h2>
             <div className="flex items-center gap-4 mb-5 text-xs text-slate-500">
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-500 inline-block" />From documents</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-orange-500 inline-block" />From documents</span>
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-green-500 inline-block" />Documents + narrative</span>
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-slate-300 inline-block" />From narrative</span>
             </div>
@@ -462,16 +462,16 @@ function DashboardPageContent() {
         <Disclaimer text={visibleAnalysis.disclaimer} />
 
         {/* Attorney CTA */}
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 text-center">
-          <h2 className="text-lg font-bold text-blue-900">Ready to speak with an attorney?</h2>
-          <p className="mt-2 text-sm text-blue-700">
+        <div className="rounded-2xl border border-orange-200 bg-orange-50 p-6 text-center">
+          <h2 className="text-lg font-bold text-orange-900">Ready to speak with an attorney?</h2>
+          <p className="mt-2 text-sm text-orange-700">
             Export your complete case package — the attorney gets a structured summary,
             timeline, and issue list so they can focus on legal analysis from minute one.
           </p>
           <button
             onClick={() => exportCasePackage(visibleAnalysis)}
             disabled={!access.canExport}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-orange-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
           >
             <Download className="h-4 w-4" />
             {access.canExport ? "Download Attorney Case Package" : "Export available on higher plans"}

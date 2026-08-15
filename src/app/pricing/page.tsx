@@ -9,7 +9,7 @@ export default async function PricingPage() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div>
-            <p className="text-sm font-semibold text-blue-700">MyImmigration Plans</p>
+            <p className="text-sm font-semibold text-orange-700">MyImmigration Plans</p>
             <h1 className="text-2xl font-bold text-slate-900">Choose how far you want to go</h1>
           </div>
           <Link
@@ -27,7 +27,7 @@ export default async function PricingPage() {
             <section
               key={plan.key}
               className={`rounded-2xl border bg-white p-6 shadow-sm ${
-                plan.recommended ? "border-blue-300 ring-2 ring-blue-100" : "border-slate-200"
+                plan.recommended ? "border-orange-300 ring-2 ring-orange-100" : "border-slate-200"
               }`}
             >
               <div className="flex items-start justify-between gap-4">
@@ -36,7 +36,7 @@ export default async function PricingPage() {
                   <p className="mt-2 text-sm text-slate-600">{plan.description}</p>
                 </div>
                 {plan.recommended && (
-                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                  <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
                     Recommended
                   </span>
                 )}

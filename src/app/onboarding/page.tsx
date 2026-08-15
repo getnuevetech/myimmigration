@@ -65,7 +65,7 @@ export default function OnboardingPage() {
       {/* Header */}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-blue-700">MyImmigration</Link>
+          <Link href="/" className="text-xl font-bold text-orange-700">MyImmigration</Link>
           <span className="text-sm text-slate-500">Step {step} of 3</span>
         </div>
       </header>
@@ -77,7 +77,7 @@ export default function OnboardingPage() {
             <div
               key={s}
               className={`h-1.5 flex-1 rounded-full ${
-                s <= step ? "bg-blue-600" : "bg-slate-200"
+                s <= step ? "bg-orange-600" : "bg-slate-200"
               }`}
             />
           ))}
@@ -132,7 +132,7 @@ export default function OnboardingPage() {
                     onClick={() => toggleGoal(goal)}
                     className={`text-left rounded-xl border px-4 py-3 text-sm transition-all ${
                       selected
-                        ? "border-blue-500 bg-blue-50 text-blue-900 shadow-sm"
+                        ? "border-orange-500 bg-orange-50 text-orange-900 shadow-sm"
                         : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                     }`}
                   >
@@ -169,7 +169,7 @@ export default function OnboardingPage() {
               (step === 1 && narrative.trim().length <= 20) ||
               (step === 2 && selectedGoals.length === 0)
             }
-            className="flex items-center gap-2 rounded-lg bg-blue-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-orange-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-orange-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {step === 2 ? (saving ? "Saving..." : "Upload Documents") : "Next"}
             <ArrowRight className="h-4 w-4" />

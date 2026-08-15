@@ -82,7 +82,7 @@ export default function AdminPage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Foundation admin shell is in place. Next phases wire RBAC, persistence CRUD, and protected actions.
         </div>
 
@@ -94,7 +94,7 @@ export default function AdminPage() {
               {module.href ? (
                 <Link
                   href={module.href}
-                  className="mt-3 inline-flex text-xs font-medium uppercase tracking-wide text-blue-600 hover:text-blue-700"
+                  className="mt-3 inline-flex text-xs font-medium uppercase tracking-wide text-orange-600 hover:text-orange-700"
                 >
                   Open module
                 </Link>

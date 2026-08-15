@@ -78,7 +78,7 @@ export default async function AIPipelinesPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-8 space-y-6">
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Each analysis stage runs multiple AI models in assigned roles. When models disagree, a
           SYNTHESIZER step merges their outputs into a single result. Enable or disable steps to
           control which providers participate. Register providers in{" "}

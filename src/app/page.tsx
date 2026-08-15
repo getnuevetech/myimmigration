@@ -9,11 +9,11 @@ export default function HomePage() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-bold text-blue-700">MyImmigration</span>
+            <span className="text-xl font-bold text-orange-700">MyImmigration</span>
           </div>
           <Link
             href="/onboarding"
-            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 transition-colors"
+            className="rounded-lg bg-orange-700 px-4 py-2 text-sm font-medium text-white hover:bg-orange-800 transition-colors"
           >
             Start My Case
           </Link>
@@ -32,7 +32,7 @@ export default function HomePage() {
           </p>
           <Link
             href="/onboarding"
-            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-blue-700 px-8 py-4 text-lg font-semibold text-white hover:bg-blue-800 transition-colors shadow-lg"
+            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-orange-700 px-8 py-4 text-lg font-semibold text-white hover:bg-orange-800 transition-colors shadow-lg"
           >
             Start Your Case Review
             <ArrowRight className="h-5 w-5" />
@@ -68,8 +68,8 @@ export default function HomePage() {
               },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex flex-col gap-3">
-                <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <Icon className="h-5 w-5 text-blue-700" />
+                <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                  <Icon className="h-5 w-5 text-orange-700" />
                 </div>
                 <h3 className="font-semibold text-slate-900">{title}</h3>
                 <p className="text-sm text-slate-600">{desc}</p>

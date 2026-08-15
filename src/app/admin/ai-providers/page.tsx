@@ -78,7 +78,7 @@ export default async function AIProvidersPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-8 space-y-6">
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Register and enable AI provider credentials. Each provider must have its API key configured
           in Platform Settings before it can serve analysis requests.
         </div>
@@ -116,7 +116,7 @@ export default async function AIProvidersPage() {
                   <input
                     name="label"
                     defaultValue={existing?.label ?? preset.label}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none"
                   />
                 </div>
                 <div className="col-span-2 sm:col-span-1">
@@ -124,7 +124,7 @@ export default async function AIProvidersPage() {
                   <input
                     name="model"
                     defaultValue={existing?.model ?? preset.model}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none"
                   />
                 </div>
                 <div className="col-span-2 sm:col-span-1">
@@ -136,7 +136,7 @@ export default async function AIProvidersPage() {
                     type="number"
                     defaultValue={existing?.maxTokens ?? ""}
                     placeholder="e.g. 4096"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none"
                   />
                 </div>
                 <div className="col-span-2 sm:col-span-1 flex items-center gap-2 pt-4">
@@ -145,7 +145,7 @@ export default async function AIProvidersPage() {
                     name="enabled"
                     type="checkbox"
                     defaultChecked={existing?.enabled ?? true}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                    className="h-4 w-4 rounded border-slate-300 text-orange-600"
                   />
                   <label
                     htmlFor={`enabled-${preset.key}`}
@@ -157,7 +157,7 @@ export default async function AIProvidersPage() {
                 <div className="col-span-2">
                   <button
                     type="submit"
-                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                    className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
                   >
                     Save
                   </button>

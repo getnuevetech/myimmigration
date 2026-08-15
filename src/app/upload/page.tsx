@@ -134,7 +134,7 @@ function UploadPageContent() {
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-blue-700">MyImmigration</Link>
+          <Link href="/" className="text-xl font-bold text-orange-700">MyImmigration</Link>
           <span className="text-sm text-slate-500">Step 3 of 3</span>
         </div>
       </header>
@@ -143,7 +143,7 @@ function UploadPageContent() {
         {/* Progress */}
         <div className="mb-8 flex gap-2">
           {[1, 2, 3].map((s) => (
-            <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= 3 ? "bg-blue-600" : "bg-slate-200"}`} />
+            <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= 3 ? "bg-orange-600" : "bg-slate-200"}`} />
           ))}
         </div>
 
@@ -161,7 +161,7 @@ function UploadPageContent() {
             <p className="text-sm font-medium text-slate-700 mb-3">Documents we can analyze:</p>
             <div className="flex flex-wrap gap-1.5">
               {DOCUMENT_TYPES.map((t) => (
-                <span key={t} className="rounded-full bg-blue-50 border border-blue-100 px-2.5 py-0.5 text-xs text-blue-700">
+                <span key={t} className="rounded-full bg-orange-50 border border-orange-100 px-2.5 py-0.5 text-xs text-orange-700">
                   {t}
                 </span>
               ))}
@@ -178,13 +178,13 @@ function UploadPageContent() {
               if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
             }}
             className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-12 text-center transition-colors ${
-              dragging ? "border-blue-400 bg-blue-50" : "border-slate-300 bg-white hover:bg-slate-50"
+              dragging ? "border-orange-400 bg-orange-50" : "border-slate-300 bg-white hover:bg-slate-50"
             }`}
           >
             <Upload className="h-8 w-8 text-slate-400 mb-3" />
             <p className="text-sm font-medium text-slate-700">
               Drag and drop files here, or{" "}
-              <label className="cursor-pointer text-blue-600 hover:underline">
+              <label className="cursor-pointer text-orange-600 hover:underline">
                 browse
                 <input
                   type="file"
@@ -197,7 +197,7 @@ function UploadPageContent() {
             </p>
             <p className="mt-1 text-xs text-slate-500">PDF, TXT, JPG, PNG, DOC — up to 25 files</p>
             {processing && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-blue-600">
+              <div className="mt-3 flex items-center gap-2 text-sm text-orange-600">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Processing files...
               </div>
@@ -210,7 +210,7 @@ function UploadPageContent() {
               <p className="text-sm font-medium text-slate-700">{files.length} file{files.length !== 1 ? "s" : ""} ready</p>
               {files.map((f) => (
                 <div key={f.id} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
-                  <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                  <FileText className="h-4 w-4 text-orange-500 shrink-0" />
                   <span className="flex-1 text-sm text-slate-700 truncate">{f.name}</span>
                   <span className="text-xs text-slate-400">{(f.size / 1024).toFixed(0)} KB</span>
                   <button onClick={() => removeFile(f.id)} aria-label={`Remove ${f.name}`} className="text-slate-400 hover:text-red-500">
@@ -233,7 +233,7 @@ function UploadPageContent() {
           <button
             onClick={handleAnalyze}
             disabled={analyzing}
-            className="flex items-center gap-2 rounded-lg bg-blue-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-orange-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-orange-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {analyzing ? (
               <>

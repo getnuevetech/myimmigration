@@ -52,10 +52,10 @@ function ContinuePageContent() {
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-          <Link href="/" className="text-xl font-bold text-blue-700">
+          <Link href="/" className="text-xl font-bold text-orange-700">
             MyImmigration
           </Link>
-          <Link href="/pricing" className="text-sm text-blue-700 hover:underline">
+          <Link href="/pricing" className="text-sm text-orange-700 hover:underline">
             View plans
           </Link>
         </div>
@@ -63,7 +63,7 @@ function ContinuePageContent() {
 
       <main className="mx-auto max-w-3xl px-4 py-12">
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">
+          <p className="text-sm font-semibold uppercase tracking-wide text-orange-700">
             Save your case
           </p>
           <h1 className="mt-2 text-3xl font-bold text-slate-900">
@@ -123,7 +123,7 @@ function ContinuePageContent() {
             <button
               type="submit"
               disabled={submitting || !acceptedTerms}
-              className="rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-orange-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? "Saving your account..." : "Continue with email"}
             </button>
