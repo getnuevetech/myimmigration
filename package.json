@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.15.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.31.0",

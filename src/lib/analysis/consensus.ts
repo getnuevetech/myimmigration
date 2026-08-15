@@ -14,15 +14,17 @@ export interface ConsensusResult<T = unknown> {
   verificationRequired: boolean;
   confidence: number;
   reasons: string[];
+  disagreementPayloads?: T[];
 }
 
 /**
- * Deterministic merge strategy:
- * - If only one payload exists, trust it with declared confidence.
- * - If all JSON payloads are equal, merged result is accepted.
- * - If payloads differ, first payload wins and verificationRequired is flagged.
- *
- * This keeps UI deterministic while exposing disagreement explicitly.
+ * Merge strategy (Taxonme-style multi-model consensus):
+ * - Single output: accepted with moderate confidence.
+ * - All outputs agree: accepted with high confidence.
+ * - Outputs disagree: all disagreeing payloads are surfaced via `disagreementPayloads`
+ *   so that a downstream SYNTHESIZER model call can produce a unified result.
+ *   The first payload is kept as the provisional result while `verificationRequired`
+ *   signals that synthesis should run.
  */
 export function mergeStageOutputs<T>(outputs: ProviderStageOutput<T>[]): ConsensusResult<T> {
   if (outputs.length === 0) {
@@ -53,7 +55,7 @@ export function mergeStageOutputs<T>(outputs: ProviderStageOutput<T>[]): Consens
       merged: outputs[0].payload,
       verificationRequired: false,
       confidence: Number(avgConfidence.toFixed(2)),
-      reasons: ["Providers agreed on output"],
+      reasons: ["All providers agreed on output"],
     };
   }
 
@@ -61,6 +63,10 @@ export function mergeStageOutputs<T>(outputs: ProviderStageOutput<T>[]): Consens
     merged: outputs[0].payload,
     verificationRequired: true,
     confidence: 0.5,
-    reasons: ["Provider disagreement detected; verification required"],
+    reasons: [
+      `Provider disagreement detected across ${outputs.length} models (${outputs.map((o) => o.providerLabel).join(", ")}); synthesis required`,
+    ],
+    disagreementPayloads: outputs.map((o) => o.payload),
   };
 }
+

@@ -1,34 +1,90 @@
-# AWS Lightsail + Docker Deployment Guide
+# Deploying MyImmigration to a server
 
-## Overview
-
-The app is containerized via Docker and deployed to an AWS Lightsail instance. A GitHub Actions workflow automatically builds the image, pushes it to GitHub Container Registry (GHCR), and deploys it to Lightsail on every push to `main`.
-
----
-
-## 1. Create an AWS Lightsail Instance
-
-1. Go to [AWS Lightsail](https://lightsail.aws.amazon.com/) → **Create instance**
-2. Choose **Linux/Unix** → **OS Only** → **Ubuntu 24.04 LTS**
-3. Select a plan — **$10/month (2 GB RAM)** is sufficient to start
-4. Name it (e.g., `myimmigration-prod`) and click **Create instance**
+Two simple paths:
+- **Option A:** run directly with Docker Compose on your server
+- **Option B:** keep using GitHub Actions auto-deploy to Lightsail
 
 ---
 
-## 2. Configure Networking
+## Option A — Docker Compose on the server (recommended)
 
-1. In the Lightsail console, go to your instance → **Networking** tab
-2. Add a firewall rule: **TCP port 3000** (or 80/443 if using a reverse proxy)
-3. Note the **Static IP** — attach one under **Networking → Static IPs** so the address doesn't change on reboot
+Requirements: a Linux server with Docker + Compose plugin.
 
----
+### 1) Database setup (required)
 
-## 3. Install Docker on the Instance
+This app needs PostgreSQL.  
+Create a PostgreSQL database first (recommended: managed DB like Neon/Supabase/RDS), then copy the connection string.
 
-SSH into the instance (use the Lightsail browser console or your own SSH key):
+In `.env`, set:
 
 ```bash
-# Ubuntu 24.04
+DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/myimmigration?schema=public
+ADMIN_PREVIEW_ENABLED=true
+```
+
+```bash
+# On the server
+git clone https://github.com/getnuevetech/myimmigration.git
+cd myimmigration
+
+cp .env.example .env
+# edit .env and set DATABASE_URL (+ ADMIN_PREVIEW_ENABLED=true for admin access)
+
+# Required if GHCR package is private
+echo <GHCR_TOKEN_WITH_READ_PACKAGES> | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
+
+docker compose pull
+docker compose up -d
+```
+
+Then open `/admin/platform-settings` and set:
+- `OPENAI_API_KEY`
+- `OPENAI_DEFAULT_MODEL` (optional but recommended)
+- any other runtime variables you want to manage from admin
+
+App will be available at:
+- `http://<server-ip>:3000`
+
+Useful commands:
+
+```bash
+docker compose logs -f app
+docker compose ps
+docker compose restart app
+```
+
+Update to latest:
+
+```bash
+git pull
+docker compose pull
+docker compose up -d
+```
+
+---
+
+## Option B — GitHub Actions auto-deploy to Lightsail
+
+This repo already has `.github/workflows/deploy.yml`.
+On every push to `main`, it:
+1. Builds Docker image
+2. Pushes to `ghcr.io/getnuevetech/myimmigration:latest`
+3. SSHes to your server and runs `docker compose pull && docker compose up -d --remove-orphans`
+
+### First-time Lightsail setup steps
+
+1. **Create instance**  
+   Lightsail → Create instance → Linux/Unix → Ubuntu 24.04 LTS.
+2. **Attach static IP**  
+   Lightsail → Networking → Static IPs.
+3. **Open firewall ports**  
+   - `3000` (app)
+   - `22` (SSH)
+   - `80/443` only if using HTTPS reverse proxy.
+4. **SSH into server** (usually user `ubuntu`).
+5. **Install Docker + Compose plugin**
+
+```bash
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y ca-certificates curl gnupg
 sudo install -m 0755 -d /etc/apt/keyrings
@@ -43,83 +99,51 @@ sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 sudo systemctl enable --now docker
 sudo usermod -aG docker $USER
-
-# Log out and back in for group change to take effect
 ```
 
----
+Log out and log back in so Docker group access applies.
 
-## 4. Upload the docker-compose.yml
-
-Copy `docker-compose.yml` to the server:
-
-```bash
-scp docker-compose.yml ubuntu@<LIGHTSAIL_IP>:~/docker-compose.yml
-```
-
-Or clone the repo directly on the server:
+6. **Bootstrap app on server**
 
 ```bash
 git clone https://github.com/getnuevetech/myimmigration.git
 cd myimmigration
+cp .env.example .env
 ```
 
----
-
-## 5. Set Environment Variables on the Server
-
-Create a `.env` file next to `docker-compose.yml`:
+Edit `.env` and set at least:
 
 ```bash
-# On the Lightsail instance
-cat > .env <<EOF
-OPENAI_API_KEY=sk-...your-key-here...
-EOF
+DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/myimmigration?schema=public
+ADMIN_PREVIEW_ENABLED=true
 ```
 
-> ⚠️ Never commit this file. It is already in `.gitignore`.
-
----
-
-## 6. GitHub Secrets (for CI/CD)
-
-Add the following secrets in **GitHub → Settings → Secrets and variables → Actions**:
-
-| Secret name        | Value                                         |
-|--------------------|-----------------------------------------------|
-| `LIGHTSAIL_HOST`   | Public IP or hostname of your Lightsail instance |
-| `LIGHTSAIL_USER`   | SSH username (for Ubuntu Lightsail use `ubuntu`) |
-| `LIGHTSAIL_SSH_KEY`| Contents of your private SSH key (PEM format) |
-
-The `GITHUB_TOKEN` secret is provided automatically by GitHub Actions.
-
----
-
-## 7. First Manual Deploy
-
-After the server is configured, pull and start the container manually the first time:
+7. **Initial run on server**
 
 ```bash
-# On the Lightsail instance
-echo <GITHUB_TOKEN> | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
+# Required if GHCR package is private
+echo <GHCR_TOKEN_WITH_READ_PACKAGES> | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
+
 docker compose pull
 docker compose up -d
 ```
 
+Open `/admin/platform-settings` and configure AI/runtime values there.
+
+8. **Enable auto-deploy**
+   Add these GitHub Actions secrets:
+   - `LIGHTSAIL_HOST`
+   - `LIGHTSAIL_USER` (usually `ubuntu`)
+   - `LIGHTSAIL_SSH_KEY` (private key PEM content)
+   
+   Then push to `main`.
+   The workflow will build, push, and deploy automatically.
+
 ---
 
-## 8. Automatic Deploys
+## Optional HTTPS (Caddy)
 
-Every push to `main` will:
-1. Build a new Docker image
-2. Push it to `ghcr.io/getnuevetech/myimmigration:latest`
-3. SSH into the Lightsail instance and run `docker compose pull && docker compose up -d`
-
----
-
-## 9. (Optional) Add HTTPS with Caddy
-
-Install Caddy on the Lightsail instance for automatic TLS:
+For internet-facing usage, put Caddy in front:
 
 ```bash
 sudo apt update
@@ -132,21 +156,19 @@ sudo apt update
 sudo apt install -y caddy
 ```
 
-Create `/etc/caddy/Caddyfile`:
+`/etc/caddy/Caddyfile`:
 
-```
+```caddy
 yourdomain.com {
-    reverse_proxy localhost:3000
+  reverse_proxy localhost:3000
 }
 ```
 
-Then `sudo systemctl enable --now caddy` and open ports 80 and 443 in the Lightsail firewall.
+Before enabling Caddy, make sure ports `80` and `443` are open in the Lightsail firewall (same firewall area used in Option B step 3).  
+Then enable Caddy:
 
----
+```bash
+sudo systemctl enable --now caddy
+```
 
-## App URL
-
-After deployment the app is reachable at:
-
-- `http://<LIGHTSAIL_IP>:3000` (without Caddy)
-- `https://yourdomain.com` (with Caddy + DNS pointing to the static IP)
+Point DNS to your server static IP.
