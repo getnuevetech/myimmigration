@@ -1,106 +1,73 @@
-# Deploying MyImmigration to a server
+# MyImmigration — Server Setup & Deployment Guide
 
-Two simple paths:
-- **Option A:** run directly with Docker Compose on your server
-- **Option B:** keep using GitHub Actions auto-deploy to Lightsail
-
----
-
-## Option A — Docker Compose on the server (recommended)
-
-Requirements: a Linux server with Docker + Compose plugin.
-
-### 1) Database setup
-
-PostgreSQL runs as a Docker container defined in `docker-compose.yml` — no external database required.
-
-The default credentials are set via environment variables. Copy the example file and optionally change passwords:
-
-```bash
-# On the server
-git clone https://github.com/getnuevetech/myimmigration.git
-cd myimmigration
-
-cp .env.example .env
-# Optional: edit .env to change POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
-# Required: set ADMIN_PREVIEW_ENABLED=true for admin access
-```
-
-Minimal `.env` overrides:
-
-```bash
-POSTGRES_USER=myimmigration
-POSTGRES_PASSWORD=change-me-in-production
-POSTGRES_DB=myimmigration
-ADMIN_PREVIEW_ENABLED=true
-```
-
-The `DATABASE_URL` in `.env.example` is already wired to the `db` Docker service — no changes needed unless you change the credentials above.
-
-```bash
-# Required if GHCR package is private
-echo <GHCR_TOKEN_WITH_READ_PACKAGES> | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
-
-docker compose pull
-docker compose up -d
-```
-
-Then open `/admin/platform-settings` and set:
-- `OPENAI_API_KEY`
-- `OPENAI_DEFAULT_MODEL` (optional but recommended)
-- any other runtime variables you want to manage from admin
-
-App will be available at:
-- `http://<server-ip>:3000`
-
-Useful commands:
-
-```bash
-docker compose logs -f app
-docker compose ps
-docker compose restart app
-```
-
-Update to latest:
-
-```bash
-git pull
-docker compose pull
-docker compose up -d
-```
+This guide walks through setting up the application on an AWS Lightsail server from scratch.
+The stack uses **Docker Compose** for both the app and the PostgreSQL database — no external database service needed.
 
 ---
 
-## Option B — GitHub Actions auto-deploy to Lightsail
+## Overview
 
-This repo already has `.github/workflows/deploy.yml`.
-On every push to `main`, it:
-1. Builds Docker image
-2. Pushes to `ghcr.io/getnuevetech/myimmigration:latest`
-3. SSHes to your server and runs `docker compose pull && docker compose up -d --remove-orphans`
+| Component | How it runs |
+|-----------|-------------|
+| Next.js app | Docker container (`ghcr.io/getnuevetech/myimmigration:latest`) |
+| PostgreSQL 16 | Docker container (named volume for persistence) |
+| Auto-deploy | GitHub Actions pushes to server on every merge to `main` |
 
-### First-time Lightsail setup steps
+---
 
-1. **Create instance**  
-   Lightsail → Create instance → Linux/Unix → Ubuntu 24.04 LTS.
-2. **Attach static IP**  
-   Lightsail → Networking → Static IPs.
-3. **Open firewall ports**  
-   - `3000` (app)
-   - `22` (SSH)
-   - `80/443` only if using HTTPS reverse proxy.
-4. **SSH into server** (usually user `ubuntu`).
-5. **Install Docker + Compose plugin**
+## Part 1 — Lightsail Instance
+
+### 1.1 Create the instance
+
+1. Open [AWS Lightsail](https://lightsail.aws.amazon.com/)
+2. **Create instance** → Platform: **Linux/Unix** → Blueprint: **OS Only → Ubuntu 24.04 LTS**
+3. Choose instance plan (minimum **$10/mo** — 2 GB RAM recommended)
+4. Name it (e.g. `myimmigration-prod`) and click **Create instance**
+
+### 1.2 Attach a static IP
+
+1. Lightsail → **Networking** → **Static IPs** → Create static IP
+2. Attach it to your new instance
+3. Note the IP — you'll need it throughout this guide
+
+### 1.3 Open firewall ports
+
+In your instance → **Networking** tab → **Firewall**, add:
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 22 | TCP | SSH |
+| 3000 | TCP | App (before HTTPS) |
+| 80 | TCP | HTTP (Caddy / HTTPS redirect) |
+| 443 | TCP | HTTPS |
+
+---
+
+## Part 2 — Server Preparation
+
+SSH into the server:
+
+```bash
+ssh ubuntu@<your-static-ip>
+```
+
+### 2.1 System update
 
 ```bash
 sudo apt update && sudo apt upgrade -y
+```
+
+### 2.2 Install Docker + Compose plugin
+
+```bash
 sudo apt install -y ca-certificates curl gnupg
 sudo install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
   sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
 echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu \
   $(. /etc/os-release && echo ${VERSION_CODENAME}) stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt update
@@ -109,54 +76,145 @@ sudo systemctl enable --now docker
 sudo usermod -aG docker $USER
 ```
 
-Log out and log back in so Docker group access applies.
+**Log out and log back in** so the Docker group change takes effect:
 
-6. **Bootstrap app on server**
+```bash
+exit
+ssh ubuntu@<your-static-ip>
+```
+
+Verify Docker works:
+
+```bash
+docker run --rm hello-world
+```
+
+---
+
+## Part 3 — Application Setup
+
+### 3.1 Clone the repository
 
 ```bash
 git clone https://github.com/getnuevetech/myimmigration.git
 cd myimmigration
+```
+
+### 3.2 Configure environment
+
+```bash
 cp .env.example .env
+nano .env   # or vim .env
 ```
 
-Edit `.env` and set at least:
+Set these values at minimum:
 
 ```bash
-POSTGRES_PASSWORD=change-me-in-production
+# Strong password for the PostgreSQL container
+POSTGRES_PASSWORD=change-me-to-something-secure
+
+# Enables the /admin area
 ADMIN_PREVIEW_ENABLED=true
+
+# Your app's public URL (used for links/redirects)
+NEXT_PUBLIC_APP_URL=http://<your-static-ip>:3000
+# Update to https://yourdomain.com once HTTPS is configured
 ```
 
-The `DATABASE_URL` is pre-configured to point to the `db` Docker service — no external database needed.
+> **DATABASE_URL** is pre-wired to the `db` Docker service — leave it as-is unless you changed `POSTGRES_USER`/`POSTGRES_DB`.
 
-7. **Initial run on server**
+### 3.3 Authenticate with GitHub Container Registry
+
+The Docker image is hosted on GHCR. If the package is private, log in first:
 
 ```bash
-# Required if GHCR package is private
 echo <GHCR_TOKEN_WITH_READ_PACKAGES> | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
+```
 
+> Generate a token at GitHub → Settings → Developer settings → Personal access tokens → `read:packages` scope.
+
+### 3.4 Pull and start the stack
+
+```bash
 docker compose pull
 docker compose up -d
 ```
 
-Open `/admin/platform-settings` and configure AI/runtime values there.
+This starts:
+- `db` — PostgreSQL 16 (waits until healthy before starting app)
+- `app` — Next.js app on port 3000
 
-8. **Enable auto-deploy**
-   Add these GitHub Actions secrets:
-   - `LIGHTSAIL_HOST`
-   - `LIGHTSAIL_USER` (usually `ubuntu`)
-   - `LIGHTSAIL_SSH_KEY` (private key PEM content)
-   
-   Then push to `main`.
-   The workflow will build, push, and deploy automatically.
+Check everything is running:
+
+```bash
+docker compose ps
+docker compose logs -f app
+```
+
+### 3.5 Run database migrations
+
+On first boot the database schema needs to be created:
+
+```bash
+docker compose exec app npx prisma migrate deploy
+```
+
+> Run this again after any deployment that includes schema changes.
+
+### 3.6 Verify the app
+
+Open in your browser:
+
+```
+http://<your-static-ip>:3000
+```
+
+Then visit `/admin/platform-settings` to configure AI keys:
+- `OPENAI_API_KEY`
+- `OPENAI_DEFAULT_MODEL` (e.g. `gpt-4o`)
+- `ANTHROPIC_API_KEY` (for Claude-based agents)
+- `GOOGLE_AI_API_KEY` (for Gemini-based agents)
 
 ---
 
-## Optional HTTPS (Caddy)
+## Part 4 — Enable Auto-Deploy (GitHub Actions)
 
-For internet-facing usage, put Caddy in front:
+The repo includes `.github/workflows/deploy.yml`. On every push to `main` it:
+1. Builds the Docker image
+2. Pushes it to `ghcr.io/getnuevetech/myimmigration:latest`
+3. SSHes to your server and runs `docker compose pull && docker compose up -d --remove-orphans`
+
+### 4.1 Add GitHub Actions secrets
+
+In your GitHub repo → **Settings** → **Secrets and variables** → **Actions**, add:
+
+| Secret | Value |
+|--------|-------|
+| `LIGHTSAIL_HOST` | Your static IP |
+| `LIGHTSAIL_USER` | `ubuntu` |
+| `LIGHTSAIL_SSH_KEY` | Contents of your Lightsail SSH private key (PEM format) |
+
+To get your SSH private key from Lightsail:  
+Lightsail → **Account** → **SSH keys** → Download the default key.
+
+### 4.2 Test it
+
+Push any change to `main` and watch the **Actions** tab in GitHub. The workflow will build, push, and deploy automatically.
+
+---
+
+## Part 5 — Optional: HTTPS with Caddy
+
+Skip this if you only need HTTP access. For a public domain, follow these steps.
+
+### 5.1 Point DNS
+
+Add an **A record** at your DNS provider pointing your domain to the server's static IP.  
+Wait for it to propagate before continuing.
+
+### 5.2 Install Caddy
 
 ```bash
-sudo apt update
 sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | \
   sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
@@ -166,7 +224,13 @@ sudo apt update
 sudo apt install -y caddy
 ```
 
-`/etc/caddy/Caddyfile`:
+### 5.3 Configure Caddyfile
+
+```bash
+sudo nano /etc/caddy/Caddyfile
+```
+
+Replace the contents with:
 
 ```caddy
 yourdomain.com {
@@ -174,11 +238,54 @@ yourdomain.com {
 }
 ```
 
-Before enabling Caddy, make sure ports `80` and `443` are open in the Lightsail firewall (same firewall area used in Option B step 3).  
-Then enable Caddy:
+### 5.4 Enable Caddy
 
 ```bash
 sudo systemctl enable --now caddy
 ```
 
-Point DNS to your server static IP.
+Caddy will automatically obtain a TLS certificate from Let's Encrypt.  
+The app will now be available at `https://yourdomain.com`.
+
+Update `NEXT_PUBLIC_APP_URL` in `.env` to your domain and restart:
+
+```bash
+docker compose restart app
+```
+
+---
+
+## Day-to-day Operations
+
+### View logs
+```bash
+docker compose logs -f app
+docker compose logs -f db
+```
+
+### Restart the app
+```bash
+docker compose restart app
+```
+
+### Update to the latest image (manual)
+```bash
+docker compose pull
+docker compose up -d --remove-orphans
+docker image prune -f
+```
+
+### Run database migrations after an update
+```bash
+docker compose exec app npx prisma migrate deploy
+```
+
+### Stop everything
+```bash
+docker compose down
+```
+
+### Stop and remove all data (destructive)
+```bash
+docker compose down -v
+```
