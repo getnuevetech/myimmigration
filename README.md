@@ -27,6 +27,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+For production Docker deployment on AWS Lightsail, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
 To enable the admin shell route during development, set `ADMIN_PREVIEW_ENABLED=true`.
 
 Set runtime variables (AI keys/models, app URL, auth/payment secrets) at `/admin/platform-settings`.

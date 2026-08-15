@@ -9,7 +9,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myimmigration}"]
       interval: 10s
@@ -17,17 +17,47 @@ services:
       retries: 5
 
   app:
-    build: .
+    build:
+      context: .
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL:-postgresql://myimmigration:myimmigration@db:5432/myimmigration?schema=public}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-myimmigration}:${POSTGRES_PASSWORD:-myimmigration}@db:5432/${POSTGRES_DB:-myimmigration}?schema=public
+      ADMIN_PREVIEW_ENABLED: ${ADMIN_PREVIEW_ENABLED:-false}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:-}
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_DEFAULT_MODEL: ${OPENAI_DEFAULT_MODEL:-gpt-4o}
+      OPENAI_FALLBACK_MODEL_SUMMARY: ${OPENAI_FALLBACK_MODEL_SUMMARY:-gpt-4o}
+      OPENAI_FALLBACK_MODEL_GOAL: ${OPENAI_FALLBACK_MODEL_GOAL:-gpt-4o}
+      OPENAI_FALLBACK_MODEL_DOCUMENT: ${OPENAI_FALLBACK_MODEL_DOCUMENT:-gpt-4o}
+      OPENAI_FALLBACK_MODEL_SITUATION: ${OPENAI_FALLBACK_MODEL_SITUATION:-gpt-4o}
+      OPENAI_FALLBACK_MODEL_PRESENTATION: ${OPENAI_FALLBACK_MODEL_PRESENTATION:-gpt-4o}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_DEFAULT_MODEL: ${ANTHROPIC_DEFAULT_MODEL:-claude-opus-4-5}
+      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+      GOOGLE_DEFAULT_MODEL: ${GOOGLE_DEFAULT_MODEL:-gemini-1.5-pro}
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
+
+  db-sync:
+    profiles: ["tools"]
+    build:
+      context: .
+      target: builder
+    command: ["npx", "prisma", "db", "push"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-myimmigration}:${POSTGRES_PASSWORD:-myimmigration}@db:5432/${POSTGRES_DB:-myimmigration}?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:

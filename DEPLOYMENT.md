@@ -1,7 +1,14 @@
 # MyImmigration — Deployment Guide
 
-**Stack:** Next.js app + PostgreSQL, both running in Docker on an AWS Lightsail Ubuntu server.  
-**Auto-deploy:** GitHub Actions SSHes into the server on every push to `main`, pulls the latest code, and rebuilds the Docker image directly on the server. No external registry required.
+**Stack:** Next.js standalone server + PostgreSQL, both running in Docker on an AWS Lightsail Ubuntu server.
+**Auto-deploy:** GitHub Actions SSHes into the server on every push to `main`, pulls the latest code, syncs the Prisma schema, and rebuilds the Docker image directly on the server. No external registry required.
+
+## Repo Deployment Notes
+
+- The app is a Next.js 16 App Router project that builds with `output: "standalone"` and runs with `node server.js` in the production container.
+- PostgreSQL runs as a sibling Docker Compose service with data stored in the `postgres_data` Docker volume.
+- This repo currently has `prisma/schema.prisma` but no `prisma/migrations` directory. Use `docker compose run --rm db-sync` to run `prisma db push`. If migrations are added later, replace that command with `prisma migrate deploy`.
+- Runtime settings such as AI keys, `NEXT_PUBLIC_APP_URL`, and `AUTH_SESSION_SECRET` can be supplied in `.env` and then managed from `/admin/platform-settings` where supported.
 
 ---
 
@@ -26,12 +33,12 @@
 
 In your instance → **Networking** tab → **IPv4 Firewall**, add:
 
-| Application | Protocol | Port |
-|-------------|----------|------|
-| SSH | TCP | 22 |
-| App | TCP | 3000 |
-| HTTP | TCP | 80 |
-| HTTPS | TCP | 443 |
+| Application | Protocol | Port | Notes |
+|-------------|----------|------|-------|
+| SSH | TCP | 22 | Keep restricted to trusted IPs if possible |
+| HTTP | TCP | 80 | Needed for Caddy/HTTPS setup |
+| HTTPS | TCP | 443 | Needed after a domain is attached |
+| App | TCP | 3000 | Optional for initial IP-only testing; remove after HTTPS is working |
 
 ---
 
@@ -105,25 +112,45 @@ nano .env
 Set these values:
 
 ```bash
-# Set a strong password for the Postgres container
+# Required: set a strong password for the Postgres container
 POSTGRES_PASSWORD=your-secure-password-here
 
-# Enables the /admin area
+# Required: generate with `openssl rand -base64 32`
+AUTH_SESSION_SECRET=replace-with-a-long-random-value
+
+# Enables the /admin area while the admin shell is still preview-gated
 ADMIN_PREVIEW_ENABLED=true
 
-# Your server's public URL
+# Your server's public URL while testing by IP
 NEXT_PUBLIC_APP_URL=http://<your-static-ip>:3000
+
+# Optional at first; can also be entered in /admin/platform-settings
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GOOGLE_AI_API_KEY=
 ```
 
-> Leave `DATABASE_URL` as-is — it already points to the `db` Docker service.
+> The Compose file builds `DATABASE_URL` for the app container from `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`, pointing at the internal `db` service.
 
 ---
 
-## Step 8 — Start the Application
+## Step 8 — Start the Database and Sync Schema
 
 ```bash
 cd ~/myimmigration
-docker compose up -d --build
+docker compose up -d --build db
+docker compose run --rm db-sync
+```
+
+`db-sync` runs `prisma db push`, which matches the current repo state because there are no Prisma migration files yet.
+
+---
+
+## Step 9 — Start the Application
+
+```bash
+cd ~/myimmigration
+docker compose up -d --build app
 ```
 
 Check that both containers are running:
@@ -137,16 +164,6 @@ NAME                    STATUS
 myimmigration-db-1      Up (healthy)
 myimmigration-app-1     Up
 ```
-
----
-
-## Step 9 — Run Database Migrations
-
-```bash
-docker compose exec app npx prisma migrate deploy
-```
-
-> Run this again after any deployment that includes database schema changes.
 
 ---
 
@@ -166,7 +183,7 @@ Then go to `/admin/platform-settings` and enter your AI API keys:
 
 ## Step 11 — Enable Auto-Deploy (GitHub Actions)
 
-After every push to `main`, GitHub Actions will SSH into the server, pull the latest code, and rebuild the Docker image automatically. No registry or tokens needed.
+After every push to `main`, GitHub Actions will SSH into the server, pull the latest code, start the database, run `db-sync`, and rebuild the app image automatically. No registry or tokens needed.
 
 **Add these secrets** to your GitHub repo → **Settings** → **Secrets and variables** → **Actions**:
 
@@ -242,10 +259,14 @@ docker compose -f ~/myimmigration/docker-compose.yml logs -f app
 docker compose -f ~/myimmigration/docker-compose.yml restart app
 
 # Manual update (auto-deploy handles this normally)
-cd ~/myimmigration && git pull && docker compose up -d --build --remove-orphans
+cd ~/myimmigration
+git pull
+docker compose up -d --build --remove-orphans db
+docker compose run --rm db-sync
+docker compose up -d --build --remove-orphans app
 
-# Run migrations after a schema-changing deploy
-docker compose -f ~/myimmigration/docker-compose.yml exec app npx prisma migrate deploy
+# Sync the Prisma schema manually
+docker compose -f ~/myimmigration/docker-compose.yml run --rm db-sync
 
 # Stop everything
 docker compose -f ~/myimmigration/docker-compose.yml down
