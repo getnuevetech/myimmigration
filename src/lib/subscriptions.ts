@@ -244,7 +244,7 @@ export async function getCaseAccess(userId?: string | null): Promise<CaseAccessS
     const featureMap = new Map<string, boolean>(
       subscription.plan.features.map(
         (feature: { featureKey: string; enabled: boolean }) =>
-          [feature.featureKey, feature.enabled] as const
+          [feature.featureKey, feature.enabled]
       )
     );
     const canSeeFullResults = featureMap.get(FEATURE_KEYS.fullResults) ?? true;
