@@ -17,7 +17,7 @@ services:
       retries: 5
 
   app:
-    image: ghcr.io/getnuevetech/myimmigration:latest
+    build: .
     ports:
       - "3000:3000"
     environment:
