@@ -10,17 +10,11 @@ Two simple paths:
 
 Requirements: a Linux server with Docker + Compose plugin.
 
-### 1) Database setup (required)
+### 1) Database setup
 
-This app needs PostgreSQL.  
-Create a PostgreSQL database first (recommended: managed DB like Neon/Supabase/RDS), then copy the connection string.
+PostgreSQL runs as a Docker container defined in `docker-compose.yml` — no external database required.
 
-In `.env`, set:
-
-```bash
-DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/myimmigration?schema=public
-ADMIN_PREVIEW_ENABLED=true
-```
+The default credentials are set via environment variables. Copy the example file and optionally change passwords:
 
 ```bash
 # On the server
@@ -28,8 +22,22 @@ git clone https://github.com/getnuevetech/myimmigration.git
 cd myimmigration
 
 cp .env.example .env
-# edit .env and set DATABASE_URL (+ ADMIN_PREVIEW_ENABLED=true for admin access)
+# Optional: edit .env to change POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
+# Required: set ADMIN_PREVIEW_ENABLED=true for admin access
+```
 
+Minimal `.env` overrides:
+
+```bash
+POSTGRES_USER=myimmigration
+POSTGRES_PASSWORD=change-me-in-production
+POSTGRES_DB=myimmigration
+ADMIN_PREVIEW_ENABLED=true
+```
+
+The `DATABASE_URL` in `.env.example` is already wired to the `db` Docker service — no changes needed unless you change the credentials above.
+
+```bash
 # Required if GHCR package is private
 echo <GHCR_TOKEN_WITH_READ_PACKAGES> | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
 
@@ -114,9 +122,11 @@ cp .env.example .env
 Edit `.env` and set at least:
 
 ```bash
-DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/myimmigration?schema=public
+POSTGRES_PASSWORD=change-me-in-production
 ADMIN_PREVIEW_ENABLED=true
 ```
+
+The `DATABASE_URL` is pre-configured to point to the `db` Docker service — no external database needed.
 
 7. **Initial run on server**
 
