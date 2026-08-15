@@ -115,6 +115,10 @@ Set these values:
 # Required: set a strong password for the Postgres container
 POSTGRES_PASSWORD=your-secure-password-here
 
+# Required: same password, URL-encoded for Prisma connection strings
+# Example: "abc@2007" becomes "abc%402007"
+POSTGRES_PASSWORD_URL_ENCODED=your-url-encoded-secure-password-here
+
 # Required: generate with `openssl rand -base64 32`
 AUTH_SESSION_SECRET=replace-with-a-long-random-value
 
@@ -130,7 +134,7 @@ ANTHROPIC_API_KEY=
 GOOGLE_AI_API_KEY=
 ```
 
-> The Compose file builds `DATABASE_URL` for the app container from `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`, pointing at the internal `db` service.
+> The Compose file builds `DATABASE_URL` for the app container from `POSTGRES_USER`, `POSTGRES_PASSWORD_URL_ENCODED`, and `POSTGRES_DB`, pointing at the internal `db` service. If your password contains URL-reserved characters like `@`, `:`, `/`, `?`, `#`, or `&`, they must be percent-encoded in `POSTGRES_PASSWORD_URL_ENCODED`.
 
 ---
 

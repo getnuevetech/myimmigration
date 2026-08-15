@@ -25,7 +25,7 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      DATABASE_URL: postgresql://${POSTGRES_USER:-myimmigration}:${POSTGRES_PASSWORD:-myimmigration}@db:5432/${POSTGRES_DB:-myimmigration}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-myimmigration}:${POSTGRES_PASSWORD_URL_ENCODED:-myimmigration}@db:5432/${POSTGRES_DB:-myimmigration}?schema=public
       ADMIN_PREVIEW_ENABLED: ${ADMIN_PREVIEW_ENABLED:-false}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:-}
@@ -54,7 +54,7 @@ services:
     command: ["npx", "prisma", "db", "push"]
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-myimmigration}:${POSTGRES_PASSWORD:-myimmigration}@db:5432/${POSTGRES_DB:-myimmigration}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-myimmigration}:${POSTGRES_PASSWORD_URL_ENCODED:-myimmigration}@db:5432/${POSTGRES_DB:-myimmigration}?schema=public
     depends_on:
       db:
         condition: service_healthy
