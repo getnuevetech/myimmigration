@@ -1,9 +1,33 @@
 services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-myimmigration}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-myimmigration}
+      POSTGRES_DB: ${POSTGRES_DB:-myimmigration}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myimmigration}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   app:
     image: ghcr.io/getnuevetech/myimmigration:latest
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL:-postgresql://myimmigration:myimmigration@db:5432/myimmigration?schema=public}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  postgres_data:
