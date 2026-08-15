@@ -12,23 +12,23 @@ export type AnalysisPipelineConfig = Record<AnalysisStage, StageModelSelection[]
 
 const DEFAULT_PIPELINE: AnalysisPipelineConfig = {
   SUMMARY: [
-    { providerLabel: "OpenAI", model: "gpt-4o", role: "FACT_EXTRACTOR" },
+    { providerLabel: "Anthropic", model: "claude-opus-4-5", role: "FACT_EXTRACTOR" },
     { providerLabel: "OpenAI", model: "gpt-4o", role: "INTERPRETER" },
-    { providerLabel: "OpenAI", model: "gpt-4o", role: "VERIFIER" },
+    { providerLabel: "Google", model: "gemini-1.5-pro", role: "VERIFIER" },
   ],
   GOAL: [
-    { providerLabel: "OpenAI", model: "gpt-4o", role: "FACT_EXTRACTOR" },
+    { providerLabel: "Anthropic", model: "claude-opus-4-5", role: "FACT_EXTRACTOR" },
     { providerLabel: "OpenAI", model: "gpt-4o", role: "INTERPRETER" },
   ],
   DOCUMENT: [
-    { providerLabel: "OpenAI", model: "gpt-4o", role: "FACT_EXTRACTOR" },
+    { providerLabel: "Anthropic", model: "claude-opus-4-5", role: "FACT_EXTRACTOR" },
+    { providerLabel: "Google", model: "gemini-1.5-pro", role: "VERIFIER" },
     { providerLabel: "OpenAI", model: "gpt-4o", role: "INTERPRETER" },
-    { providerLabel: "OpenAI", model: "gpt-4o", role: "VERIFIER" },
   ],
   SITUATION: [
-    { providerLabel: "OpenAI", model: "gpt-4o", role: "INTERPRETER" },
     { providerLabel: "OpenAI", model: "gpt-4o", role: "SKEPTIC" },
-    { providerLabel: "OpenAI", model: "gpt-4o", role: "VERIFIER" },
+    { providerLabel: "Anthropic", model: "claude-opus-4-5", role: "INTERPRETER" },
+    { providerLabel: "Google", model: "gemini-1.5-pro", role: "VERIFIER" },
   ],
   PRESENTATION: [{ providerLabel: "OpenAI", model: "gpt-4o", role: "PRESENTER" }],
 };

@@ -1,5 +1,7 @@
 import { AnalysisStage } from "@prisma/client";
 import { getOpenAIClient } from "@/lib/openai";
+import { getAnthropicClient } from "@/lib/anthropic";
+import { getGoogleAIClient } from "@/lib/google-ai";
 import { mergeStageOutputs, ProviderStageOutput } from "@/lib/analysis/consensus";
 import { getPlatformRuntimeSettings } from "@/lib/platform/settings";
 import { getRuntimeEnvValues } from "@/lib/platform/runtime-env";
@@ -34,65 +36,178 @@ function roleInstruction(role: ProviderStageOutput["role"]): string {
   }
 }
 
+async function callOpenAI(
+  model: string,
+  prompt: string,
+  responseAsJson: boolean,
+  fallbackModel: string
+): Promise<string> {
+  const client = await getOpenAIClient();
+  for (const m of [model, fallbackModel]) {
+    try {
+      const response = await client.chat.completions.create({
+        model: m,
+        messages: [{ role: "user", content: prompt }],
+        ...(responseAsJson ? { response_format: { type: "json_object" as const } } : {}),
+        temperature: 0,
+      });
+      return response.choices[0].message.content ?? "";
+    } catch {
+      continue;
+    }
+  }
+  throw new Error(`OpenAI call failed for models ${model} and ${fallbackModel}`);
+}
+
+async function callAnthropic(
+  model: string,
+  prompt: string,
+  fallbackModel: string
+): Promise<string> {
+  const client = await getAnthropicClient();
+  for (const m of [model, fallbackModel]) {
+    try {
+      const response = await client.messages.create({
+        model: m,
+        max_tokens: 4096,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+      });
+      const block = response.content[0];
+      return block.type === "text" ? block.text : "";
+    } catch {
+      continue;
+    }
+  }
+  throw new Error(`Anthropic call failed for models ${model} and ${fallbackModel}`);
+}
+
+async function callGoogle(
+  model: string,
+  prompt: string,
+  fallbackModel: string
+): Promise<string> {
+  const client = await getGoogleAIClient();
+  for (const m of [model, fallbackModel]) {
+    try {
+      const generativeModel = client.getGenerativeModel({ model: m });
+      const result = await generativeModel.generateContent(prompt);
+      return result.response.text();
+    } catch {
+      continue;
+    }
+  }
+  throw new Error(`Google AI call failed for models ${model} and ${fallbackModel}`);
+}
+
+async function callProvider(
+  providerLabel: string,
+  model: string,
+  prompt: string,
+  responseAsJson: boolean,
+  fallbackModel: string
+): Promise<string> {
+  const normalised = providerLabel.toLowerCase();
+  if (normalised === "anthropic") {
+    return callAnthropic(model, prompt, fallbackModel);
+  }
+  if (normalised === "google") {
+    return callGoogle(model, prompt, fallbackModel);
+  }
+  return callOpenAI(model, prompt, responseAsJson, fallbackModel);
+}
+
+async function runSynthesis(
+  disagreeingTexts: string[],
+  responseAsJson: boolean,
+  defaultModel: string
+): Promise<string> {
+  const client = await getOpenAIClient();
+  const combinedOutputs = disagreeingTexts
+    .map((t, i) => `--- Model ${i + 1} output ---\n${t}`)
+    .join("\n\n");
+  const synthesisPrompt = `You are a SYNTHESIZER. Multiple AI models produced the following outputs for the same analysis task. They disagreed on some points. Synthesize them into a single best-effort unified result that resolves disagreements conservatively and flags uncertainty where models truly differ.
+
+${combinedOutputs}
+
+${responseAsJson ? "Return only valid JSON matching the structure of the outputs above." : "Return a single coherent synthesis."}`;
+
+  const response = await client.chat.completions.create({
+    model: defaultModel,
+    messages: [{ role: "user", content: synthesisPrompt }],
+    ...(responseAsJson ? { response_format: { type: "json_object" as const } } : {}),
+    temperature: 0,
+  });
+  return response.choices[0].message.content ?? "";
+}
+
 async function runStagePrompt(
   stage: AnalysisStage,
   prompt: string,
   responseAsJson: boolean,
   settings: RuntimeSettings
 ): Promise<{ text: string; verificationRequired: boolean }> {
-  const client = await getOpenAIClient();
   const runtimeValues = await getRuntimeEnvValues([
     "OPENAI_DEFAULT_MODEL",
+    "ANTHROPIC_DEFAULT_MODEL",
+    "GOOGLE_DEFAULT_MODEL",
     `OPENAI_FALLBACK_MODEL_${stage}`,
   ]);
-  const defaultModel = runtimeValues.get("OPENAI_DEFAULT_MODEL") ?? "gpt-4o";
-  const stageFallbackModel = runtimeValues.get(`OPENAI_FALLBACK_MODEL_${stage}`) ?? defaultModel;
+  const openAIDefault = runtimeValues.get("OPENAI_DEFAULT_MODEL") ?? "gpt-4o";
+  const anthropicDefault = runtimeValues.get("ANTHROPIC_DEFAULT_MODEL") ?? "claude-opus-4-5";
+  const googleDefault = runtimeValues.get("GOOGLE_DEFAULT_MODEL") ?? "gemini-1.5-pro";
+  const stageFallback = runtimeValues.get(`OPENAI_FALLBACK_MODEL_${stage}`) ?? openAIDefault;
   const candidates = settings.pipeline[stage] ?? [];
 
   const outputs: ProviderStageOutput<{ text: string }>[] = [];
 
   for (const candidate of candidates) {
-    const attemptedModels = [candidate.model, stageFallbackModel];
+    const providerNorm = candidate.providerLabel.toLowerCase();
+    const fallback =
+      providerNorm === "anthropic"
+        ? anthropicDefault
+        : providerNorm === "google"
+        ? googleDefault
+        : stageFallback;
 
-    for (const model of attemptedModels) {
-      try {
-        const roleAwarePrompt = `${roleInstruction(candidate.role)}\n\n${prompt}`;
-        const response = await client.chat.completions.create({
-          model,
-          messages: [{ role: "user", content: roleAwarePrompt }],
-          ...(responseAsJson ? { response_format: { type: "json_object" as const } } : {}),
-          temperature: 0,
-        });
-
-        outputs.push({
-          stage,
-          providerLabel: candidate.providerLabel,
-          model,
-          role: candidate.role,
-          payload: { text: response.choices[0].message.content ?? "" },
-        });
-        break;
-      } catch {
-        continue;
-      }
+    try {
+      const roleAwarePrompt = `${roleInstruction(candidate.role)}\n\n${prompt}`;
+      const text = await callProvider(
+        candidate.providerLabel,
+        candidate.model,
+        roleAwarePrompt,
+        responseAsJson,
+        fallback
+      );
+      outputs.push({
+        stage,
+        providerLabel: candidate.providerLabel,
+        model: candidate.model,
+        role: candidate.role,
+        payload: { text },
+      });
+    } catch {
+      continue;
     }
   }
 
   if (outputs.length === 0) {
-    const response = await client.chat.completions.create({
-      model: defaultModel,
-      messages: [{ role: "user", content: prompt }],
-      ...(responseAsJson ? { response_format: { type: "json_object" as const } } : {}),
-      temperature: 0,
-    });
-
-    return {
-      text: response.choices[0].message.content ?? "",
-      verificationRequired: true,
-    };
+    const text = await callOpenAI(openAIDefault, prompt, responseAsJson, openAIDefault);
+    return { text, verificationRequired: true };
   }
 
   const consensus = mergeStageOutputs(outputs);
+
+  if (consensus.verificationRequired && consensus.disagreementPayloads && consensus.disagreementPayloads.length > 1) {
+    try {
+      const disagreeingTexts = (consensus.disagreementPayloads as { text: string }[]).map((p) => p.text);
+      const synthesized = await runSynthesis(disagreeingTexts, responseAsJson, openAIDefault);
+      return { text: synthesized, verificationRequired: false };
+    } catch {
+      // Synthesis failed — fall back to first provider output
+    }
+  }
+
   return {
     text: consensus.merged.text,
     verificationRequired: consensus.verificationRequired,

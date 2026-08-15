@@ -14,12 +14,14 @@ const ADMIN_MODULES: AdminModule[] = [
     title: "AI Providers",
     description:
       "Register and manage multi-provider AI credentials, models, and failover priorities.",
+    href: "/admin/ai-providers",
   },
   {
     key: "ai-pipelines",
     title: "AI Pipelines",
     description:
       "Configure stage-by-stage orchestration for summary, goal, document, situation, and presentation analysis.",
+    href: "/admin/ai-pipelines",
   },
   {
     key: "plans-features",

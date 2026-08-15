@@ -12,7 +12,7 @@ import {
 const FIELD_META: Record<AdminManagedEnvKey, { label: string; help: string }> = {
   OPENAI_API_KEY: {
     label: "OpenAI API Key",
-    help: "Required for AI analysis requests.",
+    help: "Required for GPT-4o analysis requests (SKEPTIC, PRESENTER, SYNTHESIZER roles).",
   },
   OPENAI_DEFAULT_MODEL: {
     label: "Default OpenAI Model",
@@ -37,6 +37,22 @@ const FIELD_META: Record<AdminManagedEnvKey, { label: string; help: string }> = 
   OPENAI_FALLBACK_MODEL_PRESENTATION: {
     label: "Fallback Model — PRESENTATION",
     help: "Optional stage-specific fallback for presentation stage.",
+  },
+  ANTHROPIC_API_KEY: {
+    label: "Anthropic API Key",
+    help: "Required for Claude analysis requests (FACT_EXTRACTOR, INTERPRETER roles).",
+  },
+  ANTHROPIC_DEFAULT_MODEL: {
+    label: "Default Anthropic Model",
+    help: "Claude model to use when a step's model is unavailable. Default: claude-opus-4-5.",
+  },
+  GOOGLE_AI_API_KEY: {
+    label: "Google AI API Key",
+    help: "Required for Gemini analysis requests (VERIFIER role).",
+  },
+  GOOGLE_DEFAULT_MODEL: {
+    label: "Default Google AI Model",
+    help: "Gemini model to use when a step's model is unavailable. Default: gemini-1.5-pro.",
   },
   NEXT_PUBLIC_APP_URL: {
     label: "Public App URL",
