@@ -13,6 +13,7 @@ function ContinuePageContent() {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [password, setPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +27,7 @@ function ContinuePageContent() {
       const res = await fetch("/api/guest/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, firstName, lastName, acceptedTerms }),
+        body: JSON.stringify({ email, firstName, lastName, password, acceptedTerms }),
       });
 
       const payload = await res.json();
@@ -103,6 +104,21 @@ function ContinuePageContent() {
                 required
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
               />
+            </label>
+
+            <label className="block text-sm text-slate-700">
+              Password
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                minLength={8}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                Use at least 8 characters so you can sign in later.
+              </span>
             </label>
 
             <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">

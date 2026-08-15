@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrCreateGuestSession } from "@/lib/guest-session";
 import { getPersistedCase } from "@/lib/cases";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(
   _req: Request,
@@ -8,11 +9,14 @@ export async function GET(
 ) {
   try {
     const { caseId } = await context.params;
-    const session = await getOrCreateGuestSession();
+    const [session, user] = await Promise.all([
+      getOrCreateGuestSession(),
+      getCurrentUser(),
+    ]);
     const result = await getPersistedCase({
       caseId,
       guestSessionId: session.id,
-      userId: session.linkedUserId,
+      userId: user?.id ?? session.linkedUserId,
     });
 
     if (!result) {

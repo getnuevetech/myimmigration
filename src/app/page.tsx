@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { ArrowRight, FileSearch, ShieldCheck, Users } from "lucide-react";
 import Disclaimer from "@/components/Disclaimer";
+import { getCurrentUser } from "@/lib/auth";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const user = await getCurrentUser();
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Nav */}
@@ -11,12 +14,30 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold text-orange-700">MyImmigration</span>
           </div>
-          <Link
-            href="/onboarding"
-            className="rounded-lg bg-orange-700 px-4 py-2 text-sm font-medium text-white hover:bg-orange-800 transition-colors"
-          >
-            Start My Case
-          </Link>
+          <div className="flex items-center gap-3">
+            {user ? (
+              <>
+                {user.type === "ADMIN" && (
+                  <Link href="/admin" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                    Admin
+                  </Link>
+                )}
+                <Link href="/dashboard" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                  Dashboard
+                </Link>
+              </>
+            ) : (
+              <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                Sign in
+              </Link>
+            )}
+            <Link
+              href="/onboarding"
+              className="rounded-lg bg-orange-700 px-4 py-2 text-sm font-medium text-white hover:bg-orange-800 transition-colors"
+            >
+              Start My Case
+            </Link>
+          </div>
         </div>
       </header>
 

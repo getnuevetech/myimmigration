@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateGuestSession } from "@/lib/guest-session";
 import { upsertGuestCaseDraft } from "@/lib/cases";
 import { CaseGoal } from "@/types/case";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,13 +31,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const session = await getOrCreateGuestSession();
+    const [session, user] = await Promise.all([
+      getOrCreateGuestSession(),
+      getCurrentUser(),
+    ]);
     const record = await upsertGuestCaseDraft({
       caseId,
       guestSessionId: session.id,
       narrative,
       goals,
-      userId: session.linkedUserId,
+      userId: user?.id ?? session.linkedUserId,
     });
 
     return NextResponse.json({ caseId: record.id });

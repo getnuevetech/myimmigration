@@ -3,6 +3,7 @@ import { getOrCreateGuestSession } from "@/lib/guest-session";
 import { prisma } from "@/lib/db/prisma";
 import { claimGuestCasesForUser } from "@/lib/cases";
 import { ensureFreeSubscriptionForUser } from "@/lib/subscriptions";
+import { createSession, hashPassword } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,11 +12,13 @@ export async function POST(req: NextRequest) {
       email,
       firstName,
       lastName,
+      password,
       acceptedTerms,
     }: {
       email: string;
       firstName?: string;
       lastName?: string;
+      password?: string;
       acceptedTerms: boolean;
     } = body;
 
@@ -29,6 +32,13 @@ export async function POST(req: NextRequest) {
     if (!acceptedTerms) {
       return NextResponse.json(
         { error: "You must accept the terms to continue." },
+        { status: 400 }
+      );
+    }
+
+    if (!password || password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters." },
         { status: 400 }
       );
     }
@@ -59,8 +69,9 @@ export async function POST(req: NextRequest) {
         email: normalizedEmail,
         firstName: firstName?.trim() || null,
         lastName: lastName?.trim() || null,
+        passwordHash: await hashPassword(password),
         type: "REGULAR",
-        status: "PENDING",
+        status: "ACTIVE",
         mustAcceptTos: false,
       },
     });
@@ -72,6 +83,7 @@ export async function POST(req: NextRequest) {
 
     await claimGuestCasesForUser(session.id, user.id);
     await ensureFreeSubscriptionForUser(user.id);
+    await createSession(user.id);
 
     return NextResponse.json({ userId: user.id });
   } catch {

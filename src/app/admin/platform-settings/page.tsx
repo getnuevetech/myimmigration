@@ -1,7 +1,6 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
+import { requireAdmin } from "@/lib/auth";
 import {
   ADMIN_MANAGED_ENV_KEYS,
   isAdminManagedEnvKey,
@@ -71,9 +70,7 @@ const FIELD_META: Record<AdminManagedEnvKey, { label: string; help: string }> = 
 async function saveSettings(formData: FormData) {
   "use server";
 
-  if (process.env.ADMIN_PREVIEW_ENABLED !== "true") {
-    redirect("/");
-  }
+  await requireAdmin("admin.settings", true);
 
   for (const [rawKey, rawValue] of formData.entries()) {
     if (!isAdminManagedEnvKey(rawKey)) continue;
@@ -114,9 +111,7 @@ async function saveSettings(formData: FormData) {
 }
 
 export default async function PlatformSettingsPage() {
-  if (process.env.ADMIN_PREVIEW_ENABLED !== "true") {
-    redirect("/");
-  }
+  await requireAdmin("admin.settings");
 
   const settings = await prisma.setting.findMany({
     where: { key: { in: [...ADMIN_MANAGED_ENV_KEYS] } },
@@ -124,20 +119,13 @@ export default async function PlatformSettingsPage() {
   const valueMap = new Map(settings.map((item) => [item.key, item.value]));
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-4xl px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-slate-900">Platform Settings</h1>
-          <Link
-            href="/admin"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            Back to admin
-          </Link>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-4xl px-4 py-8">
+    <div className="max-w-4xl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Platform Settings</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Manage runtime variables without hardcoding secrets.
+        </p>
+      </div>
         <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Save all runtime variables from admin. Non-secret empty values are cleared. Secret fields keep
           existing values when left blank.
@@ -182,7 +170,6 @@ export default async function PlatformSettingsPage() {
             Save settings
           </button>
         </form>
-      </main>
     </div>
   );
 }

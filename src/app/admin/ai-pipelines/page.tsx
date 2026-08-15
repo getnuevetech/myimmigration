@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { AnalysisStage, StageRole } from "@prisma/client";
+import { requireAdmin } from "@/lib/auth";
 
 const STAGE_LABELS: Record<AnalysisStage, string> = {
   SUMMARY: "Summary (Case Reconstruction)",
@@ -25,9 +25,7 @@ const STAGES = Object.keys(STAGE_LABELS) as AnalysisStage[];
 async function toggleStageStep(formData: FormData) {
   "use server";
 
-  if (process.env.ADMIN_PREVIEW_ENABLED !== "true") {
-    redirect("/");
-  }
+  await requireAdmin("admin.pipelines", true);
 
   const stepId = String(formData.get("stepId") ?? "").trim();
   const enabled = formData.get("enabled") === "true";
@@ -43,9 +41,7 @@ async function toggleStageStep(formData: FormData) {
 }
 
 export default async function AIPipelinesPage() {
-  if (process.env.ADMIN_PREVIEW_ENABLED !== "true") {
-    redirect("/");
-  }
+  await requireAdmin("admin.pipelines");
 
   const [stages, providers] = await Promise.all([
     prisma.pipelineStage.findMany({
@@ -64,20 +60,13 @@ export default async function AIPipelinesPage() {
   const missingStages = STAGES.filter((s) => !stagesWithSteps.has(s));
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-4xl px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-slate-900">AI Pipelines</h1>
-          <Link
-            href="/admin"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            Back to admin
-          </Link>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-4xl px-4 py-8 space-y-6">
+    <div className="max-w-4xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">AI Pipelines</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Configure which providers participate in each analysis stage.
+        </p>
+      </div>
         <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Each analysis stage runs multiple AI models in assigned roles. When models disagree, a
           SYNTHESIZER step merges their outputs into a single result. Enable or disable steps to
@@ -168,7 +157,6 @@ export default async function AIPipelinesPage() {
             </div>
           </section>
         ))}
-      </main>
     </div>
   );
 }

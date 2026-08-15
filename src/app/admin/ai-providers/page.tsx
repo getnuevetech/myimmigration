@@ -1,7 +1,6 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
+import { requireAdmin } from "@/lib/auth";
 
 const KNOWN_PROVIDERS = [
   {
@@ -30,9 +29,7 @@ const KNOWN_PROVIDERS = [
 async function saveProvider(formData: FormData) {
   "use server";
 
-  if (process.env.ADMIN_PREVIEW_ENABLED !== "true") {
-    redirect("/");
-  }
+  await requireAdmin("admin.ai", true);
 
   const key = String(formData.get("key") ?? "").trim();
   const label = String(formData.get("label") ?? "").trim();
@@ -56,28 +53,19 @@ async function saveProvider(formData: FormData) {
 }
 
 export default async function AIProvidersPage() {
-  if (process.env.ADMIN_PREVIEW_ENABLED !== "true") {
-    redirect("/");
-  }
+  await requireAdmin("admin.ai");
 
   const providers = await prisma.aiProvider.findMany({ orderBy: { createdAt: "asc" } });
   const providerMap = new Map(providers.map((p) => [p.key, p]));
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-4xl px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-slate-900">AI Providers</h1>
-          <Link
-            href="/admin"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            Back to admin
-          </Link>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-4xl px-4 py-8 space-y-6">
+    <div className="max-w-4xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">AI Providers</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Register and enable providers used by the analysis pipeline.
+        </p>
+      </div>
         <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Register and enable AI provider credentials. Each provider must have its API key configured
           in Platform Settings before it can serve analysis requests.
@@ -166,7 +154,6 @@ export default async function AIProvidersPage() {
             </section>
           );
         })}
-      </main>
     </div>
   );
 }

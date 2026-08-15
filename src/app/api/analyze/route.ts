@@ -4,6 +4,7 @@ import { getOrCreateGuestSession } from "@/lib/guest-session";
 import { getCaseAccess } from "@/lib/subscriptions";
 import { saveAnalysisForCase, upsertGuestCaseDraft } from "@/lib/cases";
 import { CaseGoal } from "@/types/case";
+import { getCurrentUser } from "@/lib/auth";
 
 export const maxDuration = 120;
 
@@ -38,23 +39,27 @@ export async function POST(req: NextRequest) {
 
     const analysis = await analyzeCase(narrative, goals, documents ?? []);
     try {
-      const session = await getOrCreateGuestSession();
+      const [session, user] = await Promise.all([
+        getOrCreateGuestSession(),
+        getCurrentUser(),
+      ]);
+      const userId = user?.id ?? session.linkedUserId;
       const record = await upsertGuestCaseDraft({
         caseId,
         guestSessionId: session.id,
         narrative,
         goals,
-        userId: session.linkedUserId,
+        userId,
       });
 
       await saveAnalysisForCase({
         caseId: record.id,
-        userId: session.linkedUserId,
+        userId,
         documents: documents ?? [],
         analysis,
       });
 
-      const access = await getCaseAccess(session.linkedUserId);
+      const access = await getCaseAccess(userId);
       return NextResponse.json({
         caseId: record.id,
         analysis,
