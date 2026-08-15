@@ -1,7 +1,7 @@
 # MyImmigration — Deployment Guide
 
 **Stack:** Next.js app + PostgreSQL, both running in Docker on an AWS Lightsail Ubuntu server.  
-**Auto-deploy:** GitHub Actions builds and pushes the image on every merge to `main`, then SSHes to the server to pull and restart.
+**Auto-deploy:** GitHub Actions SSHes into the server on every push to `main`, pulls the latest code, and rebuilds the Docker image directly on the server. No external registry required.
 
 ---
 
@@ -119,26 +119,11 @@ NEXT_PUBLIC_APP_URL=http://<your-static-ip>:3000
 
 ---
 
-## Step 8 — Log In to GitHub Container Registry
-
-The app image is hosted on GHCR. If the repository package is **private**, authenticate first:
-
-1. Go to GitHub → **Settings** → **Developer settings** → **Personal access tokens (classic)**
-2. Generate a token with the `read:packages` scope
-3. On the server:
-
-```bash
-echo <YOUR_GHCR_TOKEN> | docker login ghcr.io -u <YOUR_GITHUB_USERNAME> --password-stdin
-```
-
----
-
-## Step 9 — Start the Application
+## Step 8 — Start the Application
 
 ```bash
 cd ~/myimmigration
-docker compose pull
-docker compose up -d
+docker compose up -d --build
 ```
 
 Check that both containers are running:
@@ -155,7 +140,7 @@ myimmigration-app-1     Up
 
 ---
 
-## Step 10 — Run Database Migrations
+## Step 9 — Run Database Migrations
 
 ```bash
 docker compose exec app npx prisma migrate deploy
@@ -165,7 +150,7 @@ docker compose exec app npx prisma migrate deploy
 
 ---
 
-## Step 11 — Verify
+## Step 10 — Verify
 
 Open in your browser:
 ```
@@ -179,9 +164,9 @@ Then go to `/admin/platform-settings` and enter your AI API keys:
 
 ---
 
-## Step 12 — Enable Auto-Deploy (GitHub Actions)
+## Step 11 — Enable Auto-Deploy (GitHub Actions)
 
-After every push to `main`, GitHub Actions will build the image and deploy it to the server automatically.
+After every push to `main`, GitHub Actions will SSH into the server, pull the latest code, and rebuild the Docker image automatically. No registry or tokens needed.
 
 **Add these secrets** to your GitHub repo → **Settings** → **Secrets and variables** → **Actions**:
 
@@ -201,7 +186,7 @@ Push any change to `main` to test — watch the run in the **Actions** tab.
 
 ---
 
-## Step 13 — (Optional) HTTPS with Caddy
+## Step 12 — (Optional) HTTPS with Caddy
 
 Skip this section if you're only using an IP address. For a real domain:
 
@@ -257,7 +242,7 @@ docker compose -f ~/myimmigration/docker-compose.yml logs -f app
 docker compose -f ~/myimmigration/docker-compose.yml restart app
 
 # Manual update (auto-deploy handles this normally)
-cd ~/myimmigration && git pull && docker compose pull && docker compose up -d --remove-orphans
+cd ~/myimmigration && git pull && docker compose up -d --build --remove-orphans
 
 # Run migrations after a schema-changing deploy
 docker compose -f ~/myimmigration/docker-compose.yml exec app npx prisma migrate deploy
