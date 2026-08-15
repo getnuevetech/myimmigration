@@ -4,6 +4,7 @@ import { BootstrapAdminForm } from "@/components/auth-forms";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata = { title: "Create first admin" };
+export const dynamic = "force-dynamic";
 
 export default async function AdminBootstrapPage() {
   const adminCount = await prisma.user.count({ where: { type: "ADMIN" } });
