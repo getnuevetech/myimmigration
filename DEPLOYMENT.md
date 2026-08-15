@@ -45,10 +45,25 @@ In your instance → **Networking** tab → **Firewall**, add:
 
 ## Part 2 — Server Preparation
 
+### 2.0 Get your SSH key and connect
+
+Lightsail provides a default SSH key pair. Download it:
+
+1. Lightsail → top-right **Account** menu → **SSH keys**
+2. Download the **Default** key → save as e.g. `lightsail-key.pem`
+3. On your local machine:
+
+```bash
+chmod 400 ~/Downloads/lightsail-key.pem
+ssh -i ~/Downloads/lightsail-key.pem ubuntu@<your-static-ip>
+```
+
+> On Windows use PuTTY or Windows Terminal with the key converted to `.ppk` format via PuTTYgen.
+
 SSH into the server:
 
 ```bash
-ssh ubuntu@<your-static-ip>
+ssh -i ~/Downloads/lightsail-key.pem ubuntu@<your-static-ip>
 ```
 
 ### 2.1 System update
@@ -95,9 +110,11 @@ docker run --rm hello-world
 
 ### 3.1 Clone the repository
 
+Clone into your home directory — this is where the deploy workflow expects it:
+
 ```bash
-git clone https://github.com/getnuevetech/myimmigration.git
-cd myimmigration
+git clone https://github.com/getnuevetech/myimmigration.git ~/myimmigration
+cd ~/myimmigration
 ```
 
 ### 3.2 Configure environment
@@ -182,7 +199,9 @@ Then visit `/admin/platform-settings` to configure AI keys:
 The repo includes `.github/workflows/deploy.yml`. On every push to `main` it:
 1. Builds the Docker image
 2. Pushes it to `ghcr.io/getnuevetech/myimmigration:latest`
-3. SSHes to your server and runs `docker compose pull && docker compose up -d --remove-orphans`
+3. SSHes to your server, runs `cd ~/myimmigration && git pull && docker compose pull && docker compose up -d --remove-orphans`
+
+> The workflow expects the repo to be cloned at `~/myimmigration` on the server (done in step 3.1).
 
 ### 4.1 Add GitHub Actions secrets
 
@@ -200,6 +219,13 @@ Lightsail → **Account** → **SSH keys** → Download the default key.
 ### 4.2 Test it
 
 Push any change to `main` and watch the **Actions** tab in GitHub. The workflow will build, push, and deploy automatically.
+
+> ⚠️ **After any deploy that includes database schema changes**, run migrations manually:
+> ```bash
+> ssh -i ~/Downloads/lightsail-key.pem ubuntu@<your-static-ip>
+> cd ~/myimmigration
+> docker compose exec app npx prisma migrate deploy
+> ```
 
 ---
 

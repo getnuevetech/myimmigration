@@ -54,6 +54,8 @@ jobs:
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            cd ~/myimmigration
+            git pull
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
