@@ -199,7 +199,7 @@ export default async function ConsultantDashboard({
                             {kase.issues.map((i) => (
                               <div key={i.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-100">
                                 <span className="text-slate-700">
-                                  {i.taxYear ? `${i.taxYear} · ` : ""}{i.title}
+                                  {i.caseYear ? `${i.caseYear} · ` : ""}{i.title}
                                 </span>
                                 <StateMark state={i.state} />
                               </div>

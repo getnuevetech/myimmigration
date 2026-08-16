@@ -4,8 +4,7 @@ import { getSetting } from "@/lib/settings";
 export const metadata = { title: "Your USCIS online account" };
 
 export default async function UscisAccountPage() {
-  const fallbackUrl = await getSetting("irs.account_url", "https://my.uscis.gov/");
-  const uscisUrl = await getSetting("uscis.account_url", fallbackUrl);
+  const uscisUrl = await getSetting("uscis.account_url", "https://my.uscis.gov/");
   const steps = [
     { title: "Go to the USCIS website", body: "Open the official USCIS online account page. Only use official uscis.gov or my.uscis.gov pages." },
     { title: "Sign in or create an account", body: "Use your USCIS account to view available case status tools, notices, and online filings." },

@@ -37,7 +37,7 @@ async function deterministicClosing(caseId: string, reason: "completed" | "aband
   lines.push("");
   lines.push(`What was covered: ${c.issues.length} item${c.issues.length === 1 ? "" : "s"} were identified and analyzed${resolved ? `, ${resolved} resolved` : ""}${open ? `, ${open} still open` : ""}. You completed ${done} of ${c.pathSteps.length} path steps and provided ${c.documents.length} document${c.documents.length === 1 ? "" : "s"}. Case readiness reached ${c.readinessScore}%.`);
   for (const i of c.issues) {
-    lines.push(`• ${i.taxYear ? `${i.taxYear} — ` : ""}${i.title}: ${i.state === "resolved" ? "resolved." : i.conclusion || "see the analysis for the remaining step."}`);
+    lines.push(`• ${i.caseYear ? `${i.caseYear} — ` : ""}${i.title}: ${i.state === "resolved" ? "resolved." : i.conclusion || "see the analysis for the remaining step."}`);
   }
   const openSteps = c.pathSteps.filter((s) => s.status !== "done");
   if (openSteps.length && reason !== "completed") {
@@ -69,7 +69,7 @@ export async function closeCase(caseId: string, reason: "completed" | "abandoned
         situation: c.situation,
         goal: c.goal,
         readiness: c.readinessScore,
-        issues: c.issues.map((i) => ({ title: i.title, state: i.state, conclusion: i.conclusion, case_year: i.taxYear })),
+        issues: c.issues.map((i) => ({ title: i.title, state: i.state, conclusion: i.conclusion, case_year: i.caseYear })),
         steps_done: c.pathSteps.filter((s) => s.status === "done").map((s) => s.title),
         steps_open: c.pathSteps.filter((s) => s.status !== "done").map((s) => s.title),
         documents: c.documents.map((d) => d.docKind),

@@ -20,7 +20,6 @@ async function seedSettings() {
     ["auth.google_client_secret", "", "auth", "Google OAuth client secret", ""],
     ["billing.free_plan_key", "free", "billing", "Free plan key", "Plan applied to users without a paid subscription."],
     ["uscis.account_url", "https://my.uscis.gov/", "uscis", "USCIS online account URL", "Official page users are guided to for USCIS account access."],
-    ["irs.account_url", "https://my.uscis.gov/", "uscis", "Legacy USCIS account URL", "Legacy setting key kept for existing installs; new code reads uscis.account_url."],
     ["analysis.expected_documents", "3", "analysis", "Expected documents per case", "Used by the deterministic case-readiness formula."],
     ["consultants.auto_approve_enabled", "false", "consultants", "Auto-approve consultants", "Automatically approve immigration professional applications meeting requirements."],
     ["consultants.auto_approve_min_years", "3", "consultants", "Auto-approve minimum years", "Minimum years of experience for automated approval."],
@@ -60,6 +59,7 @@ async function seedSettings() {
   await db.setting.updateMany({ where: { key: "app.tagline", value: { contains: "tax" } }, data: { value: "Immigration paperwork, organized" } });
   await db.setting.updateMany({ where: { key: "home.hero_title", value: { contains: "tax" } }, data: { value: "Turn immigration paperwork into a clear case plan" } });
   await db.setting.updateMany({ where: { key: "home.hero_subtitle", value: { contains: "tax" } }, data: { value: "MyImmigration organizes notices, forms, timelines, evidence gaps, and deadlines so applicants can understand what is happening and what to prepare next." } });
+  await db.setting.deleteMany({ where: { key: "irs.account_url" } });
 }
 
 async function seedAdmin() {
@@ -457,7 +457,6 @@ async function seedAiAndPipelines() {
           { promptTemplate: { contains: "IRS" } },
           { promptTemplate: { contains: "tax" } },
           { promptTemplate: { contains: "SSN" } },
-          { promptTemplate: { contains: "tax_year" } },
         ],
       },
       data: { promptTemplate: repair.prompt },
@@ -766,12 +765,12 @@ async function seedFormTemplates() {
 
   for (const template of templates) {
     const { steps, ...data } = template;
-    const existing = await db.irsFormTemplate.findFirst({
+    const existing = await db.uscisFormTemplate.findFirst({
       where: { formNumber: data.formNumber },
       select: { id: true },
     });
     if (existing) {
-      await db.irsFormTemplate.update({
+      await db.uscisFormTemplate.update({
         where: { id: existing.id },
         data: {
           ...data,
@@ -780,7 +779,7 @@ async function seedFormTemplates() {
         },
       });
     } else {
-      await db.irsFormTemplate.create({
+      await db.uscisFormTemplate.create({
         data: {
         ...data,
         stepsJson: JSON.stringify(steps),

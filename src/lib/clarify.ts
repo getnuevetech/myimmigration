@@ -15,7 +15,6 @@ export function situationLine(key: string, questionText: string, answer: string)
   const a = answer.trim();
   switch (key) {
     case "case_year":
-    case "tax_year":
       return `[Clarified] Case year(s) involved: ${a}.`;
     case "case_status_expected":
       return `[Clarified] I expected this immigration case status or result: ${a}.`;
@@ -50,13 +49,13 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
   });
   if (!c || c.status === "closed") return null;
 
-  const answered = new Set(c.clarifyMessages.map((m) => (m.questionKey === "tax_year" ? "case_year" : m.questionKey)));
+  const answered = new Set(c.clarifyMessages.map((m) => m.questionKey));
   const hasCaseRecord = c.documents.some((d) => ["case_record", "case record", "receipt"].includes(d.docKind));
   const caseUpdateIssue = c.issues.find((i) => i.issueType === "case_update_discrepancy");
   const feeIssue = c.issues.find((i) => i.issueType === "fee_or_payment_issue");
   const noticeIssue = c.issues.find((i) => ["uscis_notice_response", "notice_response"].includes(i.issueType));
   const filingIssue = c.issues.find((i) => ["missing_filing", "missing_evidence"].includes(i.issueType));
-  const hasYear = c.issues.some((i) => i.taxYear);
+  const hasYear = c.issues.some((i) => i.caseYear);
 
   const questions: (ClarifyQuestion & { needed: boolean })[] = [
     {

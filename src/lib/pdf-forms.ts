@@ -1,6 +1,6 @@
 import "server-only";
 import { PDFDocument, PDFTextField, PDFCheckBox, StandardFonts } from "pdf-lib";
-import type { IrsFormTemplate } from "@prisma/client";
+import type { UscisFormTemplate } from "@prisma/client";
 import { db } from "./db";
 import { readUpload, saveUploadBuffer } from "./uploads";
 import { logSystem } from "./syslog";
@@ -34,7 +34,7 @@ export type PdfMapEntry = {
 };
 
 // Download (and cache) the official PDF for a template.
-export async function ensureOfficialPdf(template: IrsFormTemplate): Promise<Buffer | null> {
+export async function ensureOfficialPdf(template: UscisFormTemplate): Promise<Buffer | null> {
   if (template.pdfPath) {
     try {
       return await readUpload(template.pdfPath);
@@ -49,7 +49,7 @@ export async function ensureOfficialPdf(template: IrsFormTemplate): Promise<Buff
     const buf = Buffer.from(await res.arrayBuffer());
     if (!buf.subarray(0, 5).toString("latin1").startsWith("%PDF")) throw new Error("Response is not a PDF");
     const name = await saveUploadBuffer(buf, ".pdf");
-    await db.irsFormTemplate.update({ where: { id: template.id }, data: { pdfPath: name } });
+    await db.uscisFormTemplate.update({ where: { id: template.id }, data: { pdfPath: name } });
     return buf;
   } catch (err) {
     await logSystem("error", "pdf_form", `Failed to fetch official PDF for Form ${template.formNumber}`, `${template.pdfSourceUrl}: ${String(err)}`);
@@ -135,7 +135,7 @@ function applyTransform(value: string, transform: PdfMapEntry["transform"]): str
  * (callers fall back to the text worksheet).
  */
 export async function fillOfficialPdf(
-  template: IrsFormTemplate,
+  template: UscisFormTemplate,
   data: Record<string, string>,
 ): Promise<Buffer | null> {
   let map: PdfMapEntry[] = [];

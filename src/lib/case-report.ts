@@ -105,12 +105,12 @@ ${c.issues
       try { const p = JSON.parse(i.unclearJson || "[]"); if (Array.isArray(p)) unclear = p.map(String).filter(Boolean); } catch { /* legacy */ }
       const statusLabel: Record<string, string> = { confirmed: "Confirmed", likely: "Likely", possible: "Possible", needs_verification: "Needs verification", not_supported: "Not supported" };
       const kindLabel: Record<string, string> = { finding: "Finding", issue: "Issue", opportunity: "Opportunity", risk: "Risk", missing_info: "Missing information" };
-      return `<h3>3.${n + 1} ${i.taxYear ? `${i.taxYear} · ` : ""}${esc(i.title)}</h3>
+      return `<h3>3.${n + 1} ${i.caseYear ? `${i.caseYear} · ` : ""}${esc(i.title)}</h3>
 <p><span class="badge">${kindLabel[i.itemKind] ?? "Issue"}</span><span class="badge">${statusLabel[i.evidenceStatus] ?? "Needs verification"}</span><span class="badge">${stateLabel[i.state] ?? i.state}</span><span class="badge">Evidence: ${i.evidenceStrength}</span><span class="badge">Priority: ${i.priority}</span><span class="badge">Type: ${i.issueType.replace(/_/g, " ")}</span></p>
 <p>${esc(i.description)}</p>
 ${i.conclusion ? `<p><strong>Conclusion:</strong> ${esc(i.conclusion)}</p>` : ""}
 ${unclear.length ? `<p><strong>Still unclear:</strong></p><ul>${unclear.map((u) => `<li>${esc(u)}</li>`).join("")}</ul>` : ""}
-${i.irsBasis ? `<p class="muted">USCIS basis: ${esc(i.irsBasis)}</p>` : ""}
+${i.uscisBasis ? `<p class="muted">USCIS basis: ${esc(i.uscisBasis)}</p>` : ""}
 ${i.nextAction ? `<p><strong>Recommended action:</strong> ${esc(i.nextAction.replace(/_/g, " ").toLowerCase())}</p>` : ""}`;
     },
   )
@@ -128,7 +128,7 @@ ${c.deadlines.map((d) => `<tr><td>${esc(d.title)}</td><td>${d.dueDate.toLocaleDa
 
 ${c.notices.length ? `<h2>6. USCIS notices on file</h2>
 <table><tr><th>Notice</th><th>Case year</th><th>Deadline</th></tr>
-${c.notices.map((n) => `<tr><td>${esc(n.noticeType || "Unidentified")}</td><td>${n.taxYear ?? "—"}</td><td>${n.deadline?.toLocaleDateString("en-US") ?? "—"}</td></tr>`).join("\n")}
+${c.notices.map((n) => `<tr><td>${esc(n.noticeType || "Unidentified")}</td><td>${n.caseYear ?? "—"}</td><td>${n.deadline?.toLocaleDateString("en-US") ?? "—"}</td></tr>`).join("\n")}
 </table>` : ""}
 
 ${c.letters.length ? `<h2>7. Response letters drafted</h2>

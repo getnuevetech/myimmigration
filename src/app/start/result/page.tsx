@@ -67,7 +67,7 @@ export default async function GuestResultPage({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">
-                    {first.taxYear ? `${first.taxYear} · ` : ""}{first.title}
+                    {first.caseYear ? `${first.caseYear} · ` : ""}{first.title}
                   </h2>
                   <p className="mt-2 whitespace-pre-line text-sm text-slate-600">{first.description}</p>
                 </div>

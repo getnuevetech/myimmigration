@@ -728,7 +728,7 @@ export async function saveKnowledgeAction(_prev: ActionState, formData: FormData
     url: String(formData.get("url") ?? ""),
     content: String(formData.get("content") ?? ""),
     tags: String(formData.get("tags") ?? ""),
-    taxYear: Number(formData.get("taxYear") ?? 0) || null,
+    caseYear: Number(formData.get("caseYear") ?? 0) || null,
     isActive: formData.get("isActive") === "on",
   };
   if (!data.title) return { error: "Title is required." };
@@ -777,11 +777,11 @@ export async function saveFormTemplateAction(_prev: ActionState, formData: FormD
   if (!data.formNumber || !data.title) return { error: "Form number and title are required." };
   if (id) {
     // Refetch the official PDF when its source URL changes.
-    const existing = await db.irsFormTemplate.findUnique({ where: { id }, select: { pdfSourceUrl: true } });
+    const existing = await db.uscisFormTemplate.findUnique({ where: { id }, select: { pdfSourceUrl: true } });
     const clearCache = existing && existing.pdfSourceUrl !== data.pdfSourceUrl;
-    await db.irsFormTemplate.update({ where: { id }, data: clearCache ? { ...data, pdfPath: "" } : data });
+    await db.uscisFormTemplate.update({ where: { id }, data: clearCache ? { ...data, pdfPath: "" } : data });
   } else {
-    await db.irsFormTemplate.create({ data });
+    await db.uscisFormTemplate.create({ data });
   }
   revalidatePath("/admin/forms");
   return { ok: true };
@@ -790,8 +790,8 @@ export async function saveFormTemplateAction(_prev: ActionState, formData: FormD
 // Force (re)download of the template's official USCIS PDF and report its fields.
 export async function refreshFormPdfAction(id: string): Promise<ActionState> {
   await requireAdminArea("admin.forms");
-  await db.irsFormTemplate.update({ where: { id }, data: { pdfPath: "" } });
-  const template = await db.irsFormTemplate.findUnique({ where: { id } });
+  await db.uscisFormTemplate.update({ where: { id }, data: { pdfPath: "" } });
+  const template = await db.uscisFormTemplate.findUnique({ where: { id } });
   if (!template) return { error: "Template not found." };
   if (!template.pdfSourceUrl) return { error: "Set the official USCIS PDF URL first, then fetch." };
   const { ensureOfficialPdf, listPdfFields } = await import("@/lib/pdf-forms");
@@ -809,6 +809,6 @@ export async function refreshFormPdfAction(id: string): Promise<ActionState> {
 
 export async function deleteFormTemplateAction(id: string) {
   await requireAdminArea("admin.forms");
-  await db.irsFormTemplate.delete({ where: { id } });
+  await db.uscisFormTemplate.delete({ where: { id } });
   revalidatePath("/admin/forms");
 }

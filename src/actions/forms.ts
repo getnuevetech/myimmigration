@@ -25,7 +25,7 @@ export type WizardStep = {
 
 export async function startFormAction(templateId: string) {
   const user = await requireUser();
-  const template = await db.irsFormTemplate.findUnique({ where: { id: templateId } });
+  const template = await db.uscisFormTemplate.findUnique({ where: { id: templateId } });
   if (!template || !template.isPublished) return;
   if (template.requiredFeature && !(await hasFeature(user.id, template.requiredFeature))) {
     redirect("/app/billing?upgrade=forms");

@@ -103,7 +103,7 @@ export async function fallbackAnalyze(
       state: noticeType === "RFE" ? "action_needed" : "urgent",
       next_action: "UPLOAD_NOTICE",
       alternative_action: "Have an immigration professional review the notice and response packet.",
-      irs_basis: knowledge?.reference ?? noticeType,
+      uscis_basis: knowledge?.reference ?? noticeType,
       analysis_outline: [
         { heading: "Your situation", detail: `Your case references a ${noticeType}.` },
         { heading: "USCIS context", detail: knowledge?.content ?? "USCIS notice responses should be complete, timely, and organized around each requested item.", source: knowledge?.reference ?? noticeType },
@@ -154,7 +154,7 @@ export async function fallbackAnalyze(
       state: "review",
       next_action: "BUILD_TIMELINE",
       alternative_action: "Upload all USCIS receipts, approvals, RFEs, denials, and interview notices.",
-      irs_basis: forms[0] ?? "USCIS case records",
+      uscis_basis: forms[0] ?? "USCIS case records",
       analysis_outline: [
         { heading: "Your situation", detail: "Your case includes identifiable immigration forms or receipt numbers." },
         { heading: "USCIS context", detail: "Receipts and notices establish filing dates, case type, office, and current posture." },

@@ -126,7 +126,7 @@ export async function uploadNoticeAction(_prev: ActionState, formData: FormData)
       where: { id: notice.id },
       data: {
         noticeType: String(result.notice_type ?? "") || "",
-        taxYear: typeof result.case_year === "number" ? result.case_year : typeof result.tax_year === "number" ? result.tax_year : null,
+        caseYear: typeof result.case_year === "number" ? result.case_year : null,
         amountCents: typeof result.filing_fee === "number" ? Math.round(result.filing_fee * 100) : typeof result.amount === "number" ? Math.round(result.amount * 100) : null,
         deadline,
         explanation: String(result.plain_english_explanation ?? ""),

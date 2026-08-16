@@ -325,7 +325,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       data: {
         caseId,
         issueType: String(issue.issue_type ?? "other"),
-        taxYear: typeof issue.case_year === "number" ? issue.case_year : typeof issue.tax_year === "number" ? issue.tax_year : null,
+        caseYear: typeof issue.case_year === "number" ? issue.case_year : null,
         title: String(issue.title ?? issue.issue_identified ?? `Issue ${i + 1}`).slice(0, 200),
         description: String(issue.what_we_know ?? ""),
         expectedCents: toCents(issue.expected_amount),
@@ -335,7 +335,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
         priority: oneOf(issue.priority, ["urgent", "high", "medium", "low"], "medium"),
         state: oneOf(issue.state, ["resolved", "review", "action_needed", "urgent", "info_needed"], "review"),
         nextAction: String(issue.next_action ?? ""),
-        irsBasis: String(issue.uscis_basis ?? issue.irs_basis ?? ""),
+        uscisBasis: String(issue.uscis_basis ?? ""),
         // Evidence-based taxonomy: item kind + evidence status + strength.
         itemKind: oneOf(issue.item_kind, ["finding", "issue", "opportunity", "risk", "missing_info"], "issue"),
         evidenceStatus: oneOf(issue.evidence_status, ["confirmed", "likely", "possible", "needs_verification", "not_supported"], "needs_verification"),

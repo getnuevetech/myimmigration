@@ -15,7 +15,7 @@ export default async function NewLetterPage({
   const notices = await db.notice.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
-    select: { id: true, noticeType: true, taxYear: true },
+    select: { id: true, noticeType: true, caseYear: true },
   });
 
   return (
@@ -25,7 +25,7 @@ export default async function NewLetterPage({
         subtitle="Tell us what the letter should say. We'll produce a professional draft you can edit before mailing it yourself."
       />
       <NewLetterForm
-        notices={notices.map((n) => ({ id: n.id, label: `${n.noticeType || "Notice"}${n.taxYear ? ` · ${n.taxYear}` : ""}` }))}
+        notices={notices.map((n) => ({ id: n.id, label: `${n.noticeType || "Notice"}${n.caseYear ? ` · ${n.caseYear}` : ""}` }))}
         defaultNoticeId={noticeId ?? ""}
       />
     </div>

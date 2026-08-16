@@ -58,8 +58,8 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
 
   const yearSet = new Set<number>();
   if (Array.isArray(merged.case_years)) for (const y of merged.case_years) if (typeof y === "number") yearSet.add(y);
-  for (const i of kase?.issues ?? []) if (i.taxYear) yearSet.add(i.taxYear);
-  for (const n of kase?.notices ?? []) if (n.taxYear) yearSet.add(n.taxYear);
+  for (const i of kase?.issues ?? []) if (i.caseYear) yearSet.add(i.caseYear);
+  for (const n of kase?.notices ?? []) if (n.caseYear) yearSet.add(n.caseYear);
   const years = Array.from(yearSet).sort();
   const yearsText = years.join(", ");
 

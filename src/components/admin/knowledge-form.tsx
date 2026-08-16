@@ -12,7 +12,7 @@ type Source = {
   url: string;
   content: string;
   tags: string;
-  taxYear: number | null;
+  caseYear: number | null;
   isActive: boolean;
 } | null;
 
@@ -36,7 +36,7 @@ export function KnowledgeForm({ source }: { source: Source }) {
           <input name="reference" defaultValue={source?.reference} className={inputClass} />
         </Field>
         <Field label="Case year (optional)">
-          <input name="taxYear" type="number" defaultValue={source?.taxYear ?? ""} className={inputClass} />
+          <input name="caseYear" type="number" defaultValue={source?.caseYear ?? ""} className={inputClass} />
         </Field>
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">

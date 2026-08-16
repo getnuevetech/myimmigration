@@ -128,12 +128,12 @@ model PipelineStep {
 model KnowledgeSource {
   id         String   @id @default(cuid())
   title      String
-  sourceType String   @default("publication") // publication | form_instruction | notice_guide | irm | rule | announcement
+  sourceType String   @default("publication") // publication | form_instruction | notice_guide | policy_manual | rule | announcement
   reference  String   @default("") // e.g. "I-485", "RFE", "N-400"
   url        String   @default("")
   content    String   @default("")
   tags       String   @default("") // comma separated
-  taxYear    Int?
+  caseYear   Int?
   isActive   Boolean  @default(true)
   updatedAt  DateTime @updatedAt
 }
@@ -390,7 +390,7 @@ model Issue {
   id             String  @id @default(cuid())
   caseId         String
   issueType      String  @default("general") // uscis_notice_response | deadline_tracking | case_timeline | missing_evidence | status_question | professional_review | other
-  taxYear        Int?
+  caseYear       Int?
   title          String
   description    String  @default("")
   expectedCents  Int?
@@ -400,7 +400,7 @@ model Issue {
   priority       String  @default("medium") // urgent | high | medium | low
   state          String  @default("review") // resolved | review | action_needed | urgent | info_needed
   nextAction     String  @default("")
-  irsBasis       String  @default("")
+  uscisBasis     String  @default("")
   evidenceJson   String  @default("[]")
   // Evidence-based product taxonomy (never AI confidence percentages).
   itemKind         String @default("issue") // finding | issue | opportunity | risk | missing_info
@@ -447,7 +447,7 @@ model Notice {
   caseId        String?
   documentId    String?
   noticeType    String    @default("") // RFE, NOID, interview, biometrics, approval ...
-  taxYear       Int?
+  caseYear      Int?
   amountCents   Int?
   deadline      DateTime?
   explanation   String    @default("")
@@ -514,7 +514,7 @@ model QaMessage {
 
 // ---------- USCIS forms (game-like wizard) ----------
 
-model IrsFormTemplate {
+model UscisFormTemplate {
   id             String           @id @default(cuid())
   formNumber     String // "I-130", "I-485", "N-400"...
   title          String
@@ -545,7 +545,7 @@ model FormSubmission {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  template      IrsFormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  template      UscisFormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 }
 
 // ---------- Consultants ----------

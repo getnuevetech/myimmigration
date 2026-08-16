@@ -47,7 +47,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const isPreliminary = c.runs.length > 0 && aiStepCount === 0;
 
   const formI485 = interactive
-    ? await db.irsFormTemplate.findFirst({ where: { formNumber: "I-485", isPublished: true }, select: { id: true } })
+    ? await db.uscisFormTemplate.findFirst({ where: { formNumber: "I-485", isPublished: true }, select: { id: true } })
     : null;
 
   const stepCta = (actionKey: string): { label: string; href: string } | null => {
@@ -73,7 +73,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
 
   // Evidence checklist derived from the findings.
   const haveKinds = new Set(c.documents.map((d) => d.docKind));
-  const yearHint = c.issues.find((i) => i.taxYear)?.taxYear;
+  const yearHint = c.issues.find((i) => i.caseYear)?.caseYear;
   const neededDocs: { kind: string; label: string; hint: string }[] = [];
   const wantDoc = (kind: string, label: string, hint: string) => {
     if (!neededDocs.some((d) => d.kind === kind)) neededDocs.push({ kind, label, hint });
@@ -104,9 +104,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       case "summary": {
         const years = Array.isArray(merged.case_years)
           ? (merged.case_years as unknown[]).join(", ")
-          : Array.isArray(merged.tax_years)
-            ? (merged.tax_years as unknown[]).join(", ")
-            : "";
+          : "";
         const notices = Array.isArray(merged.notices_received) ? (merged.notices_received as unknown[]).join(", ") : "";
         const parts = [
           years && `case year(s) ${years}`,
@@ -245,7 +243,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                     <div>
                       <ItemKindBadge kind={issue.itemKind} />
                       <h3 className="mt-1.5 text-lg font-semibold text-slate-900">
-                        {issue.taxYear ? `${issue.taxYear} · ` : ""}{issue.title}
+                        {issue.caseYear ? `${issue.caseYear} · ` : ""}{issue.title}
                       </h3>
                     </div>
                     <div className="flex gap-2">
@@ -258,7 +256,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                   <div className="mt-2">
                     <EvidenceStrengthLine strength={issue.evidenceStrength} />
                   </div>
-                  {issue.irsBasis && <p className="mt-1 text-xs text-slate-400">USCIS basis: {issue.irsBasis}</p>}
+                  {issue.uscisBasis && <p className="mt-1 text-xs text-slate-400">USCIS basis: {issue.uscisBasis}</p>}
 
                   {explanations.length > 0 && (
                     <div className="mt-4">

@@ -25,12 +25,12 @@ export default async function AdminKnowledgePage() {
                   <span className="font-semibold text-slate-900">{s.title}</span>
                   <Badge color="lime">{s.sourceType.replace(/_/g, " ")}</Badge>
                   {s.reference && <Badge>{s.reference}</Badge>}
-                  {s.taxYear && <Badge>{s.taxYear}</Badge>}
+                  {s.caseYear && <Badge>{s.caseYear}</Badge>}
                   <Badge color={s.isActive ? "green" : "red"}>{s.isActive ? "active" : "inactive"}</Badge>
                 </summary>
                 <div className="mt-4">
                   <KnowledgeForm
-                    source={{ id: s.id, title: s.title, sourceType: s.sourceType, reference: s.reference, url: s.url, content: s.content, tags: s.tags, taxYear: s.taxYear, isActive: s.isActive }}
+                    source={{ id: s.id, title: s.title, sourceType: s.sourceType, reference: s.reference, url: s.url, content: s.content, tags: s.tags, caseYear: s.caseYear, isActive: s.isActive }}
                   />
                   <form action={deleteKnowledgeAction.bind(null, s.id)} className="mt-2 text-right">
                     <button className="text-xs font-medium text-red-500 hover:text-red-700">Delete source</button>
