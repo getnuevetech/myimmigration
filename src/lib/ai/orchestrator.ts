@@ -382,7 +382,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
     documentsExpected: expectedDocs,
     factsVerified: verifiedFacts,
     factsTotal: Math.max(factKeys.length, 1),
-    irsSourcesMatched: knowledge ? Math.min(3, knowledge.split("---").length) : 0,
+    uscisSourcesMatched: knowledge ? Math.min(3, knowledge.split("---").length) : 0,
     unresolvedConflicts: allConflicts.length,
     unknowns,
   });

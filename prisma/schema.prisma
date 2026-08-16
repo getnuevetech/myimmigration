@@ -290,7 +290,7 @@ model GuestSession {
 
 model Case {
   id             String    @id @default(cuid())
-  number         Int       @unique @default(autoincrement()) // shown as TOM-000123
+  number         Int       @unique @default(autoincrement()) // shown as IMM-000123
   userId         String?
   guestSessionId String?
   title          String
@@ -495,7 +495,7 @@ model QaThread {
   id             String       @id @default(cuid())
   userId         String?
   guestSessionId String?
-  title          String       @default("Tax question")
+  title          String       @default("Immigration question")
   kind           String       @default("qa") // qa | guide
   createdAt      DateTime     @default(now())
   user           User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
