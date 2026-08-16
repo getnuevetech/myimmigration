@@ -80,7 +80,7 @@ export function computeReadiness(input: {
   documentsExpected: number;
   factsVerified: number;
   factsTotal: number;
-  irsSourcesMatched: number;
+  uscisSourcesMatched: number;
   unresolvedConflicts: number;
   unknowns: number;
 }): number {
@@ -91,9 +91,9 @@ export function computeReadiness(input: {
         ? 35
         : 0;
   const factScore = input.factsTotal > 0 ? (input.factsVerified / input.factsTotal) * 35 : 0;
-  const irsScore = Math.min(input.irsSourcesMatched, 3) * (15 / 3);
+  const sourceScore = Math.min(input.uscisSourcesMatched, 3) * (15 / 3);
   const base = 15; // intake completed
   const uncertaintyPenalty = input.unresolvedConflicts * 8 + input.unknowns * 3;
-  const score = Math.round(docScore + factScore + irsScore + base - uncertaintyPenalty);
+  const score = Math.round(docScore + factScore + sourceScore + base - uncertaintyPenalty);
   return Math.max(0, Math.min(100, score));
 }

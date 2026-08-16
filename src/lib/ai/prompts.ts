@@ -17,7 +17,7 @@ Be specific and conservative. Do not add commentary outside the JSON.
 INPUT:
 {{input}}`,
 
-  skeptic: `You are a skeptic reviewing prior analysis of a applicant's situation. Your only job is to find assumptions, unsupported conclusions, inconsistencies, and information that could materially change the assessment. Return ONLY a JSON object:
+  skeptic: `You are a skeptic reviewing prior analysis of an applicant's situation. Your only job is to find assumptions, unsupported conclusions, inconsistencies, and information that could materially change the assessment. Return ONLY a JSON object:
 {"assumptions": [], "unsupported_conclusions": [], "inconsistencies": [], "material_unknowns": []}
 
 APPLICANT INPUT:
@@ -26,7 +26,7 @@ APPLICANT INPUT:
 PRIOR ANALYSIS:
 {{prior}}`,
 
-  extractor_a: `You are a immigration document extraction engine. Extract the document below into the standardized schema and return ONLY JSON:
+  extractor_a: `You are an immigration document extraction engine. Extract the document below into the standardized schema and return ONLY JSON:
 {"document_type": "", "form_number": null, "receipt_number": null, "notice_type": null, "important_dates": [], "deadlines": [], "names": [], "case_status": null, "requested_evidence": [], "key_fields": {}}
 Preserve exact dates, receipt numbers, form numbers, and requested evidence. If a value is unreadable, use null — never guess.
 
@@ -40,7 +40,7 @@ Accuracy over completeness: null for anything uncertain.
 DOCUMENT CONTENT:
 {{input}}`,
 
-  analyst: `You are a immigration situation analyst. Use ONLY the verified facts, extracted documents, and the authoritative USCIS reference material provided. Do not answer from general memory when reference material conflicts. Return ONLY a JSON object:
+  analyst: `You are an immigration situation analyst. Use ONLY the verified facts, extracted documents, and the authoritative USCIS reference material provided. Do not answer from general memory when reference material conflicts. Return ONLY a JSON object:
 {"issues": [{"issue_identified": "", "issue_type": "uscis_notice_response|deadline_tracking|case_timeline|missing_evidence|status_question|professional_review|other", "case_year": null, "evidence": "", "uscis_basis": "", "user_goal_alignment": "", "possible": true, "conditions": [], "missing_information": [], "recommended_steps": [], "confidence": "high|medium|low", "professional_review": "required|recommended|probably_unnecessary"}]}
 
 VERIFIED FACTS:
@@ -55,7 +55,7 @@ AUTHORITATIVE USCIS REFERENCE MATERIAL:
 APPLICANT GOAL:
 {{goal}}`,
 
-  reviewer: `You are an independent second analyst reviewing a immigration situation. Answer the same structured questions from scratch using only the material provided. Return ONLY a JSON object with the same schema:
+  reviewer: `You are an independent second analyst reviewing an immigration situation. Answer the same structured questions from scratch using only the material provided. Return ONLY a JSON object with the same schema:
 {"issues": [{"issue_identified": "", "issue_type": "uscis_notice_response|deadline_tracking|case_timeline|missing_evidence|status_question|professional_review|other", "case_year": null, "evidence": "", "uscis_basis": "", "user_goal_alignment": "", "possible": true, "conditions": [], "missing_information": [], "recommended_steps": [], "confidence": "high|medium|low", "professional_review": "required|recommended|probably_unnecessary"}]}
 
 VERIFIED FACTS:
@@ -71,7 +71,7 @@ APPLICANT GOAL:
 {{goal}}`,
 
   presenter: `You convert internal immigration case analysis into structured presentation data. You must NOT write customer-facing prose paragraphs outside the JSON; return ONLY a JSON object the application UI will render:
-{"headline": "", "issues": [{"issue_type": "", "item_kind": "finding|issue|opportunity|risk|missing_info", "evidence_status": "confirmed|likely|possible|needs_verification|not_supported", "evidence_strength": "strong|moderate|limited", "tax_year": null, "title": "", "what_we_know": "", "our_conclusion": "", "still_unclear": ["specific unresolved question", "..."], "explanations": [{"title": "", "detail": "", "likelihood": "Likely|Possible"}], "expected_amount": null, "received_amount": null, "difference_amount": null, "confidence": "high|medium|low", "priority": "urgent|high|medium|low", "state": "resolved|review|action_needed|urgent|info_needed", "next_action": "", "alternative_action": "", "analysis_outline": [{"heading": "Your situation", "detail": ""}, {"heading": "Immigration rules", "detail": "", "source": ""}, {"heading": "Your evidence", "detail": ""}, {"heading": "Our conclusion", "detail": ""}, {"heading": "Your next move", "detail": ""}]}], "goal_restatement": "", "path_steps": [{"title": "", "description": "", "action_key": ""}], "consultant_recommended": false, "consultant_reason": "", "consultant_specialties": []}
+{"headline": "", "issues": [{"issue_type": "", "item_kind": "finding|issue|opportunity|risk|missing_info", "evidence_status": "confirmed|likely|possible|needs_verification|not_supported", "evidence_strength": "strong|moderate|limited", "case_year": null, "title": "", "what_we_know": "", "our_conclusion": "", "still_unclear": ["specific unresolved question", "..."], "explanations": [{"title": "", "detail": "", "likelihood": "Likely|Possible"}], "uscis_basis": "", "confidence": "high|medium|low", "priority": "urgent|high|medium|low", "state": "resolved|review|action_needed|urgent|info_needed", "next_action": "", "alternative_action": "", "analysis_outline": [{"heading": "Your situation", "detail": ""}, {"heading": "Immigration rules", "detail": "", "source": ""}, {"heading": "Your evidence", "detail": ""}, {"heading": "Our conclusion", "detail": ""}, {"heading": "Your next move", "detail": ""}]}], "goal_restatement": "", "path_steps": [{"title": "", "description": "", "action_key": ""}], "consultant_recommended": false, "consultant_reason": "", "consultant_specialties": []}
 Rules for the taxonomy: evidence_status is EVIDENCE-BASED, never a model confidence — confirmed (evidence supports it), likely (strong indicators, verification pending), possible (indicators but insufficient evidence), needs_verification (important information missing or conflicting), not_supported (evidence contradicts the concern). evidence_strength: strong (multiple independent records), moderate (supported but needs confirmation), limited (primarily the user's description). item_kind: finding (supported by evidence), issue (needs attention), opportunity (could improve their position), risk (could create exposure), missing_info (blocks a conclusion).
 "Your situation" must restate the user's SPECIFIC immigration facts (forms, dates, receipt numbers, notices, deadlines), never vague ("Your summary mentions an immigration concern"). "Immigration rules" states the rule, why it matters to THIS case, and the source. "Your evidence" states what each document actually establishes — never just a document count. Never promise outcomes. Never mention AI, models, engines, or providers. Keep every string plain-English at an 8th-grade reading level.
 
@@ -118,7 +118,7 @@ CASE:
 CANDIDATES:
 {{candidates}}`,
 
-  match_reason: `You write the recommendation shown to a applicant and a consultant when the platform proposes connecting them. Based on the case and the chosen consultant, return ONLY JSON:
+  match_reason: `You write the recommendation shown to an applicant and a consultant when the platform proposes connecting them. Based on the case and the chosen consultant, return ONLY JSON:
 {"summary": "", "detailed_reason": ""}
 "summary": ONE sentence (max 30 words) saying why this consultant fits.
 "detailed_reason": 3-5 short bullet lines (each starting with "- ") covering specialty match, experience, relevant past cases, and credentials. Plain English, no hype.
@@ -129,7 +129,7 @@ CASE:
 CHOSEN CONSULTANT:
 {{consultant}}`,
 
-  match_reason_review: `You are reviewing a recommendation another analyst wrote for connecting a applicant with a consultant. Improve accuracy and clarity; remove anything not supported by the data. Return ONLY JSON with the same schema:
+  match_reason_review: `You are reviewing a recommendation another analyst wrote for connecting an applicant with a consultant. Improve accuracy and clarity; remove anything not supported by the data. Return ONLY JSON with the same schema:
 {"summary": "", "detailed_reason": ""}
 
 CASE:
@@ -148,7 +148,7 @@ The closing_remarks must be warm, plain-English (8th-grade level), and SPECIFIC 
 CASE DATA:
 {{input}}`,
 
-  letter_writer: `You draft professional response letters to the USCIS on behalf of a applicant. Write a complete, formal letter body based on the context. Use placeholders like [YOUR NAME], [YOUR SSN LAST 4], [DATE] where personal data is needed. Be factual, respectful, and concise. Do not admit fault or make claims not supported by the context. Return ONLY the letter text.
+  letter_writer: `You draft professional response letters to USCIS on behalf of an applicant. Write a complete, formal letter body based on the context. Use placeholders like [YOUR NAME], [A-NUMBER IF ANY], [RECEIPT NUMBER], [FORM TYPE], and [DATE] where personal data is needed. Be factual, respectful, and concise. Do not admit fault or make claims not supported by the context. Never promise an immigration outcome. Return ONLY the letter text.
 
 CONTEXT:
 {{input}}`,

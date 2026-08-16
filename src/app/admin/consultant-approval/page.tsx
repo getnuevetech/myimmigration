@@ -4,7 +4,7 @@ import { APPROVAL_CRITERIA, getRequiredCriteria } from "@/lib/consultant-criteri
 import { getBoolSetting, getNumberSetting } from "@/lib/settings";
 import { ApprovalCriteriaForm } from "@/components/admin/approval-criteria-form";
 
-export const metadata = { title: "immigration professional automated approval" };
+export const metadata = { title: "Immigration professional automated approval" };
 
 export default async function ConsultantApprovalPage() {
   await guardAdminPage("admin.consultants");
@@ -17,7 +17,7 @@ export default async function ConsultantApprovalPage() {
   return (
     <div>
       <PageHeader
-        title="immigration professional / Consultant automated approval"
+        title="Immigration professional / consultant automated approval"
         subtitle="Choose which credentialing criteria an application must satisfy to be approved automatically. Applications missing any required criterion go to manual review."
       />
       <div className="mb-6 flex items-center gap-2">
@@ -35,9 +35,9 @@ export default async function ConsultantApprovalPage() {
         </CardBody>
       </Card>
       <p className="mt-4 text-xs text-slate-400">
-        Criteria reflect USCIS requirements and practice for paid immigration professionals: license/registration number (required for all paid preparers),
-        state immigration professional licensure / USCIS EA enrollment under Circular 230, filing-system ID suitability for e-file providers, identity proofing,
-        and compliance attestation. The consultant onboarding form collects all of these, including document uploads.
+        Criteria reflect immigration-practice credentials and platform risk controls: attorney licensure, DOJ accreditation or consultant registration,
+        USCIS/EOIR account identifiers where relevant, identity proofing, professional insurance, experience, and compliance attestation.
+        The consultant onboarding form collects all of these, including document uploads.
       </p>
     </div>
   );

@@ -108,6 +108,7 @@ export const CONSULTANT_SPECIALTIES = [
 ] as const;
 
 export const DOC_KINDS = [
+  { key: "case_record", name: "USCIS case record / online account" },
   { key: "receipt", name: "USCIS receipt notice" },
   { key: "approval", name: "USCIS approval notice" },
   { key: "rfe", name: "Request for Evidence (RFE)" },

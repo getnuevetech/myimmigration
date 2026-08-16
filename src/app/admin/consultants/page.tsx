@@ -48,6 +48,12 @@ export default async function AdminConsultantsPage() {
     );
   }
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
+  const credentialName = (type: string) => {
+    if (type === "attorney" || type === "cpa") return "Immigration attorney";
+    if (type === "accredited_representative" || type === "ea") return "Accredited representative";
+    if (type === "tax_consultant") return "Immigration consultant";
+    return type.replace(/_/g, " ");
+  };
 
   const credentialBadge = (p: (typeof accounts)[number]["consultantProfile"]) => {
     if (!p) return <Badge color="slate">onboarding not submitted</Badge>;
@@ -82,7 +88,7 @@ export default async function AdminConsultantsPage() {
                           {a.firstName} {a.lastName} <span className="font-normal text-slate-400">· {a.email}</span>
                         </p>
                         <p className="mt-0.5 text-sm text-slate-600">
-                          {p.credentialType.toUpperCase().replace("_", " ")}
+                          {credentialName(p.credentialType)}
                           {p.credentialNumber && ` · #${p.credentialNumber}`}
                           {p.ptin && ` · license/registration number ${p.ptin}`}
                           {` · ${p.yearsExperience} yrs`}
@@ -189,7 +195,7 @@ export default async function AdminConsultantsPage() {
                     <p className="text-xs text-slate-500">{a.email}</p>
                   </td>
                   <td className="px-4 py-3 text-slate-600">
-                    {p ? `${p.credentialType.toUpperCase().replace("_", " ")}${p.credentialNumber ? ` #${p.credentialNumber}` : ""}` : "—"}
+                    {p ? `${credentialName(p.credentialType)}${p.credentialNumber ? ` #${p.credentialNumber}` : ""}` : "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{p?.isBusiness ? p.businessName || "Business" : "Individual"}</td>
                   <td className="px-4 py-3">{credentialBadge(p)}</td>

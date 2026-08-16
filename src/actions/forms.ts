@@ -25,7 +25,7 @@ export type WizardStep = {
 
 export async function startFormAction(templateId: string) {
   const user = await requireUser();
-  const template = await db.irsFormTemplate.findUnique({ where: { id: templateId } });
+  const template = await db.uscisFormTemplate.findUnique({ where: { id: templateId } });
   if (!template || !template.isPublished) return;
   if (template.requiredFeature && !(await hasFeature(user.id, template.requiredFeature))) {
     redirect("/app/billing?upgrade=forms");
@@ -83,7 +83,7 @@ export async function saveFormStepAction(_prev: ActionState, formData: FormData)
     },
   });
 
-  // A completed form (e.g. 9465) may satisfy a case path step.
+  // A completed USCIS form (e.g. I-485) may satisfy a case path step.
   if (done) await verifyUserCasesProgress(user.id);
 
   if (done) redirect(`/app/forms/fill/${submissionId}?done=1`);

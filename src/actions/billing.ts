@@ -112,7 +112,7 @@ export async function subscribeAction(_prev: ActionState, formData: FormData): P
       await db.paymentTransaction.update({ where: { id: tx.id }, data: { status: "abandoned" } });
     }
 
-    // Create our transaction FUSCIST so its reference travels to Stripe — every
+    // Create our transaction first so its reference travels to Stripe — every
     // Stripe object (session, subscription) carries our TXN number for tracing.
     const tx = await db.paymentTransaction.create({
       data: { userId: user.id, planId: plan.id, amountCents, gateway: "stripe", status: "pending" },

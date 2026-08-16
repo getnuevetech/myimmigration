@@ -3,8 +3,8 @@ import { getSetting } from "@/lib/settings";
 
 export const metadata = { title: "Your USCIS online account" };
 
-export default async function IrsAccountPage() {
-  const irsUrl = await getSetting("irs.account_url", "https://my.uscis.gov/");
+export default async function UscisAccountPage() {
+  const uscisUrl = await getSetting("uscis.account_url", "https://my.uscis.gov/");
   const steps = [
     { title: "Go to the USCIS website", body: "Open the official USCIS online account page. Only use official uscis.gov or my.uscis.gov pages." },
     { title: "Sign in or create an account", body: "Use your USCIS account to view available case status tools, notices, and online filings." },
@@ -27,7 +27,7 @@ export default async function IrsAccountPage() {
             analysis works with confirmed USCIS information instead of estimates.
           </p>
           <a
-            href={irsUrl}
+            href={uscisUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-4 inline-flex rounded-lg bg-lime-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-lime-700"

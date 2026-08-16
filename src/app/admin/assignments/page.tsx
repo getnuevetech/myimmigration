@@ -39,6 +39,12 @@ export default async function AdminAssignmentsPage({
   ]);
 
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
+  const credentialName = (type: string | undefined) => {
+    if (type === "attorney" || type === "cpa") return "Immigration attorney";
+    if (type === "accredited_representative" || type === "ea") return "Accredited representative";
+    if (type === "tax_consultant") return "Immigration consultant";
+    return type?.replace(/_/g, " ") ?? "Immigration consultant";
+  };
 
   return (
     <div>
@@ -82,7 +88,7 @@ export default async function AdminAssignmentsPage({
             users={users.map((u) => ({ id: u.id, label: `${u.firstName} ${u.lastName} · ${u.email}` }))}
             consultants={consultants.map((c) => ({
               id: c.id,
-              label: `${c.firstName} ${c.lastName} · ${c.consultantProfile?.credentialType.toUpperCase()} · ${(JSON.parse(c.consultantProfile?.specialties || "[]") as string[]).map(specialtyName).join(", ")}`,
+              label: `${c.firstName} ${c.lastName} · ${credentialName(c.consultantProfile?.credentialType)} · ${(JSON.parse(c.consultantProfile?.specialties || "[]") as string[]).map(specialtyName).join(", ")}`,
             }))}
           />
         </CardBody>

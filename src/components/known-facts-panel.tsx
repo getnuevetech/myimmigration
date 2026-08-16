@@ -44,7 +44,7 @@ export function KnownFactsPanel({ facts }: { facts: KnownFact[] }) {
         ))}
       </dl>
       <p className="mt-3 text-[11px] text-slate-400">
-        Always double-check amounts against your USCIS notice or case record before filing.
+        Always double-check names, receipt numbers, dates, deadlines, and filing requirements against your USCIS notice or case record before filing.
       </p>
     </aside>
   );

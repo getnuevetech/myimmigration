@@ -19,18 +19,24 @@ export type GuideReply = { message: string; actions: GuideAction[] };
 
 // Practical, deterministic how-to knowledge for each verifiable step.
 const STEP_TIPS: Record<string, string> = {
+  GET_CASE_RECORD:
+    "Fastest way to verify your USCIS case: sign in at my.uscis.gov or use the official USCIS case-status tool with your receipt number. Save any notices, receipt details, filing dates, or status updates you can access, then upload them here.",
+  GET_ACCOUNT_RECORD:
+    "Sign in at my.uscis.gov and collect the receipt number, form type, filing date, latest status, and any available notice PDFs. Upload those records to your case documents here.",
   GET_TRANSCRIPT:
-    "Fastest way to get your USCIS case record: sign in (or sign up) at uscis.gov — your USCIS case record is available instantly as a PDF. Choose the case year in question, download it, and upload it to your case documents here. If you can't verify online, 'Get Case record by Mail' takes about 10 days, or Form 4506-T (we have a guided version under USCIS forms).",
+    "This older step means we need your USCIS case record. Sign in at my.uscis.gov or use the official USCIS case-status tool, then upload any receipt details, status updates, or notices you can access.",
   GET_ACCOUNT_TRANSCRIPT:
-    "Fastest way to get your USCIS case record: sign in (or sign up) at uscis.gov — your USCIS case record is available instantly as a PDF. Download it and upload it to your case documents here.",
+    "This step means we need your USCIS online account record. Sign in at my.uscis.gov, save any available case details or notices, and upload them to your case documents here.",
   UPLOAD_DOCUMENTS:
-    "Add your USCIS notices, immigration filing, and any I-797/I-485s to your case. Photos from your phone work fine. The more you add, the more precisely we can verify amounts.",
+    "Add your USCIS notices, receipts, immigration forms, identity records, and supporting evidence. Photos from your phone work fine. The more you add, the more precisely we can verify dates, receipt numbers, and deadlines.",
   REVIEW_ANALYSIS:
-    "You've added documents — now hit 'Re-run analysis' on your case page so every amount gets verified against them.",
+    "You've added documents — now hit 'Re-run analysis' on your case page so the findings are checked against the newest USCIS records.",
   DRAFT_LETTER:
     "Use Response letters → New letter. Describe what you want to say in plain English; we draft a professional letter you can edit and print. Mail it before your deadline (certified mail with return receipt is safest).",
+  COMPLETE_FORM_I485:
+    "Open USCIS forms → Form I-485 and answer the guided questions. Review the draft against the official USCIS instructions before filing.",
   COMPLETE_FORM_9465:
-    "Open USCIS forms → Form 9465 and answer the quiz-style questions. Tip: your total balance divided by 72 is the minimum monthly payment the USCIS usually accepts, and direct debit has the lowest setup fee.",
+    "This older step maps to USCIS forms now. Open USCIS forms and choose the form that matches your case, such as I-485 for adjustment of status.",
 };
 
 type Snapshot = {

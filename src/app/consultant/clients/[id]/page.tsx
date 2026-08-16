@@ -54,7 +54,7 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
                     <div className="mt-3 space-y-2">
                       {c.issues.map((i) => (
                         <div key={i.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                          <span className="text-slate-700">{i.taxYear ? `${i.taxYear} · ` : ""}{i.title}</span>
+                          <span className="text-slate-700">{i.caseYear ? `${i.caseYear} · ` : ""}{i.title}</span>
                           <StateMark state={i.state} />
                         </div>
                       ))}

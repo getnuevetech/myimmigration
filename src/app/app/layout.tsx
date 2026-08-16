@@ -18,7 +18,7 @@ const NAV = [
   { href: "/app/qa", label: "Ask the assistant" },
   { href: "/app/consultants", label: "My consultant" },
   { href: "/app/support", label: "Support tickets" },
-  { href: "/app/irs-account", label: "USCIS online account" },
+  { href: "/app/uscis-account", label: "USCIS online account" },
   { href: "/app/billing", label: "Plan & billing" },
   { href: "/app/profile", label: "Profile" },
 ];
@@ -35,7 +35,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
           <Link href="/app" className="flex items-center gap-2 font-bold text-slate-900">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-lime-600 text-xs font-bold text-white">T</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-lime-600 text-xs font-bold text-white">M</span>
             {appName}
           </Link>
           <div className="flex items-center gap-4">

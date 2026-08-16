@@ -9,7 +9,7 @@ export const metadata = { title: "USCIS forms" };
 export default async function FormsPage() {
   const user = await requireUser();
   const [templates, submissions] = await Promise.all([
-    db.irsFormTemplate.findMany({ where: { isPublished: true }, orderBy: { sortOrder: "asc" } }),
+    db.uscisFormTemplate.findMany({ where: { isPublished: true }, orderBy: { sortOrder: "asc" } }),
     db.formSubmission.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },

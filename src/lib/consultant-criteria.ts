@@ -16,20 +16,20 @@ export type CriterionDef = {
 export const APPROVAL_CRITERIA: CriterionDef[] = [
   {
     key: "credential",
-    name: "Verified professional credential (immigration professional or EA)",
+    name: "Verified immigration professional credential",
     description:
-      "Applicant is a state-licensed immigration professional (license number + state of licensure) or an USCIS accredited representative (enrollment number). EAs are credentialed directly by the USCIS under Circular 230; immigration professionals by their state board of accountancy.",
+      "Applicant is an immigration attorney, DOJ-accredited representative, or otherwise registered immigration professional with a credential number and supporting proof.",
   },
   {
     key: "ptin",
     name: "license/registration number provided",
     description:
-      "USCIS Preparer Tax Identification Number. The USCIS requires anyone who prepares or substantially helps prepare federal immigration filings for compensation to hold a current license/registration number.",
+      "Applicant provided a relevant bar, DOJ, state consultant, USCIS, EOIR, or other professional registration number.",
   },
   {
     key: "proof",
     name: "Credential document uploaded",
-    description: "A copy of the immigration professional license certificate or USCIS EA enrollment card is attached to the application.",
+    description: "A copy of the attorney license, DOJ accreditation letter, consultant registration, or other credential proof is attached to the application.",
   },
   {
     key: "photo_id",
@@ -39,13 +39,13 @@ export const APPROVAL_CRITERIA: CriterionDef[] = [
   {
     key: "insurance",
     name: "Professional liability (E&O) insurance proof uploaded",
-    description: "Evidence of current errors-and-omissions coverage — standard practice for professionals handling client tax matters.",
+    description: "Evidence of current errors-and-omissions coverage — standard practice for professionals handling client immigration matters.",
   },
   {
     key: "efin",
-    name: "filing-system ID provided",
+    name: "USCIS/EOIR filing-system ID provided",
     description:
-      "USCIS Electronic Filing Identification Number, issued after the USCIS e-file provider application (which includes an USCIS suitability check). Relevant for consultants who e-file for clients.",
+      "Optional USCIS, EOIR, organization, or representative account identifier used by professionals who file or manage matters online.",
   },
   {
     key: "ein",
@@ -60,14 +60,14 @@ export const APPROVAL_CRITERIA: CriterionDef[] = [
   {
     key: "min_years",
     name: "Minimum years of experience",
-    description: "Years of professional tax experience meets or exceeds the configured minimum.",
+    description: "Years of professional immigration experience meets or exceeds the configured minimum.",
     hasValue: true,
   },
   {
     key: "attestation",
     name: "Compliance attestation accepted",
     description:
-      "Applicant attests they are compliant with their own federal tax obligations and have no disqualifying offenses — mirroring the USCIS suitability standards applied to e-file providers and enrolled practitioners.",
+      "Applicant attests they are authorized to provide the immigration help described, will follow applicable USCIS/EOIR rules, and have no disqualifying sanctions or convictions.",
   },
 ];
 
@@ -90,7 +90,7 @@ export type ApplicationFacts = {
 export function criterionSatisfied(key: string, f: ApplicationFacts, minYears: number): boolean {
   switch (key) {
     case "credential":
-      return (f.credentialType === "cpa" || f.credentialType === "ea") && !!f.credentialNumber && (f.credentialType === "ea" || !!f.licenseState);
+      return ["attorney", "accredited_representative", "cpa", "ea"].includes(f.credentialType) && !!f.credentialNumber && (!["attorney", "cpa"].includes(f.credentialType) || !!f.licenseState);
     case "ptin":
       return f.ptin.trim().length > 0;
     case "proof":

@@ -14,7 +14,7 @@ export default async function AdminFormsPage() {
   await guardAdminPage("admin.forms");
   const { getBoolSetting } = await import("@/lib/settings");
   const [templates, features, paidDownloads] = await Promise.all([
-    db.irsFormTemplate.findMany({ orderBy: { sortOrder: "asc" } }),
+    db.uscisFormTemplate.findMany({ orderBy: { sortOrder: "asc" } }),
     db.featureDef.findMany({ orderBy: { sortOrder: "asc" }, select: { key: true, name: true } }),
     getBoolSetting("forms.paid_downloads", true),
   ]);

@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { PageHeader, Card, CardBody, Badge, Money, EmptyState, ButtonLink } from "@/components/ui";
+import { PageHeader, Card, CardBody, Badge, EmptyState, ButtonLink } from "@/components/ui";
 import { NoticeUpload } from "@/components/notice-upload";
 
 export const metadata = { title: "USCIS notices" };
@@ -36,10 +36,9 @@ export default async function NoticesPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-lg font-semibold text-slate-900">
                       {n.noticeType ? `Notice ${n.noticeType}` : "USCIS notice"}
-                      {n.taxYear ? ` · Case year ${n.taxYear}` : ""}
+                      {n.caseYear ? ` · Case year ${n.caseYear}` : ""}
                     </h2>
                     <div className="flex gap-2">
-                      {n.amountCents !== null && <Badge color="lime"><Money cents={n.amountCents} /></Badge>}
                       {n.deadline && (
                         <Badge color="red">Respond by {n.deadline.toLocaleDateString("en-US")}</Badge>
                       )}

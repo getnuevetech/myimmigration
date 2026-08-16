@@ -32,7 +32,7 @@ export default async function DocumentsPage() {
       </Card>
 
       {docs.length === 0 ? (
-        <EmptyState title="Your vault is empty" body="Upload I-797s, I-485s, returns, notices, and case records. You can delete anything at any time." />
+        <EmptyState title="Your vault is empty" body="Upload I-797s, USCIS forms, passports, visas, notices, evidence, and case records. You can delete anything at any time." />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-sm">

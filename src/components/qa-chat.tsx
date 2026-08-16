@@ -65,7 +65,7 @@ export function QaChat({
         <div className="flex gap-2">
           <input
             name="question"
-            placeholder="Type your tax question…"
+            placeholder="Type your immigration question…"
             autoComplete="off"
             className="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-lime-500 focus:outline-none focus:ring-2 focus:ring-lime-100"
           />

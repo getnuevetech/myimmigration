@@ -7,12 +7,15 @@ import { db } from "./db";
 
 export const VERIFIABLE_ACTIONS: Record<string, string> = {
   UPLOAD_DOCUMENTS: "Completes when your case has at least one document",
-  GET_TRANSCRIPT: "Completes when an USCIS case record is uploaded to your case",
-  GET_ACCOUNT_TRANSCRIPT: "Completes when an USCIS case record is uploaded to your case",
+  GET_CASE_RECORD: "Completes when a USCIS case record is uploaded to your case",
+  GET_ACCOUNT_RECORD: "Completes when a USCIS online account record is uploaded to your case",
+  GET_TRANSCRIPT: "Completes when a USCIS case record is uploaded to your case",
+  GET_ACCOUNT_TRANSCRIPT: "Completes when a USCIS online account record is uploaded to your case",
   REVIEW_ANALYSIS: "Completes when the analysis has been re-run after documents were added",
   RERUN_ANALYSIS: "Completes when the analysis has been re-run after documents were added",
   DRAFT_LETTER: "Completes when a response letter has been drafted",
-  COMPLETE_FORM_9465: "Completes when the Form 9465 wizard is finished",
+  COMPLETE_FORM_I485: "Completes when the Form I-485 wizard is finished",
+  COMPLETE_FORM_9465: "Legacy step: completes when the Form I-485 wizard is finished",
   ADD_DEADLINE: "Completes when a deadline is tracked for this case",
 };
 
@@ -36,11 +39,13 @@ async function stepSatisfied(
       });
       return count > 0;
     }
+    case "GET_CASE_RECORD":
+    case "GET_ACCOUNT_RECORD":
     case "GET_TRANSCRIPT":
     case "GET_ACCOUNT_TRANSCRIPT": {
       const where = ctx.userId
-        ? { userId: ctx.userId, deletedAt: null, docKind: "case record" }
-        : { caseId: ctx.caseId, deletedAt: null, docKind: "case record" };
+        ? { userId: ctx.userId, deletedAt: null, docKind: { in: ["case_record", "case record", "receipt"] } }
+        : { caseId: ctx.caseId, deletedAt: null, docKind: { in: ["case_record", "case record", "receipt"] } };
       return (await db.document.count({ where })) > 0;
     }
     case "REVIEW_ANALYSIS":
@@ -66,10 +71,11 @@ async function stepSatisfied(
       });
       return count > 0;
     }
+    case "COMPLETE_FORM_I485":
     case "COMPLETE_FORM_9465": {
       if (!ctx.userId) return false;
       const count = await db.formSubmission.count({
-        where: { userId: ctx.userId, status: "completed", template: { formNumber: "9465" } },
+        where: { userId: ctx.userId, status: "completed", template: { formNumber: "I-485" } },
       });
       return count > 0;
     }

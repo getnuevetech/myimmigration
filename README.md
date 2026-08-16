@@ -28,7 +28,7 @@ Six layers, exactly as designed:
 3. **Fact normalization** — parsed model outputs merged field-by-field.
 4. **Immigration intelligence** — analysis grounded in an admin-curated **USCIS knowledge base** (forms, instructions, notices, timelines, evidence rules, and interview/RFE guidance), answered as structured questions (issue, evidence, USCIS basis, conditions, confidence, professional review).
 5. **Verification** — a deterministic consensus engine: agreement merges, disagreement is flagged **"verification required"** (never guessed). Case readiness (0–100%) is computed by our own formula: documents + verified facts + USCIS source confirmation − contradictions.
-6. **MyImmigration UI** — models return JSON only; the frontend renders cards, amounts, product states (✓ Resolved, ◐ Review, ! Action Needed, ▲ Urgent, ? Information Needed), timelines, and progress deterministically. The AI never writes the customer's screen.
+6. **MyImmigration UI** — models return JSON only; the frontend renders evidence cards, product states (✓ Resolved, ◐ Review, ! Action Needed, ▲ Urgent, ? Information Needed), timelines, deadlines, and progress deterministically. The AI never writes the customer's screen.
 
 If no AI provider is configured yet, the platform runs in a labeled deterministic fallback mode so the product remains usable end-to-end.
 

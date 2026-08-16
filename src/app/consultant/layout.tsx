@@ -15,7 +15,7 @@ export default async function ConsultantLayout({ children }: { children: React.R
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <Link href="/consultant" className="flex items-center gap-2 font-bold text-slate-900">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-xs font-bold text-white">T</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-xs font-bold text-white">M</span>
             {appName} <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">Consultant</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">

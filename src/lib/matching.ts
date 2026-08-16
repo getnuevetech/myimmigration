@@ -18,8 +18,8 @@ const ISSUE_SPECIALTY_MAP: Record<string, string[]> = {
   status_question: ["family", "employment", "naturalization"],
   professional_review: ["appeals", "removal"],
   case_update_discrepancy: ["notices"],
-  balance_due: ["notices"],
-  missing_return: ["notices"],
+  fee_or_payment_issue: ["notices"],
+  missing_filing: ["notices"],
   notice_response: ["notices", "rfe"],
   other: ["notices"],
 };
@@ -64,7 +64,7 @@ export async function rankConsultantsForCase(caseId: string): Promise<Candidate[
     let score = 0;
     for (const s of specialties) if (wantedSpecialties.has(s)) score += 3;
     score += Math.min(p.yearsExperience, 10) * 0.3;
-    if (p.credentialType === "cpa" || p.credentialType === "ea") score += 1.5;
+    if (["attorney", "accredited_representative", "cpa", "ea"].includes(p.credentialType)) score += 1.5;
     for (const pc of pastCases) {
       if (wantedSpecialties.has(pc.category) || issueTypes.includes(pc.category)) score += 1;
       else score += 0.2; // any track record counts a little
@@ -101,7 +101,9 @@ function caseSummaryText(c: { title: string; situation: string; goal: string }, 
 }
 
 export function credentialLabel(type: string): string {
-  return type === "cpa" ? "immigration professional" : type === "ea" ? "accredited representative" : "Immigration Consultant";
+  if (type === "attorney" || type === "cpa") return "immigration attorney";
+  if (type === "accredited_representative" || type === "ea") return "accredited representative";
+  return "Immigration Consultant";
 }
 
 const ISSUE_TYPE_PHRASES: Record<string, string> = {
@@ -112,8 +114,8 @@ const ISSUE_TYPE_PHRASES: Record<string, string> = {
   status_question: "an immigration status question",
   professional_review: "a high-stakes professional review need",
   case_update_discrepancy: "a case status discrepancy",
-  balance_due: "an agency balance or fee issue",
-  missing_return: "an unfiled immigration filing",
+  fee_or_payment_issue: "an agency fee or payment issue",
+  missing_filing: "an unfiled immigration filing",
   notice_response: "a USCIS notice that needs a response",
   other: "a general immigration issue",
 };
@@ -201,10 +203,10 @@ export async function generateAssignmentReason(
       issueTypes.some((t) => (ISSUE_SPECIALTY_MAP[t] ?? []).includes(s)),
     );
     const cred = credentialLabel(candidate.credentialType);
-    const summary = `${candidate.name} (${cred}, ${candidate.yearsExperience} yrs) specializes in ${matched.length ? matched.map(specialtyName).join(" and ") : "tax resolution"}, which matches this case.`;
+    const summary = `${candidate.name} (${cred}, ${candidate.yearsExperience} yrs) specializes in ${matched.length ? matched.map(specialtyName).join(" and ") : "immigration case support"}, which matches this case.`;
     const detail = [
-      `- Credential: ${cred} with ${candidate.yearsExperience} years of professional tax experience.`,
-      matched.length ? `- Specialty match: ${matched.map(specialtyName).join(", ")} — directly relevant to the issues in this case (${issueTypes.map((t) => t.replace(/_/g, " ")).join(", ")}).` : `- Broad tax-resolution background relevant to this case.`,
+      `- Credential: ${cred} with ${candidate.yearsExperience} years of professional immigration experience.`,
+      matched.length ? `- Specialty match: ${matched.map(specialtyName).join(", ")} — directly relevant to the issues in this case (${issueTypes.map((t) => t.replace(/_/g, " ")).join(", ")}).` : `- Broad immigration background relevant to this case.`,
       candidate.pastCases.length ? `- Track record: ${candidate.pastCases.length} past case(s) recorded, including ${candidate.pastCases[0].title}.` : `- Available capacity: currently handling ${candidate.activeLoad} active client(s).`,
       `- Workload: ${candidate.activeLoad} active client(s) — capacity to take this case now.`,
     ].join("\n");

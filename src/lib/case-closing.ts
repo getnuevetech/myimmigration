@@ -11,9 +11,6 @@ import { logSystem } from "./syslog";
 // deterministic builder covers the no-AI case. Cases auto-close after an
 // admin-set number of days once completed, or when abandoned.
 
-const usd = (cents: number | null) =>
-  cents === null ? null : (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
-
 async function deterministicClosing(caseId: string, reason: "completed" | "abandoned" | "manual"): Promise<string> {
   const c = await db.case.findUnique({
     where: { id: caseId },
@@ -40,8 +37,7 @@ async function deterministicClosing(caseId: string, reason: "completed" | "aband
   lines.push("");
   lines.push(`What was covered: ${c.issues.length} item${c.issues.length === 1 ? "" : "s"} were identified and analyzed${resolved ? `, ${resolved} resolved` : ""}${open ? `, ${open} still open` : ""}. You completed ${done} of ${c.pathSteps.length} path steps and provided ${c.documents.length} document${c.documents.length === 1 ? "" : "s"}. Case readiness reached ${c.readinessScore}%.`);
   for (const i of c.issues) {
-    const amount = usd(i.differenceCents) ?? usd(i.expectedCents);
-    lines.push(`• ${i.taxYear ? `${i.taxYear} — ` : ""}${i.title}${amount ? ` (${amount})` : ""}: ${i.state === "resolved" ? "resolved." : i.conclusion || "see the analysis for the remaining step."}`);
+    lines.push(`• ${i.caseYear ? `${i.caseYear} — ` : ""}${i.title}: ${i.state === "resolved" ? "resolved." : i.conclusion || "see the analysis for the remaining step."}`);
   }
   const openSteps = c.pathSteps.filter((s) => s.status !== "done");
   if (openSteps.length && reason !== "completed") {
@@ -51,7 +47,7 @@ async function deterministicClosing(caseId: string, reason: "completed" | "aband
   lines.push("");
   lines.push(
     reason === "completed"
-      ? "Keep your documents and any USCIS confirmation letters safe — they're your proof if the USCIS revisits the year. If a new notice arrives, start a new case and we'll pick up with everything we already know."
+      ? "Keep your documents and any USCIS confirmation letters safe — they're your proof of what was filed, decided, or requested. If a new notice arrives, start a new case and we'll pick up with everything we already know."
       : "Your documents remain in your vault. When you're ready to continue, re-run the analysis or start a fresh case — everything you've provided carries over.",
   );
   return lines.join("\n");
@@ -73,7 +69,7 @@ export async function closeCase(caseId: string, reason: "completed" | "abandoned
         situation: c.situation,
         goal: c.goal,
         readiness: c.readinessScore,
-        issues: c.issues.map((i) => ({ title: i.title, state: i.state, conclusion: i.conclusion, tax_year: i.taxYear })),
+        issues: c.issues.map((i) => ({ title: i.title, state: i.state, conclusion: i.conclusion, case_year: i.caseYear })),
         steps_done: c.pathSteps.filter((s) => s.status === "done").map((s) => s.title),
         steps_open: c.pathSteps.filter((s) => s.status !== "done").map((s) => s.title),
         documents: c.documents.map((d) => d.docKind),

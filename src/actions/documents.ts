@@ -36,7 +36,7 @@ export async function uploadDocumentAction(_prev: ActionState, formData: FormDat
     });
   }
   // New evidence changes the picture: re-run the case analysis automatically
-  // so issues, amounts, and next steps reflect the uploaded documents. The
+  // so issues, facts, deadlines, and next steps reflect the uploaded documents. The
   // analysis itself re-verifies path-step evidence when it finishes.
   if (user) {
     if (caseId) {
@@ -126,8 +126,8 @@ export async function uploadNoticeAction(_prev: ActionState, formData: FormData)
       where: { id: notice.id },
       data: {
         noticeType: String(result.notice_type ?? "") || "",
-        taxYear: typeof result.tax_year === "number" ? result.tax_year : null,
-        amountCents: typeof result.amount === "number" ? Math.round(result.amount * 100) : null,
+        caseYear: typeof result.case_year === "number" ? result.case_year : null,
+        amountCents: typeof result.filing_fee === "number" ? Math.round(result.filing_fee * 100) : typeof result.amount === "number" ? Math.round(result.amount * 100) : null,
         deadline,
         explanation: String(result.plain_english_explanation ?? ""),
         nextStepsJson: JSON.stringify(result.next_steps ?? []),
