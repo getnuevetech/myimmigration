@@ -10,11 +10,11 @@ set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_USER="${SUDO_USER:-$(whoami)}"
-DB_NAME="${DB_NAME:-immigrationonme}"
-DB_USER="${DB_USER:-immigrationonme}"
+DB_NAME="${DB_NAME:-myimmigration}"
+DB_USER="${DB_USER:-myimmigration}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 APP_PORT="${APP_PORT:-3000}"
-SERVICE_NAME="immigrationonme"
+SERVICE_NAME="myimmigration"
 
 echo "==> ImmigrationOnMe local deployment"
 echo "    App dir: $APP_DIR"

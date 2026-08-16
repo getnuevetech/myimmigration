@@ -58,7 +58,7 @@ Next.js 15 (App Router, server actions) · TypeScript · Tailwind CSS 4 · Prism
 
 ## Getting started (development)
 
-Requires Node.js 20+ and a PostgreSQL database (`createdb immigrationonme`).
+Requires Node.js 20+ and a PostgreSQL database (`createdb myimmigration`).
 
 ```bash
 npm install
