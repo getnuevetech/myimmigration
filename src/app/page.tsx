@@ -1,10 +1,42 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { SiteHeader, SiteFooter } from "@/components/site-nav";
 import { ButtonLink } from "@/components/ui";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { Accent, Kicker } from "@/components/accent";
 import { getSettingsMap } from "@/lib/settings";
 import { IconShield, IconSparkle, IconCheckCircle } from "@/components/icons";
+
+function EditorialSection({
+  number,
+  label,
+  children,
+  className = "bg-[#fbfaf7]",
+}: {
+  number: string;
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`border-b border-slate-200 ${className}`}>
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-20 lg:grid-cols-[140px_1fr]">
+        <aside className="lg:pt-1">
+          <p className="font-serif text-7xl font-medium leading-none tracking-tight text-slate-900 sm:text-8xl">
+            {number}
+          </p>
+          <div className="mt-5 flex items-center gap-3">
+            <span className="h-px w-6 bg-orange-500" />
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.34em] text-slate-400">
+              {label}
+            </p>
+          </div>
+        </aside>
+        <div className="min-w-0">{children}</div>
+      </div>
+    </section>
+  );
+}
 
 export default async function HomePage() {
   const s = await getSettingsMap([
@@ -80,8 +112,8 @@ export default async function HomePage() {
         </section>
 
         {/* How it works — numbered editorial rows */}
-        <section id="how-it-works" className="border-b border-slate-200 bg-[#eef1fb]">
-          <div className="mx-auto max-w-6xl px-4 py-20">
+        <div id="how-it-works">
+          <EditorialSection number="01" label="How it works" className="bg-white">
             <div className="max-w-md">
               <h2 className="font-serif text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
                 <Accent text="From scattered records to a *case brief*" />
@@ -99,13 +131,14 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
+          </EditorialSection>
+        </div>
 
         {/* What you get — sticky heading left, numbered list right */}
-        <section id="what-you-get" className="border-b border-slate-200 bg-[#fbfaf7]">
-          <div className="mx-auto grid max-w-6xl gap-14 px-4 py-20 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="lg:sticky lg:top-24 lg:self-start">
+        <div id="what-you-get">
+          <EditorialSection number="02" label="What you get">
+            <div className="grid gap-14 lg:grid-cols-[0.85fr_1.15fr]">
+              <div className="lg:sticky lg:top-24 lg:self-start">
               <Kicker>What you get</Kicker>
               <h2 className="mt-5 font-serif text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
                 <Accent text="A workspace for the immigration details that *matter*" />
@@ -113,14 +146,6 @@ export default async function HomePage() {
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-600">
                 Structured enough for professionals, readable enough for families.
               </p>
-              <ul className="mt-8 space-y-2.5">
-                {trust.map((t) => (
-                  <li key={t.text} className="flex items-center gap-2.5 text-sm text-slate-600">
-                    <span className="text-emerald-600">{t.icon}</span>
-                    {t.text}
-                  </li>
-                ))}
-              </ul>
             </div>
             <div className="divide-y divide-slate-200 border-t border-slate-200">
               {features.map((f, i) => (
@@ -135,26 +160,44 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
+            </div>
+          </EditorialSection>
+        </div>
 
         {/* Numbers */}
-        <section className="border-b border-slate-200 bg-[#fbfaf7]">
-          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 text-center sm:grid-cols-3">
+        <EditorialSection number="03" label="Why it works" className="bg-orange-100">
+          <h2 className="font-serif text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
+            <Accent text="Built for clarity, not *panic*" />
+          </h2>
+          <div className="mt-10 grid gap-8 text-left sm:grid-cols-3">
             <div>
-              <p className="font-serif text-6xl font-bold italic text-orange-600">9+</p>
-              <p className="mt-2 text-sm text-slate-600">USCIS workflows organized into guided steps</p>
+              <p className="font-serif text-6xl font-bold italic text-slate-900">9+</p>
+              <p className="mt-3 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
+                USCIS workflows organized into guided steps
+              </p>
             </div>
             <div>
-              <p className="font-serif text-6xl font-bold italic text-orange-600">5</p>
-              <p className="mt-2 text-sm text-slate-600">Core record types: notices, forms, evidence, deadlines, questions</p>
+              <p className="font-serif text-6xl font-bold italic text-slate-900">5</p>
+              <p className="mt-3 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
+                Core record types: notices, forms, evidence, deadlines, questions
+              </p>
             </div>
             <div>
-              <p className="font-serif text-6xl font-bold italic text-orange-600">100%</p>
-              <p className="mt-2 text-sm text-slate-600">user-controlled document ownership</p>
+              <p className="font-serif text-6xl font-bold italic text-slate-900">100%</p>
+              <p className="mt-3 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
+                User-controlled document ownership
+              </p>
             </div>
           </div>
-        </section>
+          <div className="mt-12 grid gap-4 border-t border-orange-200 pt-6 sm:grid-cols-3">
+            {trust.map((item) => (
+              <p key={item.text} className="flex items-center gap-2.5 text-sm text-slate-700">
+                <span className="text-orange-700">{item.icon}</span>
+                {item.text}
+              </p>
+            ))}
+          </div>
+        </EditorialSection>
 
         {/* Dark closing CTA, flowing into the dark footer */}
         <section className="bg-[#0b1322]">
@@ -171,7 +214,7 @@ export default async function HomePage() {
               </ButtonLink>
             </div>
             <p className="mt-6 text-sm text-slate-400">
-              Are you a immigration professional or immigration consultant?{" "}
+              Are you an immigration professional or immigration consultant?{" "}
               <Link href="/register?type=consultant" className="font-semibold text-white underline decoration-slate-500 underline-offset-4 hover:decoration-white">
                 Join our partner network
               </Link>
