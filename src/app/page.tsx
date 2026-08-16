@@ -1,170 +1,185 @@
 import Link from "next/link";
-import { ArrowRight, FileSearch, ShieldCheck, Users } from "lucide-react";
-import Disclaimer from "@/components/Disclaimer";
-import { getCurrentUser } from "@/lib/auth";
+import { SiteHeader, SiteFooter } from "@/components/site-nav";
+import { ButtonLink } from "@/components/ui";
+import { HeroCarousel } from "@/components/hero-carousel";
+import { Accent, Kicker } from "@/components/accent";
+import { getSettingsMap } from "@/lib/settings";
+import { IconShield, IconSparkle, IconCheckCircle } from "@/components/icons";
 
 export default async function HomePage() {
-  const user = await getCurrentUser();
+  const s = await getSettingsMap([
+    "app.name",
+    "app.tagline",
+    "home.hero_title",
+    "home.hero_subtitle",
+    "home.cta_primary",
+    "home.cta_secondary",
+    "home.hero_images",
+  ]);
+  const appName = s["app.name"] ?? "MyImmigration";
+  let heroImages: string[] = [];
+  try {
+    const parsed = JSON.parse(s["home.hero_images"] ?? "[]");
+    if (Array.isArray(parsed)) heroImages = parsed.map(String);
+  } catch {
+    heroImages = [];
+  }
+  if (heroImages.length === 0) heroImages = ["/hero/hero-1.png", "/hero/hero-2.png", "/hero/hero-3.png"];
+
+  const steps = [
+    { n: "01", title: "Tell us what happened", body: "In your own words — your status history, notices received, applications filed, deadlines, and what you need help understanding." },
+    { n: "02", title: "Add your documents", body: "Upload USCIS notices, receipt letters, forms, visas, passports, RFEs, or other immigration records. We keep everything in your private vault." },
+    { n: "03", title: "Get your plain-English plan", body: "We break your situation into clear issues, timelines, document gaps, and next steps you can review before speaking with a professional." },
+  ];
+
+  const features = [
+    { title: "Understand any USCIS letter", body: "Upload or photograph a notice. We identify the form or notice type, important dates, deadlines, and what the letter appears to ask for." },
+    { title: "Ask anything, anytime", body: "A immigration case assistant that answers in plain English, without judgment. No question is too basic." },
+    { title: "Response letters, drafted for you", body: "Generate a professional reply to the USCIS and edit it before you send it yourself." },
+    { title: "Never miss a deadline", body: "Every date we find goes into your reminders, so nothing sneaks up on you." },
+    { title: "USCIS forms that feel easy", body: "Fill famous USCIS forms step-by-step like a quiz, then regenerate the completed standard form." },
+    { title: "Real professionals on standby", body: "If your case needs a licensed attorney, accredited representative, or immigration consultant, we help prepare a clean handoff package." },
+  ];
+
+  const trust = [
+    { icon: <IconShield className="h-5 w-5" />, text: "Your documents stay private — delete anything, anytime" },
+    { icon: <IconSparkle className="h-5 w-5" />, text: "Every amount is cross-checked against your documents" },
+    { icon: <IconCheckCircle className="h-5 w-5" />, text: "When something can't be verified, we say so — never guess" },
+  ];
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Nav */}
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-bold text-orange-700">MyImmigration</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/pricing" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-              Pricing
-            </Link>
-            {user ? (
-              <>
-                {user.type === "ADMIN" && (
-                  <Link href="/admin" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-                    Admin
-                  </Link>
-                )}
-                <Link href="/dashboard" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-                  Dashboard
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-                  Sign in
-                </Link>
-                <Link href="/register" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-                  Create account
-                </Link>
-              </>
-            )}
-            <Link
-              href="/onboarding"
-              className="rounded-lg bg-orange-700 px-4 py-2 text-sm font-medium text-white hover:bg-orange-800 transition-colors"
-            >
-              Start My Case
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero */}
+    <div className="flex min-h-screen flex-col bg-[#fbfaf7]">
+      <SiteHeader />
       <main className="flex-1">
-        <section className="mx-auto max-w-5xl px-4 py-20 text-center">
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 leading-tight">
-            Tell us your immigration story.
-          </h1>
-          <p className="mt-4 text-xl text-slate-600 max-w-2xl mx-auto">
-            We&apos;ll organize your case, review your documents, identify important issues,
-            and explain what your options may be — in plain language.
-          </p>
-          <Link
-            href="/onboarding"
-            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-orange-700 px-8 py-4 text-lg font-semibold text-white hover:bg-orange-800 transition-colors shadow-lg"
-          >
-            Start Your Case Review
-            <ArrowRight className="h-5 w-5" />
-          </Link>
-          <p className="mt-4 text-sm text-slate-500">
-            Free to start — no account required
-            {" · "}
-            <Link href="/pricing" className="font-medium text-orange-700 hover:underline">
-              View plans
-            </Link>
-          </p>
+        {/* Hero — editorial serif with italic accent, imagery right */}
+        <section className="relative overflow-hidden border-b border-slate-200 bg-[#fbfaf7]">
+          <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
+            <div>
+              <Kicker>{s["app.tagline"] ?? "Your friendly immigration case assistant"}</Kicker>
+              <h1 className="mt-6 font-serif text-5xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-6xl xl:text-[4.2rem]">
+                <Accent text={s["home.hero_title"] ?? "USCIS letters and immigration cases, explained like you're *human*."} />
+              </h1>
+              <p className="mt-6 max-w-md text-base leading-relaxed text-slate-600">
+                {s["home.hero_subtitle"] ??
+                  `${appName} turns confusing USCIS notices, immigration documents, and case questions into a simple step-by-step plan. Start free — no account needed.`}
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <ButtonLink href="/start" className="rounded-full px-7 py-3.5 text-base shadow-lg shadow-indigo-600/25">
+                  {s["home.cta_primary"] ?? "Explain my immigration situation"} →
+                </ButtonLink>
+                <ButtonLink href="/start/qa" variant="secondary" className="rounded-full px-7 py-3.5 text-base">
+                  {s["home.cta_secondary"] ?? "Ask a quick question"}
+                </ButtonLink>
+              </div>
+              <p className="mt-7 font-mono text-[11px] uppercase tracking-widest text-slate-400">
+                Free to start &nbsp;·&nbsp; No credit card &nbsp;·&nbsp; Your data stays yours
+              </p>
+            </div>
+            <HeroCarousel images={heroImages} />
+          </div>
         </section>
 
-        {/* Features */}
-        <section className="bg-white border-y border-slate-200">
-          <div className="mx-auto max-w-5xl px-4 py-16 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                icon: FileSearch,
-                title: "Document Analysis",
-                desc: "Upload I-797s, RFEs, I-485, I-130, and more. We extract key information automatically.",
-              },
-              {
-                icon: ArrowRight,
-                title: "Case Timeline",
-                desc: "We reconstruct your complete immigration history from documents and your story.",
-              },
-              {
-                icon: ShieldCheck,
-                title: "Issue Detection",
-                desc: "We flag inconsistencies, missing documents, and upcoming deadlines.",
-              },
-              {
-                icon: Users,
-                title: "Attorney Handoff",
-                desc: "Export a complete case package so your attorney can start working immediately.",
-              },
-            ].map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="flex flex-col gap-3">
-                <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center">
-                  <Icon className="h-5 w-5 text-orange-700" />
+        {/* How it works — numbered editorial rows */}
+        <section id="how-it-works" className="border-b border-slate-200 bg-[#eef1fb]">
+          <div className="mx-auto max-w-6xl px-4 py-20">
+            <div className="max-w-md">
+              <h2 className="font-serif text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
+                <Accent text="As easy as *one, two, three*" />
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-slate-600">
+                No legal jargon, no confusing agency language. Just tell us what happened — we help organize the details.
+              </p>
+            </div>
+            <div className="mt-12 divide-y divide-slate-300/60 border-t border-slate-300/60">
+              {steps.map((step) => (
+                <div key={step.n} className="grid gap-3 py-9 md:grid-cols-[100px_1fr_1.2fr] md:items-baseline md:gap-8">
+                  <p className="font-serif text-4xl font-medium italic text-indigo-600">{step.n}</p>
+                  <h3 className="font-serif text-2xl font-bold text-slate-900">{step.title}</h3>
+                  <p className="text-sm leading-relaxed text-slate-600">{step.body}</p>
                 </div>
-                <h3 className="font-semibold text-slate-900">{title}</h3>
-                <p className="text-sm text-slate-600">{desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* What we cover */}
-        <section className="mx-auto max-w-5xl px-4 py-16">
-          <h2 className="text-2xl font-bold text-slate-900 mb-8">What we can help you with</h2>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {[
-              "Understand my current immigration status",
-              "Understand a USCIS letter or notice",
-              "See what may be missing from my case",
-              "Understand and respond to an RFE",
-              "Prepare for an immigration interview",
-              "Organize documents for my attorney",
-              "Understand why my application was denied",
-              "Review my complete immigration history",
-              "Understand possible immigration pathways",
-              "Prepare questions for an immigration lawyer",
-            ].map((item) => (
-              <div
-                key={item}
-                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
-              >
-                <span className="text-green-500">✓</span>
-                {item}
-              </div>
-            ))}
+        {/* What you get — sticky heading left, numbered list right */}
+        <section id="what-you-get" className="border-b border-slate-200 bg-[#fbfaf7]">
+          <div className="mx-auto grid max-w-6xl gap-14 px-4 py-20 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="lg:sticky lg:top-24 lg:self-start">
+              <Kicker>What you get</Kicker>
+              <h2 className="mt-5 font-serif text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
+                <Accent text="Everything you need to face the USCIS *calmly*" />
+              </h2>
+              <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-600">
+                Six quiet superpowers, one calmer case file. Built for people navigating immigration paperwork.
+              </p>
+              <ul className="mt-8 space-y-2.5">
+                {trust.map((t) => (
+                  <li key={t.text} className="flex items-center gap-2.5 text-sm text-slate-600">
+                    <span className="text-emerald-600">{t.icon}</span>
+                    {t.text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="divide-y divide-slate-200 border-t border-slate-200">
+              {features.map((f, i) => (
+                <div key={f.title} className="group grid grid-cols-[56px_1fr] gap-4 py-8">
+                  <p className="pt-1 font-mono text-xs text-slate-400">/ {String(i + 1).padStart(2, "0")}</p>
+                  <div>
+                    <h3 className={`font-serif text-2xl font-bold transition ${i === 0 ? "text-indigo-600" : "text-slate-900 group-hover:text-indigo-600"}`}>
+                      {f.title}
+                    </h3>
+                    <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-600">{f.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* Disclaimer */}
-        <section className="mx-auto max-w-5xl px-4 pb-16">
-          <Disclaimer />
+        {/* Numbers */}
+        <section className="border-b border-slate-200 bg-[#fbfaf7]">
+          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 text-center sm:grid-cols-3">
+            <div>
+              <p className="font-serif text-6xl font-bold italic text-indigo-600">9+</p>
+              <p className="mt-2 text-sm text-slate-600">USCIS forms turned into friendly quizzes</p>
+            </div>
+            <div>
+              <p className="font-serif text-6xl font-bold italic text-indigo-600">5</p>
+              <p className="mt-2 text-sm text-slate-600">Cross-checking every amount in your case</p>
+            </div>
+            <div>
+              <p className="font-serif text-6xl font-bold italic text-indigo-600">100%</p>
+              <p className="mt-2 text-sm text-slate-600">yours — delete your data anytime</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Dark closing CTA, flowing into the dark footer */}
+        <section className="bg-[#0b1322]">
+          <div className="mx-auto max-w-6xl px-4 pb-4 pt-20">
+            <h2 className="max-w-2xl font-serif text-4xl font-bold leading-tight text-white sm:text-5xl">
+              <Accent text="Worried about a letter sitting on your *table*?" accentClass="font-serif italic text-indigo-400" />
+            </h2>
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
+              Upload it now. In minutes you&apos;ll know what it means, what it costs, and exactly what to do next.
+            </p>
+            <div className="mt-8">
+              <ButtonLink href="/start" className="rounded-full px-8 py-3.5 text-base shadow-lg shadow-indigo-600/30">
+                Start free →
+              </ButtonLink>
+            </div>
+            <p className="mt-6 text-sm text-slate-400">
+              Are you a immigration professional or tax consultant?{" "}
+              <Link href="/register?type=consultant" className="font-semibold text-white underline decoration-slate-500 underline-offset-4 hover:decoration-white">
+                Join our partner network
+              </Link>
+            </p>
+          </div>
         </section>
       </main>
-
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
-        <div className="mb-2 flex justify-center gap-4">
-          <Link href="/pricing" className="hover:text-slate-900">
-            Pricing
-          </Link>
-          <Link href={user ? "/dashboard" : "/login"} className="hover:text-slate-900">
-            {user ? "Dashboard" : "Sign in"}
-          </Link>
-          {!user && (
-            <Link href="/register" className="hover:text-slate-900">
-              Create account
-            </Link>
-          )}
-          {user?.type === "ADMIN" && (
-            <Link href="/admin" className="hover:text-slate-900">
-              Admin
-            </Link>
-          )}
-        </div>
-        © {new Date().getFullYear()} MyImmigration — Case Intelligence Platform. Not a law firm. Not legal advice.
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

@@ -1,34 +1,67 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { SiteHeader } from "@/components/site-nav";
 import { RegisterForm } from "@/components/auth-forms";
-import { getCurrentUser } from "@/lib/auth";
+import { getSetting } from "@/lib/settings";
+import { getGuestSession } from "@/lib/guest";
 
-export const metadata = { title: "Create account" };
+export const metadata = { title: "Create your account" };
 
-export default async function RegisterPage() {
-  const user = await getCurrentUser();
-  if (user) redirect(user.type === "ADMIN" ? "/admin" : "/dashboard");
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
+  const { type } = await searchParams;
+  const asConsultant = type === "consultant";
+  const [googleClientId, guest] = await Promise.all([
+    getSetting("auth.google_client_id", ""),
+    getGuestSession(),
+  ]);
+  const agreement = await db.contentPage.findFirst({
+    where: { kind: asConsultant ? "agreement_consultant" : "agreement_user", isPublished: true },
+    orderBy: { version: "desc" },
+    select: { slug: true, title: true },
+  });
+  const hasGuestData = !!guest && (guest.situation.length > 0 || guest.goal.length > 0);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-md items-center justify-between px-4 py-4">
-          <Link href="/" className="text-xl font-bold text-orange-700">
-            MyImmigration
-          </Link>
-          <Link href="/login" className="text-sm text-orange-700 hover:underline">
-            Sign in
-          </Link>
-        </div>
-      </header>
-      <main className="mx-auto max-w-md px-4 py-14">
-        <h1 className="text-center text-3xl font-bold text-slate-900">Create your account</h1>
-        <p className="mt-2 text-center text-sm text-slate-600">
-          Save cases, return later, and unlock your case dashboard.
+    <div className="min-h-screen">
+      <SiteHeader />
+      <main className="mx-auto max-w-md px-4 py-16">
+        <h1 className="text-center text-2xl font-bold text-slate-900">
+          {asConsultant ? "Join as a Immigration Consultant" : "Create your free account"}
+        </h1>
+        <p className="mt-1 text-center text-sm text-slate-500">
+          {asConsultant
+            ? "Partner with us to help applicants who need a professional."
+            : "Just the basics — no sensitive information needed."}
         </p>
-        <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <RegisterForm />
-        </section>
+        {hasGuestData && !asConsultant && (
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Your answers and uploads from before will be attached to your new account automatically.
+          </div>
+        )}
+        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          {googleClientId && !asConsultant && (
+            <>
+              <a
+                href="/api/auth/google"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Continue with Google
+              </a>
+              <div className="my-4 flex items-center gap-3 text-xs text-slate-400">
+                <div className="h-px flex-1 bg-slate-200" /> or <div className="h-px flex-1 bg-slate-200" />
+              </div>
+            </>
+          )}
+          <RegisterForm asConsultant={asConsultant} agreementSlug={agreement?.slug ?? ""} agreementTitle={agreement?.title ?? "Terms of Service"} />
+        </div>
+        <p className="mt-4 text-center text-sm text-slate-500">
+          Already have an account?{" "}
+          <Link href="/login" className="font-medium text-indigo-600 underline">Sign in</Link>
+        </p>
       </main>
     </div>
   );

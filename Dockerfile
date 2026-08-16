@@ -1,38 +1,32 @@
-# Stage 1: Install dependencies
-FROM node:20-alpine AS deps
+# MyImmigration production image.
+# Build:  docker compose build   (or: docker build -t myimmigration .)
+# The entrypoint applies database migrations, seeds defaults (idempotent), then starts the server.
+
+FROM node:22-alpine AS builder
 WORKDIR /app
+
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
 RUN npm ci
 
-# Stage 2: Build
-FROM node:20-alpine AS builder
-WORKDIR /app
-RUN apk add --no-cache openssl
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate
-RUN npm run build
+# A placeholder is enough at build time; the real DATABASE_URL is injected at runtime.
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
+RUN npx prisma generate && npm run build
 
-# Stage 3: Production image
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
-RUN apk add --no-cache openssl
-
 ENV NODE_ENV=production
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
-
-# Copy standalone output
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-USER nextjs
+COPY --from=builder /app/package.json /app/package-lock.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/next.config.ts /app/tsconfig.json ./
+COPY scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
+RUN chmod +x ./scripts/docker-entrypoint.sh && mkdir -p /app/var/uploads
 
 EXPOSE 3000
-
-CMD ["node", "server.js"]
+ENTRYPOINT ["./scripts/docker-entrypoint.sh"]

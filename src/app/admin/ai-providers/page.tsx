@@ -1,151 +1,64 @@
-import { revalidatePath } from "next/cache";
-import { Badge, Card, CardBody, PageHeader } from "@/components/admin-ui";
-import { prisma } from "@/lib/db/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { guardAdminPage } from "@/lib/admin-guard";
+import { PageHeader, Card, CardBody, Badge } from "@/components/ui";
+import { AiProviderForm } from "@/components/admin/ai-provider-form";
+import { AiProviderTest } from "@/components/admin/ai-provider-test";
+import { deleteAiProviderAction } from "@/actions/admin";
 
-const KNOWN_PROVIDERS = [
-  {
-    key: "openai-gpt4o",
-    label: "OpenAI GPT-4o",
-    provider: "OpenAI",
-    model: "gpt-4o",
-    apiKeyRef: "OPENAI_API_KEY",
-  },
-  {
-    key: "anthropic-claude-opus",
-    label: "Anthropic Claude Opus",
-    provider: "Anthropic",
-    model: "claude-opus-4-5",
-    apiKeyRef: "ANTHROPIC_API_KEY",
-  },
-  {
-    key: "google-gemini-pro",
-    label: "Google Gemini 1.5 Pro",
-    provider: "Google",
-    model: "gemini-1.5-pro",
-    apiKeyRef: "GOOGLE_AI_API_KEY",
-  },
-];
+export const metadata = { title: "AI providers" };
 
-async function saveProvider(formData: FormData) {
-  "use server";
-
-  await requireAdmin("admin.ai", true);
-
-  const key = String(formData.get("key") ?? "").trim();
-  const label = String(formData.get("label") ?? "").trim();
-  const provider = String(formData.get("provider") ?? "").trim();
-  const model = String(formData.get("model") ?? "").trim();
-  const apiKeyRef = String(formData.get("apiKeyRef") ?? "").trim();
-  const maxTokensRaw = String(formData.get("maxTokens") ?? "").trim();
-  const enabled = formData.get("enabled") === "on";
-
-  if (!key || !label || !provider || !model || !apiKeyRef) return;
-
-  const maxTokens = maxTokensRaw ? parseInt(maxTokensRaw, 10) : null;
-
-  await prisma.aiProvider.upsert({
-    where: { key },
-    update: { label, provider, model, apiKeyRef, maxTokens, enabled },
-    create: { key, label, provider, model, apiKeyRef, maxTokens: maxTokens ?? undefined, enabled },
-  });
-
-  revalidatePath("/admin/ai-providers");
-}
-
-export default async function AIProvidersPage() {
-  await requireAdmin("admin.ai");
-
-  const providers = await prisma.aiProvider.findMany({ orderBy: { createdAt: "asc" } });
-  const providerMap = new Map(providers.map((p) => [p.key, p]));
+export default async function AiProvidersPage() {
+  await guardAdminPage("admin.ai");
+  const providers = await db.aiProvider.findMany({ orderBy: { createdAt: "asc" } });
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div>
       <PageHeader
-        title="AI Providers"
-        subtitle="Register and enable providers used by the analysis pipeline."
+        title="AI providers"
+        subtitle="Connect 3–5 AI APIs here. Every variable — base URL, key, model, limits — is managed from this screen, never hardcoded."
       />
-      <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
-          Register and enable AI provider credentials. Each provider must have its API key configured
-          in Platform Settings before it can serve analysis requests.
-      </div>
-
-        {KNOWN_PROVIDERS.map((preset) => {
-          const existing = providerMap.get(preset.key);
-          return (
-            <Card key={preset.key}>
-              <CardBody>
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-900">{preset.label}</h2>
-                <Badge color={existing?.enabled ? "green" : "slate"}>
-                  {existing?.enabled ? "Enabled" : existing ? "Disabled" : "Not registered"}
+      <div className="space-y-6">
+        {providers.map((p) => (
+          <Card key={p.id}>
+            <CardBody>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <h2 className="font-semibold text-slate-900">{p.name}</h2>
+                <Badge color={p.isEnabled && p.apiKey ? "green" : "slate"}>
+                  {p.apiKey ? (p.isEnabled ? "connected" : "disabled") : "no API key"}
                 </Badge>
+                <Badge>{p.kind}</Badge>
+                <div className="ml-auto">
+                  <AiProviderTest providerId={p.id} disabled={!p.apiKey} />
+                </div>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
-                Provider: <strong>{preset.provider}</strong> · Model:{" "}
-                <code className="text-xs">{existing?.model ?? preset.model}</code> · API key env:{" "}
-                <code className="text-xs">{preset.apiKeyRef}</code>
-              </p>
-              <form action={saveProvider} className="mt-4 grid grid-cols-2 gap-3">
-                <input type="hidden" name="key" value={preset.key} />
-                <input type="hidden" name="provider" value={preset.provider} />
-                <input type="hidden" name="apiKeyRef" value={preset.apiKeyRef} />
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Label</label>
-                  <input
-                    name="label"
-                    defaultValue={existing?.label ?? preset.label}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none"
-                  />
-                </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Model ID</label>
-                  <input
-                    name="model"
-                    defaultValue={existing?.model ?? preset.model}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none"
-                  />
-                </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Max Tokens (optional)
-                  </label>
-                  <input
-                    name="maxTokens"
-                    type="number"
-                    defaultValue={existing?.maxTokens ?? ""}
-                    placeholder="e.g. 4096"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none"
-                  />
-                </div>
-                <div className="col-span-2 sm:col-span-1 flex items-center gap-2 pt-4">
-                  <input
-                    id={`enabled-${preset.key}`}
-                    name="enabled"
-                    type="checkbox"
-                    defaultChecked={existing?.enabled ?? true}
-                    className="h-4 w-4 rounded border-slate-300 text-orange-600"
-                  />
-                  <label
-                    htmlFor={`enabled-${preset.key}`}
-                    className="text-sm font-medium text-slate-700"
-                  >
-                    Enable this provider
-                  </label>
-                </div>
-                <div className="col-span-2">
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
-                  >
-                    Save
-                  </button>
-                </div>
+              <AiProviderForm
+                provider={{
+                  id: p.id,
+                  name: p.name,
+                  kind: p.kind,
+                  baseUrl: p.baseUrl,
+                  hasKey: p.apiKey.length > 0,
+                  model: p.model,
+                  maxTokens: p.maxTokens,
+                  temperature: p.temperature,
+                  supportsVision: p.supportsVision,
+                  isEnabled: p.isEnabled,
+                  notes: p.notes,
+                }}
+              />
+              <form action={deleteAiProviderAction.bind(null, p.id)} className="mt-2 text-right">
+                <button className="text-xs font-medium text-red-500 hover:text-red-700">Remove provider</button>
               </form>
-              </CardBody>
-            </Card>
-          );
-        })}
+            </CardBody>
+          </Card>
+        ))}
+        <Card>
+          <CardBody>
+            <h2 className="mb-3 font-semibold text-slate-900">Add a provider</h2>
+            <AiProviderForm provider={null} />
+          </CardBody>
+        </Card>
+      </div>
     </div>
   );
 }

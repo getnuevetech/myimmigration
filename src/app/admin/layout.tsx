@@ -1,49 +1,53 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getCurrentUser, hasAdminArea, isAdmin } from "@/lib/auth";
+import { getSetting } from "@/lib/settings";
 import { logoutAction } from "@/actions/auth";
-import { hasAdminPermission, requireAdmin } from "@/lib/auth";
 
-const NAV = [
+const NAV: { area: string; href: string; label: string; section: string }[] = [
   { area: "admin.dashboard", href: "/admin", label: "Overview", section: "General" },
   { area: "admin.cases", href: "/admin/cases", label: "Cases", section: "General" },
-  { area: "admin.users", href: "/admin/users", label: "Users", section: "People" },
-  { area: "admin.consultants", href: "/admin/consultants", label: "Consultants", section: "People" },
-  { area: "admin.assignments", href: "/admin/assignments", label: "Assignments", section: "People" },
+  { area: "admin.tickets", href: "/admin/tickets", label: "Support tickets", section: "General" },
+  { area: "admin.users", href: "/admin/users", label: "Customers", section: "People" },
+  { area: "admin.consultants", href: "/admin/consultants", label: "Immigration Consultants", section: "People" },
+  { area: "admin.consultants", href: "/admin/consultant-approval", label: "immigration professional auto-approval", section: "People" },
   { area: "admin.admins", href: "/admin/admins", label: "Admin users", section: "People" },
+  { area: "admin.roles", href: "/admin/roles", label: "Roles & permissions", section: "People" },
+  { area: "admin.users", href: "/admin/deleted", label: "Deleted accounts", section: "People" },
+  { area: "admin.assignments", href: "/admin/assignments", label: "Assignments", section: "People" },
   { area: "admin.ai", href: "/admin/ai-providers", label: "AI providers", section: "Intelligence" },
-  { area: "admin.pipelines", href: "/admin/ai-pipelines", label: "AI pipelines", section: "Intelligence" },
+  { area: "admin.ai", href: "/admin/lab", label: "AI test lab", section: "Intelligence" },
+  { area: "admin.pipelines", href: "/admin/pipelines", label: "AI pipelines", section: "Intelligence" },
+  { area: "admin.knowledge", href: "/admin/knowledge", label: "USCIS knowledge base", section: "Intelligence" },
   { area: "admin.plans", href: "/admin/plans", label: "Plans & access", section: "Commerce" },
   { area: "admin.payments", href: "/admin/payments", label: "Payment gateways", section: "Commerce" },
   { area: "admin.transactions", href: "/admin/transactions", label: "Transactions", section: "Commerce" },
   { area: "admin.content", href: "/admin/content", label: "Content & agreements", section: "Content" },
-  { area: "admin.forms", href: "/admin/forms", label: "USCIS forms", section: "Content" },
-  { area: "admin.notifications", href: "/admin/notifications", label: "Notifications", section: "System" },
-  { area: "admin.logs", href: "/admin/logs", label: "Audit logs", section: "System" },
-  { area: "admin.settings", href: "/admin/platform-settings", label: "Platform settings", section: "System" },
-] as const;
+  { area: "admin.messages", href: "/admin/messages", label: "System messages", section: "Content" },
+  { area: "admin.forms", href: "/admin/forms", label: "USCIS form templates", section: "Content" },
+  { area: "admin.settings", href: "/admin/settings", label: "App settings", section: "System" },
+  { area: "admin.logs", href: "/admin/logs", label: "System logs", section: "System" },
+];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireAdmin();
-  const visibleNav = NAV.filter((item) => hasAdminPermission(user, item.area));
-  const sections = Array.from(new Set(visibleNav.map((item) => item.section)));
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!isAdmin(user)) redirect("/app");
+  const appName = await getSetting("app.name", "MyImmigration");
+  const items = NAV.filter((n) => hasAdminArea(user, n.area));
+  const sections = Array.from(new Set(items.map((i) => i.section)));
 
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="border-b border-slate-800 bg-slate-900 text-white">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
           <Link href="/admin" className="flex items-center gap-2 font-bold">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-600 text-xs font-bold">
-              M
-            </span>
-            MyImmigration{" "}
-            <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-300">
-              Admin
-            </span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500 text-xs font-bold">T</span>
+            {appName} <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-300">Admin</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">
-            <span className="text-slate-400">{user.email}</span>
-            <Link href="/" className="text-slate-300 hover:text-white">
-              View site
-            </Link>
+            <span className="text-slate-400">{user.email}{user.role === "super_admin" ? " · Super admin" : ""}</span>
+            <Link href="/" className="text-slate-300 hover:text-white">View site</Link>
             <form action={logoutAction}>
               <button className="font-medium text-slate-300 hover:text-white">Sign out</button>
             </form>
@@ -55,11 +59,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <nav className="sticky top-6 space-y-5">
             {sections.map((section) => (
               <div key={section}>
-                <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  {section}
-                </p>
-                {visibleNav
-                  .filter((item) => item.section === section)
+                <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{section}</p>
+                {items
+                  .filter((i) => i.section === section)
                   .map((item) => (
                     <Link
                       key={item.href}
@@ -71,11 +73,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   ))}
               </div>
             ))}
-            {visibleNav.length === 0 && (
-              <p className="rounded-lg bg-white px-3 py-2 text-sm text-slate-500">
-                No admin areas assigned.
-              </p>
-            )}
           </nav>
         </aside>
         <main className="min-w-0 flex-1">{children}</main>

@@ -1,63 +1,49 @@
+# MyImmigration — local server deployment.
+#
+#   1. cp .env.deploy.example .env.deploy   (then edit passwords)
+#   2. docker compose --env-file .env.deploy up -d --build
+#   3. open http://<server-ip>:3000  (admin backend at /admin)
+#
+# Data persists in named volumes: database in `myimmigration_pgdata`, uploaded files in `myimmigration_uploads`.
+
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-myimmigration}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-myimmigration}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.deploy}
       POSTGRES_DB: ${POSTGRES_DB:-myimmigration}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:5432:5432"
+      - myimmigration_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myimmigration}"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myimmigration} -d ${POSTGRES_DB:-myimmigration}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 12
 
   app:
-    build:
-      context: .
-    ports:
-      - "3000:3000"
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      HOSTNAME: 0.0.0.0
-      DATABASE_URL: postgresql://${POSTGRES_USER:-myimmigration}:${POSTGRES_PASSWORD_URL_ENCODED:-myimmigration}@db:5432/${POSTGRES_DB:-myimmigration}?schema=public
-      ADMIN_PREVIEW_ENABLED: ${ADMIN_PREVIEW_ENABLED:-false}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:-}
-      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_DEFAULT_MODEL: ${OPENAI_DEFAULT_MODEL:-gpt-4o}
-      OPENAI_FALLBACK_MODEL_SUMMARY: ${OPENAI_FALLBACK_MODEL_SUMMARY:-gpt-4o}
-      OPENAI_FALLBACK_MODEL_GOAL: ${OPENAI_FALLBACK_MODEL_GOAL:-gpt-4o}
-      OPENAI_FALLBACK_MODEL_DOCUMENT: ${OPENAI_FALLBACK_MODEL_DOCUMENT:-gpt-4o}
-      OPENAI_FALLBACK_MODEL_SITUATION: ${OPENAI_FALLBACK_MODEL_SITUATION:-gpt-4o}
-      OPENAI_FALLBACK_MODEL_PRESENTATION: ${OPENAI_FALLBACK_MODEL_PRESENTATION:-gpt-4o}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_DEFAULT_MODEL: ${ANTHROPIC_DEFAULT_MODEL:-claude-opus-4-5}
-      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
-      GOOGLE_DEFAULT_MODEL: ${GOOGLE_DEFAULT_MODEL:-gemini-1.5-pro}
-    depends_on:
-      db:
-        condition: service_healthy
+    build: .
     restart: unless-stopped
-
-  db-sync:
-    profiles: ["tools"]
-    build:
-      context: .
-      target: builder
-    command: ["npx", "prisma", "db", "push"]
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-myimmigration}:${POSTGRES_PASSWORD_URL_ENCODED:-myimmigration}@db:5432/${POSTGRES_DB:-myimmigration}?schema=public
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      # DATABASE_URL is assembled inside the entrypoint (with URL-encoding), so
+      # passwords with special characters (@ : / # $) work correctly.
+      DB_HOST: db
+      DB_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-myimmigration}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-myimmigration}
+      AUTH_SECRET: ${AUTH_SECRET:-}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@myimmigration.com}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?set SEED_ADMIN_PASSWORD in .env.deploy}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - myimmigration_uploads:/app/var/uploads
 
 volumes:
-  postgres_data:
+  myimmigration_pgdata:
+  myimmigration_uploads:

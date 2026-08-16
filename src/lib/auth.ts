@@ -1,237 +1,131 @@
 import "server-only";
-
+import { cookies } from "next/headers";
+import { SignJWT, jwtVerify } from "jose";
+import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { cache } from "react";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db/prisma";
-import { claimGuestCasesForUser } from "@/lib/cases";
-import { getCurrentGuestSession } from "@/lib/guest-session";
-import type { AdminAreaKey } from "@/lib/admin-areas";
+import { db } from "./db";
+import { ROLES } from "./constants";
 
 const SESSION_COOKIE = "myimmigration_session";
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
-const PASSWORD_SCHEME = "scrypt";
 
-const CURRENT_USER_INCLUDE = {
-  adminRole: {
-    include: {
-      permissions: true,
-    },
-  },
-} satisfies Prisma.UserInclude;
+// Module-level cache so getSecret() only hits the database once per process.
+// Stored as a Promise so concurrent cold requests await the same pending fetch
+// rather than each racing to write a (potentially different) resolved value.
+let _secretPromise: Promise<Uint8Array> | null = null;
 
-export type CurrentUser = Prisma.UserGetPayload<{
-  include: typeof CURRENT_USER_INCLUDE;
-}>;
-
-type SessionPayload = {
-  sub: string;
-  exp: number;
-};
-
-function base64url(input: Buffer | string): string {
-  return Buffer.from(input).toString("base64url");
-}
-
-function sign(value: string, secret: string): string {
-  return crypto.createHmac("sha256", secret).update(value).digest("base64url");
-}
-
-async function getAuthSecret(): Promise<string> {
-  if (process.env.AUTH_SESSION_SECRET && process.env.AUTH_SESSION_SECRET.length >= 32) {
-    return process.env.AUTH_SESSION_SECRET;
+// The signing secret is admin-manageable: env var wins, otherwise a random
+// secret is generated once and stored in the settings table.
+async function getSecret(): Promise<Uint8Array> {
+  if (!_secretPromise) {
+    _secretPromise = (async () => {
+      if (process.env.AUTH_SECRET) return new TextEncoder().encode(process.env.AUTH_SECRET);
+      let row = await db.setting.findUnique({ where: { key: "auth.secret" } });
+      if (!row) {
+        row = await db.setting.upsert({
+          where: { key: "auth.secret" },
+          update: {},
+          create: {
+            key: "auth.secret",
+            value: crypto.randomBytes(32).toString("hex"),
+            type: "secret",
+            group: "security",
+            label: "Session signing secret",
+          },
+        });
+      }
+      return new TextEncoder().encode(row.value);
+    })();
   }
-
-  const configured = await prisma.setting.findUnique({
-    where: { key: "AUTH_SESSION_SECRET" },
-    select: { value: true },
-  });
-
-  if (configured?.value && configured.value.length >= 32) {
-    return configured.value;
-  }
-
-  const generated = crypto.randomBytes(32).toString("base64url");
-  const setting = await prisma.setting.upsert({
-    where: { key: "AUTH_SESSION_SECRET" },
-    update: { value: generated, type: "env", group: "runtime", isSecret: true },
-    create: {
-      key: "AUTH_SESSION_SECRET",
-      value: generated,
-      type: "env",
-      group: "runtime",
-      description: "Session signing secret generated at first auth use.",
-      isSecret: true,
-    },
-    select: { value: true },
-  });
-
-  return setting.value;
+  return _secretPromise;
 }
 
-async function secureCookiesEnabled(): Promise<boolean> {
-  const fromEnv = process.env.NEXT_PUBLIC_APP_URL;
-  if (fromEnv) {
-    return fromEnv.toLowerCase().startsWith("https://");
-  }
-
-  const setting = await prisma.setting.findUnique({
-    where: { key: "NEXT_PUBLIC_APP_URL" },
-    select: { value: true },
-  });
-
-  return setting?.value.trim().toLowerCase().startsWith("https://") ?? false;
+export async function hashPassword(password: string) {
+  return bcrypt.hash(password, 10);
 }
 
-export async function hashPassword(password: string): Promise<string> {
-  const salt = crypto.randomBytes(16).toString("base64url");
-  const hash = await new Promise<Buffer>((resolve, reject) => {
-    crypto.scrypt(password, salt, 64, (error, derivedKey) => {
-      if (error) reject(error);
-      else resolve(derivedKey);
-    });
-  });
-
-  return `${PASSWORD_SCHEME}:${salt}:${hash.toString("base64url")}`;
+export async function verifyPassword(password: string, hash: string) {
+  return bcrypt.compare(password, hash);
 }
 
-export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  const [scheme, salt, expectedHash] = storedHash.split(":");
-  if (scheme !== PASSWORD_SCHEME || !salt || !expectedHash) {
-    return false;
-  }
-
-  const actual = await new Promise<Buffer>((resolve, reject) => {
-    crypto.scrypt(password, salt, 64, (error, derivedKey) => {
-      if (error) reject(error);
-      else resolve(derivedKey);
-    });
-  });
-  const expected = Buffer.from(expectedHash, "base64url");
-
-  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+// Mark cookies Secure only when the app is actually served over HTTPS
+// (from the admin-managed App URL setting). Following NODE_ENV alone breaks
+// plain-HTTP local deployments: Safari drops Secure cookies on http://localhost.
+export async function secureCookiesEnabled(): Promise<boolean> {
+  const row = await db.setting.findUnique({ where: { key: "app.url" } });
+  return (row?.value ?? "").trim().toLowerCase().startsWith("https://");
 }
 
-async function encodeSession(payload: SessionPayload): Promise<string> {
-  const body = base64url(JSON.stringify(payload));
-  const signature = sign(body, await getAuthSecret());
-  return `${body}.${signature}`;
-}
-
-async function decodeSession(token: string): Promise<SessionPayload | null> {
-  const [body, signature] = token.split(".");
-  if (!body || !signature) return null;
-
-  const expected = sign(body, await getAuthSecret());
-  const signatureBuffer = Buffer.from(signature, "base64url");
-  const expectedBuffer = Buffer.from(expected, "base64url");
-  if (
-    signatureBuffer.length !== expectedBuffer.length ||
-    !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
-  ) {
-    return null;
-  }
-
-  try {
-    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as SessionPayload;
-    if (!payload.sub || !payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
-      return null;
-    }
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-export async function createSession(userId: string): Promise<void> {
-  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
-  const token = await encodeSession({ sub: userId, exp: expiresAt });
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, token, {
+export async function createSession(userId: string) {
+  const secret = await getSecret();
+  const token = await new SignJWT({ sub: userId })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("30d")
+    .sign(secret);
+  const jar = await cookies();
+  jar.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: await secureCookiesEnabled(),
-    maxAge: SESSION_TTL_SECONDS,
+    maxAge: 60 * 60 * 24 * 30,
     path: "/",
   });
 }
 
-export async function destroySession(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE);
+export async function destroySession() {
+  const jar = await cookies();
+  jar.delete(SESSION_COOKIE);
 }
 
-export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+export const getCurrentUser = cache(async () => {
+  const jar = await cookies();
+  const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-
-  const payload = await decodeSession(token);
-  if (!payload) return null;
-
-  const user = await prisma.user.findUnique({
-    where: { id: payload.sub },
-    include: CURRENT_USER_INCLUDE,
-  });
-
-  if (!user || user.status !== "ACTIVE") {
+  try {
+    const secret = await getSecret();
+    const { payload } = await jwtVerify(token, secret);
+    if (!payload.sub) return null;
+    const user = await db.user.findUnique({
+      where: { id: payload.sub },
+      include: { adminPermissions: true, adminRole: true, consultantProfile: true },
+    });
+    if (!user || user.status !== "active") return null;
+    return user;
+  } catch {
     return null;
   }
-
-  return user;
 });
 
-export async function requireUser(): Promise<CurrentUser> {
+export type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
+
+export async function requireUser() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) throw new Error("UNAUTHENTICATED");
   return user;
 }
 
-export function isAdmin(user: Pick<CurrentUser, "type">): boolean {
-  return user.type === "ADMIN";
+export function isAdmin(user: { role: string }) {
+  return user.role === ROLES.ADMIN || user.role === ROLES.SUPER_ADMIN;
 }
 
-export function hasAdminPermission(
-  user: CurrentUser,
-  areaKey?: AdminAreaKey,
-  manage = false
-): boolean {
-  if (!isAdmin(user)) return false;
-  if (!areaKey) return true;
-  try {
-    const scope = JSON.parse(user.adminRole?.scopeJson ?? "{}") as {
-      all?: boolean;
-      areas?: string[];
-    };
-    if (scope.all) return true;
-    if (scope.areas?.includes(areaKey)) return true;
-  } catch {
-    // Fall back to explicit permission rows below.
+export function hasAdminArea(user: CurrentUser, areaKey: string) {
+  if (user.role === ROLES.SUPER_ADMIN) return true;
+  if (user.role !== ROLES.ADMIN) return false;
+  // Areas come from the assigned role; legacy per-user permissions still count.
+  if (user.adminRole) {
+    try {
+      const areas: string[] = JSON.parse(user.adminRole.areasJson || "[]");
+      if (areas.includes(areaKey)) return true;
+    } catch {
+      // fall through to per-user permissions
+    }
   }
-  return (
-    user.adminRole?.permissions.some(
-      (permission) =>
-        permission.key === areaKey && (manage ? permission.canManage : permission.canView)
-    ) ?? false
-  );
+  return user.adminPermissions.some((p) => p.featureKey === areaKey);
 }
 
-export async function requireAdmin(areaKey?: AdminAreaKey, manage = false): Promise<CurrentUser> {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  if (!hasAdminPermission(user, areaKey, manage)) redirect(isAdmin(user) ? "/admin" : "/dashboard");
+export async function requireAdminArea(areaKey: string) {
+  const user = await requireUser();
+  if (!hasAdminArea(user, areaKey)) throw new Error("FORBIDDEN");
   return user;
-}
-
-export async function claimCurrentGuestSession(userId: string): Promise<void> {
-  const session = await getCurrentGuestSession();
-  if (!session) return;
-
-  await prisma.guestSession.update({
-    where: { id: session.id },
-    data: { linkedUserId: userId },
-  });
-  await claimGuestCasesForUser(session.id, userId);
 }

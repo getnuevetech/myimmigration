@@ -1,96 +1,92 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-import {
-  bootstrapAdminAction,
-  loginAction,
-  registerAction,
-  type AuthActionState,
-} from "@/actions/auth";
-
-const inputClass =
-  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none";
-const buttonClass =
-  "w-full rounded-lg bg-orange-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-60";
-
-function SubmitButton({ children }: { children: React.ReactNode }) {
-  const { pending } = useFormStatus();
-  return (
-    <button type="submit" disabled={pending} className={buttonClass}>
-      {pending ? "Please wait..." : children}
-    </button>
-  );
-}
-
-function FormError({ state }: { state: AuthActionState }) {
-  if (!state?.error) return null;
-  return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>;
-}
+import { ActionForm, SubmitButton } from "./action-form";
+import { loginAction, registerAction, requestPasswordResetAction, resetPasswordAction } from "@/actions/auth";
+import { inputClass } from "./ui";
 
 export function LoginForm() {
-  const [state, action] = useActionState(loginAction, {});
-
   return (
-    <form action={action} className="space-y-4">
-      <FormError state={state} />
-      <input name="email" type="email" required placeholder="Email address" className={inputClass} />
-      <input name="password" type="password" required placeholder="Password" className={inputClass} />
-      <SubmitButton>Sign in</SubmitButton>
-      <p className="text-center text-sm text-slate-500">
-        No account yet?{" "}
-        <Link href="/register" className="font-medium text-orange-700 underline">
-          Create one
-        </Link>
-      </p>
-    </form>
+    <ActionForm action={loginAction}>
+      <div className="space-y-4">
+        <input name="email" type="email" required placeholder="Email address" className={inputClass} />
+        <input name="password" type="password" required placeholder="Password" className={inputClass} />
+        <SubmitButton className="w-full py-2.5">Sign in</SubmitButton>
+        <p className="text-center">
+          <Link href="/forgot-password" className="text-sm font-medium text-indigo-600 hover:underline">
+            Forgot your password?
+          </Link>
+        </p>
+      </div>
+    </ActionForm>
   );
 }
 
-export function RegisterForm() {
-  const [state, action] = useActionState(registerAction, {});
-
+export function ForgotPasswordForm() {
   return (
-    <form action={action} className="space-y-4">
-      <FormError state={state} />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <input name="firstName" placeholder="First name" className={inputClass} />
-        <input name="lastName" placeholder="Last name" className={inputClass} />
+    <ActionForm
+      action={requestPasswordResetAction}
+      successMessage="If an account exists for that email, a reset link is on its way. It expires in 1 hour."
+    >
+      <div className="space-y-4">
+        <input name="email" type="email" required placeholder="Your email address" className={inputClass} />
+        <SubmitButton className="w-full py-2.5">Send reset link</SubmitButton>
       </div>
-      <input name="email" type="email" required placeholder="Email address" className={inputClass} />
-      <input name="password" type="password" required placeholder="Password (8+ characters)" className={inputClass} />
-      <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-        <input name="acceptedTerms" type="checkbox" required className="mt-0.5" />
-        <span>
-          I agree to the current MyImmigration terms and understand this platform provides
-          informational guidance only, not legal advice.
-        </span>
-      </label>
-      <SubmitButton>Create account</SubmitButton>
-      <p className="text-center text-sm text-slate-500">
-        Already have an account?{" "}
-        <Link href="/login" className="font-medium text-orange-700 underline">
-          Sign in
-        </Link>
-      </p>
-    </form>
+    </ActionForm>
   );
 }
 
-export function BootstrapAdminForm() {
-  const [state, action] = useActionState(bootstrapAdminAction, {});
-
+export function ResetPasswordForm({ token }: { token: string }) {
   return (
-    <form action={action} className="space-y-4">
-      <FormError state={state} />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <input name="firstName" placeholder="First name" className={inputClass} />
-        <input name="lastName" placeholder="Last name" className={inputClass} />
+    <ActionForm action={resetPasswordAction}>
+      <input type="hidden" name="token" value={token} />
+      <div className="space-y-4">
+        <input name="password" type="password" required placeholder="New password (8+ characters)" className={inputClass} />
+        <input name="confirm" type="password" required placeholder="Repeat new password" className={inputClass} />
+        <SubmitButton className="w-full py-2.5">Set new password</SubmitButton>
       </div>
-      <input name="email" type="email" required placeholder="Admin email" className={inputClass} />
-      <input name="password" type="password" required placeholder="Password (8+ characters)" className={inputClass} />
-      <SubmitButton>Create first admin</SubmitButton>
-    </form>
+    </ActionForm>
+  );
+}
+
+export function RegisterForm({
+  asConsultant,
+  agreementSlug,
+  agreementTitle,
+}: {
+  asConsultant: boolean;
+  agreementSlug: string;
+  agreementTitle: string;
+}) {
+  return (
+    <ActionForm action={registerAction}>
+      {asConsultant && <input type="hidden" name="asConsultant" value="1" />}
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <input name="firstName" required placeholder="First name" className={inputClass} />
+          <input name="lastName" required placeholder="Last name" className={inputClass} />
+        </div>
+        <input name="email" type="email" required placeholder="Email address (required)" className={inputClass} />
+        <input name="phone" type="tel" placeholder="Mobile number (optional)" className={inputClass} />
+        <input name="address" placeholder="Address (optional — you can add it later)" className={inputClass} />
+        <input name="password" type="password" required placeholder="Password (8+ characters)" className={inputClass} />
+        <label className="flex items-start gap-2 text-sm text-slate-600">
+          <input type="checkbox" name="agree" required className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600" />
+          <span>
+            I have read and agree to the{" "}
+            {agreementSlug ? (
+              <Link href={`/p/${agreementSlug}`} target="_blank" className="font-medium text-indigo-600 underline">
+                {agreementTitle}
+              </Link>
+            ) : (
+              agreementTitle
+            )}
+          </span>
+        </label>
+        <SubmitButton className="w-full py-2.5">
+          {asConsultant ? "Create consultant account" : "Create my account"}
+        </SubmitButton>
+      </div>
+    </ActionForm>
   );
 }

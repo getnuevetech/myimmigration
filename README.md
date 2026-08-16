@@ -1,71 +1,78 @@
-# MyImmigration — Immigration Case Intelligence Platform
+# MyImmigration
 
-An AI-powered immigration case intelligence and preparation platform. Users tell their immigration story, upload documents, and receive a structured case dashboard with plain-language explanations, timeline reconstruction, issue detection, and next steps.
+A friendly AI immigration case assistant that helps people understand USCIS notices, immigration documents, deadlines, and case questions in plain English — and turns every situation into a simple, step-by-step plan. MyImmigration is **not** USCIS and is **not** a law firm; it is an informational guidance tool with optional referral or handoff to vetted immigration professionals.
 
-> **Not a law firm. Not legal advice.** This platform provides informational analysis and document organization only.
+## What's in V1
 
-## Features
+| Feature | Status |
+| --- | --- |
+| Upload / photograph USCIS notices | ✅ |
+| Identify notice type, filing context, important dates, and deadlines | ✅ |
+| Plain-English explanations + personalized next steps | ✅ |
+| AI immigration Q&A (guest-friendly) | ✅ |
+| Upload & explain USCIS notices, receipts, forms, visas, passports, RFEs, and evidence | ✅ |
+| Response-letter generator (user reviews & mails) | ✅ |
+| Deadline reminders | ✅ |
+| Private document vault (user-deletable) | ✅ |
+| Immigration professional referral with mutual-consent connection | ✅ |
+| Simplified "video-game" USCIS form wizards → regenerated standard forms | ✅ |
+| Subscriptions with admin-controlled feature access | ✅ |
+| File with USCIS or provide legal representation | ❌ (later) |
 
-- **Narrative Input** — Write your immigration story naturally; AI structures it into a chronology
-- **Goal Selector** — Choose what you need help with (status understanding, RFE prep, interview prep, etc.)
-- **Document Upload** — Upload I-797s, I-485, I-130, I-765, RFEs, visa pages, and more
-- **Configurable Multi-AI Pipeline** — staged orchestration with deterministic consensus/verification hooks
-- **Case Dashboard** — Health indicator, timeline, findings checklist, inconsistency detection, plain-language summary
-- **Attorney Handoff** — Export a complete case package for your immigration attorney
-- **Admin Control Plane (foundation)** — `/admin` shell for AI providers, pipelines, plans, agreements, payment and settings modules
-- **Persistence Foundation (Phase A)** — Prisma schema for users, guest sessions, cases, documents, subscriptions, consultant assignments, agreements, AI runs, and audit logs
+## Architecture
 
-## Getting Started
+Six layers, exactly as designed:
+
+1. **Customer input** — situation + goal + documents. Works without an account; a guest session stores everything and attaches it to the user's account on registration.
+2. **Document intelligence** — two independent AI extractors (e.g. Claude + Gemini) map each document into the standardized MyImmigration schema.
+3. **Fact normalization** — parsed model outputs merged field-by-field.
+4. **Immigration intelligence** — analysis grounded in an admin-curated **USCIS knowledge base** (forms, instructions, notices, timelines, evidence rules, and interview/RFE guidance), answered as structured questions (issue, evidence, USCIS basis, conditions, confidence, professional review).
+5. **Verification** — a deterministic consensus engine: agreement merges, disagreement is flagged **"verification required"** (never guessed). Case readiness (0–100%) is computed by our own formula: documents + verified facts + USCIS source confirmation − contradictions.
+6. **MyImmigration UI** — models return JSON only; the frontend renders cards, amounts, product states (✓ Resolved, ◐ Review, ! Action Needed, ▲ Urgent, ? Information Needed), timelines, and progress deterministically. The AI never writes the customer's screen.
+
+If no AI provider is configured yet, the platform runs in a labeled deterministic fallback mode so the product remains usable end-to-end.
+
+### Nothing is hardcoded
+
+Every business variable is managed from the admin backend (`/admin`):
+
+- **AI providers** — add 3–5 providers (OpenAI-compatible, Anthropic, Google) with base URL, API key, model, tokens, temperature.
+- **AI pipelines** — per stage (summary, goal, document, situation, presenter, Q&A, notice, letter), pick which providers run, in which role (fact extractor / interpreter / skeptic / extractor A+B / analyst / reviewer / presenter), with fully editable prompt templates.
+- **Plans & access control** — plan CRUD plus a feature/limit matrix gating every app capability by subscription level.
+- **Payment gateways** — pluggable gateway configs (Stripe, PayPal, manual/dev) stored as JSON config; no vendor keys in code.
+- **Content & agreements** — terms, privacy, policy, legal, blog, and the three versioned agreements (user, consultant, user↔consultant connection) with acceptance tracking.
+- **USCIS form templates** — wizard steps (JSON) + output templates that regenerate the standard form layout.
+- **USCIS knowledge base** — the authoritative material AI analysis cites.
+- **App settings** — branding, hero copy, disclaimer, OAuth keys, URLs, analysis parameters, consultant auto-approval rules.
+- **Admin roles** — the super admin can create sub-admins scoped to specific admin areas.
+
+### User types
+
+- **Admin** — super admin + granular sub-admin roles.
+- **Regular users** — guest-first onboarding; registration (email compulsory; Google OAuth optional) with agreement checkbox; basic profile (name, address, phone, optional ID, bio, avatar); can delete files and their entire profile at will.
+- **Immigration professionals / consultants** — onboarding for attorneys, accredited representatives, or qualified consultants, including credentials, specialties, languages, and proof uploads. Manual admin approval with optional auto-approval rules. Client assignments require **both** the user's and the consultant's explicit consent before anything is shared.
+
+## Stack
+
+Next.js 15 (App Router, server actions) · TypeScript · Tailwind CSS 4 · Prisma + PostgreSQL · JWT sessions (jose) · bcryptjs.
+
+## Getting started (development)
+
+Requires Node.js 20+ and a PostgreSQL database (`createdb myimmigration`).
 
 ```bash
 npm install
-cp .env.example .env
-# set DATABASE_URL (AI keys can be set in /admin/platform-settings)
-npx prisma generate
+cp .env.example .env        # point DATABASE_URL at your PostgreSQL instance
+npx prisma migrate deploy   # create the schema
+npm run db:seed             # seed settings, plans, pipelines, content, forms, knowledge
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## Deploying to a local server
 
-For production Docker deployment on AWS Lightsail, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** — one-command Docker Compose stack (app + PostgreSQL + persistent volumes), or a bare-metal script (`sudo bash scripts/deploy-local.sh`) that installs PostgreSQL, migrates, seeds, builds, and sets up a systemd service.
 
-To enable the admin shell route during development, set `ADMIN_PREVIEW_ENABLED=true`.
+- App: http://localhost:3000
+- Admin: http://localhost:3000/admin — seeded super admin: `admin@myimmigration.com` / `ChangeMe!2026` (override with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`; change immediately).
 
-Set runtime variables (AI keys/models, app URL, auth/payment secrets) at `/admin/platform-settings`.
-
-## AI Pipeline (redesign foundation)
-
-| Stage | Intent |
-|---|---|
-| Summary | Convert user narrative into structured facts |
-| Goal | Interpret user goals and constraints |
-| Document | Extract and normalize structured data from uploaded evidence |
-| Situation | Build case-level assessment with conflict/verification handling |
-| Presentation | Deterministic customer output rendering inputs |
-
-Current implementation includes deterministic merge behavior and disagreement flagging (`verification required`) as architecture groundwork.
-
-## Data model foundation
-
-The repository now includes `prisma/schema.prisma` for the redesign baseline. It introduces models for:
-
-- Admin settings and role-based permissions
-- AI providers and stage pipelines
-- Users (admin/regular/consultant), guest sessions, and account-linking
-- Cases, documents, analysis runs/results, and issue records
-- Subscription plans, plan features, subscriptions, and payment transactions
-- Consultant profiles, assignments, and consent tracking
-- Agreement versioning/acceptance, USCIS form templates/submissions, notifications, and audit logs
-
-## Tech Stack
-
-- **Next.js 16** (App Router)
-- **TypeScript**
-- **Tailwind CSS**
-- **OpenAI SDK** (with staged orchestration fallback)
-- **Prisma 6** (schema + generated client foundation)
-- **Lucide React** (icons)
-
-## Legal Notice
-
-This platform is for informational and organizational purposes only. It does not constitute legal advice and does not create an attorney-client relationship. Please consult a licensed immigration attorney or accredited representative before making any immigration decisions.
+To enable real AI analysis, sign in as admin → **AI providers** → paste API keys for the seeded provider slots (or add your own), then review **AI pipelines**.
