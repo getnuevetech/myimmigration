@@ -747,6 +747,65 @@ async function seedFormTemplates() {
   }
 }
 
+async function seedCannedResponses() {
+  const responses = [
+    {
+      title: "Request latest USCIS notice",
+      category: "customer_service",
+      body: "Please upload the latest USCIS notice or receipt so we can confirm the form type, receipt number, notice date, and response deadline.",
+    },
+    {
+      title: "Recommend professional review",
+      category: "customer_service",
+      body: "Because this case may involve a high-stakes deadline or eligibility question, we recommend reviewing the documents with a licensed immigration attorney or accredited representative before acting.",
+    },
+    {
+      title: "Troubleshooting upload",
+      category: "tech_support",
+      body: "If the upload failed, try a PDF, JPG, or PNG under the size limit. If it still fails, reply with the file type and approximate size so we can investigate.",
+    },
+  ];
+
+  for (const response of responses) {
+    const existing = await db.cannedResponse.findFirst({ where: { title: response.title } });
+    if (!existing) await db.cannedResponse.create({ data: response });
+  }
+}
+
+async function seedMessageTemplates() {
+  const templates = [
+    {
+      key: "account_created",
+      name: "Account created",
+      subject: "Welcome to MyImmigration",
+      bodyHtml: "<p>Welcome to MyImmigration. Your account is ready, and your saved case information is available in your dashboard.</p>",
+      kind: "event",
+    },
+    {
+      key: "password_reset",
+      name: "Password reset",
+      subject: "Reset your MyImmigration password",
+      bodyHtml: "<p>Use this link to reset your password: {{link}}</p><p>This link expires soon. If you did not request it, you can ignore this message.</p>",
+      kind: "event",
+    },
+    {
+      key: "case_needs_review",
+      name: "Case needs review",
+      subject: "Your immigration case may need review",
+      bodyHtml: "<p>Your case includes an item that may benefit from professional review. Sign in to review the next steps.</p>",
+      kind: "event",
+    },
+  ];
+
+  for (const template of templates) {
+    await db.messageTemplate.upsert({
+      where: { key: template.key },
+      update: {},
+      create: template,
+    });
+  }
+}
+
 async function main() {
   await seedSettings();
   await seedAdmin();
