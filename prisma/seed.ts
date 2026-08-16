@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { DEFAULT_PROMPTS } from "../src/lib/ai/prompts";
