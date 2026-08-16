@@ -23,7 +23,7 @@ export default async function AdminFormsPage() {
     <div>
       <PageHeader
         title="USCIS form templates"
-        subtitle="Define the simplified 'video-game' wizard for each USCIS form, plus the output template that regenerates the completed standard form."
+        subtitle="Define guided USCIS form worksheets and the output templates used to prepare review-ready drafts."
       />
 
       <Card className="mb-6">

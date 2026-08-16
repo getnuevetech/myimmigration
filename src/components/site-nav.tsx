@@ -44,7 +44,7 @@ export async function SiteFooter() {
   const appName = await getSetting("app.name", "MyImmigration");
   const disclaimer = await getSetting(
     "app.disclaimer",
-    `${appName} is a immigration case assistant that helps you understand your immigration situation. We are not the USCIS, a law firm, or a law firm, and we do not provide legal, accounting, or financial advice.`,
+    `${appName} helps organize immigration documents, timelines, notices, and questions. We are not USCIS and we are not a law firm. The platform provides informational guidance only, not legal advice.`,
   );
   const pages = await db.contentPage.findMany({
     where: { isPublished: true, kind: { in: ["terms", "privacy", "policy", "legal", "page"] } },

@@ -8,13 +8,13 @@ async function seedSettings() {
   const settings: [string, string, string, string, string][] = [
     // key, value, group, label, description
     ["app.name", "MyImmigration", "branding", "App name", "Shown in the header, titles, and emails."],
-    ["app.tagline", "Your friendly immigration case assistant", "branding", "Tagline", "Short slogan shown on the landing page."],
+    ["app.tagline", "Immigration paperwork, organized", "branding", "Tagline", "Short slogan shown on the landing page."],
     ["app.url", "http://localhost:3000", "general", "App URL", "Public base URL, used for OAuth callbacks and payment redirects."],
     ["app.disclaimer", "MyImmigration is an immigration case assistant that helps you understand your immigration situation and USCIS documents in plain English. We are not USCIS and we are not a law firm. We provide informational guidance only, not legal advice. For high-stakes decisions, consult a licensed immigration attorney or accredited representative.", "branding", "Footer disclaimer", "Compliance disclaimer shown in the site footer."],
-    ["home.hero_title", "USCIS letters and immigration cases, explained like you're human", "branding", "Homepage hero title", ""],
-    ["home.hero_subtitle", "MyImmigration turns confusing USCIS notices, immigration documents, and case questions into a simple step-by-step plan. Start free — no account needed.", "branding", "Homepage hero subtitle", ""],
-    ["home.cta_primary", "Explain my immigration situation", "branding", "Primary call to action", ""],
-    ["home.cta_secondary", "Ask a quick question", "branding", "Secondary call to action", ""],
+    ["home.hero_title", "Turn immigration paperwork into a clear case plan", "branding", "Homepage hero title", ""],
+    ["home.hero_subtitle", "MyImmigration organizes notices, forms, timelines, evidence gaps, and deadlines so applicants can understand what is happening and what to prepare next.", "branding", "Homepage hero subtitle", ""],
+    ["home.cta_primary", "Start a case review", "branding", "Primary call to action", ""],
+    ["home.cta_secondary", "Ask an immigration question", "branding", "Secondary call to action", ""],
     ["home.hero_images", '["/hero/hero-1.png", "/hero/hero-2.png", "/hero/hero-3.png"]', "branding", "Hero images (JSON array)", "Rotating homepage hero images. JSON array of image URLs or paths — add, remove, or reorder freely."],
     ["auth.google_client_id", "", "auth", "Google OAuth client ID", "Leave empty to hide the Google sign-in button."],
     ["auth.google_client_secret", "", "auth", "Google OAuth client secret", ""],

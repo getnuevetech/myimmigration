@@ -27,24 +27,24 @@ export default async function HomePage() {
   if (heroImages.length === 0) heroImages = ["/hero/hero-1.png", "/hero/hero-2.png", "/hero/hero-3.png"];
 
   const steps = [
-    { n: "01", title: "Tell us what happened", body: "In your own words — your status history, notices received, applications filed, deadlines, and what you need help understanding." },
-    { n: "02", title: "Add your documents", body: "Upload USCIS notices, receipt letters, forms, visas, passports, RFEs, or other immigration records. We keep everything in your private vault." },
-    { n: "03", title: "Get your plain-English plan", body: "We break your situation into clear issues, timelines, document gaps, and next steps you can review before speaking with a professional." },
+    { n: "01", title: "Build the timeline", body: "Start with what you know: status history, filings, receipt numbers, notices, travel, interviews, and deadlines." },
+    { n: "02", title: "Map the evidence", body: "Upload USCIS notices, receipts, forms, visas, passports, RFEs, translations, and supporting records into one organized vault." },
+    { n: "03", title: "Leave with a case brief", body: "Get a structured summary, issue list, missing-document checklist, and professional-ready handoff packet." },
   ];
 
   const features = [
-    { title: "Understand any USCIS letter", body: "Upload or photograph a notice. We identify the form or notice type, important dates, deadlines, and what the letter appears to ask for." },
-    { title: "Ask anything, anytime", body: "A immigration case assistant that answers in plain English, without judgment. No question is too basic." },
-    { title: "Response letters, drafted for you", body: "Generate a professional reply to the USCIS and edit it before you send it yourself." },
-    { title: "Never miss a deadline", body: "Every date we find goes into your reminders, so nothing sneaks up on you." },
-    { title: "USCIS forms that feel easy", body: "Fill famous USCIS forms step-by-step like a quiz, then regenerate the completed standard form." },
-    { title: "Real professionals on standby", body: "If your case needs a licensed attorney, accredited representative, or immigration consultant, we help prepare a clean handoff package." },
+    { title: "Notice intelligence", body: "Identify the form, notice type, receipt number, response deadline, and evidence requested in a USCIS letter." },
+    { title: "Case timeline builder", body: "Turn scattered filings, status changes, appointments, and approvals into a readable immigration history." },
+    { title: "Evidence gap finder", body: "See what appears to be missing before you respond to an RFE, prepare for an interview, or organize an attorney handoff." },
+    { title: "Deadline control", body: "Capture dates from notices and keep the next required action visible before it becomes urgent." },
+    { title: "USCIS form preparation", body: "Use guided worksheets for common immigration forms and keep draft answers organized for review." },
+    { title: "Professional-ready packet", body: "Package the timeline, notices, documents, and questions so an attorney or accredited representative can move faster." },
   ];
 
   const trust = [
-    { icon: <IconShield className="h-5 w-5" />, text: "Your documents stay private — delete anything, anytime" },
-    { icon: <IconSparkle className="h-5 w-5" />, text: "Every amount is cross-checked against your documents" },
-    { icon: <IconCheckCircle className="h-5 w-5" />, text: "When something can't be verified, we say so — never guess" },
+    { icon: <IconShield className="h-5 w-5" />, text: "Private document vault with user-controlled deletion" },
+    { icon: <IconSparkle className="h-5 w-5" />, text: "Evidence-first analysis built around your actual records" },
+    { icon: <IconCheckCircle className="h-5 w-5" />, text: "Unverified facts stay flagged instead of being guessed" },
   ];
 
   return (
@@ -55,24 +55,24 @@ export default async function HomePage() {
         <section className="relative overflow-hidden border-b border-slate-200 bg-[#fbfaf7]">
           <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
             <div>
-              <Kicker>{s["app.tagline"] ?? "Your friendly immigration case assistant"}</Kicker>
+              <Kicker>{s["app.tagline"] ?? "Immigration paperwork, organized"}</Kicker>
               <h1 className="mt-6 font-serif text-5xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-6xl xl:text-[4.2rem]">
-                <Accent text={s["home.hero_title"] ?? "USCIS letters and immigration cases, explained like you're *human*."} />
+                <Accent text={s["home.hero_title"] ?? "Turn immigration paperwork into a clear *case plan*."} />
               </h1>
               <p className="mt-6 max-w-md text-base leading-relaxed text-slate-600">
                 {s["home.hero_subtitle"] ??
-                  `${appName} turns confusing USCIS notices, immigration documents, and case questions into a simple step-by-step plan. Start free — no account needed.`}
+                  `${appName} organizes notices, forms, timelines, evidence gaps, and deadlines so you can understand what is happening and what to prepare next.`}
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <ButtonLink href="/start" className="rounded-full px-7 py-3.5 text-base shadow-lg shadow-orange-700/25">
-                  {s["home.cta_primary"] ?? "Explain my immigration situation"} →
+                  {s["home.cta_primary"] ?? "Start a case review"} →
                 </ButtonLink>
                 <ButtonLink href="/start/qa" variant="secondary" className="rounded-full px-7 py-3.5 text-base">
-                  {s["home.cta_secondary"] ?? "Ask a quick question"}
+                  {s["home.cta_secondary"] ?? "Ask an immigration question"}
                 </ButtonLink>
               </div>
               <p className="mt-7 font-mono text-[11px] uppercase tracking-widest text-slate-400">
-                Free to start &nbsp;·&nbsp; No credit card &nbsp;·&nbsp; Your data stays yours
+                Private by design &nbsp;·&nbsp; Evidence-first &nbsp;·&nbsp; Built for handoff
               </p>
             </div>
             <HeroCarousel images={heroImages} />
@@ -84,10 +84,10 @@ export default async function HomePage() {
           <div className="mx-auto max-w-6xl px-4 py-20">
             <div className="max-w-md">
               <h2 className="font-serif text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
-                <Accent text="As easy as *one, two, three*" />
+                <Accent text="From scattered records to a *case brief*" />
               </h2>
               <p className="mt-4 text-sm leading-relaxed text-slate-600">
-                No legal jargon, no confusing agency language. Just tell us what happened — we help organize the details.
+                A durable workflow for notices, deadlines, evidence, and professional review.
               </p>
             </div>
             <div className="mt-12 divide-y divide-slate-300/60 border-t border-slate-300/60">
@@ -108,10 +108,10 @@ export default async function HomePage() {
             <div className="lg:sticky lg:top-24 lg:self-start">
               <Kicker>What you get</Kicker>
               <h2 className="mt-5 font-serif text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
-                <Accent text="Everything you need to face the USCIS *calmly*" />
+                <Accent text="A workspace for the immigration details that *matter*" />
               </h2>
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-600">
-                Six quiet superpowers, one calmer case file. Built for people navigating immigration paperwork.
+                Structured enough for professionals, readable enough for families.
               </p>
               <ul className="mt-8 space-y-2.5">
                 {trust.map((t) => (
@@ -143,15 +143,15 @@ export default async function HomePage() {
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 text-center sm:grid-cols-3">
             <div>
               <p className="font-serif text-6xl font-bold italic text-orange-600">9+</p>
-              <p className="mt-2 text-sm text-slate-600">USCIS forms turned into friendly quizzes</p>
+              <p className="mt-2 text-sm text-slate-600">USCIS workflows organized into guided steps</p>
             </div>
             <div>
               <p className="font-serif text-6xl font-bold italic text-orange-600">5</p>
-              <p className="mt-2 text-sm text-slate-600">Cross-checking dates, receipts, and deadlines</p>
+              <p className="mt-2 text-sm text-slate-600">Core record types: notices, forms, evidence, deadlines, questions</p>
             </div>
             <div>
               <p className="font-serif text-6xl font-bold italic text-orange-600">100%</p>
-              <p className="mt-2 text-sm text-slate-600">yours — delete your data anytime</p>
+              <p className="mt-2 text-sm text-slate-600">user-controlled document ownership</p>
             </div>
           </div>
         </section>
@@ -160,10 +160,10 @@ export default async function HomePage() {
         <section className="bg-[#0b1322]">
           <div className="mx-auto max-w-6xl px-4 pb-4 pt-20">
             <h2 className="max-w-2xl font-serif text-4xl font-bold leading-tight text-white sm:text-5xl">
-              <Accent text="Worried about a letter sitting on your *table*?" accentClass="font-serif italic text-orange-400" />
+              <Accent text="Have a USCIS notice you do not want to *misread*?" accentClass="font-serif italic text-orange-400" />
             </h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
-              Upload it now. In minutes you&apos;ll know what it means, what USCIS is asking for, and exactly what to organize next.
+              Upload it now. Build a timeline, extract the requested evidence, and prepare the next conversation with confidence.
             </p>
             <div className="mt-8">
               <ButtonLink href="/start" className="rounded-full px-8 py-3.5 text-base shadow-lg shadow-orange-700/30">
