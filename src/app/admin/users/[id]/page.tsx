@@ -132,8 +132,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   <Badge color="indigo">{p.credentialType.toUpperCase().replace("_", " ")}</Badge>
                   {p.credentialNumber && <Badge>#{p.credentialNumber}{p.licenseState ? ` (${p.licenseState})` : ""}</Badge>}
-                  {p.ptin && <Badge>PTIN {p.ptin}</Badge>}
-                  {p.efin && <Badge>EFIN {p.efin}</Badge>}
+                  {p.ptin && <Badge>license/registration number {p.ptin}</Badge>}
+                  {p.efin && <Badge>filing-system ID {p.efin}</Badge>}
                   <Badge color={p.status === "approved" ? "green" : p.status === "rejected" ? "red" : "amber"}>{p.status}</Badge>
                   <Badge>{p.yearsExperience} yrs</Badge>
                   {p.isBusiness && <Badge>{p.businessName || "Business"}{p.ein ? ` · EIN ${p.ein}` : ""}</Badge>}

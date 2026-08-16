@@ -10,7 +10,7 @@ export function AddDeadlineForm() {
       <div className="flex flex-wrap items-end gap-3">
         <label className="min-w-48 flex-1">
           <span className="mb-1 block text-xs font-medium text-slate-600">What&apos;s due?</span>
-          <input name="title" required placeholder="e.g. Respond to CP2000" className={inputClass} />
+          <input name="title" required placeholder="e.g. Respond to RFE" className={inputClass} />
         </label>
         <label>
           <span className="mb-1 block text-xs font-medium text-slate-600">Date</span>

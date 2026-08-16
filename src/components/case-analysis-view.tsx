@@ -46,19 +46,22 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   });
   const isPreliminary = c.runs.length > 0 && aiStepCount === 0;
 
-  const form9465 = interactive
-    ? await db.irsFormTemplate.findFirst({ where: { formNumber: "9465", isPublished: true }, select: { id: true } })
+  const formI485 = interactive
+    ? await db.irsFormTemplate.findFirst({ where: { formNumber: "I-485", isPublished: true }, select: { id: true } })
     : null;
 
   const stepCta = (actionKey: string): { label: string; href: string } | null => {
     switch (actionKey.toUpperCase()) {
       case "GET_TRANSCRIPT":
       case "GET_ACCOUNT_TRANSCRIPT":
-        return { label: "How to get my transcript", href: "/app/irs-account" };
+      case "UPLOAD_NOTICE":
+        return { label: "Upload USCIS records", href: "/app/documents" };
       case "DRAFT_LETTER":
         return { label: "Draft my letter", href: "/app/letters/new" };
       case "COMPLETE_FORM_9465":
-        return { label: "Open the payment plan form", href: "/app/forms" };
+      case "COMPLETE_FORM_I485":
+      case "PREPARE_FORM":
+        return { label: "Open USCIS forms", href: "/app/forms" };
       case "ADD_DEADLINE":
         return { label: "Add the deadline", href: "/app/deadlines" };
       default:
@@ -74,17 +77,15 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     if (!neededDocs.some((d) => d.kind === kind)) neededDocs.push({ kind, label, hint });
   };
   for (const issue of c.issues) {
-    if (["refund_discrepancy", "balance_due", "penalty"].includes(issue.issueType)) {
-      wantDoc("transcript", `USCIS Account Transcript${yearHint ? ` (${yearHint})` : ""}`, "Downloads instantly from the USCIS online account — settles the exact amounts.");
-      wantDoc("1040", `Tax return (Form 1040)${yearHint ? ` for ${yearHint}` : ""}`, "Shows what was claimed, for comparison against USCIS records.");
+    if (["uscis_notice_response", "deadline_tracking", "case_timeline", "missing_evidence", "case_update_discrepancy", "balance_due"].includes(issue.issueType)) {
+      wantDoc("receipt", `USCIS receipt or account record${yearHint ? ` (${yearHint})` : ""}`, "Shows receipt number, form type, filing date, and current case status.");
+      wantDoc("filing", `Immigration filing packet${yearHint ? ` for ${yearHint}` : ""}`, "Shows what was filed, for comparison against USCIS records.");
     }
     if (issue.issueType === "notice_response") {
       wantDoc("notice", "The USCIS notice or letter itself", "A phone photo is fine — the notice number, amount, and deadline are printed on it.");
     }
     if (issue.issueType === "missing_return") {
-      wantDoc("w2", "Income documents (W-2s)", "Needed to prepare the unfiled return.");
-      wantDoc("1099", "Income documents (1099s)", "Freelance/interest/brokerage income forms.");
-      wantDoc("transcript", "USCIS Wage & Income Transcript", "Lists every income form the USCIS received.");
+      wantDoc("evidence", "Missing evidence documents", "Needed to complete the filing or response packet.");
     }
   }
 
@@ -103,11 +104,10 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
         const years = Array.isArray(merged.tax_years) ? (merged.tax_years as unknown[]).join(", ") : "";
         const notices = Array.isArray(merged.notices_received) ? (merged.notices_received as unknown[]).join(", ") : "";
         const parts = [
-          years && `tax year(s) ${years}`,
+          years && `case year(s) ${years}`,
           notices && `notice ${notices}`,
-          money(merged.expected_refund) && `expected refund ${money(merged.expected_refund)}`,
-          money(merged.received_refund) && `refund received ${money(merged.received_refund)}`,
-          money(merged.balance_due) && `balance mentioned ${money(merged.balance_due)}`,
+          merged.current_status && `current status ${String(merged.current_status)}`,
+          merged.receipt_numbers && `receipt numbers ${(merged.receipt_numbers as unknown[]).join(", ")}`,
         ].filter(Boolean);
         return parts.length
           ? `Read the summary and pulled out the facts: ${parts.join(" · ")}.`
@@ -116,9 +116,9 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       case "goal":
         return "Interpreted the goal so every recommendation points at the requested outcome.";
       case "document":
-        return `Cross-checked ${c.documents.length} document${c.documents.length === 1 ? "" : "s"} against the story, comparing amounts and dates.`;
+        return `Cross-checked ${c.documents.length} document${c.documents.length === 1 ? "" : "s"} against the story, comparing forms, receipt numbers, dates, and deadlines.`;
       case "situation":
-        return "Weighed the verified facts against USCIS rules and procedures (payment plans, penalty relief, transcript codes) from the knowledge base.";
+        return "Weighed the verified facts against USCIS rules and procedures from the knowledge base.";
       case "presenter":
         return "Assembled everything into the findings and step-by-step plan on this page.";
       default:
@@ -152,7 +152,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           <div className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-700">
             <span className="font-semibold">? Preliminary review.</span> These results are based on the information and
             readable documents provided so far. Items marked &quot;needs verification&quot; firm up as your documents are
-            verified — your Account Transcript is usually the record that settles them.
+            verified — your USCIS case record is usually the record that settles them.
           </div>
         )}
         {c.status === "consultant_recommended" && (
@@ -165,7 +165,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
             <span className="font-semibold">◐ Verification required.</span> Some values in this case couldn&apos;t be confirmed
             against each other — we flag disagreements instead of guessing. More documents (like the USCIS account
-            transcript) resolve this.
+            case record) resolve this.
           </div>
         )}
         {conflicts.map((cf, ci) => (
@@ -347,10 +347,10 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                               )}
                               {["GET_TRANSCRIPT", "GET_ACCOUNT_TRANSCRIPT"].includes(issue.nextAction.toUpperCase()) && (
                                 <>
-                                  <a href="https://www.irs.gov/your-account" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50">
+                                  <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50">
                                     Open USCIS sign-up ↗
                                   </a>
-                                  <InlineUpload caseId={c.id} docKind="transcript" label="Have it? Upload transcript" />
+                                  <InlineUpload caseId={c.id} docKind="case record" label="Have it? Upload case record" />
                                 </>
                               )}
                             </>
@@ -428,10 +428,10 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                                 Re-run the analysis now →
                               </button>
                             </form>
-                          ) : step.actionKey.toUpperCase() === "COMPLETE_FORM_9465" && form9465 ? (
-                            <form action={startFormAction.bind(null, form9465.id)}>
+                          ) : ["COMPLETE_FORM_9465", "COMPLETE_FORM_I485"].includes(step.actionKey.toUpperCase()) && formI485 ? (
+                            <form action={startFormAction.bind(null, formI485.id)}>
                               <button className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">
-                                Start the payment plan form →
+                                Start the USCIS form →
                               </button>
                             </form>
                           ) : step.actionKey.toUpperCase() === "UPLOAD_DOCUMENTS" ? (
@@ -442,7 +442,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                             </a>
                           ) : null}
                           {(step.actionKey.toUpperCase() === "GET_TRANSCRIPT" || step.actionKey.toUpperCase() === "GET_ACCOUNT_TRANSCRIPT") && (
-                            <a href="https://www.irs.gov/your-account" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                            <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
                               Open USCIS sign-up ↗
                             </a>
                           )}
@@ -505,9 +505,9 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
               {interactive && neededDocs.some((d) => !haveKinds.has(d.kind)) && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <InlineUpload caseId={c.id} label="Upload now" />
-                  {neededDocs.some((d) => d.kind === "transcript" && !haveKinds.has("transcript")) && (
+                  {neededDocs.some((d) => d.kind === "case record" && !haveKinds.has("case record")) && (
                     <a href="/app/irs-account" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                      Transcript guide →
+                      Case record guide →
                     </a>
                   )}
                 </div>

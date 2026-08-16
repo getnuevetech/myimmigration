@@ -45,7 +45,7 @@ export async function retrieveKnowledge(query: string, limit = 5): Promise<strin
       const hay = `${s.title} ${s.reference} ${s.tags} ${s.content}`.toLowerCase();
       let score = 0;
       for (const t of terms) if (hay.includes(t)) score++;
-      // Notice codes like CP2000 are strong signals.
+      // Notice/form codes like RFE, NOID, I-485, or N-400 are strong signals.
       const codes = query.toUpperCase().match(/\b(CP|LT|LTR)\s?-?\d{2,4}\b/g) ?? [];
       for (const c of codes) if (hay.toUpperCase().includes(c.replace(/\s|-/g, ""))) score += 10;
       return { s, score };
@@ -134,7 +134,7 @@ export async function runStage(
 // ---------- Full case analysis pipeline (Layers 1–5) ----------
 
 // Extract readable text from an uploaded document: plain-text formats
-// directly, and digital PDFs (like USCIS transcripts downloaded from the online
+// directly, and digital PDFs (like USCIS case records downloaded from the online
 // account) via their embedded text layer. Scanned PDFs and photos have no
 // text layer — they go to vision-capable providers as media instead.
 async function getDocumentText(doc: { filePath: string; fileName: string; mimeType: string }): Promise<string> {
@@ -183,7 +183,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   await db.pathStep.deleteMany({ where: { caseId } });
 
   // Layer 2 input: include actual document content where it can be read
-  // (plain text + the text layer of digital PDFs, e.g. USCIS transcripts).
+  // (plain text + the text layer of digital PDFs, e.g. USCIS case records).
   const docParts: string[] = [];
   let rawDocText = "";
   const readableDocIds = new Set<string>();
@@ -339,7 +339,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
         unclearJson: JSON.stringify(unclear),
         explanationsJson: JSON.stringify(Array.isArray(issue.explanations) ? issue.explanations : []),
         altAction: String(issue.alternative_action ?? ""),
-        // Per-item analysis outline (your situation → tax rules → your evidence
+        // Per-item analysis outline (your situation → immigration rules → your evidence
         // → our conclusion → your next move), rendered under each item.
         evidenceJson: JSON.stringify(Array.isArray(issue.analysis_outline) ? issue.analysis_outline : []),
       },
@@ -390,7 +390,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
     : allConflicts.map((cf) => ({
         topic: cf.field.replace(/_/g, " "),
         description: `Our analysis sources disagree on "${cf.field.replace(/_/g, " ")}": ${cf.values.map((v) => String(v.value)).join(" vs. ")}.`,
-        resolution: "Flagged for verification instead of guessing — your Account Transcript or the underlying document settles it.",
+        resolution: "Flagged for verification instead of guessing — your USCIS case record or the underlying document settles it.",
       }));
 
   // Consultant recommendation → notify admins.
@@ -454,7 +454,7 @@ export async function runQaChat(history: { role: string; content: string }[]): P
       if (result.text.trim()) return result.text;
     } catch (err) {
       const { logSystem } = await import("../syslog");
-      await logSystem("error", "ai_call", `${step.provider.name} failed answering the tax Q&A chat`, String(err));
+      await logSystem("error", "ai_call", `${step.provider.name} failed answering the immigration Q&A chat`, String(err));
     }
   }
   return "Our assistant couldn't respond just now — the issue has been reported to our team. Please try again in a moment, or open a support ticket if it keeps happening.";

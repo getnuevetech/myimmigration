@@ -28,7 +28,7 @@ export default async function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title={`Hi${user.firstName ? ` ${user.firstName}` : ""}, here's your tax picture`}
+        title={`Hi${user.firstName ? ` ${user.firstName}` : ""}, here's your immigration picture`}
         subtitle={plan ? `You're on the ${plan.name} plan` : undefined}
         actions={<ButtonLink href="/app/cases/new">New case →</ButtonLink>}
       />

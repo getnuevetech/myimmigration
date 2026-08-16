@@ -29,7 +29,7 @@ export default async function ConsultantExperiencePage() {
             <CardBody>
               <h2 className="mb-2 text-sm font-semibold text-slate-900">Your experience</h2>
               <p className="mb-3 text-xs text-slate-500">
-                List the kinds of matters you&apos;ve handled, one per line — e.g. &ldquo;Negotiated 40+ installment agreements&rdquo;, &ldquo;CP2000 responses for self-employed clients&rdquo;.
+                List the kinds of matters you&apos;ve handled, one per line — e.g. &ldquo;Prepared RFE response packages&rdquo;, &ldquo;Family-based adjustment cases&rdquo;.
               </p>
               <ExperienceForm experiences={profile.experiences} />
             </CardBody>

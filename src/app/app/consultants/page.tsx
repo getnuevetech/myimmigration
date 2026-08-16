@@ -25,7 +25,7 @@ export default async function MyConsultantsPage() {
     <div className="max-w-3xl">
       <PageHeader
         title="My consultant"
-        subtitle="When your case needs a professional, we propose a vetted immigration professional or Enrolled Agent. Nothing is shared until you approve."
+        subtitle="When your case needs a professional, we propose a vetted immigration professional or accredited representative. Nothing is shared until you approve."
       />
       {assignments.length === 0 ? (
         <EmptyState
@@ -46,7 +46,7 @@ export default async function MyConsultantsPage() {
                         {a.consultant.firstName} {a.consultant.lastName}
                       </h2>
                       <p className="text-sm text-slate-500">
-                        {profile?.credentialType === "cpa" ? "Certified Public Accountant" : profile?.credentialType === "ea" ? "Enrolled Agent" : "Tax Consultant"}
+                        {profile?.credentialType === "cpa" ? "Immigration Attorney" : profile?.credentialType === "ea" ? "accredited representative" : "Immigration Consultant"}
                         {profile?.isBusiness && profile.businessName ? ` · ${profile.businessName}` : ""}
                         {profile ? ` · ${profile.yearsExperience} yrs experience` : ""}
                       </p>

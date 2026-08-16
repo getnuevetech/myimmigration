@@ -84,7 +84,7 @@ export default async function AdminConsultantsPage() {
                         <p className="mt-0.5 text-sm text-slate-600">
                           {p.credentialType.toUpperCase().replace("_", " ")}
                           {p.credentialNumber && ` · #${p.credentialNumber}`}
-                          {p.ptin && ` · PTIN ${p.ptin}`}
+                          {p.ptin && ` · license/registration number ${p.ptin}`}
                           {` · ${p.yearsExperience} yrs`}
                           {p.isBusiness && p.businessName && ` · ${p.businessName}${p.ein ? ` (EIN ${p.ein})` : ""}`}
                         </p>

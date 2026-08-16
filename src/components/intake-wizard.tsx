@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import { startIntakeAction } from "@/actions/case";
 
 const STEPS = [
-  { title: "What happened?", subtitle: "Tell us your tax story in your own words. No jargon needed." },
+  { title: "What happened?", subtitle: "Tell us your immigration story in your own words. No legal jargon needed." },
   { title: "What's your goal?", subtitle: "What would a great outcome look like for you?" },
   { title: "Any documents?", subtitle: "Optional — but the more you share, the sharper your results." },
 ];
@@ -65,7 +65,7 @@ export function IntakeWizard() {
             value={situation}
             onChange={(e) => setSituation(e.target.value)}
             rows={7}
-            placeholder={'For example: "I got a letter from the USCIS saying I owe $2,800 for 2024, but I already got a smaller refund than I expected and I don\'t understand why…"'}
+            placeholder={'For example: "I got an RFE from USCIS, I am not sure what evidence they want, and the deadline is coming up…"'}
             className="w-full rounded-xl border border-slate-300 p-4 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           />
           <p className="mt-2 text-xs text-slate-400">
@@ -79,11 +79,11 @@ export function IntakeWizard() {
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
             rows={4}
-            placeholder={'For example: "Find out where the rest of my refund went, and set up a payment plan I can afford."'}
+            placeholder={'For example: "Understand the RFE, organize my evidence, and prepare next steps before the deadline."'}
             className="w-full rounded-xl border border-slate-300 p-4 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           />
           <div className="mt-3 flex flex-wrap gap-2">
-            {["Understand an USCIS letter", "Find my missing refund", "Set up a payment plan", "Reduce penalties", "Fix an old tax year"].map((g) => (
+            {["Understand a USCIS letter", "Prepare an RFE response", "Organize my case timeline", "Get ready for an interview", "Identify missing evidence"].map((g) => (
               <button
                 key={g}
                 type="button"
@@ -101,7 +101,7 @@ export function IntakeWizard() {
             <span className="text-base font-medium text-slate-700">
               {fileCount > 0 ? `${fileCount} file${fileCount > 1 ? "s" : ""} ready to upload` : "Tap to add photos or files"}
             </span>
-            <span className="mt-1 text-xs text-slate-500">USCIS notices, W-2, 1099, tax returns, transcripts — PDF or photos</span>
+            <span className="mt-1 text-xs text-slate-500">USCIS notices, I-797, I-485, immigration filings, case records — PDF or photos</span>
             <input
               type="file"
               name="documents"

@@ -25,7 +25,7 @@ export default async function GuestQaPage({
       <SiteHeader />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-12">
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-extrabold text-slate-900">Ask anything about taxes</h1>
+          <h1 className="text-3xl font-extrabold text-slate-900">Ask anything about immigration matters</h1>
           <p className="mt-2 text-slate-600">Plain-English answers. No question is too basic — that&apos;s the point.</p>
         </div>
         <QaChat threadId={thread?.id ?? ""} messages={thread?.messages.map((m) => ({ id: m.id, role: m.role, content: m.content })) ?? []} />

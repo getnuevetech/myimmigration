@@ -4,27 +4,27 @@ import { getSetting } from "@/lib/settings";
 export const metadata = { title: "Your USCIS online account" };
 
 export default async function IrsAccountPage() {
-  const irsUrl = await getSetting("irs.account_url", "https://www.irs.gov/your-account");
+  const irsUrl = await getSetting("irs.account_url", "https://my.uscis.gov/");
   const steps = [
-    { title: "Go to the USCIS website", body: "Open the official USCIS individual account page. Only ever use irs.gov — never a link from an email." },
-    { title: "Verify your identity with ID.me", body: "The USCIS uses ID.me for identity checks. You'll need a photo ID and a phone. It takes about 10 minutes." },
-    { title: "Explore your account", body: "You'll see your balance, payment history, tax records, and any notices the USCIS has sent you." },
-    { title: "Download your transcripts", body: "Grab your Account Transcript for each tax year in question — it shows every transaction the USCIS has recorded." },
-    { title: "Upload transcripts here", body: "Add them to your document vault. Transcripts let us verify amounts precisely instead of estimating." },
+    { title: "Go to the USCIS website", body: "Open the official USCIS online account page. Only use official uscis.gov or my.uscis.gov pages." },
+    { title: "Sign in or create an account", body: "Use your USCIS account to view available case status tools, notices, and online filings." },
+    { title: "Collect your case details", body: "Copy receipt numbers, form types, filing dates, and recent status updates into your MyImmigration case." },
+    { title: "Download available notices", body: "If USCIS provides a notice or confirmation PDF, save it and upload it to your document vault." },
+    { title: "Upload records here", body: "Adding official records lets MyImmigration verify dates, receipt numbers, form types, and deadlines." },
   ];
 
   return (
     <div className="max-w-3xl">
       <PageHeader
         title="Set up your USCIS online account"
-        subtitle="Your USCIS account is the single best source of truth about your taxes — and it's free."
+        subtitle="Your USCIS account can help you verify receipt numbers, case status, notices, and online filings."
       />
       <Card className="mb-6">
         <CardBody>
           <p className="text-sm leading-relaxed text-slate-600">
-            With an USCIS individual online account, you can see exactly what the USCIS sees: your balance, your payment history,
-            your transcripts, and digital copies of many notices. Uploading your transcripts here means our analysis works
-            with confirmed USCIS records instead of estimates — which resolves most &ldquo;verification required&rdquo; flags.
+            With a USCIS online account, you may be able to view case status tools, online filings,
+            receipt numbers, notices, and account messages. Uploading official records here means our
+            analysis works with confirmed USCIS information instead of estimates.
           </p>
           <a
             href={irsUrl}

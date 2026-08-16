@@ -8,7 +8,7 @@ import { saveUpload } from "@/lib/uploads";
 import { ROLES } from "@/lib/constants";
 import type { ActionState } from "./auth";
 
-// Full consultant onboarding (USCIS-standard): credentials, PTIN/EFIN, document
+// Full consultant onboarding (USCIS-standard): credentials, license/registration number/filing-system ID, document
 // uploads (license proof, photo ID, E&O insurance), business details,
 // specialties, and compliance attestation.
 // Personal profile (photo, contact, address, bio, languages) — separate from

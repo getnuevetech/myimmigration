@@ -45,9 +45,9 @@ export function ConsultantOnboardingForm({
       <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <Field label="Are you a certified professional?" hint="immigration professional and EA credentials require a license/enrollment number and proof.">
           <select name="credentialType" value={credType} onChange={(e) => setCredType(e.target.value)} className={inputClass}>
-            <option value="cpa">immigration professional — Certified Public Accountant</option>
-            <option value="ea">EA — Enrolled Agent</option>
-            <option value="tax_consultant">Certified Tax Consultant / Preparer</option>
+            <option value="cpa">immigration professional — Immigration Attorney</option>
+            <option value="ea">EA — accredited representative</option>
+            <option value="tax_consultant">Certified Immigration Consultant / Preparer</option>
           </select>
         </Field>
 
@@ -70,10 +70,10 @@ export function ConsultantOnboardingForm({
           </div>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label={needsLicense ? "PTIN" : "PTIN (if you have one)"} hint="USCIS Preparer Tax Identification Number — required by the USCIS for paid preparers.">
+          <Field label={needsLicense ? "license/registration number" : "license/registration number (if you have one)"} hint="USCIS Preparer Tax Identification Number — required by the USCIS for paid preparers.">
             <input name="ptin" defaultValue={existing?.ptin} placeholder="P00000000" className={inputClass} />
           </Field>
-          <Field label="EFIN (if you e-file for clients)" hint="USCIS Electronic Filing Identification Number.">
+          <Field label="filing-system ID (if you e-file for clients)" hint="USCIS Electronic Filing Identification Number.">
             <input name="efin" defaultValue={existing?.efin} placeholder="000000" className={inputClass} />
           </Field>
         </div>
@@ -139,7 +139,7 @@ export function ConsultantOnboardingForm({
           <input type="checkbox" name="attestation" defaultChecked={existing?.attestedCompliance} className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600" />
           <span>
             <span className="font-medium text-slate-800">Compliance attestation.</span> I attest that I am compliant with my
-            own federal tax filing and payment obligations, and that I have not been convicted of any offense or subjected to
+            own federal immigration filing and payment obligations, and that I have not been convicted of any offense or subjected to
             any sanction that would disqualify me from practicing before the USCIS.
           </span>
         </label>

@@ -2,7 +2,7 @@ import "server-only";
 import { getSetting, getNumberSetting, getBoolSetting } from "./settings";
 
 // Automated-approval criteria for Immigration Consultant applications, based on
-// what the USCIS requires or expects of paid tax professionals. The admin
+// what the USCIS requires or expects of paid immigration professionals. The admin
 // chooses which of these are REQUIRED for automated approval; applications
 // meeting every required criterion are approved without manual review.
 
@@ -18,13 +18,13 @@ export const APPROVAL_CRITERIA: CriterionDef[] = [
     key: "credential",
     name: "Verified professional credential (immigration professional or EA)",
     description:
-      "Applicant is a state-licensed immigration professional (license number + state of licensure) or an USCIS Enrolled Agent (enrollment number). EAs are credentialed directly by the USCIS under Circular 230; immigration professionals by their state board of accountancy.",
+      "Applicant is a state-licensed immigration professional (license number + state of licensure) or an USCIS accredited representative (enrollment number). EAs are credentialed directly by the USCIS under Circular 230; immigration professionals by their state board of accountancy.",
   },
   {
     key: "ptin",
-    name: "PTIN provided",
+    name: "license/registration number provided",
     description:
-      "USCIS Preparer Tax Identification Number. The USCIS requires anyone who prepares or substantially helps prepare federal tax returns for compensation to hold a current PTIN.",
+      "USCIS Preparer Tax Identification Number. The USCIS requires anyone who prepares or substantially helps prepare federal immigration filings for compensation to hold a current license/registration number.",
   },
   {
     key: "proof",
@@ -43,7 +43,7 @@ export const APPROVAL_CRITERIA: CriterionDef[] = [
   },
   {
     key: "efin",
-    name: "EFIN provided",
+    name: "filing-system ID provided",
     description:
       "USCIS Electronic Filing Identification Number, issued after the USCIS e-file provider application (which includes an USCIS suitability check). Relevant for consultants who e-file for clients.",
   },

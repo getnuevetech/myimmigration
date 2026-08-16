@@ -61,7 +61,7 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
   for (const run of kase?.runs ?? []) {
     try {
       const parsed = JSON.parse(run.consensus?.mergedJson || "{}");
-      if (parsed && (parsed.tax_years || parsed.balance_due || parsed.expected_refund || parsed.notices_received)) {
+      if (parsed && (parsed.tax_years || parsed.balance_due || parsed.expected_case_update || parsed.notices_received)) {
         merged = parsed;
         break;
       }
@@ -92,12 +92,12 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
     (balanceIssue ? amountFromText(balanceIssue.title) ?? amountFromText(balanceIssue.description) : null) ??
     noticeAmount;
 
-  const refundIssue = kase?.issues.find((i) => i.issueType === "refund_discrepancy");
-  const expectedRefund = num(merged.expected_refund) ?? (refundIssue?.expectedCents ? refundIssue.expectedCents / 100 : null);
-  const receivedRefund = num(merged.received_refund) ?? (refundIssue?.receivedCents ? refundIssue.receivedCents / 100 : null);
-  const refundDifference =
-    (refundIssue?.differenceCents ? refundIssue.differenceCents / 100 : null) ??
-    (expectedRefund !== null && receivedRefund !== null ? Math.round((expectedRefund - receivedRefund) * 100) / 100 : null);
+  const caseUpdateIssue = kase?.issues.find((i) => i.issueType === "case_update_discrepancy");
+  const expectedCaseUpdate = num(merged.expected_case_update) ?? (caseUpdateIssue?.expectedCents ? caseUpdateIssue.expectedCents / 100 : null);
+  const receivedCaseUpdate = num(merged.received_case_update) ?? (caseUpdateIssue?.receivedCents ? caseUpdateIssue.receivedCents / 100 : null);
+  const caseUpdateDifference =
+    (caseUpdateIssue?.differenceCents ? caseUpdateIssue.differenceCents / 100 : null) ??
+    (expectedCaseUpdate !== null && receivedCaseUpdate !== null ? Math.round((expectedCaseUpdate - receivedCaseUpdate) * 100) / 100 : null);
 
   // USCIS generally accepts balance ÷ 72 as the minimum streamlined monthly payment.
   const suggestedMonthly = balanceDue ? Math.ceil(balanceDue / 72) : null;
@@ -121,7 +121,7 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
     phone_number: user?.phone ?? "",
     daytime_phone: user?.phone ?? "",
     email: user?.email ?? "",
-    tax_form: kase ? "Form 1040" : "",
+    tax_form: kase ? "Form I-130" : "",
     tax_year: primaryYear,
     tax_years: yearsText,
     years: yearsText,
@@ -130,9 +130,9 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
     balance_due: moneyStr(balanceDue),
     total_owed: moneyStr(balanceDue),
     monthly_payment: suggestedMonthly === null ? "" : String(suggestedMonthly),
-    expected_refund: moneyStr(expectedRefund),
-    received_refund: moneyStr(receivedRefund),
-    refund_difference: moneyStr(refundDifference),
+    expected_case_update: moneyStr(expectedCaseUpdate),
+    received_case_update: moneyStr(receivedCaseUpdate),
+    case_update_difference: moneyStr(caseUpdateDifference),
     notice_number: notices.join(", "),
     notice_type: notices.join(", "),
   };
@@ -166,12 +166,12 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
   add("ID number on file", user?.idNumber);
   if (kase) {
     add("Case", `${formatCaseNumber(kase.number)} — ${kase.title.slice(0, 60)}`);
-    add("Tax year(s)", yearsText);
+    add("Case year(s)", yearsText);
     add("USCIS notice(s)", notices.join(", "));
     add("Balance owed (from analysis)", balanceDue === null ? "" : usd(balanceDue));
-    add("Expected refund", expectedRefund === null ? "" : usd(expectedRefund));
-    add("Refund received", receivedRefund === null ? "" : usd(receivedRefund));
-    add("Refund difference", refundDifference === null ? "" : usd(refundDifference));
+    add("Expected case update", expectedCaseUpdate === null ? "" : usd(expectedCaseUpdate));
+    add("Case update received", receivedCaseUpdate === null ? "" : usd(receivedCaseUpdate));
+    add("Case update difference", caseUpdateDifference === null ? "" : usd(caseUpdateDifference));
     add("Suggested monthly payment (balance ÷ 72)", suggestedMonthly === null ? "" : usd(suggestedMonthly));
     add("Next deadline", nextDeadline ? `${nextDeadline.title} — ${nextDeadline.dueDate.toLocaleDateString("en-US")}` : "");
     add("Your goal", kase.goal?.slice(0, 120));

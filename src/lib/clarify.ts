@@ -15,19 +15,19 @@ export function situationLine(key: string, questionText: string, answer: string)
   const a = answer.trim();
   switch (key) {
     case "tax_year":
-      return `[Clarified] Tax year(s) involved: ${a}.`;
-    case "refund_expected":
-      return `[Clarified] My tax return shows I expected a refund of ${a}.`;
-    case "refund_received":
-      return `[Clarified] I actually received ${a} as my refund.`;
-    case "balance_amount":
-      return `[Clarified] The USCIS says I owe ${a}.`;
+      return `[Clarified] Case year(s) involved: ${a}.`;
+    case "case_status_expected":
+      return `[Clarified] I expected this immigration case status or result: ${a}.`;
+    case "case_status_received":
+      return `[Clarified] USCIS actually sent this status or result: ${a}.`;
+    case "fee_or_balance_amount":
+      return `[Clarified] USCIS listed this fee, amount, or balance: ${a}.`;
     case "notice_details":
       return `[Clarified] My USCIS notice: ${a}.`;
-    case "unfiled_years":
-      return `[Clarified] Unfiled return details: ${a}.`;
-    case "have_transcript":
-      return `[Clarified] About my USCIS Account Transcript: ${a}.`;
+    case "missing_filings":
+      return `[Clarified] Missing or pending filing details: ${a}.`;
+    case "have_case_record":
+      return `[Clarified] About my USCIS case record: ${a}.`;
     default:
       return `[Clarified] ${questionText} — ${a}.`;
   }
@@ -49,8 +49,8 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
   if (!c || c.status === "closed") return null;
 
   const answered = new Set(c.clarifyMessages.map((m) => m.questionKey));
-  const hasTranscript = c.documents.some((d) => d.docKind === "transcript");
-  const refundIssue = c.issues.find((i) => i.issueType === "refund_discrepancy");
+  const hasCaseRecord = c.documents.some((d) => d.docKind === "case record");
+  const caseUpdateIssue = c.issues.find((i) => i.issueType === "case_update_discrepancy");
   const balanceIssue = c.issues.find((i) => i.issueType === "balance_due");
   const noticeIssue = c.issues.find((i) => i.issueType === "notice_response");
   const unfiledIssue = c.issues.find((i) => i.issueType === "missing_return");
@@ -59,42 +59,42 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
   const questions: (ClarifyQuestion & { needed: boolean })[] = [
     {
       key: "tax_year",
-      text: "Which tax year (or years) does your situation involve? For example: 2024, or 2023 and 2024.",
+      text: "Which case year (or years) does your situation involve? For example: 2024, or 2023 and 2024.",
       needed: !hasYear,
     },
     {
-      key: "refund_expected",
-      text: "Let's pin down the refund numbers. What refund amount did your tax return say you were getting? It's on Form 1040, line 35a — an approximate figure like $3,214 works.",
-      needed: Boolean(refundIssue && refundIssue.expectedCents === null),
+      key: "case_status_expected",
+      text: "Let's pin down the expected case status. What did you expect USCIS to do or send next?",
+      needed: Boolean(caseUpdateIssue && caseUpdateIssue.expectedCents === null),
     },
     {
-      key: "refund_received",
-      text: "And how much refund actually arrived (bank deposit or check), and roughly on what date? For example: $412 on March 3. If nothing arrived, say $0.",
-      needed: Boolean(refundIssue && refundIssue.receivedCents === null),
+      key: "case_status_received",
+      text: "What status, notice, or result did USCIS actually send, and on what date?",
+      needed: Boolean(caseUpdateIssue && caseUpdateIssue.receivedCents === null),
     },
     {
-      key: "balance_amount",
-      text: "What amount does the USCIS say you owe, and where does that number come from — a letter/notice, your USCIS online account, or your own estimate? For example: $2,800 from a CP14 notice.",
+      key: "fee_or_balance_amount",
+      text: "Does the USCIS notice list any filing fee, balance, or amount? If yes, what amount and where does it appear?",
       needed: Boolean(balanceIssue && balanceIssue.expectedCents === null && balanceIssue.differenceCents === null),
     },
     {
       key: "notice_details",
-      text: "Look at the top-right corner of your USCIS letter: what's the notice code (like CP2000 or LT11), the notice date, and the 'respond by' deadline printed on it?",
+      text: "Look at your USCIS letter: what is the notice type, receipt number, notice date, and response deadline printed on it?",
       needed: Boolean(noticeIssue),
     },
     {
-      key: "unfiled_years",
-      text: "Which years haven't been filed yet, and do you still have the income documents (W-2s / 1099s) for those years?",
+      key: "missing_filings",
+      text: "Which immigration forms or evidence packets are missing, pending, or not yet filed?",
       needed: Boolean(unfiledIssue),
     },
     {
-      key: "have_transcript",
-      text: "Do you have your USCIS Account Transcript, or can you get it? It's free and instant from your USCIS online account (irs.gov/your-account) and it settles the exact amounts. Answer: yes / no / I need help getting it.",
-      needed: !hasTranscript,
+      key: "have_case_record",
+      text: "Do you have your USCIS receipt notice, online case status, or account record? Answer: yes / no / I need help getting it.",
+      needed: !hasCaseRecord,
     },
     {
       key: "anything_else",
-      text: "Last one: anything else we should know? Payments you've already made, letters you've sent the USCIS, a payment plan you had before, or life events that affected your filing.",
+      text: "Last one: anything else we should know? Prior filings, notices, deadlines, address changes, travel, arrests, or life events that may affect the case.",
       needed: true,
     },
   ];

@@ -119,7 +119,7 @@ export async function generateLetterAction(_prev: ActionState, formData: FormDat
   if (noticeId) {
     const notice = await db.notice.findUnique({ where: { id: noticeId } });
     if (notice && notice.userId === user.id) {
-      noticeContext = `Notice type: ${notice.noticeType}. Tax year: ${notice.taxYear ?? "unknown"}. Explanation: ${notice.explanation}`;
+      noticeContext = `Notice type: ${notice.noticeType}. Case year: ${notice.taxYear ?? "unknown"}. Explanation: ${notice.explanation}`;
     }
   }
   const body = await generateLetterDraft([noticeContext, context].filter(Boolean).join("\n\n"));

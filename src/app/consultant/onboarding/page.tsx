@@ -20,7 +20,7 @@ export default async function ConsultantOnboardingPage() {
     <div className="max-w-2xl">
       <PageHeader
         title="Professional onboarding"
-        subtitle="We follow USCIS-standard onboarding for tax professionals: credentials, PTIN, proof, and business details."
+        subtitle="We follow USCIS-standard onboarding for immigration professionals: credentials, license/registration number, proof, and business details."
       />
       <ConsultantOnboardingForm
         existing={

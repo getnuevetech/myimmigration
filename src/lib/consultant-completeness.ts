@@ -26,7 +26,7 @@ export function consultantCompleteness(
     { key: "bio", label: "Professional bio", done: Boolean(user.bio), href: "/consultant/profile" },
     { key: "languages", label: "Languages spoken", done: Boolean(profile?.languages), href: "/consultant/profile" },
     { key: "credential", label: "Credential type & number", done: Boolean(profile && profile.credentialNumber), href: "/consultant/onboarding" },
-    { key: "ptin", label: "PTIN", done: Boolean(profile?.ptin), href: "/consultant/onboarding" },
+    { key: "ptin", label: "license/registration number", done: Boolean(profile?.ptin), href: "/consultant/onboarding" },
     { key: "proof", label: "License / credential proof", done: Boolean(profile?.proofDocumentPath), href: "/consultant/onboarding" },
     { key: "specialties", label: "Specialties", done: specialties.length > 0, href: "/consultant/onboarding" },
     { key: "states", label: "States served", done: Boolean(profile?.statesServed), href: "/consultant/onboarding" },

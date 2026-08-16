@@ -27,21 +27,21 @@ export function KnowledgeForm({ source }: { source: Source }) {
             <option value="publication">USCIS publication</option>
             <option value="form_instruction">Form instruction</option>
             <option value="notice_guide">Notice guide</option>
-            <option value="irm">Internal Revenue Manual</option>
-            <option value="rule">Rule (payment plans, penalties…)</option>
+            <option value="irm">Policy manual</option>
+            <option value="rule">Rule (eligibility, deadlines, evidence…)</option>
             <option value="announcement">Announcement</option>
           </select>
         </Field>
-        <Field label="Reference" hint="e.g. Pub 594, CP2000, TC 846">
+        <Field label="Reference" hint="e.g. I-485, RFE, N-400">
           <input name="reference" defaultValue={source?.reference} className={inputClass} />
         </Field>
-        <Field label="Tax year (optional)">
+        <Field label="Case year (optional)">
           <input name="taxYear" type="number" defaultValue={source?.taxYear ?? ""} className={inputClass} />
         </Field>
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <Field label="Official URL"><input name="url" defaultValue={source?.url} placeholder="https://www.irs.gov/…" className={inputClass} /></Field>
-        <Field label="Tags" hint="Comma separated: refund, transcript, penalty…">
+        <Field label="Official URL"><input name="url" defaultValue={source?.url} placeholder="https://www.uscis.gov/…" className={inputClass} /></Field>
+        <Field label="Tags" hint="Comma separated: rfe, evidence, deadline, naturalization…">
           <input name="tags" defaultValue={source?.tags} className={inputClass} />
         </Field>
       </div>

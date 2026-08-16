@@ -93,7 +93,7 @@ export function computeReadiness(input: {
   const factScore = input.factsTotal > 0 ? (input.factsVerified / input.factsTotal) * 35 : 0;
   const irsScore = Math.min(input.irsSourcesMatched, 3) * (15 / 3);
   const base = 15; // intake completed
-  const penalty = input.unresolvedConflicts * 8 + input.unknowns * 3;
-  const score = Math.round(docScore + factScore + irsScore + base - penalty);
+  const uncertaintyPenalty = input.unresolvedConflicts * 8 + input.unknowns * 3;
+  const score = Math.round(docScore + factScore + irsScore + base - uncertaintyPenalty);
   return Math.max(0, Math.min(100, score));
 }

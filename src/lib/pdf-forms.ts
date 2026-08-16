@@ -6,7 +6,7 @@ import { readUpload, saveUploadBuffer } from "./uploads";
 import { logSystem } from "./syslog";
 
 // Official USCIS PDF infusion. Each form template can carry the URL of the real
-// USCIS PDF (e.g. https://www.irs.gov/pub/irs-pdf/f9465.pdf) plus an
+// USCIS PDF (e.g. https://www.uscis.gov/sites/default/files/document/forms/i-485.pdf) plus an
 // admin-editable mapping from wizard answer keys to the PDF's AcroForm field
 // names. On download, the customer's answers are written into the official
 // form — never a homemade layout.

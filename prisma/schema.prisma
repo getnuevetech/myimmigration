@@ -129,7 +129,7 @@ model KnowledgeSource {
   id         String   @id @default(cuid())
   title      String
   sourceType String   @default("publication") // publication | form_instruction | notice_guide | irm | rule | announcement
-  reference  String   @default("") // e.g. "Pub 594", "CP2000"
+  reference  String   @default("") // e.g. "I-485", "RFE", "N-400"
   url        String   @default("")
   content    String   @default("")
   tags       String   @default("") // comma separated
@@ -340,7 +340,7 @@ model Document {
   filePath       String
   mimeType       String    @default("application/octet-stream")
   sizeBytes      Int       @default(0)
-  docKind        String    @default("other") // w2 | 1099 | 1040 | notice | transcript | proof | avatar | other
+  docKind        String    @default("other") // receipt | approval | rfe | form | identity | evidence | notice | proof | avatar | other
   status         String    @default("uploaded") // uploaded | analyzing | extracted | verification_required
   extractedJson  String    @default("")
   uploadedAt     DateTime  @default(now())
@@ -446,7 +446,7 @@ model Notice {
   userId        String?
   caseId        String?
   documentId    String?
-  noticeType    String    @default("") // CP2000, CP14, LT11 ...
+  noticeType    String    @default("") // RFE, NOID, interview, biometrics, approval ...
   taxYear       Int?
   amountCents   Int?
   deadline      DateTime?
@@ -516,7 +516,7 @@ model QaMessage {
 
 model IrsFormTemplate {
   id             String           @id @default(cuid())
-  formNumber     String // "1040", "W-4", "9465"...
+  formNumber     String // "I-130", "I-485", "N-400"...
   title          String
   description    String           @default("")
   category       String           @default("individual")
@@ -524,7 +524,7 @@ model IrsFormTemplate {
   outputTemplate String           @default("") // text template regenerated into standard form layout
   // Official USCIS PDF infusion: the app downloads the real USCIS PDF and fills
   // its AcroForm fields with the customer's wizard answers.
-  pdfSourceUrl   String           @default("") // e.g. https://www.irs.gov/pub/irs-pdf/f9465.pdf
+  pdfSourceUrl   String           @default("") // e.g. https://www.uscis.gov/sites/default/files/document/forms/i-485.pdf
   pdfPath        String           @default("") // cached copy in the uploads store
   pdfMapJson     String           @default("[]") // [{field, source|expr|const, transform?, checkIf?}]
   isPublished    Boolean          @default(false)

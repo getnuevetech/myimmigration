@@ -39,9 +39,9 @@ export function QaChat({
         {messages.length === 0 && (
           <div className="py-8 text-center text-sm text-slate-400">
             <p className="font-medium text-slate-500">Try one of these:</p>
-            <p className="mt-2">&ldquo;What does a CP2000 notice mean?&rdquo;</p>
-            <p>&ldquo;Can I set up a payment plan if I owe $3,000?&rdquo;</p>
-            <p>&ldquo;What happens if I file my taxes late?&rdquo;</p>
+            <p className="mt-2">&ldquo;What does this RFE notice mean?&rdquo;</p>
+            <p>&ldquo;How should I respond to an RFE before the deadline?&rdquo;</p>
+            <p>&ldquo;What happens if I file my immigration matters late?&rdquo;</p>
           </div>
         )}
         {messages.map((m) => (

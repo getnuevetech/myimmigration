@@ -7,8 +7,8 @@ import { db } from "./db";
 
 export const VERIFIABLE_ACTIONS: Record<string, string> = {
   UPLOAD_DOCUMENTS: "Completes when your case has at least one document",
-  GET_TRANSCRIPT: "Completes when an USCIS transcript is uploaded to your case",
-  GET_ACCOUNT_TRANSCRIPT: "Completes when an USCIS transcript is uploaded to your case",
+  GET_TRANSCRIPT: "Completes when an USCIS case record is uploaded to your case",
+  GET_ACCOUNT_TRANSCRIPT: "Completes when an USCIS case record is uploaded to your case",
   REVIEW_ANALYSIS: "Completes when the analysis has been re-run after documents were added",
   RERUN_ANALYSIS: "Completes when the analysis has been re-run after documents were added",
   DRAFT_LETTER: "Completes when a response letter has been drafted",
@@ -39,8 +39,8 @@ async function stepSatisfied(
     case "GET_TRANSCRIPT":
     case "GET_ACCOUNT_TRANSCRIPT": {
       const where = ctx.userId
-        ? { userId: ctx.userId, deletedAt: null, docKind: "transcript" }
-        : { caseId: ctx.caseId, deletedAt: null, docKind: "transcript" };
+        ? { userId: ctx.userId, deletedAt: null, docKind: "case record" }
+        : { caseId: ctx.caseId, deletedAt: null, docKind: "case record" };
       return (await db.document.count({ where })) > 0;
     }
     case "REVIEW_ANALYSIS":

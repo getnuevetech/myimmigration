@@ -29,7 +29,7 @@ export function NoticeUpload() {
         </label>
         <div>
           <p className="mb-1 text-sm font-medium text-slate-700">…or paste the text of the letter</p>
-          <textarea name="pastedText" rows={4} className={inputClass} placeholder="Paste what the letter says, including the notice number (like CP2000) if you see one…" />
+          <textarea name="pastedText" rows={4} className={inputClass} placeholder="Paste what the letter says, including the form, notice type, receipt number, or deadline if you see one…" />
         </div>
       </div>
       <SubmitButton>Explain this notice →</SubmitButton>

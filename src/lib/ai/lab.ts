@@ -26,7 +26,7 @@ export const LAB_FUNCTIONS: LabFunction[] = [
   { key: "presentation", name: "Customer presentation", promptKey: "presenter", usesKnowledge: false, description: "Convert analysis into the structured JSON the customer UI renders." },
   { key: "notice_explanation", name: "Notice explanation", promptKey: "notice_explainer", usesKnowledge: false, description: "Explain an USCIS notice (paste or attach it) in plain English." },
   { key: "letter_draft", name: "Response letter drafting", promptKey: "letter_writer", usesKnowledge: false, description: "Draft a professional response letter to the USCIS." },
-  { key: "qa_chat", name: "Tax Q&A assistant", promptKey: "assistant", usesKnowledge: true, description: "Conversational plain-English tax help, grounded in the knowledge base." },
+  { key: "qa_chat", name: "Immigration Q&A assistant", promptKey: "assistant", usesKnowledge: true, description: "Conversational plain-English immigration help, grounded in the knowledge base." },
   { key: "closing", name: "Closing remarks", promptKey: "closing", usesKnowledge: false, description: "Write a case's final review and closing remarks." },
   { key: "custom", name: "Custom prompt", promptKey: "custom", usesKnowledge: false, description: "Write your own prompt. Use {{input}} where the message should be inserted." },
 ];

@@ -19,7 +19,7 @@ async function seedSettings() {
     ["auth.google_client_id", "", "auth", "Google OAuth client ID", "Leave empty to hide the Google sign-in button."],
     ["auth.google_client_secret", "", "auth", "Google OAuth client secret", ""],
     ["billing.free_plan_key", "free", "billing", "Free plan key", "Plan applied to users without a paid subscription."],
-    ["irs.account_url", "https://www.irs.gov/your-account", "irs", "USCIS online account URL", "Official page users are guided to for creating their USCIS individual account."],
+    ["irs.account_url", "https://my.uscis.gov/", "uscis", "USCIS online account URL", "Official page users are guided to for USCIS account access."],
     ["analysis.expected_documents", "3", "analysis", "Expected documents per case", "Used by the deterministic case-readiness formula."],
     ["consultants.auto_approve_enabled", "false", "consultants", "Auto-approve consultants", "Automatically approve immigration professional applications meeting requirements."],
     ["consultants.auto_approve_min_years", "3", "consultants", "Auto-approve minimum years", "Minimum years of experience for automated approval."],
@@ -318,7 +318,7 @@ async function seedAiAndPipelines() {
     },
     {
       key: "situation",
-      name: "4 · Tax situation analysis",
+      name: "4 · Immigration situation analysis",
       description: "Grounded in the USCIS knowledge base: each model answers the same structured questions (issue, evidence, USCIS basis, conditions, confidence, professional review).",
       steps: [
         { provider: "OpenAI GPT-5.6 Sol", role: "analyst", prompt: DEFAULT_PROMPTS.analyst, order: 0 },
@@ -336,7 +336,7 @@ async function seedAiAndPipelines() {
     },
     {
       key: "qa",
-      name: "AI tax Q&A",
+      name: "AI immigration Q&A",
       description: "Conversational assistant grounded in the USCIS knowledge base.",
       steps: [
         { provider: "OpenAI GPT-5.6 Sol", role: "assistant", prompt: DEFAULT_PROMPTS.assistant, order: 0 },
@@ -345,7 +345,7 @@ async function seedAiAndPipelines() {
     {
       key: "notice",
       name: "USCIS notice explanation",
-      description: "Identifies notice type, tax year, amount, and deadline; produces a plain-English explanation and next steps.",
+      description: "Identifies notice type, form number, receipt number, important dates, and deadline; produces a plain-English explanation and next steps.",
       steps: [
         { provider: "Anthropic Claude Sonnet 5", role: "analyst", prompt: DEFAULT_PROMPTS.notice_explainer, order: 0 },
       ],
@@ -430,17 +430,17 @@ async function seedContent() {
       body: `Q: Is MyImmigration the USCIS or a law firm?
 No. MyImmigration is a immigration case assistant that explains your situation and guides your next steps in plain English. For high-stakes decisions we connect you with licensed professionals.
 
-Q: How do I get my USCIS transcript?
-Fastest: create an USCIS online account at irs.gov/your-account — transcripts download instantly. By mail takes about 10 days. We also have a guided Form 4506-T under USCIS forms.
+Q: How do I check my USCIS case?
+Use your USCIS receipt number at the official USCIS case status site or sign in at my.uscis.gov when available. Upload receipts and notices here so we can organize the case timeline.
 
 Q: What happens to documents I upload?
 They're stored in your private vault. Only you can see them — and a consultant only after you explicitly approve the connection. You can delete files or your whole account anytime.
 
 Q: How does the analysis work?
-We extract the facts from your answers and documents, verify amounts against USCIS reference material, and turn everything into issues and a step-by-step plan. When something can't be verified, we say so — we never guess.
+We extract facts from your answers and documents, compare them with USCIS reference material, and turn everything into issues and a step-by-step plan. When something can't be verified, we say so — we never guess.
 
-Q: How do payment plans with the USCIS work?
-If you owe $50,000 or less you can usually set up a monthly installment agreement online. Your balance divided by 72 is roughly the minimum monthly payment the USCIS accepts. Our Form 9465 wizard prepares the paper request.
+Q: Can MyImmigration file with USCIS for me?
+No. MyImmigration helps organize information and prepare draft materials for review. You are responsible for filings, and complex or high-stakes matters should be reviewed by a licensed immigration attorney or accredited representative.
 
 Q: How do I cancel my subscription?
 Plan & billing → Cancel subscription. You keep access until the end of the paid period.
@@ -458,11 +458,11 @@ Open a tech support ticket under Support tickets (or ask the guide chatbot to cr
 
 1. Tell us what happened — in your own words.
 2. Tell us your goal — what a great outcome looks like.
-3. Add documents — USCIS notices, W-2s, 1099s, returns, transcripts.
+3. Add documents — USCIS notices, receipts, forms, visas, passports, RFEs, and evidence.
 
-Our analysis engine breaks your situation into clear issues, verifies amounts against your documents, and builds a step-by-step path forward. When numbers can't be verified, we say so — we never guess.
+Our analysis engine breaks your situation into clear issues, checks facts against your documents, and builds a step-by-step path forward. When facts can't be verified, we say so — we never guess.
 
-If your case needs a licensed professional, we can connect you with a vetted immigration professional or Enrolled Agent — only with your approval.`,
+If your case needs a licensed professional, we can help prepare a handoff to an immigration attorney, accredited representative, or vetted immigration professional — only with your approval.`,
     },
     {
       slug: "terms-of-service",
@@ -470,9 +470,9 @@ If your case needs a licensed professional, we can connect you with a vetted imm
       kind: "terms",
       body: `Welcome to MyImmigration. By using this service you agree to these terms.
 
-1. MyImmigration is a immigration case assistant, not a tax preparer, law firm, law firm, or government agency. We help you understand your immigration situation and USCIS documents; we do not provide legal, accounting, or financial advice.
-2. You are responsible for the accuracy of the information you provide and for any filings or payments you make.
-3. Analysis results are informational. Verify important amounts and deadlines against official USCIS records.
+1. MyImmigration is an immigration case assistant, not USCIS, a law firm, or a government agency. We help you understand your immigration situation and USCIS documents; we do not provide legal advice.
+2. You are responsible for the accuracy of the information you provide and for any filings or responses you make.
+3. Analysis results are informational. Verify important dates, deadlines, eligibility, and filing requirements against official USCIS records or qualified professional advice.
 4. You may delete your documents and your account at any time.
 
 (Replace this placeholder text with your reviewed terms in the admin backend.)`,
@@ -495,10 +495,10 @@ If your case needs a licensed professional, we can connect you with a vetted imm
       kind: "agreement_user",
       body: `By creating a MyImmigration account you acknowledge:
 
-1. MyImmigration is a immigration case assistant that provides plain-English guidance, not professional tax, legal, or financial advice.
+1. MyImmigration is an immigration case assistant that provides plain-English informational guidance, not legal advice.
 2. Information you provided before registering will be attached to your account and visible only to you.
 3. You control your data: you can delete documents or your entire account at any time.
-4. You will verify important amounts and deadlines against official USCIS records before acting.`,
+4. You will verify important dates, deadlines, and filing requirements against official USCIS records before acting.`,
     },
     {
       slug: "consultant-agreement",
@@ -535,1028 +535,205 @@ If your case needs a licensed professional, we can connect you with a vetted imm
 async function seedKnowledge() {
   const sources = [
     {
-      title: "CP2000 — Underreported income notice",
+      title: "USCIS receipt notices",
       sourceType: "notice_guide",
-      reference: "CP2000",
-      tags: "notice, underreported, income, proposed amount",
-      content: "A CP2000 notice is sent when income or payment information the USCIS has on file (from employers, banks, and other payers) doesn't match the amounts reported on the tax return. It is a PROPOSED change, not a bill or an audit. The applicant can agree, partially agree, or disagree with documentation. A response is normally due within 30 days of the notice date (60 days if outside the U.S.). If the applicant does not respond, the USCIS issues a Statutory Notice of Deficiency (CP3219A). Common causes: missing 1099 income, corrected W-2s, brokerage cost-basis differences.",
+      reference: "I-797C",
+      url: "https://www.uscis.gov/forms/filing-guidance/form-i-797-types-and-functions",
+      tags: "receipt, i-797, case status, priority date",
+      content: "A USCIS receipt notice confirms that USCIS accepted a filing for processing. It usually includes a receipt number, received date, notice date, form type, applicant or petitioner information, and the service center or field office. The receipt number can be used to check case status. A receipt notice is not an approval, but it is important evidence that a filing was received and may preserve a priority date or filing deadline.",
     },
     {
-      title: "CP14 — Balance due notice",
+      title: "Requests for Evidence (RFE)",
       sourceType: "notice_guide",
-      reference: "CP14",
-      tags: "notice, balance due, first notice",
-      content: "A CP14 is the first notice that a applicant owes tax. It shows the tax assessed, payments credited, penalties, and interest. Payment is generally requested within 21 days. Options if the applicant cannot pay in full: short-term payment plan (up to 180 days), long-term installment agreement (Form 9465 or USCIS online payment agreement), currently-not-collectible status, or offer in compromise in hardship cases. Interest and failure-to-pay penalties continue to accrue until paid.",
+      reference: "RFE",
+      url: "https://www.uscis.gov/forms/filing-guidance/requests-for-evidence-and-notices-of-intent-to-deny",
+      tags: "rfe, evidence, deadline, response",
+      content: "A Request for Evidence means USCIS needs additional documents or clarification before deciding a case. The notice identifies the missing evidence, the response deadline, where to send the response, and whether copies or originals are required. A complete response should address every listed item, include a cover letter or index, and be sent before the deadline. Missing the deadline can result in denial.",
     },
     {
-      title: "CP49 — Refund applied to other taxes",
+      title: "Notice of Intent to Deny (NOID)",
       sourceType: "notice_guide",
-      reference: "CP49",
-      tags: "refund, offset, applied, prior year",
-      content: "A CP49 notice tells the applicant that all or part of an expected refund was applied (offset) to another federal immigration case from a different tax year. The notice shows which year the refund was applied to and any remaining refund. If the applicant disagrees with the underlying debt, they should review the account transcript for the year in question. Refunds can also be offset for state taxes, child support, or federal student loans through the Treasury Offset Program (those generate a different notice from the Bureau of the Fiscal Service).",
+      reference: "NOID",
+      url: "https://www.uscis.gov/forms/filing-guidance/requests-for-evidence-and-notices-of-intent-to-deny",
+      tags: "noid, denial, rebuttal, deadline",
+      content: "A Notice of Intent to Deny means USCIS believes the application may not be approvable unless the applicant overcomes specific concerns. A NOID is more serious than an RFE. The response should directly address each stated reason, provide supporting evidence, and explain why the case is eligible under the relevant standard. Professional review is strongly recommended.",
     },
     {
-      title: "LT11 / Letter 1058 — Final notice of intent to levy",
-      sourceType: "notice_guide",
-      reference: "LT11",
-      tags: "levy, urgent, collection, due process, appeal",
-      content: "LT11 is a FINAL notice of intent to levy and notice of the right to a Collection Due Process (CDP) hearing. The applicant has 30 days from the notice date to request a CDP hearing (Form 12153) or make payment arrangements before the USCIS can levy wages, bank accounts, or other property. This is urgent. Setting up an installment agreement or having a pending CDP request generally stops levy action. Professional review is strongly recommended at this stage.",
+      title: "Adjustment of status overview",
+      sourceType: "form_instruction",
+      reference: "Form I-485",
+      url: "https://www.uscis.gov/i-485",
+      tags: "i-485, adjustment, green card, eligibility",
+      content: "Form I-485 is used by eligible applicants in the United States to apply for lawful permanent residence. A case review should check the immigrant category, lawful entry or eligibility exception, priority date if applicable, required medical exam, affidavit of support where required, and any admissibility issues. Supporting documents vary by category and facts.",
     },
     {
-      title: "USCIS account transcript transaction codes",
-      sourceType: "rule",
-      reference: "TC codes",
-      tags: "transcript, transaction codes, 846, 826, 570, 971",
-      content: "Key USCIS account transcript transaction codes: TC 150 = tax return filed and tax assessed. TC 806 = withholding credit. TC 846 = refund issued (with date and amount). TC 826 = credit transferred to another tax period (refund used to pay another year's debt). TC 570 = additional account action pending (refund hold). TC 971 = notice issued. TC 971/977 = amended return received. TC 276 = failure-to-pay penalty. TC 196 = interest assessed. TC 480 = offer in compromise pending. TC 971 with 'collection due process' = CDP request received. Comparing TC 846 amounts against the refund claimed on the return reveals offsets and adjustments.",
+      title: "Family petition overview",
+      sourceType: "form_instruction",
+      reference: "Form I-130",
+      url: "https://www.uscis.gov/i-130",
+      tags: "i-130, family, petitioner, beneficiary, relationship evidence",
+      content: "Form I-130 is used by a U.S. citizen or lawful permanent resident petitioner to establish a qualifying family relationship with a beneficiary. Evidence usually includes identity documents, proof of status, relationship documents, and bona fide marriage evidence when based on marriage. Approval of I-130 alone does not grant status.",
     },
     {
-      title: "Installment agreements (payment plans)",
-      sourceType: "rule",
-      reference: "Form 9465 / IRC 6159",
-      tags: "payment plan, installment agreement, balance due",
-      content: "Individuals who owe $50,000 or less in combined tax, penalties, and interest can generally set up a long-term installment agreement online (streamlined, no financial statement). Short-term plans (up to 180 days) are available for balances under $100,000. Setup fees vary and are lower for direct-debit agreements; low-income applicants may qualify for fee waivers. While an agreement is in effect the failure-to-pay penalty rate is reduced. Defaulting (missing payments or new unpaid balances) can terminate the agreement. A pending installment agreement request generally suspends levy action.",
-    },
-    {
-      title: "First-time penalty abatement",
-      sourceType: "rule",
-      reference: "FTA / IRM 20.1.1.3.3.2.1",
-      tags: "penalty, abatement, relief, first time",
-      content: "First-time abatement (FTA) provides administrative relief from failure-to-file, failure-to-pay, and failure-to-deposit penalties when the applicant: (1) has a clean compliance history for the prior 3 years (no significant penalties), (2) has filed all currently required returns or valid extensions, and (3) has paid or arranged to pay any tax due (an installment agreement in good standing qualifies). FTA can be requested by phone or in writing. Interest on the abated penalty is also removed, but interest on the tax itself is statutory and cannot be abated for reasonable cause. Reasonable-cause relief is a separate path for circumstances such as serious illness or disaster.",
-    },
-    {
-      title: "Getting USCIS transcripts",
-      sourceType: "rule",
-      reference: "Transcripts",
-      tags: "transcript, account, wage and income, online account",
-      content: "Applicants can get transcripts free through their USCIS individual online account (immediate), by mail (Get Transcript by Mail), or by filing Form 4506-T. The ACCOUNT transcript shows all account activity by transaction code — assessments, payments, refunds, offsets, holds, and notices. The RETURN transcript shows most line items from the return as filed. The WAGE & INCOME transcript shows W-2s, 1099s, and other information returns the USCIS received from payers — useful for reconstructing income for unfiled years. Records go back further for account transcripts (often 10+ years) than return transcripts (generally current + 3 prior years).",
-    },
-    {
-      title: "Unfiled returns and substitute for return",
-      sourceType: "rule",
-      reference: "SFR / IRC 6020(b)",
-      tags: "unfiled, substitute for return, late filing",
-      content: "When a required return is not filed, the USCIS may prepare a Substitute for Return (SFR) using payer information — with single/married-filing-separate status and no itemized deductions or credits, usually overstating the true tax. Filing an accurate original return generally replaces the SFR assessment. Refunds are only payable if claimed within 3 years of the return due date (or 2 years of payment). Getting compliant (typically the last 6 years of returns per USCIS Policy Statement 5-133) is a prerequisite for most resolution options such as installment agreements and offers in compromise.",
+      title: "Naturalization overview",
+      sourceType: "form_instruction",
+      reference: "Form N-400",
+      url: "https://www.uscis.gov/n-400",
+      tags: "n-400, naturalization, citizenship, continuous residence",
+      content: "Form N-400 is used to apply for naturalization. A review should consider lawful permanent resident period, continuous residence, physical presence, good moral character, selective service if applicable, tax and support obligations, trips outside the United States, and interview/civics requirements. Complex issues should be reviewed by a qualified professional.",
     },
   ];
-  for (const s of sources) {
-    const exists = await db.knowledgeSource.findFirst({ where: { title: s.title } });
-    if (!exists) await db.knowledgeSource.create({ data: s });
+
+  for (const source of sources) {
+    const exists = await db.knowledgeSource.findFirst({ where: { title: source.title } });
+    if (!exists) await db.knowledgeSource.create({ data: source });
   }
 }
 
 async function seedFormTemplates() {
   const templates = [
     {
-      formNumber: "W-4",
-      title: "Employee's Withholding Certificate",
-      description: "Tell your employer how much tax to take out of your paycheck. 4 quick steps.",
-      category: "individual",
-      sortOrder: 0,
-      stepsJson: JSON.stringify([
-        {
-          id: "you",
-          title: "Let's start with you",
-          help: "This is the easy part — just who you are.",
-          fields: [
-            { key: "first_name", label: "First name and middle initial", type: "text", required: true },
-            { key: "last_name", label: "Last name", type: "text", required: true },
-            { key: "ssn", label: "Social Security number", type: "text", placeholder: "000-00-0000", required: true, hint: "Only stored in your own generated form." },
-            { key: "address", label: "Home address", type: "text", required: true },
-            { key: "city_state_zip", label: "City, state, and ZIP", type: "text", required: true },
-          ],
-        },
-        {
-          id: "status",
-          title: "Your household",
-          help: "This decides your tax brackets — pick the one that fits.",
-          fields: [
-            {
-              key: "filing_status", label: "How will you file your taxes?", type: "select", required: true,
-              options: [
-                { value: "Single or Married filing separately", label: "Single (or married, filing separately)" },
-                { value: "Married filing jointly or Qualifying surviving spouse", label: "Married, filing together" },
-                { value: "Head of household", label: "Head of household (single + you pay most home costs for a dependent)" },
-              ],
-            },
-            { key: "multiple_jobs", label: "Do you (or your spouse) have more than one job?", type: "boolean", hint: "If yes, the USCIS suggests checking box 2(c) so both jobs withhold at the right rate." },
-          ],
-        },
-        {
-          id: "dependents",
-          title: "Kids & dependents",
-          help: "Dependents can lower your withholding — that means more money in each paycheck.",
-          fields: [
-            { key: "children_count", label: "How many children under 17 live with you?", type: "number", hint: "Worth $2,000 each on this form." },
-            { key: "other_dependents_count", label: "How many other dependents do you support?", type: "number", hint: "Worth $500 each." },
-          ],
-        },
-        {
-          id: "extras",
-          title: "Fine-tuning (optional)",
-          help: "Most people skip this step. Only fill it if it applies to you.",
-          fields: [
-            { key: "other_income", label: "Other yearly income not from jobs (interest, dividends…)", type: "money" },
-            { key: "deductions", label: "Extra deductions you expect beyond the standard deduction", type: "money" },
-            { key: "extra_withholding", label: "Extra tax to withhold each paycheck", type: "money" },
-          ],
-        },
-      ]),
-      outputTemplate: `FORM W-4 — EMPLOYEE'S WITHHOLDING CERTIFICATE (Tax Year {{tax_year}})
-=================================================================
-
-STEP 1 — PERSONAL INFORMATION
-  (a) Name:            {{first_name}} {{last_name}}
-      Address:         {{address}}
-                       {{city_state_zip}}
-  (b) SSN:             {{ssn}}
-  (c) Filing status:   {{filing_status}}
-
-STEP 2 — MULTIPLE JOBS OR SPOUSE WORKS
-  More than one job / spouse works: {{multiple_jobs}}
-
-STEP 3 — CLAIM DEPENDENTS
-  Qualifying children under 17: {{children_count}}  x $2,000
-  Other dependents:             {{other_dependents_count}}  x $500
-
-STEP 4 — OTHER ADJUSTMENTS (OPTIONAL)
-  (a) Other income (not from jobs):  $ {{other_income}}
-  (b) Deductions:                    $ {{deductions}}
-  (c) Extra withholding per period:  $ {{extra_withholding}}
-
-STEP 5 — SIGNATURE
-  Sign: ______________________________   Date: ____________
-
-Give the completed form to your employer's payroll department.
-Compare against the official USCIS Form W-4 before submitting.`,
-    },
-    {
-      formNumber: "9465",
-      title: "Installment Agreement Request",
-      description: "Ask the USCIS for a monthly payment plan you can afford. 3 quick steps.",
-      category: "individual",
+      formNumber: "I-130",
+      title: "Petition for Alien Relative",
+      description: "Prepare a family-based petition checklist and draft answers for review before filing with USCIS.",
+      category: "family",
       sortOrder: 1,
-      stepsJson: JSON.stringify([
-        {
-          id: "you",
-          title: "About you",
-          help: "Same details as on your tax return.",
-          fields: [
-            { key: "name", label: "Your full name (as on your return)", type: "text", required: true },
-            { key: "ssn", label: "Social Security number", type: "text", required: true },
-            { key: "address", label: "Current address", type: "text", required: true },
-            { key: "phone", label: "Daytime phone", type: "text" },
-          ],
-        },
-        {
-          id: "debt",
-          title: "What you owe",
-          help: "You can find these on your USCIS notice or account transcript.",
-          fields: [
-            { key: "tax_form", label: "Which return is this for?", type: "select", required: true, options: [
-              { value: "Form 1040", label: "My personal tax return (1040)" },
-              { value: "Other", label: "Something else" },
-            ] },
-            { key: "tax_years", label: "Which tax year(s)?", type: "text", required: true, placeholder: "e.g. 2024" },
-            { key: "amount_owed", label: "Total amount you owe", type: "money", required: true },
-          ],
-        },
-        {
-          id: "plan",
-          title: "Your monthly plan",
-          help: "Pick an amount you can really afford — the USCIS charges less penalty while a plan is active. Your total divided by 72 is the minimum they'll usually accept.",
-          fields: [
-            { key: "down_payment", label: "Can you pay anything today?", type: "money", hint: "Even a small amount reduces interest." },
-            { key: "monthly_payment", label: "Monthly payment you're proposing", type: "money", required: true },
-            { key: "payment_day", label: "Day of the month to pay (1–28)", type: "number", required: true },
-            { key: "direct_debit", label: "Pay automatically from your bank account?", type: "boolean", hint: "Direct debit has the lowest setup fee and you can't forget a payment." },
-          ],
-        },
-      ]),
-      outputTemplate: `FORM 9465 — INSTALLMENT AGREEMENT REQUEST
-=========================================
-
-PART I — TAXPAYER INFORMATION
-  Name:      {{name}}
-  SSN:       {{ssn}}
-  Address:   {{address}}
-  Phone:     {{phone}}
-
-TAX INFORMATION
-  Return type:        {{tax_form}}
-  Tax year(s):        {{tax_years}}
-  Total amount owed:  $ {{amount_owed}}
-
-PROPOSED AGREEMENT
-  Payment made with this request:  $ {{down_payment}}
-  Proposed monthly payment:        $ {{monthly_payment}}
-  Payment date each month:         {{payment_day}}
-  Direct debit requested:          {{direct_debit}}
-
-SIGNATURE
-  Sign: ______________________________   Date: ____________
-
-Tip: If you owe $50,000 or less you can usually set this up faster
-in your USCIS online account without mailing this form.
-Compare against the official USCIS Form 9465 before submitting.`,
+      requiredFeature: "forms.wizard",
+      pdfSourceUrl: "https://www.uscis.gov/sites/default/files/document/forms/i-130.pdf",
+      steps: [
+        { title: "Petitioner", questions: [
+          { key: "petitioner_name", label: "Petitioner's full legal name", type: "text", required: true },
+          { key: "petitioner_status", label: "Petitioner's immigration status", type: "select", required: true, options: ["U.S. citizen", "Lawful permanent resident"] },
+        ]},
+        { title: "Beneficiary", questions: [
+          { key: "beneficiary_name", label: "Beneficiary's full legal name", type: "text", required: true },
+          { key: "relationship", label: "Relationship to petitioner", type: "select", required: true, options: ["Spouse", "Parent", "Child", "Sibling"] },
+        ]},
+        { title: "Evidence", questions: [
+          { key: "relationship_evidence", label: "What relationship evidence do you have?", type: "textarea", required: true },
+        ]},
+      ],
+      outputTemplate: `FORM I-130 PREPARATION SUMMARY\n\nPetitioner: {{petitioner_name}}\nPetitioner status: {{petitioner_status}}\nBeneficiary: {{beneficiary_name}}\nRelationship: {{relationship}}\nEvidence notes: {{relationship_evidence}}\n\nReview all answers against official USCIS instructions before filing.`,
     },
     {
-      formNumber: "4506-T",
-      title: "Request for Transcript of Tax Return",
-      description: "Ask the USCIS to send your tax transcripts — the records that show what they have on file. 3 quick steps.",
-      category: "individual",
+      formNumber: "I-485",
+      title: "Application to Register Permanent Residence or Adjust Status",
+      description: "Collect core adjustment-of-status facts and evidence gaps for professional review.",
+      category: "green_card",
       sortOrder: 2,
-      stepsJson: JSON.stringify([
-        {
-          id: "you",
-          title: "About you",
-          help: "Use the name and address the USCIS has on file (from your last return).",
-          fields: [
-            { key: "name", label: "Your full name", type: "text", required: true },
-            { key: "ssn", label: "Social Security number", type: "text", required: true },
-            { key: "address", label: "Current address", type: "text", required: true },
-            { key: "previous_address", label: "Address on your last return (if different)", type: "text" },
-          ],
-        },
-        {
-          id: "what",
-          title: "Which records do you need?",
-          help: "The Account Transcript is the one that shows refunds, payments, and offsets — usually the most useful.",
-          fields: [
-            { key: "transcript_type", label: "Type of transcript", type: "select", required: true, options: [
-              { value: "Account Transcript (6b)", label: "Account transcript — payments, refunds, and changes (most useful)" },
-              { value: "Return Transcript (6a)", label: "Return transcript — what you filed" },
-              { value: "Record of Account (6c)", label: "Record of account — both combined" },
-              { value: "Wage and Income (8)", label: "Wage & income — W-2s and 1099s the USCIS received" },
-            ] },
-            { key: "tax_years", label: "Which year(s)? (up to 4)", type: "text", required: true, placeholder: "12/31/2024, 12/31/2023" },
-          ],
-        },
-        {
-          id: "sign",
-          title: "Almost done",
-          help: "The USCIS mails transcripts to your address on file in about 10 business days.",
-          fields: [
-            { key: "phone", label: "Phone number", type: "text" },
-          ],
-        },
-      ]),
-      outputTemplate: `FORM 4506-T — REQUEST FOR TRANSCRIPT OF TAX RETURN
-==================================================
-
-1a. Name:                {{name}}
-1b. SSN:                 {{ssn}}
-3.  Current address:     {{address}}
-4.  Previous address:    {{previous_address}}
-
-TRANSCRIPT REQUESTED
-6/8. Type:               {{transcript_type}}
-9.   Year(s) requested:  {{tax_years}}
-
-Phone: {{phone}}
-
-SIGNATURE
-  Sign: ______________________________   Date: ____________
-
-Faster option: transcripts are available instantly in your USCIS
-online account. Compare against the official USCIS Form 4506-T
-before submitting.`,
+      requiredFeature: "forms.wizard",
+      pdfSourceUrl: "https://www.uscis.gov/sites/default/files/document/forms/i-485.pdf",
+      steps: [
+        { title: "Applicant", questions: [
+          { key: "applicant_name", label: "Applicant's full legal name", type: "text", required: true },
+          { key: "current_status", label: "Current immigration status", type: "text", required: true },
+        ]},
+        { title: "Eligibility", questions: [
+          { key: "basis", label: "Adjustment basis", type: "select", required: true, options: ["Family-based", "Employment-based", "Asylum/refugee", "Other"] },
+          { key: "last_entry", label: "Last entry date and manner of entry", type: "text", required: true },
+        ]},
+        { title: "Concerns", questions: [
+          { key: "concerns", label: "Any arrests, overstays, prior denials, or removal history?", type: "textarea" },
+        ]},
+      ],
+      outputTemplate: `FORM I-485 PREPARATION SUMMARY\n\nApplicant: {{applicant_name}}\nCurrent status: {{current_status}}\nBasis: {{basis}}\nLast entry: {{last_entry}}\nPotential concerns: {{concerns}}\n\nThis summary is informational and should be reviewed before filing.`,
     },
-  ];
-
-  const moreTemplates = [
     {
-      formNumber: "4868",
-      title: "Extension of Time to File",
-      description: "Need more time? Get an automatic 6-month filing extension. 3 quick steps.",
-      category: "individual",
+      formNumber: "I-765",
+      title: "Application for Employment Authorization",
+      description: "Prepare work permit eligibility and category notes.",
+      category: "work_authorization",
       sortOrder: 3,
-      stepsJson: JSON.stringify([
-        {
-          id: "you",
-          title: "Who's filing?",
-          help: "Same details as on your tax return.",
-          fields: [
-            { key: "name", label: "Your name (and spouse's if filing jointly)", type: "text", required: true },
-            { key: "address", label: "Address", type: "text", required: true },
-            { key: "ssn", label: "Your Social Security number", type: "text", required: true },
-            { key: "spouse_ssn", label: "Spouse's SSN (if joint)", type: "text" },
-          ],
-        },
-        {
-          id: "estimate",
-          title: "Your best estimate",
-          help: "An extension gives you more time to FILE, not more time to PAY — estimate what you owe and pay what you can to limit interest.",
-          fields: [
-            { key: "tax_estimate", label: "Estimated total tax for the year", type: "money", required: true, hint: "Your best guess is fine." },
-            { key: "payments", label: "Total payments already made (withholding etc.)", type: "money", required: true },
-            { key: "paying_now", label: "Amount you're paying with this extension", type: "money", required: true, hint: "Can be $0, but paying reduces penalties." },
-          ],
-        },
-        {
-          id: "flags",
-          title: "Special situations",
-          help: "Most people answer No to both.",
-          fields: [
-            { key: "out_of_country", label: "Are you out of the country on the filing deadline?", type: "boolean" },
-            { key: "file_1040nr", label: "Will you file Form 1040-NR (nonresident)?", type: "boolean" },
-          ],
-        },
-      ]),
-      outputTemplate: `FORM 4868 — APPLICATION FOR AUTOMATIC EXTENSION OF TIME TO FILE
-================================================================
-
-PART I — IDENTIFICATION
-  1. Name(s):   {{name}}
-     Address:   {{address}}
-  2. SSN:       {{ssn}}
-  3. Spouse:    {{spouse_ssn}}
-
-PART II — INDIVIDUAL INCOME TAX
-  4. Estimate of total tax liability ........ $ {{tax_estimate}}
-  5. Total payments .......................... $ {{payments}}
-  6. Balance due (line 4 minus line 5)
-  7. Amount you are paying ................... $ {{paying_now}}
-  8. Out of the country:  {{out_of_country}}
-  9. Filing Form 1040-NR:  {{file_1040nr}}
-
-File by the regular due date of your return. This grants a
-6-month FILING extension — interest still applies to unpaid tax.
-Compare against the official USCIS Form 4868 before submitting.`,
+      requiredFeature: "forms.wizard",
+      pdfSourceUrl: "https://www.uscis.gov/sites/default/files/document/forms/i-765.pdf",
+      steps: [
+        { title: "Applicant", questions: [
+          { key: "name", label: "Applicant's full legal name", type: "text", required: true },
+          { key: "eligibility_category", label: "Eligibility category", type: "text", required: true, placeholder: "e.g. (c)(9), (c)(8), (a)(5)" },
+        ]},
+        { title: "Prior EAD", questions: [
+          { key: "prior_ead", label: "Have you previously received an EAD?", type: "boolean" },
+          { key: "receipt", label: "Related receipt number, if any", type: "text" },
+        ]},
+      ],
+      outputTemplate: `FORM I-765 PREPARATION SUMMARY\n\nApplicant: {{name}}\nEligibility category: {{eligibility_category}}\nPrior EAD: {{prior_ead}}\nRelated receipt: {{receipt}}`,
     },
     {
-      formNumber: "W-9",
-      title: "Request for Applicant Identification Number",
-      description: "The form clients ask freelancers and contractors for. 3 quick steps.",
-      category: "individual",
+      formNumber: "I-864",
+      title: "Affidavit of Support",
+      description: "Collect sponsor and household-size facts for affidavit-of-support review.",
+      category: "support",
       sortOrder: 4,
-      stepsJson: JSON.stringify([
-        {
-          id: "you",
-          title: "Who are you?",
-          help: "Line 1 must match the name on your tax return.",
-          fields: [
-            { key: "name", label: "Your name (as on your tax return)", type: "text", required: true },
-            { key: "business_name", label: "Business/disregarded entity name (if different)", type: "text" },
-            {
-              key: "tax_class", label: "Federal tax classification", type: "select", required: true,
-              options: [
-                { value: "Individual/sole proprietor", label: "Individual / sole proprietor (most freelancers)" },
-                { value: "Single-member LLC", label: "Single-member LLC" },
-                { value: "C Corporation", label: "C Corporation" },
-                { value: "S Corporation", label: "S Corporation" },
-                { value: "Partnership", label: "Partnership" },
-                { value: "Trust/estate", label: "Trust / estate" },
-              ],
-            },
-          ],
-        },
-        {
-          id: "address",
-          title: "Where should the 1099 go?",
-          help: "The payer uses this address for your immigration documents.",
-          fields: [
-            { key: "address", label: "Street address", type: "text", required: true },
-            { key: "city_state_zip", label: "City, state, ZIP", type: "text", required: true },
-          ],
-        },
-        {
-          id: "tin",
-          title: "Your tax ID",
-          help: "SSN for individuals; EIN if you have a business entity.",
-          fields: [
-            { key: "tin", label: "SSN or EIN", type: "text", required: true, placeholder: "000-00-0000 or 00-0000000" },
-            { key: "backup_withholding", label: "Are you subject to backup withholding?", type: "boolean", hint: "Most people answer No — the USCIS notifies you if you are." },
-          ],
-        },
-      ]),
-      outputTemplate: `FORM W-9 — REQUEST FOR TAXPAYER IDENTIFICATION NUMBER AND CERTIFICATION
-=======================================================================
-
-1. Name:                     {{name}}
-2. Business name:            {{business_name}}
-3. Federal tax classification: {{tax_class}}
-5. Address:                  {{address}}
-6. City, state, ZIP:         {{city_state_zip}}
-
-PART I — TAXPAYER IDENTIFICATION NUMBER
-  TIN (SSN or EIN):          {{tin}}
-
-PART II — CERTIFICATION
-  Subject to backup withholding: {{backup_withholding}}
-  Sign: ______________________________   Date: ____________
-
-Give this form to the person who requested it — do NOT send it to the USCIS.
-Compare against the official USCIS Form W-9 before submitting.`,
+      requiredFeature: "forms.wizard",
+      pdfSourceUrl: "https://www.uscis.gov/sites/default/files/document/forms/i-864.pdf",
+      steps: [
+        { title: "Sponsor", questions: [
+          { key: "sponsor_name", label: "Sponsor's full legal name", type: "text", required: true },
+          { key: "household_size", label: "Household size", type: "number", required: true },
+          { key: "income", label: "Current annual income", type: "money", required: true },
+        ]},
+        { title: "Documents", questions: [
+          { key: "documents", label: "Which income documents are available?", type: "textarea", required: true },
+        ]},
+      ],
+      outputTemplate: `FORM I-864 PREPARATION SUMMARY\n\nSponsor: {{sponsor_name}}\nHousehold size: {{household_size}}\nAnnual income: {{income}}\nAvailable documents: {{documents}}`,
     },
     {
-      formNumber: "8822",
-      title: "Change of Address",
-      description: "Moved? Make sure USCIS letters reach you — missing one can cost you. 3 quick steps.",
-      category: "individual",
+      formNumber: "N-400",
+      title: "Application for Naturalization",
+      description: "Prepare naturalization eligibility facts and issue checklist.",
+      category: "citizenship",
       sortOrder: 5,
-      stepsJson: JSON.stringify([
-        {
-          id: "who",
-          title: "Who moved?",
-          help: "Include your spouse if you file jointly.",
-          fields: [
-            { key: "name", label: "Your full name", type: "text", required: true },
-            { key: "ssn", label: "Your SSN", type: "text", required: true },
-            { key: "spouse_name", label: "Spouse's name (if joint)", type: "text" },
-            { key: "spouse_ssn", label: "Spouse's SSN (if joint)", type: "text" },
-          ],
-        },
-        {
-          id: "old",
-          title: "Your old address",
-          help: "The address the USCIS currently has on file.",
-          fields: [
-            { key: "old_address", label: "Old street address", type: "text", required: true },
-            { key: "old_city_state_zip", label: "Old city, state, ZIP", type: "text", required: true },
-          ],
-        },
-        {
-          id: "new",
-          title: "Your new address",
-          help: "Where the USCIS should send everything from now on.",
-          fields: [
-            { key: "new_address", label: "New street address", type: "text", required: true },
-            { key: "new_city_state_zip", label: "New city, state, ZIP", type: "text", required: true },
-            { key: "phone", label: "Daytime phone (optional)", type: "text" },
-          ],
-        },
-      ]),
-      outputTemplate: `FORM 8822 — CHANGE OF ADDRESS
-=============================
-
-PART I — INDIVIDUAL INCOME TAX RETURNS
-  1. This change affects: individual income tax returns (Forms 1040)
-
-  3a. Your name:        {{name}}
-  3b. Your SSN:         {{ssn}}
-  4a. Spouse's name:    {{spouse_name}}
-  4b. Spouse's SSN:     {{spouse_ssn}}
-
-  6a. Old address:      {{old_address}}
-                        {{old_city_state_zip}}
-  7.  New address:      {{new_address}}
-                        {{new_city_state_zip}}
-  Phone:                {{phone}}
-
-SIGNATURE
-  Sign: ______________________________   Date: ____________
-
-Mail to the USCIS address for your state (see the official instructions).
-Compare against the official USCIS Form 8822 before submitting.`,
+      requiredFeature: "forms.wizard",
+      pdfSourceUrl: "https://www.uscis.gov/sites/default/files/document/forms/n-400.pdf",
+      steps: [
+        { title: "Eligibility", questions: [
+          { key: "lpr_since", label: "Date you became a permanent resident", type: "date", required: true },
+          { key: "basis", label: "Naturalization basis", type: "select", required: true, options: ["5-year permanent resident", "3-year marriage to U.S. citizen", "Military", "Other"] },
+        ]},
+        { title: "Travel and history", questions: [
+          { key: "long_trips", label: "Any trips outside the U.S. longer than 6 months?", type: "textarea" },
+          { key: "issues", label: "Any arrests, citations, tax, or support issues to review?", type: "textarea" },
+        ]},
+      ],
+      outputTemplate: `FORM N-400 PREPARATION SUMMARY\n\nPermanent resident since: {{lpr_since}}\nBasis: {{basis}}\nLong trips: {{long_trips}}\nIssues to review: {{issues}}`,
     },
     {
-      formNumber: "2848",
-      title: "Power of Attorney (Representative Authorization)",
-      description: "Authorize your immigration professional or Enrolled Agent to deal with the USCIS for you. 3 quick steps.",
-      category: "individual",
+      formNumber: "I-589",
+      title: "Application for Asylum and Withholding of Removal",
+      description: "Organize asylum claim facts, deadline concerns, and supporting evidence.",
+      category: "humanitarian",
       sortOrder: 6,
-      stepsJson: JSON.stringify([
-        {
-          id: "applicant",
-          title: "About you",
-          help: "You're the applicant granting the authorization.",
-          fields: [
-            { key: "name", label: "Your full name", type: "text", required: true },
-            { key: "address", label: "Address", type: "text", required: true },
-            { key: "ssn", label: "SSN", type: "text", required: true },
-            { key: "phone", label: "Phone", type: "text" },
-          ],
-        },
-        {
-          id: "rep",
-          title: "Your representative",
-          help: "Usually your immigration professional or Enrolled Agent — ask them for their CAF number and PTIN.",
-          fields: [
-            { key: "rep_name", label: "Representative's name", type: "text", required: true },
-            { key: "rep_address", label: "Representative's address", type: "text", required: true },
-            { key: "rep_caf", label: "CAF number (if they have one)", type: "text" },
-            { key: "rep_ptin", label: "PTIN", type: "text" },
-            { key: "rep_phone", label: "Representative's phone", type: "text" },
-          ],
-        },
-        {
-          id: "scope",
-          title: "What can they handle?",
-          help: "Be specific — the USCIS honors exactly what's listed.",
-          fields: [
-            { key: "tax_matters", label: "Tax matter (e.g. Income, Form 1040)", type: "text", required: true, placeholder: "Income — Form 1040" },
-            { key: "years", label: "Year(s) or period(s)", type: "text", required: true, placeholder: "2022, 2023, 2024" },
-          ],
-        },
-      ]),
-      outputTemplate: `FORM 2848 — POWER OF ATTORNEY AND DECLARATION OF REPRESENTATIVE
-================================================================
-
-PART I — POWER OF ATTORNEY
-1. Applicant:
-   Name:     {{name}}
-   Address:  {{address}}
-   SSN:      {{ssn}}
-   Phone:    {{phone}}
-
-2. Representative:
-   Name:     {{rep_name}}
-   Address:  {{rep_address}}
-   CAF No.:  {{rep_caf}}
-   PTIN:     {{rep_ptin}}
-   Phone:    {{rep_phone}}
-
-3. Acts authorized:
-   Tax matter:        {{tax_matters}}
-   Years/periods:     {{years}}
-
-SIGNATURES
-  Applicant: ______________________  Date: ________
-  Representative signs Part II declaration.
-
-Compare against the official USCIS Form 2848 before submitting.`,
-    },
-    {
-      formNumber: "SS-4",
-      title: "Application for EIN",
-      description: "Starting a business or side hustle? Get your federal Employer ID Number. 3 quick steps.",
-      category: "business",
-      sortOrder: 7,
-      stepsJson: JSON.stringify([
-        {
-          id: "entity",
-          title: "The business",
-          help: "The legal name is what's on your formation papers (or your own name for sole proprietors).",
-          fields: [
-            { key: "legal_name", label: "Legal name of entity (or your name)", type: "text", required: true },
-            { key: "trade_name", label: "Trade name / DBA (if different)", type: "text" },
-            { key: "responsible_name", label: "Responsible party (usually you)", type: "text", required: true },
-            { key: "responsible_ssn", label: "Responsible party's SSN/ITIN", type: "text", required: true },
-          ],
-        },
-        {
-          id: "address",
-          title: "Business address",
-          help: "Where the USCIS should send EIN correspondence.",
-          fields: [
-            { key: "address", label: "Mailing address", type: "text", required: true },
-            { key: "city_state_zip", label: "City, state, ZIP", type: "text", required: true },
-            { key: "phone", label: "Phone", type: "text" },
-          ],
-        },
-        {
-          id: "type",
-          title: "Type & reason",
-          help: "Pick what matches your situation.",
-          fields: [
-            {
-              key: "entity_type", label: "Type of entity", type: "select", required: true,
-              options: [
-                { value: "Sole proprietor", label: "Sole proprietor" },
-                { value: "Single-member LLC", label: "LLC (just me)" },
-                { value: "Multi-member LLC", label: "LLC (with partners)" },
-                { value: "Partnership", label: "Partnership" },
-                { value: "Corporation", label: "Corporation" },
-              ],
-            },
-            {
-              key: "reason", label: "Reason for applying", type: "select", required: true,
-              options: [
-                { value: "Started new business", label: "Started a new business" },
-                { value: "Hired employees", label: "Hired (or will hire) employees" },
-                { value: "Banking purpose", label: "Opening a business bank account" },
-                { value: "Changed type of organization", label: "Changed business structure" },
-              ],
-            },
-            { key: "start_date", label: "Date business started (or will start)", type: "date", required: true },
-            { key: "employees", label: "Employees expected in the next 12 months", type: "number", hint: "0 is a fine answer." },
-          ],
-        },
-      ]),
-      outputTemplate: `FORM SS-4 — APPLICATION FOR EMPLOYER IDENTIFICATION NUMBER
-===========================================================
-
-1.  Legal name:            {{legal_name}}
-2.  Trade name / DBA:      {{trade_name}}
-3.  Responsible party:     {{responsible_name}}   SSN/ITIN: {{responsible_ssn}}
-4.  Mailing address:       {{address}}
-                           {{city_state_zip}}
-    Phone:                 {{phone}}
-9a. Type of entity:        {{entity_type}}
-10. Reason for applying:   {{reason}}
-11. Date business started: {{start_date}}
-13. Employees expected (next 12 months): {{employees}}
-
-SIGNATURE
-  Sign: ______________________________   Date: ____________
-
-Fastest option: apply online at irs.gov (EIN issued immediately).
-Compare against the official USCIS Form SS-4 before submitting.`,
-    },
-    {
-      formNumber: "433-F",
-      title: "Collection Information Statement",
-      description: "The financial snapshot the USCIS asks for when arranging payment on immigration case. 4 quick steps.",
-      category: "individual",
-      sortOrder: 8,
-      stepsJson: JSON.stringify([
-        {
-          id: "personal",
-          title: "About you",
-          help: "The USCIS uses this to understand your household.",
-          fields: [
-            { key: "name", label: "Full name", type: "text", required: true },
-            { key: "ssn", label: "SSN", type: "text", required: true },
-            { key: "phone", label: "Phone", type: "text", required: true },
-            { key: "dependents", label: "Number of dependents you support", type: "number" },
-          ],
-        },
-        {
-          id: "income",
-          title: "Monthly income",
-          help: "Gross means before taxes are taken out.",
-          fields: [
-            { key: "employer", label: "Employer (or 'self-employed')", type: "text" },
-            { key: "monthly_gross", label: "Monthly gross wages", type: "money", required: true },
-            { key: "other_income", label: "Other monthly income (benefits, side work…)", type: "money" },
-          ],
-        },
-        {
-          id: "expenses",
-          title: "Monthly living expenses",
-          help: "Honest numbers help you get an affordable arrangement.",
-          fields: [
-            { key: "rent", label: "Rent / mortgage", type: "money", required: true },
-            { key: "utilities", label: "Utilities (power, water, phone, internet)", type: "money" },
-            { key: "food", label: "Food & household", type: "money" },
-            { key: "transportation", label: "Transportation (car payment, gas, transit)", type: "money" },
-            { key: "medical", label: "Health insurance & medical", type: "money" },
-            { key: "other_expenses", label: "Other necessary expenses", type: "money" },
-          ],
-        },
-        {
-          id: "assets",
-          title: "What you have",
-          help: "Rounded numbers are fine.",
-          fields: [
-            { key: "bank_balance", label: "Total in bank accounts", type: "money", required: true },
-            { key: "vehicles_value", label: "Vehicles — rough total value", type: "money" },
-            { key: "owe_irs", label: "Total you owe the USCIS", type: "money", required: true },
-          ],
-        },
-      ]),
-      outputTemplate: `FORM 433-F — COLLECTION INFORMATION STATEMENT
-=============================================
-
-SECTION 1 — PERSONAL
-  Name: {{name}}    SSN: {{ssn}}    Phone: {{phone}}
-  Dependents: {{dependents}}
-
-SECTION 2 — EMPLOYMENT / INCOME (monthly)
-  Employer:            {{employer}}
-  Gross wages:         $ {{monthly_gross}}
-  Other income:        $ {{other_income}}
-
-SECTION 3 — MONTHLY NECESSARY LIVING EXPENSES
-  Rent/mortgage:       $ {{rent}}
-  Utilities:           $ {{utilities}}
-  Food/household:      $ {{food}}
-  Transportation:      $ {{transportation}}
-  Medical/insurance:   $ {{medical}}
-  Other:               $ {{other_expenses}}
-
-SECTION 4 — ACCOUNTS / ASSETS
-  Bank accounts total: $ {{bank_balance}}
-  Vehicles value:      $ {{vehicles_value}}
-  Total USCIS balance:   $ {{owe_irs}}
-
-SIGNATURE
-  Sign: ______________________________   Date: ____________
-
-Used when requesting payment plans or hardship status on immigration case.
-Compare against the official USCIS Form 433-F before submitting.`,
+      requiredFeature: "forms.wizard",
+      pdfSourceUrl: "https://www.uscis.gov/sites/default/files/document/forms/i-589.pdf",
+      steps: [
+        { title: "Claim basis", questions: [
+          { key: "country", label: "Country of feared persecution", type: "text", required: true },
+          { key: "protected_ground", label: "Protected ground", type: "select", required: true, options: ["Race", "Religion", "Nationality", "Political opinion", "Particular social group"] },
+        ]},
+        { title: "Timeline", questions: [
+          { key: "entry_date", label: "Most recent U.S. entry date", type: "date", required: true },
+          { key: "story", label: "Briefly describe what happened and what you fear", type: "textarea", required: true },
+        ]},
+      ],
+      outputTemplate: `FORM I-589 PREPARATION SUMMARY\n\nCountry: {{country}}\nProtected ground: {{protected_ground}}\nEntry date: {{entry_date}}\nClaim summary: {{story}}`,
     },
   ];
 
-  for (const t of [...templates, ...moreTemplates]) {
-    const exists = await db.irsFormTemplate.findFirst({ where: { formNumber: t.formNumber } });
-    if (!exists) await db.irsFormTemplate.create({ data: { ...t, isPublished: true } });
-  }
-
-  // Official USCIS PDFs: downloads infuse the customer's answers into the real
-  // USCIS form. URLs + the 9465 field mapping are applied to existing rows too
-  // (only when the admin hasn't configured their own).
-  const officialPdfs: Record<string, string> = {
-    "9465": "https://www.irs.gov/pub/irs-pdf/f9465.pdf",
-    "W-4": "https://www.irs.gov/pub/irs-pdf/fw4.pdf",
-    "4506-T": "https://www.irs.gov/pub/irs-pdf/f4506t.pdf",
-    "4868": "https://www.irs.gov/pub/irs-pdf/f4868.pdf",
-    "W-9": "https://www.irs.gov/pub/irs-pdf/fw9.pdf",
-    "8822": "https://www.irs.gov/pub/irs-pdf/f8822.pdf",
-    "2848": "https://www.irs.gov/pub/irs-pdf/f2848.pdf",
-    "SS-4": "https://www.irs.gov/pub/irs-pdf/fss4.pdf",
-    "433-F": "https://www.irs.gov/pub/irs-pdf/f433f.pdf",
-  };
-  for (const [formNumber, url] of Object.entries(officialPdfs)) {
-    await db.irsFormTemplate.updateMany({
-      where: { formNumber, pdfSourceUrl: "" },
-      data: { pdfSourceUrl: url },
-    });
-  }
-
-  // Field mappings, wizard key → official PDF AcroForm field, for every form.
-  // Field names were extracted from the current USCIS fill-in PDFs. Applied only
-  // when the admin hasn't configured their own mapping.
-  const P1 = "topmostSubform[0].Page1[0]";
-  const P2 = "topmostSubform[0].Page2[0]";
-  const formPdfMaps: Record<string, unknown[]> = {
-    // Form 9465 (Rev. 9-2020)
-    "9465": [
-      { field: `${P1}.f1_1[0]`, source: "tax_form" },
-      { field: `${P1}.f1_2[0]`, source: "tax_years" },
-      { field: `${P1}.f1_3[0]`, source: "name", transform: "first_words" },
-      { field: `${P1}.f1_4[0]`, source: "name", transform: "last_word" },
-      { field: `${P1}.f1_5[0]`, source: "ssn" },
-      { field: `${P1}.f1_9[0]`, source: "address", transform: "street" },
-      { field: `${P1}.f1_11[0]`, source: "address", transform: "city_state_zip" },
-      { field: `${P1}.f1_17[0]`, source: "phone" },
-      { field: `${P1}.f1_22[0]`, source: "amount_owed", transform: "money" },
-      { field: `${P1}.f1_24[0]`, source: "amount_owed", transform: "money" },
-      { field: `${P1}.f1_25[0]`, source: "down_payment", transform: "money" },
-      { field: `${P1}.f1_26[0]`, expr: "amount_owed - down_payment" },
-      { field: `${P1}.f1_27[0]`, expr: "(amount_owed - down_payment) / 72" },
-      { field: `${P1}.f1_28[0]`, source: "monthly_payment", transform: "money" },
-      { field: `${P1}.f1_30[0]`, source: "payment_day" },
-    ],
-    // Form W-4 (2026)
-    "W-4": [
-      { field: `${P1}.Step1a[0].f1_01[0]`, source: "first_name" },
-      { field: `${P1}.Step1a[0].f1_02[0]`, source: "last_name" },
-      { field: `${P1}.Step1a[0].f1_03[0]`, source: "address" },
-      { field: `${P1}.Step1a[0].f1_04[0]`, source: "city_state_zip" },
-      { field: `${P1}.f1_05[0]`, source: "ssn" },
-      { field: `${P1}.c1_1[0]`, source: "filing_status", checkIf: "Single or Married filing separately" },
-      { field: `${P1}.c1_1[1]`, source: "filing_status", checkIf: "Married filing jointly or Qualifying surviving spouse" },
-      { field: `${P1}.c1_1[2]`, source: "filing_status", checkIf: "Head of household" },
-      { field: `${P1}.c1_2[0]`, source: "multiple_jobs", checkIf: "Yes" },
-      { field: `${P1}.Step3_ReadOrder[0].f1_06[0]`, expr: "children_count * 2200" },
-      { field: `${P1}.Step3_ReadOrder[0].f1_07[0]`, expr: "other_dependents_count * 500" },
-      { field: `${P1}.f1_08[0]`, expr: "children_count * 2200 + other_dependents_count * 500" },
-      { field: `${P1}.f1_09[0]`, source: "other_income", transform: "money" },
-      { field: `${P1}.f1_10[0]`, source: "deductions", transform: "money" },
-      { field: `${P1}.f1_11[0]`, source: "extra_withholding", transform: "money" },
-    ],
-    // Form 4506-T (Rev. 4-2025)
-    "4506-T": [
-      { field: `${P1}.f1_1[0]`, source: "name" },
-      { field: `${P1}.f1_2[0]`, source: "ssn" },
-      { field: `${P1}.f1_5[0]`, source: "address" },
-      { field: `${P1}.f1_6[0]`, source: "previous_address" },
-      { field: `${P1}.f1_8[0]`, const: "1040" },
-      { field: `${P1}.c1_1[0]`, source: "transcript_type", checkIf: "Return Transcript (6a)" },
-      { field: `${P1}.c1_1[1]`, source: "transcript_type", checkIf: "Account Transcript (6b)" },
-      { field: `${P1}.c1_1[2]`, source: "transcript_type", checkIf: "Record of Account (6c)" },
-      { field: `${P1}.c1_1[4]`, source: "transcript_type", checkIf: "Wage and Income (8)" },
-      { field: `${P1}.f1_15[0]`, const: "12" },
-      { field: `${P1}.f1_16[0]`, const: "31" },
-      { field: `${P1}.f1_17[0]`, source: "tax_years", transform: "first_year" },
-      { field: `${P1}.f1_13[0]`, source: "phone" },
-    ],
-    // Form 4868 (2025)
-    "4868": [
-      { field: `${P1}.PartI_ReadOrder[0].f1_4[0]`, source: "name" },
-      { field: `${P1}.PartI_ReadOrder[0].f1_5[0]`, source: "address", transform: "street" },
-      { field: `${P1}.PartI_ReadOrder[0].f1_6[0]`, source: "address", transform: "city" },
-      { field: `${P1}.PartI_ReadOrder[0].f1_7[0]`, source: "address", transform: "state" },
-      { field: `${P1}.PartI_ReadOrder[0].f1_8[0]`, source: "address", transform: "zip" },
-      { field: `${P1}.PartI_ReadOrder[0].f1_9[0]`, source: "ssn" },
-      { field: `${P1}.PartI_ReadOrder[0].f1_10[0]`, source: "spouse_ssn" },
-      { field: `${P1}.f1_11[0]`, source: "tax_estimate", transform: "money" },
-      { field: `${P1}.f1_12[0]`, source: "payments", transform: "money" },
-      { field: `${P1}.f1_13[0]`, expr: "tax_estimate - payments" },
-      { field: `${P1}.f1_14[0]`, source: "paying_now", transform: "money" },
-      { field: `${P1}.c1_1[0]`, source: "out_of_country", checkIf: "Yes" },
-      { field: `${P1}.c1_2[0]`, source: "file_1040nr", checkIf: "Yes" },
-    ],
-    // Form W-9 (Rev. 3-2024)
-    "W-9": [
-      { field: `${P1}.f1_01[0]`, source: "name" },
-      { field: `${P1}.f1_02[0]`, source: "business_name" },
-      { field: `${P1}.Boxes3a-b_ReadOrder[0].c1_1[0]`, source: "tax_class", checkIf: "Individual/sole proprietor" },
-      { field: `${P1}.Boxes3a-b_ReadOrder[0].c1_1[0]`, source: "tax_class", checkIf: "Single-member LLC" },
-      { field: `${P1}.Boxes3a-b_ReadOrder[0].c1_1[1]`, source: "tax_class", checkIf: "C Corporation" },
-      { field: `${P1}.Boxes3a-b_ReadOrder[0].c1_1[2]`, source: "tax_class", checkIf: "S Corporation" },
-      { field: `${P1}.Boxes3a-b_ReadOrder[0].c1_1[3]`, source: "tax_class", checkIf: "Partnership" },
-      { field: `${P1}.Boxes3a-b_ReadOrder[0].c1_1[4]`, source: "tax_class", checkIf: "Trust/estate" },
-      { field: `${P1}.Address_ReadOrder[0].f1_07[0]`, source: "address" },
-      { field: `${P1}.Address_ReadOrder[0].f1_08[0]`, source: "city_state_zip" },
-      { field: `${P1}.f1_11[0]`, source: "tin", transform: "ssn_first3" },
-      { field: `${P1}.f1_12[0]`, source: "tin", transform: "ssn_mid2" },
-      { field: `${P1}.f1_13[0]`, source: "tin", transform: "ssn_last4" },
-    ],
-    // Form 8822 (Rev. 2-2021)
-    "8822": [
-      { field: `${P1}.c1_1[0]`, const: "x", checkIf: "x" }, // box 1: individual income tax returns
-      { field: `${P1}.f1_3[0]`, source: "name" },
-      { field: `${P1}.f1_4[0]`, source: "ssn" },
-      { field: `${P1}.f1_5[0]`, source: "spouse_name" },
-      { field: `${P1}.f1_6[0]`, source: "spouse_ssn" },
-      { field: `${P1}.f1_9[0]`, join: ["old_address", "old_city_state_zip"] },
-      { field: `${P1}.f1_17[0]`, join: ["new_address", "new_city_state_zip"] },
-      { field: `${P1}.f1_21[0]`, source: "phone" },
-    ],
-    // Form 2848 (Rev. 1-2021)
-    "2848": [
-      { field: `${P1}.ApplicantName[0]`, source: "name" },
-      { field: `${P1}.ApplicantAddress[0]`, source: "address" },
-      { field: `${P1}.ApplicantIDSSN[0]`, source: "ssn" },
-      { field: `${P1}.ApplicantTelephone[0]`, source: "phone" },
-      { field: `${P1}.RepresentativesName1[0]`, source: "rep_name" },
-      { field: `${P1}.RepresentativesAddress1[0]`, source: "rep_address" },
-      { field: `${P1}.CAFNumber1[0]`, source: "rep_caf" },
-      { field: `${P1}.PTIN1[0]`, source: "rep_ptin" },
-      { field: `${P1}.TelephoneNo1[0]`, source: "rep_phone" },
-      { field: `${P1}.Table_Line3[0].BodyRow1[0].Description1[0]`, source: "tax_matters" },
-      { field: `${P1}.Table_Line3[0].BodyRow1[0].TaxForm1[0]`, const: "1040" },
-      { field: `${P1}.Table_Line3[0].BodyRow1[0].Years1[0]`, source: "years" },
-    ],
-    // Form SS-4 (Rev. 12-2025)
-    "SS-4": [
-      { field: `${P1}.f1_2[0]`, source: "legal_name" },
-      { field: `${P1}.f1_3[0]`, source: "trade_name" },
-      { field: `${P1}.Line4ReadOrder[0].f1_5[0]`, source: "address" },
-      { field: `${P1}.Line4ReadOrder[0].f1_6[0]`, source: "city_state_zip" },
-      { field: `${P1}.f1_10[0]`, source: "responsible_name" },
-      { field: `${P1}.f1_11[0]`, source: "responsible_ssn" },
-      { field: `${P1}.c1_1[0]`, source: "entity_type", checkIf: "Single-member LLC" }, // 8a LLC = Yes
-      { field: `${P1}.c1_1[0]`, source: "entity_type", checkIf: "Multi-member LLC" },
-      { field: `${P1}.c1_3[0]`, source: "entity_type", checkIf: "Sole proprietor" },
-      { field: `${P1}.f1_13[0]`, source: "responsible_ssn" }, // sole proprietor SSN line
-      { field: `${P1}.c1_3[2]`, source: "entity_type", checkIf: "Partnership" },
-      { field: `${P1}.c1_3[4]`, source: "entity_type", checkIf: "Corporation" },
-      { field: `${P1}.c1_4[0]`, source: "reason", checkIf: "Started new business" },
-      { field: `${P1}.f1_31[0]`, source: "start_date" },
-      { field: `${P1}.f1_35[0]`, source: "employees" },
-      { field: `${P1}.f1_45[0]`, source: "phone" },
-    ],
-    // Form 433-F (Rev. 7-2024)
-    "433-F": [
-      { field: `${P1}.address[0].NamesAddress[0]`, source: "name" },
-      { field: `${P1}.ssn[0].YourSocialSecurityNu[0]`, source: "ssn" },
-      { field: `${P1}.your_telephone[0].Home11[0]`, source: "phone" },
-      { field: `${P1}.age[0].Under65[0]`, source: "dependents" },
-      { field: `${P1}.AccountsTable[0].#subform[1].Name_and_Address_of_Institution[0]`, const: "Primary bank account" },
-      { field: `${P1}.AccountsTable[0].#subform[1].Cuirenl_Balance_I_Value[0]`, source: "bank_balance", transform: "money" },
-      { field: `${P1}.OtherAssetsTableSubform[0].RowSubform1[0].Description1[0]`, const: "Vehicles (total value)" },
-      { field: `${P1}.OtherAssetsTableSubform[0].RowSubform1[0].Current_Value1[0]`, source: "vehicles_value", transform: "money" },
-      { field: `${P2}.sectionF[0].column_1[0].fieldXmlnshttpwwwxfa[0]`, source: "employer" },
-      { field: `${P2}.sectionF[0].column_1[0].GrossPerPayPeriod[0]`, source: "monthly_gross", transform: "money" },
-      { field: `${P2}.sectionG[0].column_3[0].Other[0]`, source: "other_income", transform: "money" },
-      { field: `${P2}.sectionG[0].column_3[0].if_other[0]`, const: "Other monthly income" },
-      { field: `${P2}.sectionH[0].column_1[0].housing_utilities[0].Row1[0].rent_monthly[0]`, source: "rent", transform: "money" },
-      { field: `${P2}.sectionH[0].column_1[0].housing_utilities[0].Row2[0].electric_monthly[0]`, source: "utilities", transform: "money" },
-      { field: `${P2}.sectionH[0].column_1[0].housing_utilities[0].Row6[0].total_monthly[0]`, expr: "rent + utilities" },
-      { field: `${P2}.sectionH[0].column_1[0].food_personal_care[0].food_personal_care[0].Row1[0].food_monthly[0]`, source: "food", transform: "money" },
-      { field: `${P2}.sectionH[0].column_1[0].food_personal_care[0].food_personal_care[0].Row5[0].miscellaneous_monthly[0]`, source: "other_expenses", transform: "money" },
-      { field: `${P2}.sectionH[0].column_1[0].food_personal_care[0].food_personal_care[0].Row6[0].total_monthly[0]`, expr: "food + other_expenses" },
-      { field: `${P2}.sectionH[0].column_1[0].transportation[0].Row1[0].gas_monthly[0]`, source: "transportation", transform: "money" },
-      { field: `${P2}.sectionH[0].column_1[0].transportation[0].Row3[0].total_monthly[0]`, source: "transportation", transform: "money" },
-      { field: `${P2}.sectionH[0].column_2[0].medical[0].Row2[0].out_of_monthly[0]`, source: "medical", transform: "money" },
-      { field: `${P2}.sectionH[0].column_2[0].medical[0].Row3[0].total_monthly[0]`, source: "medical", transform: "money" },
-    ],
-  };
-  for (const [formNumber, map] of Object.entries(formPdfMaps)) {
-    await db.irsFormTemplate.updateMany({
-      where: { formNumber, pdfMapJson: "[]" },
-      data: { pdfMapJson: JSON.stringify(map) },
-    });
-  }
-}
-
-async function seedCannedResponses() {
-  const count = await db.cannedResponse.count();
-  if (count > 0) return;
-  await db.cannedResponse.createMany({
-    data: [
-      {
-        title: "We're looking into it",
-        category: "all",
-        body: "Thanks for reaching out! We've received your ticket and our team is looking into it now. We'll get back to you here as soon as we know more.",
+  for (const template of templates) {
+    const { steps, ...data } = template;
+    await db.irsFormTemplate.upsert({
+      where: { formNumber: data.formNumber },
+      update: {
+        ...data,
+        stepsJson: JSON.stringify(steps),
+        isPublished: true,
       },
-      {
-        title: "Password reset steps",
-        category: "customer_service",
-        body: "You can reset your password anytime: go to the sign-in page, click \"Forgot your password?\", and we'll email you a secure link (valid for 1 hour). If the email doesn't arrive within a few minutes, check your spam folder and let us know.",
+      create: {
+        ...data,
+        stepsJson: JSON.stringify(steps),
+        isPublished: true,
       },
-      {
-        title: "Tech issue resolved — please confirm",
-        category: "tech_support",
-        body: "We've deployed a fix for the issue you reported. Could you try again and let us know if everything works on your end? If anything still looks off, reply here and we'll dig back in.",
-      },
-    ],
-  });
-}
-
-async function seedMessageTemplates() {
-  const wrap = (title: string, inner: string) => `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b;">
-  <h2 style="color:#4338ca;margin:0 0 16px;">${title}</h2>
-  ${inner}
-  <p style="margin-top:24px;">— The {{appName}} team</p>
-  <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
-  <p style="font-size:12px;color:#94a3b8;">{{appName}} is a immigration case assistant, not the USCIS, a law firm, or a law firm.</p>
-</div>`;
-
-  const templates: { key: string; name: string; kind: string; offsetDays?: number; subject: string; bodyHtml: string }[] = [
-    {
-      key: "account_created",
-      name: "Welcome — account created",
-      kind: "event",
-      subject: "Welcome to {{appName}}, {{firstName}}!",
-      bodyHtml: wrap("Welcome aboard 🎉".replace("🎉", ""), `<p>Hi {{firstName}},</p>
-<p>Your {{appName}} account is ready. Here's how to get the most out of it:</p>
-<ul>
-  <li><strong>Start a case</strong> — tell us what happened and we'll build your step-by-step plan.</li>
-  <li><strong>Upload your documents</strong> — notices, W-2s, 1099s, transcripts. Everything stays private.</li>
-  <li><strong>Ask the guide</strong> — the assistant in the corner of your dashboard knows your next step.</li>
-</ul>
-<p><a href="{{appUrl}}{{link}}" style="background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Open my dashboard</a></p>`),
-    },
-    {
-      key: "password_reset",
-      name: "Password reset link",
-      kind: "event",
-      subject: "Reset your {{appName}} password",
-      bodyHtml: wrap("Reset your password", `<p>Hi {{firstName}},</p>
-<p>Use the button below to choose a new password. The link expires in <strong>1 hour</strong>.</p>
-<p><a href="{{link}}" style="background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Choose a new password</a></p>
-<p style="font-size:13px;color:#64748b;">If you didn't request this, you can safely ignore this message.</p>`),
-    },
-    {
-      key: "subscription_confirmed",
-      name: "Subscription confirmed",
-      kind: "event",
-      subject: "Your {{planName}} plan is active",
-      bodyHtml: wrap("You're all set", `<p>Hi {{firstName}},</p>
-<p>Your payment is confirmed and your <strong>{{planName}}</strong> plan is now active. Your current period runs until <strong>{{expiresOn}}</strong>.</p>
-<p><a href="{{appUrl}}{{link}}" style="background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;">View my plan</a></p>`),
-    },
-    {
-      key: "subscription_canceled",
-      name: "Subscription canceled",
-      kind: "event",
-      subject: "Your {{appName}} subscription was canceled",
-      bodyHtml: wrap("Subscription canceled", `<p>Hi {{firstName}},</p>
-<p>Your subscription has been canceled. You can resubscribe anytime — your cases and documents stay safe in your account.</p>
-<p><a href="{{appUrl}}{{link}}" style="background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;">See plans</a></p>`),
-    },
-    {
-      key: "renewal_7_days",
-      name: "Renewal reminder — 7 days before",
-      kind: "scheduled",
-      offsetDays: -7,
-      subject: "Your {{planName}} plan renews in 7 days",
-      bodyHtml: wrap("Renewal coming up", `<p>Hi {{firstName}},</p>
-<p>A heads-up: your <strong>{{planName}}</strong> plan is due to renew on <strong>{{expiresOn}}</strong> — 7 days from now.</p>
-<p>No action is needed if you'd like to continue. To change or cancel your plan, visit your billing page.</p>
-<p><a href="{{appUrl}}{{link}}" style="background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Manage my plan</a></p>`),
-    },
-    {
-      key: "renewal_3_days",
-      name: "Renewal reminder — 3 days before",
-      kind: "scheduled",
-      offsetDays: -3,
-      subject: "3 days until your {{planName}} plan renews",
-      bodyHtml: wrap("Renewing soon", `<p>Hi {{firstName}},</p>
-<p>Your <strong>{{planName}}</strong> plan renews on <strong>{{expiresOn}}</strong> — just 3 days away. Make sure your payment details are up to date so you don't lose access to your case tools.</p>
-<p><a href="{{appUrl}}{{link}}" style="background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Review billing</a></p>`),
-    },
-    {
-      key: "subscription_expired",
-      name: "Subscription expired (unrenewed)",
-      kind: "scheduled",
-      offsetDays: 0,
-      subject: "Your {{planName}} plan has expired",
-      bodyHtml: wrap("Your plan expired", `<p>Hi {{firstName}},</p>
-<p>Your <strong>{{planName}}</strong> plan expired on <strong>{{expiresOn}}</strong> and hasn't been renewed. Your cases and documents are safe, but plan features are paused until you renew.</p>
-<p><a href="{{appUrl}}{{link}}" style="background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Renew now</a></p>`),
-    },
-    {
-      key: "expired_7_days",
-      name: "Still expired — 7 days after",
-      kind: "scheduled",
-      offsetDays: 7,
-      subject: "We saved your spot, {{firstName}}",
-      bodyHtml: wrap("Pick up where you left off", `<p>Hi {{firstName}},</p>
-<p>It's been a week since your <strong>{{planName}}</strong> plan expired. Your cases, documents, and progress are exactly where you left them — renew to keep moving toward resolution.</p>
-<p><a href="{{appUrl}}{{link}}" style="background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Reactivate my plan</a></p>`),
-    },
-  ];
-
-  for (const t of templates) {
-    await db.messageTemplate.upsert({
-      where: { key: t.key },
-      update: {},
-      create: { key: t.key, name: t.name, kind: t.kind, offsetDays: t.offsetDays ?? null, subject: t.subject, bodyHtml: t.bodyHtml },
     });
   }
 }

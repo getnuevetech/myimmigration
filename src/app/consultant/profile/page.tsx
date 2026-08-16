@@ -42,7 +42,7 @@ export default async function ConsultantProfilePage() {
               <div>
                 <h2 className="font-semibold text-slate-900">Credentials & practice</h2>
                 <p className="text-sm text-slate-500">
-                  License, PTIN, proof documents, specialties, and states served are managed under My credentials.
+                  License, license/registration number, proof documents, specialties, and states served are managed under My credentials.
                 </p>
               </div>
               <Link href="/consultant/onboarding" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">

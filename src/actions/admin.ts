@@ -619,7 +619,7 @@ export async function proposeAssignmentAction(_prev: ActionState, formData: Form
     data: {
       userId,
       kind: "assignment",
-      title: "A tax consultant has been recommended for you",
+      title: "A immigration consultant has been recommended for you",
       body: "Review the consultant and accept the connection agreement if you'd like their help.",
       link: "/app/consultants",
     },

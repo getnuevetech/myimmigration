@@ -171,7 +171,7 @@ export default async function HomePage() {
               </ButtonLink>
             </div>
             <p className="mt-6 text-sm text-slate-400">
-              Are you a immigration professional or tax consultant?{" "}
+              Are you a immigration professional or immigration consultant?{" "}
               <Link href="/register?type=consultant" className="font-semibold text-white underline decoration-slate-500 underline-offset-4 hover:decoration-white">
                 Join our partner network
               </Link>

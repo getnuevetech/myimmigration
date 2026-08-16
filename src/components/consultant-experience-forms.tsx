@@ -9,7 +9,7 @@ import { CONSULTANT_SPECIALTIES } from "@/lib/constants";
 export function ExperienceForm({ experiences }: { experiences: string }) {
   return (
     <ActionForm action={saveExperiencesAction} successMessage="Experience saved.">
-      <textarea name="experiences" defaultValue={experiences} rows={5} className={inputClass} placeholder={"Negotiated 40+ installment agreements\nCP2000 responses for self-employed clients\nPenalty abatement for first-time offenders"} />
+      <textarea name="experiences" defaultValue={experiences} rows={5} className={inputClass} placeholder={"Prepared RFE response packages\nFamily-based adjustment cases\nNaturalization interview preparation"} />
       <div className="mt-3"><SubmitButton>Save experience</SubmitButton></div>
     </ActionForm>
   );
@@ -20,7 +20,7 @@ export function PastCaseForm() {
     <ActionForm action={addPastCaseAction} successMessage="Past case added.">
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Title" hint="No client names or identifying details.">
-          <input name="title" required placeholder="e.g. Resolved $18k balance via installment agreement" className={inputClass} />
+          <input name="title" required placeholder="e.g. Prepared RFE response package" className={inputClass} />
         </Field>
         <Field label="Category">
           <select name="category" className={inputClass}>

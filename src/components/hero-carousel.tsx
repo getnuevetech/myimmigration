@@ -23,7 +23,7 @@ export function HeroCarousel({ images, intervalMs = 5000 }: { images: string[]; 
           <img
             key={src}
             src={src}
-            alt="MyImmigration makes taxes feel simple"
+            alt="MyImmigration makes immigration matters feel simple"
             className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${i === index ? "opacity-100" : "opacity-0"}`}
           />
         ))}
@@ -42,9 +42,9 @@ export function HeroCarousel({ images, intervalMs = 5000 }: { images: string[]; 
       <div className="absolute -right-4 bottom-16 hidden rounded-2xl bg-white px-4 py-3 shadow-lg ring-1 ring-slate-200 sm:block">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-700">✓</span>
-          $2,772 refund difference found
+          Missing evidence checklist created
         </p>
-        <p className="mt-0.5 text-[10px] text-slate-400">Case TOM-000123 · verified against transcript</p>
+        <p className="mt-0.5 text-[10px] text-slate-400">Case TOM-000123 · verified against case record</p>
       </div>
 
       {images.length > 1 && (

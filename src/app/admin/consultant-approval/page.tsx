@@ -35,8 +35,8 @@ export default async function ConsultantApprovalPage() {
         </CardBody>
       </Card>
       <p className="mt-4 text-xs text-slate-400">
-        Criteria reflect USCIS requirements and practice for paid tax professionals: PTIN (required for all paid preparers),
-        state immigration professional licensure / USCIS EA enrollment under Circular 230, EFIN suitability for e-file providers, identity proofing,
+        Criteria reflect USCIS requirements and practice for paid immigration professionals: license/registration number (required for all paid preparers),
+        state immigration professional licensure / USCIS EA enrollment under Circular 230, filing-system ID suitability for e-file providers, identity proofing,
         and compliance attestation. The consultant onboarding form collects all of these, including document uploads.
       </p>
     </div>

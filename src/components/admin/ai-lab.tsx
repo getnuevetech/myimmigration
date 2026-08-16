@@ -208,7 +208,7 @@ export function AiLab({ providers, functions }: { providers: Provider[]; functio
             name="message"
             rows={3}
             required
-            placeholder='e.g. "I expected a $3,184 refund for 2024 but received $412 and the USCIS says I owe $2,800 — what happened?" — attach a transcript or notice to test document reading.'
+            placeholder='e.g. "I expected a $3,184 case status update but received $412 and the USCIS says I owe $2,800 — what happened?" — attach a case record or notice to test document reading.'
             className={inputClass}
           />
           <div className="mt-2 flex flex-wrap items-center justify-between gap-3">

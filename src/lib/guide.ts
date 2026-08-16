@@ -20,11 +20,11 @@ export type GuideReply = { message: string; actions: GuideAction[] };
 // Practical, deterministic how-to knowledge for each verifiable step.
 const STEP_TIPS: Record<string, string> = {
   GET_TRANSCRIPT:
-    "Fastest way to get your USCIS transcript: sign in (or sign up) at irs.gov/your-account — your Account Transcript is available instantly as a PDF. Choose the tax year in question, download it, and upload it to your case documents here. If you can't verify online, 'Get Transcript by Mail' takes about 10 days, or Form 4506-T (we have a guided version under USCIS forms).",
+    "Fastest way to get your USCIS case record: sign in (or sign up) at uscis.gov — your USCIS case record is available instantly as a PDF. Choose the case year in question, download it, and upload it to your case documents here. If you can't verify online, 'Get Case record by Mail' takes about 10 days, or Form 4506-T (we have a guided version under USCIS forms).",
   GET_ACCOUNT_TRANSCRIPT:
-    "Fastest way to get your USCIS transcript: sign in (or sign up) at irs.gov/your-account — your Account Transcript is available instantly as a PDF. Download it and upload it to your case documents here.",
+    "Fastest way to get your USCIS case record: sign in (or sign up) at uscis.gov — your USCIS case record is available instantly as a PDF. Download it and upload it to your case documents here.",
   UPLOAD_DOCUMENTS:
-    "Add your USCIS notices, tax return, and any W-2/1099s to your case. Photos from your phone work fine. The more you add, the more precisely we can verify amounts.",
+    "Add your USCIS notices, immigration filing, and any I-797/I-485s to your case. Photos from your phone work fine. The more you add, the more precisely we can verify amounts.",
   REVIEW_ANALYSIS:
     "You've added documents — now hit 'Re-run analysis' on your case page so every amount gets verified against them.",
   DRAFT_LETTER:
@@ -80,7 +80,7 @@ function detectIntent(question: string): "new_case" | "tech" | "service" | null 
   const q = question.toLowerCase();
   if (/(new (case|situation|problem|issue)|another (case|problem|letter)|also got|just received|different (year|issue)|open a case|start a case)/.test(q)) return "new_case";
   if (/(bug|error|broken|crash|can'?t (log|sign) ?in|password|upload(ing)? (fail|isn|not)|page (won'?t|not) load|payment failed|charge[d]? twice|site .*(slow|down)|glitch)/.test(q)) return "tech";
-  if (/(refund me|cancel (my )?subscription|billing (problem|issue)|complain|speak (to|with) (someone|human|agent|person)|customer service|talk to a human)/.test(q)) return "service";
+  if (/(case update me|cancel (my )?subscription|billing (problem|issue)|complain|speak (to|with) (someone|human|agent|person)|customer service|talk to a human)/.test(q)) return "service";
   return null;
 }
 
@@ -115,7 +115,7 @@ export async function guideRespond(
     const tip = snapshot.currentStep
       ? STEP_TIPS[snapshot.currentStep.actionKey.toUpperCase()] ??
         `Your next step is "${snapshot.currentStep.title}". Knock it out and you're one step closer — I'm here if you need help with it.`
-      : "You haven't started a case yet — tell us what's going on with your taxes and we'll break it into simple steps.";
+      : "You haven't started a case yet — tell us what's going on with your immigration case and we'll break it into simple steps.";
     return {
       message: `Here's where you stand:\n\n${snapshot.text
         .split("\n")

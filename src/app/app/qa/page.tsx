@@ -16,7 +16,7 @@ export default async function QaPage() {
 
   return (
     <div>
-      <PageHeader title="Ask the assistant" subtitle="Plain-English answers about your taxes. Start a new conversation below." />
+      <PageHeader title="Ask the assistant" subtitle="Plain-English answers about your immigration case. Start a new conversation below." />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <QaChat threadId="" messages={[]} />

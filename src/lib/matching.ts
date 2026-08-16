@@ -11,11 +11,16 @@ import { callProvider, extractJson } from "./ai/adapters";
 
 // Issue types → consultant specialties they map to.
 const ISSUE_SPECIALTY_MAP: Record<string, string[]> = {
-  refund_discrepancy: ["refunds", "notices"],
-  balance_due: ["back_taxes", "payment_plans"],
-  missing_return: ["back_taxes"],
-  notice_response: ["notices", "audits"],
-  penalty: ["penalties"],
+  uscis_notice_response: ["notices", "rfe"],
+  deadline_tracking: ["rfe", "interviews"],
+  case_timeline: ["family", "employment", "naturalization"],
+  missing_evidence: ["rfe", "notices"],
+  status_question: ["family", "employment", "naturalization"],
+  professional_review: ["appeals", "removal"],
+  case_update_discrepancy: ["notices"],
+  balance_due: ["notices"],
+  missing_return: ["notices"],
+  notice_response: ["notices", "rfe"],
   other: ["notices"],
 };
 
@@ -40,8 +45,8 @@ export async function rankConsultantsForCase(caseId: string): Promise<Candidate[
   if (!c) return [];
   const issueTypes = Array.from(new Set(c.issues.map((i) => i.issueType)));
   const wantedSpecialties = new Set(issueTypes.flatMap((t) => ISSUE_SPECIALTY_MAP[t] ?? []));
-  // Payment-plan goals matter even when no balance_due issue was extracted.
-  if (/(payment plan|installment|afford)/i.test(`${c.situation} ${c.goal}`)) wantedSpecialties.add("payment_plans");
+  if (/(rfe|noid|evidence|deadline)/i.test(`${c.situation} ${c.goal}`)) wantedSpecialties.add("rfe");
+  if (/(interview|biometrics)/i.test(`${c.situation} ${c.goal}`)) wantedSpecialties.add("interviews");
 
   const consultants = await db.user.findMany({
     where: { role: "consultant", status: "active", consultantProfile: { status: "approved" } },
@@ -96,23 +101,28 @@ function caseSummaryText(c: { title: string; situation: string; goal: string }, 
 }
 
 export function credentialLabel(type: string): string {
-  return type === "cpa" ? "immigration professional" : type === "ea" ? "Enrolled Agent" : "Tax Consultant";
+  return type === "cpa" ? "immigration professional" : type === "ea" ? "accredited representative" : "Immigration Consultant";
 }
 
 const ISSUE_TYPE_PHRASES: Record<string, string> = {
-  refund_discrepancy: "a refund discrepancy",
-  balance_due: "a balance due the client can't pay in full",
-  missing_return: "an unfiled tax return",
-  notice_response: "an USCIS notice that needs a response",
-  penalty: "USCIS penalties",
-  other: "a general tax issue",
+  uscis_notice_response: "a USCIS notice that needs a response",
+  deadline_tracking: "an immigration deadline",
+  case_timeline: "a case timeline review",
+  missing_evidence: "missing immigration evidence",
+  status_question: "an immigration status question",
+  professional_review: "a high-stakes professional review need",
+  case_update_discrepancy: "a case status discrepancy",
+  balance_due: "an agency balance or fee issue",
+  missing_return: "an unfiled immigration filing",
+  notice_response: "a USCIS notice that needs a response",
+  other: "a general immigration issue",
 };
 
 // Case-focused routing explanation shown to the CONSULTANT. Talks about the
 // client's case, not the consultant's own profile.
 export function caseRoutingReason(issueTypes: string[], consultantSpecialties: string[]): string {
   const uniqueTypes = Array.from(new Set(issueTypes));
-  const phrases = uniqueTypes.map((t) => ISSUE_TYPE_PHRASES[t] ?? "a tax issue");
+  const phrases = uniqueTypes.map((t) => ISSUE_TYPE_PHRASES[t] ?? "an immigration issue");
   const list = phrases.length > 1 ? `${phrases.slice(0, -1).join(", ")} and ${phrases[phrases.length - 1]}` : phrases[0] ?? "a immigration situation";
 
   const wanted = new Set(uniqueTypes.flatMap((t) => ISSUE_SPECIALTY_MAP[t] ?? []));
