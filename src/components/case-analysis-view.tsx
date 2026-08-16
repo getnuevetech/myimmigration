@@ -56,6 +56,10 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       case "GET_ACCOUNT_RECORD":
       case "UPLOAD_NOTICE":
         return { label: "Upload USCIS records", href: "/app/documents" };
+      case "ADD_CASE_DETAILS":
+        return { label: "Answer case questions", href: "#clarify" };
+      case "PREPARE_APPOINTMENT":
+        return { label: "Upload appointment notice", href: "/app/documents" };
       case "DRAFT_LETTER":
         return { label: "Draft my letter", href: "/app/letters/new" };
       case "COMPLETE_FORM_I485":
@@ -104,7 +108,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           : "";
         const notices = Array.isArray(merged.notices_received) ? (merged.notices_received as unknown[]).join(", ") : "";
         const parts = [
-          years && `case year(s) ${years}`,
+          years && `timeline year(s) ${years}`,
           notices && `notice ${notices}`,
           merged.current_status && `current status ${String(merged.current_status)}`,
           merged.receipt_numbers && `receipt numbers ${(merged.receipt_numbers as unknown[]).join(", ")}`,
@@ -330,8 +334,8 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                               )}
                               {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD"].includes(issue.nextAction.toUpperCase()) && (
                                 <>
-                                  <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-lime-200 bg-white px-3 py-1.5 text-xs font-medium text-lime-700 hover:bg-lime-50">
-                                    Open USCIS sign-up ↗
+                                  <a href="/app/uscis-account" className="rounded-lg border border-lime-200 bg-white px-3 py-1.5 text-xs font-medium text-lime-700 hover:bg-lime-50">
+                                    Open USCIS account guide →
                                   </a>
                                   <InlineUpload caseId={c.id} docKind="case_record" label="Have it? Upload case record" />
                                 </>
@@ -425,8 +429,8 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                             </a>
                           ) : null}
                           {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD"].includes(step.actionKey.toUpperCase()) && (
-                            <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                              Open USCIS sign-up ↗
+                            <a href="/app/uscis-account" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                              Open USCIS account guide →
                             </a>
                           )}
                         </div>

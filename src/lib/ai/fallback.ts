@@ -152,7 +152,7 @@ export async function fallbackAnalyze(
       confidence: "medium",
       priority: "medium",
       state: "review",
-      next_action: "BUILD_TIMELINE",
+      next_action: "GET_CASE_RECORD",
       alternative_action: "Upload all USCIS receipts, approvals, RFEs, denials, and interview notices.",
       uscis_basis: forms[0] ?? "USCIS case records",
       analysis_outline: [
@@ -178,7 +178,7 @@ export async function fallbackAnalyze(
       confidence: "medium",
       priority: "medium",
       state: "review",
-      next_action: "PREPARE_APPOINTMENT",
+      next_action: "UPLOAD_NOTICE",
       alternative_action: "Upload the appointment notice for a document checklist.",
     });
   }
@@ -210,8 +210,8 @@ export async function fallbackAnalyze(
 
   const pathSteps: FallbackResult["pathSteps"] = [
     { title: "Upload the latest USCIS document", description: "Add the most recent notice, receipt, approval, RFE, denial, or interview letter so the case posture can be verified.", action_key: "UPLOAD_DOCUMENTS" },
-    { title: "Confirm the timeline", description: "List forms filed, receipt numbers, filing dates, approvals, denials, and deadlines in order.", action_key: "BUILD_TIMELINE" },
-    { title: "Review with a professional if high stakes", description: "RFEs, NOIDs, denials, removal issues, unlawful presence, criminal history, or urgent deadlines should be reviewed by a licensed immigration professional.", action_key: "PRO_REVIEW" },
+    { title: "Upload or confirm the USCIS case record", description: "Add receipt notices, online case status records, filing dates, approvals, denials, and deadlines so the timeline can be verified.", action_key: "GET_CASE_RECORD" },
+    { title: "Re-run the case review after evidence is added", description: "Once records are uploaded, re-run the analysis so the next-step plan reflects the newest USCIS evidence.", action_key: "REVIEW_ANALYSIS" },
   ];
 
   return {

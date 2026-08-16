@@ -36,7 +36,7 @@ export default async function NoticesPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-lg font-semibold text-slate-900">
                       {n.noticeType ? `Notice ${n.noticeType}` : "USCIS notice"}
-                      {n.caseYear ? ` · Case year ${n.caseYear}` : ""}
+                      {n.caseYear ? ` · Year ${n.caseYear}` : ""}
                     </h2>
                     <div className="flex gap-2">
                       {n.deadline && (

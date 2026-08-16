@@ -78,7 +78,7 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
 
 function detectIntent(question: string): "new_case" | "tech" | "service" | null {
   const q = question.toLowerCase();
-  if (/(new (case|situation|problem|issue)|another (case|problem|letter)|also got|just received|different (year|issue)|open a case|start a case)/.test(q)) return "new_case";
+  if (/(new (case|situation|problem|issue)|another (case|situation|matter|problem|letter)|also got|just received|different (case|situation|matter)|open a case|start a case)/.test(q)) return "new_case";
   if (/(bug|error|broken|crash|can'?t (log|sign) ?in|password|upload(ing)? (fail|isn|not)|page (won'?t|not) load|payment failed|charge[d]? twice|site .*(slow|down)|glitch)/.test(q)) return "tech";
   if (/(case update me|cancel (my )?subscription|billing (problem|issue)|complain|speak (to|with) (someone|human|agent|person)|customer service|talk to a human)/.test(q)) return "service";
   return null;
@@ -195,8 +195,11 @@ export async function guideRespond(
     ? STEP_TIPS[snapshot.currentStep.actionKey.toUpperCase()] ??
       `Your current step is "${snapshot.currentStep.title}" — open your case and it will tell you exactly what completes it.`
     : "Start by creating a case — describe what happened and your goal, and we'll build your step-by-step plan.";
+  const statusHint = /(status|receipt|rfe|notice|deadline|interview|biometrics)/i.test(lastQuestion)
+    ? " If your question is about status, an RFE, a notice, or a deadline, upload the USCIS notice or receipt number so the case page can verify it."
+    : "";
   return {
-    message: `Here's what I can tell you right now: ${tip}\n\nIf that doesn't answer your question, the FAQ covers the most common ones, or I can connect you with our customer service team.`,
+    message: `Here's what I can tell you right now: ${tip}${statusHint}\n\nIf that doesn't answer your question, the FAQ covers the most common ones, or I can connect you with our customer service team.`,
     actions: snapshot.currentStep
       ? [{ type: "link", label: "Open my case", href: `/app/cases/${snapshot.currentStep.caseId}` }, ...baseActions()]
       : [{ type: "link", label: "Start a case", href: "/app/cases/new" }, ...baseActions()],

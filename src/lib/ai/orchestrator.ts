@@ -12,6 +12,32 @@ type Json = Record<string, unknown>;
 
 const USCIS_REFERENCE_RE = /\b(?:RFE|NOID|NOIR|NOIT|I-797C?|I-485|I-130|I-765|I-864|I-589|N-400|G-28|AR-11|BIOMETRICS|INTERVIEW|DENIAL|APPROVAL|[A-Z]{3}\d{10})\b/gi;
 
+function normalizeActionKey(value: unknown): string {
+  const key = String(value ?? "").toUpperCase();
+  const aliases: Record<string, string> = {
+    GET_TRANSCRIPT: "GET_CASE_RECORD",
+    GET_ACCOUNT_TRANSCRIPT: "GET_ACCOUNT_RECORD",
+    COMPLETE_FORM_9465: "COMPLETE_FORM_I485",
+    BUILD_TIMELINE: "GET_CASE_RECORD",
+    PRO_REVIEW: "REVIEW_ANALYSIS",
+  };
+  const normalized = aliases[key] ?? key;
+  const allowed = new Set([
+    "UPLOAD_DOCUMENTS",
+    "UPLOAD_NOTICE",
+    "GET_CASE_RECORD",
+    "GET_ACCOUNT_RECORD",
+    "ADD_DEADLINE",
+    "DRAFT_LETTER",
+    "COMPLETE_FORM_I485",
+    "REVIEW_ANALYSIS",
+    "RERUN_ANALYSIS",
+    "PREPARE_APPOINTMENT",
+    "ADD_CASE_DETAILS",
+  ]);
+  return allowed.has(normalized) ? normalized : "";
+}
+
 function fill(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");
 }
@@ -312,7 +338,6 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
 
   // Persist issues.
   for (const [i, issue] of issues.entries()) {
-    const toCents = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v * 100) : null);
     const oneOf = (v: unknown, allowed: string[], dflt: string) => (allowed.includes(String(v)) ? String(v) : dflt);
     // "What's still unclear" — structured list, with graceful fallback to the
     // legacy single what_we_dont_know sentence for AI outputs.
@@ -328,13 +353,13 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
         caseYear: typeof issue.case_year === "number" ? issue.case_year : null,
         title: String(issue.title ?? issue.issue_identified ?? `Issue ${i + 1}`).slice(0, 200),
         description: String(issue.what_we_know ?? ""),
-        expectedCents: toCents(issue.expected_amount),
-        receivedCents: toCents(issue.received_amount),
-        differenceCents: toCents(issue.difference_amount),
+        expectedCents: null,
+        receivedCents: null,
+        differenceCents: null,
         confidence: oneOf(issue.confidence, ["high", "medium", "low"], "medium"),
         priority: oneOf(issue.priority, ["urgent", "high", "medium", "low"], "medium"),
         state: oneOf(issue.state, ["resolved", "review", "action_needed", "urgent", "info_needed"], "review"),
-        nextAction: String(issue.next_action ?? ""),
+        nextAction: normalizeActionKey(issue.next_action),
         uscisBasis: String(issue.uscis_basis ?? ""),
         // Evidence-based taxonomy: item kind + evidence status + strength.
         itemKind: oneOf(issue.item_kind, ["finding", "issue", "opportunity", "risk", "missing_info"], "issue"),
@@ -362,7 +387,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
         sortOrder: i,
         title: String(step.title ?? `Step ${i + 1}`).slice(0, 200),
         description: String(step.description ?? ""),
-        actionKey: String(step.action_key ?? ""),
+        actionKey: normalizeActionKey(step.action_key),
         status: i === 0 ? "current" : "pending",
       },
     });
@@ -449,7 +474,7 @@ export async function runQaChat(history: { role: string; content: string }[]): P
   const convo = history.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
   const knowledge = await retrieveKnowledge(history.map((m) => m.content).join(" "));
   if (steps.length === 0) {
-    return "The assistant isn't available just yet. Meanwhile, you can upload your documents to your vault and browse the guides — everything you add will be analyzed as soon as the assistant comes online.";
+    return "The assistant isn't available just yet. You can still upload your USCIS notice, receipt, or case record to your vault, and the case page will use those documents when analysis is available.";
   }
   // Run every configured model in order. Later models receive earlier drafts so
   // the final answer benefits from all available providers instead of stopping

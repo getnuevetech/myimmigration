@@ -35,7 +35,7 @@ export function KnowledgeForm({ source }: { source: Source }) {
         <Field label="Reference" hint="e.g. I-485, RFE, N-400">
           <input name="reference" defaultValue={source?.reference} className={inputClass} />
         </Field>
-        <Field label="Case year (optional)">
+        <Field label="Matter year (optional)">
           <input name="caseYear" type="number" defaultValue={source?.caseYear ?? ""} className={inputClass} />
         </Field>
       </div>

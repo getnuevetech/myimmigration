@@ -132,7 +132,7 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
   add("ID number on file", user?.idNumber);
   if (kase) {
     add("Case", `${formatCaseNumber(kase.number)} — ${kase.title.slice(0, 60)}`);
-    add("Case year(s)", yearsText);
+    add("Timeline year(s)", yearsText);
     add("Forms filed", forms.join(", "));
     add("Receipt number(s)", receipts.join(", "));
     add("Current status", currentStatus);

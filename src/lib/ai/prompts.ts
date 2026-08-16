@@ -4,14 +4,14 @@
 
 export const DEFAULT_PROMPTS: Record<string, string> = {
   fact_extractor: `You are a fact extractor for an immigration case platform. Read the applicant's input and return ONLY a JSON object with these keys (use null or [] when unknown):
-{"forms_filed": [], "receipt_numbers": [], "current_status": null, "important_dates": [], "known_deadlines": [], "notices_received": [], "documents_available": [], "user_goal": "", "unknowns": []}
+{"forms_filed": [], "receipt_numbers": [], "current_status": null, "case_years": [], "important_dates": [], "known_deadlines": [], "notices_received": [], "documents_available": [], "user_goal": "", "unknowns": []}
 Do not add commentary. Do not infer facts that are not stated.
 
 INPUT:
 {{input}}`,
 
   interpreter: `You are a case interpreter for an immigration case platform. Based on the applicant's input, return ONLY a JSON object:
-{"apparent_issues": [{"issue_type": "uscis_notice_response|deadline_tracking|case_timeline|missing_evidence|status_question|professional_review|other", "case_year": null, "title": "", "description": ""}], "contradictions": [], "missing_evidence": [], "questions": [], "likely_case_categories": []}
+{"apparent_issues": [{"issue_type": "uscis_notice_response|deadline_tracking|case_timeline|missing_evidence|status_question|case_update_discrepancy|fee_or_payment_issue|missing_filing|appointment_preparation|case_organization|professional_review|other", "case_year": null, "title": "", "description": ""}], "contradictions": [], "missing_evidence": [], "questions": [], "likely_case_categories": []}
 Be specific and conservative. Do not add commentary outside the JSON.
 
 INPUT:
@@ -41,7 +41,7 @@ DOCUMENT CONTENT:
 {{input}}`,
 
   analyst: `You are an immigration situation analyst. Use ONLY the verified facts, extracted documents, and the authoritative USCIS reference material provided. Do not answer from general memory when reference material conflicts. Return ONLY a JSON object:
-{"issues": [{"issue_identified": "", "issue_type": "uscis_notice_response|deadline_tracking|case_timeline|missing_evidence|status_question|professional_review|other", "case_year": null, "evidence": "", "uscis_basis": "", "user_goal_alignment": "", "possible": true, "conditions": [], "missing_information": [], "recommended_steps": [], "confidence": "high|medium|low", "professional_review": "required|recommended|probably_unnecessary"}]}
+{"issues": [{"issue_identified": "", "issue_type": "uscis_notice_response|deadline_tracking|case_timeline|missing_evidence|status_question|case_update_discrepancy|fee_or_payment_issue|missing_filing|appointment_preparation|case_organization|professional_review|other", "case_year": null, "evidence": "", "uscis_basis": "", "user_goal_alignment": "", "possible": true, "conditions": [], "missing_information": [], "recommended_steps": [], "confidence": "high|medium|low", "professional_review": "required|recommended|probably_unnecessary"}]}
 
 VERIFIED FACTS:
 {{facts}}
@@ -56,7 +56,7 @@ APPLICANT GOAL:
 {{goal}}`,
 
   reviewer: `You are an independent second analyst reviewing an immigration situation. Answer the same structured questions from scratch using only the material provided. Return ONLY a JSON object with the same schema:
-{"issues": [{"issue_identified": "", "issue_type": "uscis_notice_response|deadline_tracking|case_timeline|missing_evidence|status_question|professional_review|other", "case_year": null, "evidence": "", "uscis_basis": "", "user_goal_alignment": "", "possible": true, "conditions": [], "missing_information": [], "recommended_steps": [], "confidence": "high|medium|low", "professional_review": "required|recommended|probably_unnecessary"}]}
+{"issues": [{"issue_identified": "", "issue_type": "uscis_notice_response|deadline_tracking|case_timeline|missing_evidence|status_question|case_update_discrepancy|fee_or_payment_issue|missing_filing|appointment_preparation|case_organization|professional_review|other", "case_year": null, "evidence": "", "uscis_basis": "", "user_goal_alignment": "", "possible": true, "conditions": [], "missing_information": [], "recommended_steps": [], "confidence": "high|medium|low", "professional_review": "required|recommended|probably_unnecessary"}]}
 
 VERIFIED FACTS:
 {{facts}}
@@ -74,7 +74,7 @@ APPLICANT GOAL:
 {"headline": "", "issues": [{"issue_type": "", "item_kind": "finding|issue|opportunity|risk|missing_info", "evidence_status": "confirmed|likely|possible|needs_verification|not_supported", "evidence_strength": "strong|moderate|limited", "case_year": null, "title": "", "what_we_know": "", "our_conclusion": "", "still_unclear": ["specific unresolved question", "..."], "explanations": [{"title": "", "detail": "", "likelihood": "Likely|Possible"}], "uscis_basis": "", "confidence": "high|medium|low", "priority": "urgent|high|medium|low", "state": "resolved|review|action_needed|urgent|info_needed", "next_action": "", "alternative_action": "", "analysis_outline": [{"heading": "Your situation", "detail": ""}, {"heading": "Immigration rules", "detail": "", "source": ""}, {"heading": "Your evidence", "detail": ""}, {"heading": "Our conclusion", "detail": ""}, {"heading": "Your next move", "detail": ""}]}], "goal_restatement": "", "path_steps": [{"title": "", "description": "", "action_key": ""}], "consultant_recommended": false, "consultant_reason": "", "consultant_specialties": []}
 Rules for the taxonomy: evidence_status is EVIDENCE-BASED, never a model confidence — confirmed (evidence supports it), likely (strong indicators, verification pending), possible (indicators but insufficient evidence), needs_verification (important information missing or conflicting), not_supported (evidence contradicts the concern). evidence_strength: strong (multiple independent records), moderate (supported but needs confirmation), limited (primarily the user's description). item_kind: finding (supported by evidence), issue (needs attention), opportunity (could improve their position), risk (could create exposure), missing_info (blocks a conclusion).
 "Your situation" must restate the user's SPECIFIC immigration facts (forms, dates, receipt numbers, notices, deadlines), never vague ("Your summary mentions an immigration concern"). "Immigration rules" states the rule, why it matters to THIS case, and the source. "Your evidence" states what each document actually establishes — never just a document count. Never promise outcomes. Never mention AI, models, engines, or providers. Keep every string plain-English at an 8th-grade reading level.
-Use only USCIS/immigration action keys such as UPLOAD_DOCUMENTS, UPLOAD_NOTICE, GET_CASE_RECORD, GET_ACCOUNT_RECORD, ADD_DEADLINE, DRAFT_LETTER, COMPLETE_FORM_I485, REVIEW_ANALYSIS, PREPARE_APPOINTMENT, BUILD_TIMELINE, PRO_REVIEW, or ADD_CASE_DETAILS. Never use tax/IRS action keys, tax transcript language, Form 9465, refund/balance framing, or dollar examples unless the user's immigration notice specifically discusses a USCIS filing fee.
+Use only USCIS/immigration action keys: UPLOAD_DOCUMENTS, UPLOAD_NOTICE, GET_CASE_RECORD, GET_ACCOUNT_RECORD, ADD_DEADLINE, DRAFT_LETTER, COMPLETE_FORM_I485, REVIEW_ANALYSIS, PREPARE_APPOINTMENT, or ADD_CASE_DETAILS. Never use tax/IRS action keys, tax transcript language, Form 9465, refund/balance framing, or dollar examples unless the user's immigration notice specifically discusses a USCIS filing fee.
 
 INTERNAL ANALYSIS:
 {{input}}`,
@@ -88,7 +88,7 @@ CONVERSATION:
 {{input}}`,
 
   notice_explainer: `You analyze USCIS notices for an immigration case platform. From the notice content, return ONLY a JSON object:
-{"notice_type": "", "form_number": null, "receipt_number": null, "deadline": null, "plain_english_explanation": "", "why_received": "", "requested_evidence": [], "next_steps": [{"title": "", "description": ""}], "urgency": "urgent|high|medium|low", "professional_review": "required|recommended|probably_unnecessary"}
+{"notice_type": "", "form_number": null, "receipt_number": null, "deadline": null, "filing_fee_usd": null, "plain_english_explanation": "", "why_received": "", "requested_evidence": [], "next_steps": [{"title": "", "description": ""}], "urgency": "urgent|high|medium|low", "professional_review": "required|recommended|probably_unnecessary"}
 The explanation must be plain English at an 8th-grade reading level. deadline must be ISO format (YYYY-MM-DD) or null. Never guess eligibility or outcomes.
 
 NOTICE CONTENT:

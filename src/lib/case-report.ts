@@ -127,7 +127,7 @@ ${c.deadlines.map((d) => `<tr><td>${esc(d.title)}</td><td>${d.dueDate.toLocaleDa
 </table>` : ""}
 
 ${c.notices.length ? `<h2>6. USCIS notices on file</h2>
-<table><tr><th>Notice</th><th>Case year</th><th>Deadline</th></tr>
+<table><tr><th>Notice</th><th>Year</th><th>Deadline</th></tr>
 ${c.notices.map((n) => `<tr><td>${esc(n.noticeType || "Unidentified")}</td><td>${n.caseYear ?? "—"}</td><td>${n.deadline?.toLocaleDateString("en-US") ?? "—"}</td></tr>`).join("\n")}
 </table>` : ""}
 

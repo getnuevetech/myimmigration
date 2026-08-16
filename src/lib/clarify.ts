@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "./db";
 
-// The clarifying interview: when the analysis is thin (missing case years,
+// The clarifying interview: when the analysis is thin (missing timeline years,
 // forms, receipt numbers, dates, notices, or documents), the app asks the customer targeted questions in a
 // chat conversation. Every answer is folded back into the case narrative in a
 // form the extraction engine parses, and the analysis re-runs automatically —
@@ -15,7 +15,7 @@ export function situationLine(key: string, questionText: string, answer: string)
   const a = answer.trim();
   switch (key) {
     case "case_year":
-      return `[Clarified] Case year(s) involved: ${a}.`;
+      return `[Clarified] Immigration matter year(s): ${a}.`;
     case "case_status_expected":
       return `[Clarified] I expected this immigration case status or result: ${a}.`;
     case "case_status_received":
@@ -59,7 +59,7 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
   const questions: (ClarifyQuestion & { needed: boolean })[] = [
     {
       key: "case_year",
-      text: "Which case year (or years) does your situation involve? For example: 2024, or 2023 and 2024.",
+      text: "Which year(s) does this immigration matter involve? For example: my I-485 was filed in 2024, or I received the RFE in 2026.",
       needed: !hasYear,
     },
     {

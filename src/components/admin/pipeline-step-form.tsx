@@ -48,7 +48,7 @@ export function PipelineStepForm({
         </Field>
       </div>
       <div className="mt-3">
-        <Field label="Prompt template" hint="Placeholders: {{input}}, {{prior}}, {{facts}}, {{documents}}, {{knowledge}}, {{goal}}">
+        <Field label="Prompt template" hint="Placeholders: {{input}}, {{prior}}, {{facts}}, {{documents}}, {{knowledge}}, {{goal}}, {{context}}, {{case}}, {{consultant}}">
           <textarea name="promptTemplate" defaultValue={step?.promptTemplate} required rows={8} className={`${inputClass} font-mono text-xs`} />
         </Field>
       </div>
