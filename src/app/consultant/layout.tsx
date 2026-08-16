@@ -8,7 +8,7 @@ export default async function ConsultantLayout({ children }: { children: React.R
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.role !== "consultant") redirect("/app");
-  const appName = await getSetting("app.name", "MyImmigration");
+  const appName = await getSetting("app.name", "ImmigrationOnMe");
 
   return (
     <div className="min-h-screen bg-slate-50">

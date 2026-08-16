@@ -7,7 +7,7 @@ import { cache } from "react";
 import { db } from "./db";
 import { ROLES } from "./constants";
 
-const SESSION_COOKIE = "myimmigration_session";
+const SESSION_COOKIE = "immigrationonme_session";
 
 // Module-level cache so getSecret() only hits the database once per process.
 // Stored as a Promise so concurrent cold requests await the same pending fetch

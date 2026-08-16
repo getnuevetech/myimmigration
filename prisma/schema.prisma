@@ -1,4 +1,4 @@
-// MyImmigration data model — PostgreSQL.
+// ImmigrationOnMe data model — PostgreSQL.
 generator client {
   provider = "prisma-client-js"
 }

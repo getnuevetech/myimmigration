@@ -8,9 +8,9 @@ export default async function UscisAccountPage() {
   const steps = [
     { title: "Go to the USCIS website", body: "Open the official USCIS online account page. Only use official uscis.gov or my.uscis.gov pages." },
     { title: "Sign in or create an account", body: "Use your USCIS account to view available case status tools, notices, and online filings." },
-    { title: "Collect your case details", body: "Copy receipt numbers, form types, filing dates, and recent status updates into your MyImmigration case." },
+    { title: "Collect your case details", body: "Copy receipt numbers, form types, filing dates, and recent status updates into your ImmigrationOnMe case." },
     { title: "Download available notices", body: "If USCIS provides a notice or confirmation PDF, save it and upload it to your document vault." },
-    { title: "Upload records here", body: "Adding official records lets MyImmigration verify dates, receipt numbers, form types, and deadlines." },
+    { title: "Upload records here", body: "Adding official records lets ImmigrationOnMe verify dates, receipt numbers, form types, and deadlines." },
   ];
 
   return (

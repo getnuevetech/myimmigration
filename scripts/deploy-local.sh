@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MyImmigration — bare-metal deployment to a local server (no Docker).
+# ImmigrationOnMe — bare-metal deployment to a local server (no Docker).
 # Installs PostgreSQL (if missing), creates the database, builds the app,
 # applies migrations, seeds defaults, and installs a systemd service.
 #
@@ -10,13 +10,13 @@ set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_USER="${SUDO_USER:-$(whoami)}"
-DB_NAME="${DB_NAME:-myimmigration}"
-DB_USER="${DB_USER:-myimmigration}"
+DB_NAME="${DB_NAME:-immigrationonme}"
+DB_USER="${DB_USER:-immigrationonme}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 APP_PORT="${APP_PORT:-3000}"
-SERVICE_NAME="myimmigration"
+SERVICE_NAME="immigrationonme"
 
-echo "==> MyImmigration local deployment"
+echo "==> ImmigrationOnMe local deployment"
 echo "    App dir: $APP_DIR"
 
 # 1. Node.js check
@@ -65,7 +65,7 @@ sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && npm ci && npx prisma migrate deplo
 if command -v systemctl >/dev/null && systemctl is-system-running >/dev/null 2>&1; then
   cat > "/etc/systemd/system/$SERVICE_NAME.service" <<EOF
 [Unit]
-Description=MyImmigration web application
+Description=ImmigrationOnMe web application
 After=network.target postgresql.service
 Wants=postgresql.service
 
@@ -91,5 +91,5 @@ fi
 
 echo ""
 echo "==> Done. Open http://localhost:$APP_PORT  (admin backend: /admin)"
-echo "    Default admin: admin@myimmigration.com / ChangeMe!2026 — CHANGE THIS after first login,"
+echo "    Default admin: admin@immigrationonme.com / ChangeMe!2026 — CHANGE THIS after first login,"
 echo "    or re-seed with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD environment variables."

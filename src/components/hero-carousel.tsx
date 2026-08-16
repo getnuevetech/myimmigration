@@ -23,7 +23,7 @@ export function HeroCarousel({ images, intervalMs = 5000 }: { images: string[]; 
           <img
             key={src}
             src={src}
-            alt="MyImmigration makes immigration matters feel simple"
+            alt="ImmigrationOnMe makes immigration matters feel simple"
             className={`absolute inset-0 h-full w-full object-cover opacity-30 mix-blend-multiply transition-opacity duration-1000 ${i === index ? "opacity-100" : "opacity-0"}`}
           />
         ))}

@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!isAdmin(user)) redirect("/app");
-  const appName = await getSetting("app.name", "MyImmigration");
+  const appName = await getSetting("app.name", "ImmigrationOnMe");
   const items = NAV.filter((n) => hasAdminArea(user, n.area));
   const sections = Array.from(new Set(items.map((i) => i.section)));
 

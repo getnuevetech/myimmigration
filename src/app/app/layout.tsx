@@ -27,7 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.role === "consultant") redirect("/consultant");
-  const appName = await getSetting("app.name", "MyImmigration");
+  const appName = await getSetting("app.name", "ImmigrationOnMe");
   const unread = await db.notification.count({ where: { userId: user.id, readAt: null } });
 
   return (

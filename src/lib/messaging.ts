@@ -25,7 +25,7 @@ function stripHtml(html: string): string {
 
 export async function baseVars(user: { firstName: string; lastName: string; email: string }): Promise<MessageVars> {
   const [appName, appUrl] = await Promise.all([
-    getSetting("app.name", "MyImmigration"),
+    getSetting("app.name", "ImmigrationOnMe"),
     getSetting("app.url", "http://localhost:3000"),
   ]);
   return {

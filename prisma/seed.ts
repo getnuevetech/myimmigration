@@ -7,12 +7,12 @@ const db = new PrismaClient();
 async function seedSettings() {
   const settings: [string, string, string, string, string][] = [
     // key, value, group, label, description
-    ["app.name", "MyImmigration", "branding", "App name", "Shown in the header, titles, and emails."],
+    ["app.name", "ImmigrationOnMe", "branding", "App name", "Shown in the header, titles, and emails."],
     ["app.tagline", "Immigration paperwork, organized", "branding", "Tagline", "Short slogan shown on the landing page."],
     ["app.url", "http://localhost:3000", "general", "App URL", "Public base URL, used for OAuth callbacks and payment redirects."],
-    ["app.disclaimer", "MyImmigration is an immigration case assistant that helps you understand your immigration situation and USCIS documents in plain English. We are not USCIS and we are not a law firm. We provide informational guidance only, not legal advice. For high-stakes decisions, consult a licensed immigration attorney or accredited representative.", "branding", "Footer disclaimer", "Compliance disclaimer shown in the site footer."],
+    ["app.disclaimer", "ImmigrationOnMe is an immigration case assistant that helps you understand your immigration situation and USCIS documents in plain English. We are not USCIS and we are not a law firm. We provide informational guidance only, not legal advice. For high-stakes decisions, consult a licensed immigration attorney or accredited representative.", "branding", "Footer disclaimer", "Compliance disclaimer shown in the site footer."],
     ["home.hero_title", "Turn immigration paperwork into a clear case plan", "branding", "Homepage hero title", ""],
-    ["home.hero_subtitle", "MyImmigration organizes notices, forms, timelines, evidence gaps, and deadlines so applicants can understand what is happening and what to prepare next.", "branding", "Homepage hero subtitle", ""],
+    ["home.hero_subtitle", "ImmigrationOnMe organizes notices, forms, timelines, evidence gaps, and deadlines so applicants can understand what is happening and what to prepare next.", "branding", "Homepage hero subtitle", ""],
     ["home.cta_primary", "Start a case review", "branding", "Primary call to action", ""],
     ["home.cta_secondary", "Ask an immigration question", "branding", "Secondary call to action", ""],
     ["home.hero_images", '["/hero/hero-1.png", "/hero/hero-2.png", "/hero/hero-3.png"]', "branding", "Hero images (JSON array)", "Rotating homepage hero images. JSON array of image URLs or paths — add, remove, or reorder freely."],
@@ -43,7 +43,7 @@ async function seedSettings() {
     ["mail.port", "587", "mail", "SMTP port", ""],
     ["mail.username", "", "mail", "SMTP username", ""],
     ["mail.password", "", "mail", "SMTP password", ""],
-    ["mail.from", "", "mail", "From address", "e.g. MyImmigration <no-reply@myimmigration.com>"],
+    ["mail.from", "", "mail", "From address", "e.g. ImmigrationOnMe <no-reply@immigrationonme.com>"],
     ["mail.secure", "false", "mail", "SMTP TLS (implicit)", "true for port 465, false for STARTTLS on 587."],
   ];
   for (const [key, value, group, label, description] of settings) {
@@ -55,15 +55,23 @@ async function seedSettings() {
   }
   // Repair common TaxOnMe leftovers on existing installs without overwriting
   // administrator-customized values that are already immigration-specific.
-  await db.setting.updateMany({ where: { key: "app.name", value: "TaxOnMe" }, data: { value: "MyImmigration" } });
+  await db.setting.updateMany({ where: { key: "app.name", value: { in: ["TaxOnMe", "MyImmigration"] } }, data: { value: "ImmigrationOnMe" } });
   await db.setting.updateMany({ where: { key: "app.tagline", value: { contains: "tax" } }, data: { value: "Immigration paperwork, organized" } });
   await db.setting.updateMany({ where: { key: "home.hero_title", value: { contains: "tax" } }, data: { value: "Turn immigration paperwork into a clear case plan" } });
-  await db.setting.updateMany({ where: { key: "home.hero_subtitle", value: { contains: "tax" } }, data: { value: "MyImmigration organizes notices, forms, timelines, evidence gaps, and deadlines so applicants can understand what is happening and what to prepare next." } });
+  await db.setting.updateMany({ where: { key: "home.hero_subtitle", value: { contains: "tax" } }, data: { value: "ImmigrationOnMe organizes notices, forms, timelines, evidence gaps, and deadlines so applicants can understand what is happening and what to prepare next." } });
   await db.setting.deleteMany({ where: { key: "irs.account_url" } });
+  await repairBrandName();
+}
+
+async function repairBrandName() {
+  await db.$executeRaw`UPDATE "Setting" SET value = replace(replace(value, 'MyImmigration', 'ImmigrationOnMe'), 'TaxOnMe', 'ImmigrationOnMe') WHERE value LIKE '%MyImmigration%' OR value LIKE '%TaxOnMe%'`;
+  await db.$executeRaw`UPDATE "ContentPage" SET title = replace(replace(title, 'MyImmigration', 'ImmigrationOnMe'), 'TaxOnMe', 'ImmigrationOnMe'), body = replace(replace(body, 'MyImmigration', 'ImmigrationOnMe'), 'TaxOnMe', 'ImmigrationOnMe') WHERE title LIKE '%MyImmigration%' OR title LIKE '%TaxOnMe%' OR body LIKE '%MyImmigration%' OR body LIKE '%TaxOnMe%'`;
+  await db.$executeRaw`UPDATE "MessageTemplate" SET name = replace(replace(name, 'MyImmigration', 'ImmigrationOnMe'), 'TaxOnMe', 'ImmigrationOnMe'), subject = replace(replace(subject, 'MyImmigration', 'ImmigrationOnMe'), 'TaxOnMe', 'ImmigrationOnMe'), bodyHtml = replace(replace(bodyHtml, 'MyImmigration', 'ImmigrationOnMe'), 'TaxOnMe', 'ImmigrationOnMe') WHERE name LIKE '%MyImmigration%' OR name LIKE '%TaxOnMe%' OR subject LIKE '%MyImmigration%' OR subject LIKE '%TaxOnMe%' OR bodyHtml LIKE '%MyImmigration%' OR bodyHtml LIKE '%TaxOnMe%'`;
+  await db.$executeRaw`UPDATE "PipelineStep" SET "promptTemplate" = replace(replace("promptTemplate", 'MyImmigration', 'ImmigrationOnMe'), 'TaxOnMe', 'ImmigrationOnMe') WHERE "promptTemplate" LIKE '%MyImmigration%' OR "promptTemplate" LIKE '%TaxOnMe%'`;
 }
 
 async function seedAdmin() {
-  const email = process.env.SEED_ADMIN_EMAIL ?? "admin@myimmigration.com";
+  const email = process.env.SEED_ADMIN_EMAIL ?? "admin@immigrationonme.com";
   const password = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe!2026";
   await db.user.upsert({
     where: { email },
@@ -317,7 +325,7 @@ async function seedAiAndPipelines() {
     {
       key: "document",
       name: "3 · Document analysis",
-      description: "Two models independently extract each document into the standardized MyImmigration schema; disagreements are marked 'verification required' — never guessed.",
+      description: "Two models independently extract each document into the standardized ImmigrationOnMe schema; disagreements are marked 'verification required' — never guessed.",
       steps: [
         { provider: "Anthropic Claude Sonnet 5", role: "extractor_a", prompt: DEFAULT_PROMPTS.extractor_a, order: 0 },
         { provider: "Google Gemini 3.1 Pro", role: "extractor_b", prompt: DEFAULT_PROMPTS.extractor_b, order: 1 },
@@ -503,8 +511,8 @@ async function seedContent() {
       slug: "faq",
       title: "Frequently asked questions",
       kind: "page",
-      body: `Q: Is MyImmigration USCIS or a law firm?
-No. MyImmigration is an immigration case assistant that explains your situation and guides your next steps in plain English. For high-stakes decisions we connect you with licensed professionals.
+      body: `Q: Is ImmigrationOnMe USCIS or a law firm?
+No. ImmigrationOnMe is an immigration case assistant that explains your situation and guides your next steps in plain English. For high-stakes decisions we connect you with licensed professionals.
 
 Q: How do I check my USCIS case?
 Use your USCIS receipt number at the official USCIS case status site or sign in at my.uscis.gov when available. Upload receipts and notices here so we can organize the case timeline.
@@ -515,8 +523,8 @@ They're stored in your private vault. Only you can see them — and a consultant
 Q: How does the analysis work?
 We extract facts from your answers and documents, compare them with USCIS reference material, and turn everything into issues and a step-by-step plan. When something can't be verified, we say so — we never guess.
 
-Q: Can MyImmigration file with USCIS for me?
-No. MyImmigration helps organize information and prepare draft materials for review. You are responsible for filings, and complex or high-stakes matters should be reviewed by a licensed immigration attorney or accredited representative.
+Q: Can ImmigrationOnMe file with USCIS for me?
+No. ImmigrationOnMe helps organize information and prepare draft materials for review. You are responsible for filings, and complex or high-stakes matters should be reviewed by a licensed immigration attorney or accredited representative.
 
 Q: How do I cancel my subscription?
 Plan & billing → Cancel subscription. You keep access until the end of the paid period.
@@ -530,7 +538,7 @@ Open a tech support ticket under Support tickets (or ask the guide chatbot to cr
       slug: "how-it-works",
       title: "How it works",
       kind: "page",
-      body: `MyImmigration helps you understand and resolve immigration situations in plain English.
+      body: `ImmigrationOnMe helps you understand and resolve immigration situations in plain English.
 
 1. Tell us what happened — in your own words.
 2. Tell us your goal — what a great outcome looks like.
@@ -544,9 +552,9 @@ If your case needs a licensed professional, we can help prepare a handoff to an 
       slug: "terms-of-service",
       title: "Terms of Service",
       kind: "terms",
-      body: `Welcome to MyImmigration. By using this service you agree to these terms.
+      body: `Welcome to ImmigrationOnMe. By using this service you agree to these terms.
 
-1. MyImmigration is an immigration case assistant, not USCIS, a law firm, or a government agency. We help you understand your immigration situation and USCIS documents; we do not provide legal advice.
+1. ImmigrationOnMe is an immigration case assistant, not USCIS, a law firm, or a government agency. We help you understand your immigration situation and USCIS documents; we do not provide legal advice.
 2. You are responsible for the accuracy of the information you provide and for any filings or responses you make.
 3. Analysis results are informational. Verify important dates, deadlines, eligibility, and filing requirements against official USCIS records or qualified professional advice.
 4. You may delete your documents and your account at any time.
@@ -569,9 +577,9 @@ If your case needs a licensed professional, we can help prepare a handoff to an 
       slug: "user-agreement",
       title: "User Agreement",
       kind: "agreement_user",
-      body: `By creating a MyImmigration account you acknowledge:
+      body: `By creating an ImmigrationOnMe account you acknowledge:
 
-1. MyImmigration is an immigration case assistant that provides plain-English informational guidance, not legal advice.
+1. ImmigrationOnMe is an immigration case assistant that provides plain-English informational guidance, not legal advice.
 2. Information you provided before registering will be attached to your account and visible only to you.
 3. You control your data: you can delete documents or your entire account at any time.
 4. You will verify important dates, deadlines, and filing requirements against official USCIS records before acting.`,
@@ -585,17 +593,17 @@ If your case needs a licensed professional, we can help prepare a handoff to an 
 1. The credentials you provide are accurate and current, and you will keep them updated.
 2. You will handle client materials confidentially and only for the engaged purpose.
 3. Client connections require the client's explicit consent before any material is shared.
-4. MyImmigration may verify your credentials and approve or suspend partner accounts at its discretion.`,
+4. ImmigrationOnMe may verify your credentials and approve or suspend partner accounts at its discretion.`,
     },
     {
       slug: "connection-agreement",
       title: "Client–Consultant Connection Agreement",
       kind: "agreement_connection",
-      body: `This agreement governs the connection between a MyImmigration user and a consultant.
+      body: `This agreement governs the connection between an ImmigrationOnMe user and a consultant.
 
 1. Both parties must accept before any sensitive material is shared.
 2. The consultant may view the client's cases and shared documents solely to assist with the client's immigration situation.
-3. Either party or a MyImmigration administrator may revoke the connection at any time, ending access immediately.
+3. Either party or an ImmigrationOnMe administrator may revoke the connection at any time, ending access immediately.
 4. Confidentiality obligations survive the end of the connection.`,
     },
   ];
@@ -853,14 +861,14 @@ async function seedMessageTemplates() {
     {
       key: "account_created",
       name: "Account created",
-      subject: "Welcome to MyImmigration",
-      bodyHtml: "<p>Welcome to MyImmigration. Your account is ready, and your saved case information is available in your dashboard.</p>",
+      subject: "Welcome to ImmigrationOnMe",
+      bodyHtml: "<p>Welcome to ImmigrationOnMe. Your account is ready, and your saved case information is available in your dashboard.</p>",
       kind: "event",
     },
     {
       key: "password_reset",
       name: "Password reset",
-      subject: "Reset your MyImmigration password",
+      subject: "Reset your ImmigrationOnMe password",
       bodyHtml: "<p>Use this link to reset your password: {{link}}</p><p>This link expires soon. If you did not request it, you can ignore this message.</p>",
       kind: "event",
     },
