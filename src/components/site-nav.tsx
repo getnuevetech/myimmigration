@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { ButtonLink } from "./ui";
 
 export async function SiteHeader() {
-  const [appName, user] = await Promise.all([getSetting("app.name", "MyImmigration"), getCurrentUser()]);
+  const [appName, user] = await Promise.all([getSetting("app.name", "ImmigrationOnMe"), getCurrentUser()]);
   const dashboardHref = user
     ? isAdmin(user)
       ? "/admin"
@@ -41,7 +41,7 @@ export async function SiteHeader() {
 }
 
 export async function SiteFooter() {
-  const appName = await getSetting("app.name", "MyImmigration");
+  const appName = await getSetting("app.name", "ImmigrationOnMe");
   const disclaimer = await getSetting(
     "app.disclaimer",
     `${appName} helps organize immigration documents, timelines, notices, and questions. We are not USCIS and we are not a law firm. The platform provides informational guidance only, not legal advice.`,

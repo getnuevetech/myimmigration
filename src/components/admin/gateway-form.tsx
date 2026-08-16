@@ -38,7 +38,7 @@ export function GatewayForm({ gateway }: { gateway: Gateway }) {
       <div className="mt-3">
         <Field
           label="Configuration (JSON)"
-          hint={'Keys depend on the gateway. Stripe: {"secretKey": "sk_…", "publishableKey": "pk_…", "webhookSecret": "whsec_…", "currency": "usd", "appUrl": "https://myimmigration.com"}'}
+          hint={'Keys depend on the gateway. Stripe: {"secretKey": "sk_…", "publishableKey": "pk_…", "webhookSecret": "whsec_…", "currency": "usd", "appUrl": "https://immigrationonme.com"}'}
         >
           <textarea name="configJson" defaultValue={gateway?.configJson ?? "{}"} rows={4} className={`${inputClass} font-mono text-xs`} />
         </Field>

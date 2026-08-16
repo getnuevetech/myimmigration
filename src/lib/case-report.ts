@@ -27,7 +27,7 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
     },
   });
   if (!c) return null;
-  const appName = await getSetting("app.name", "MyImmigration");
+  const appName = await getSetting("app.name", "ImmigrationOnMe");
   const ref = formatCaseNumber(c.number);
   const generatedAt = new Date().toLocaleString("en-US");
   const reviewLevel = c.runs[0]?.stepResults.length ? "Full analysis" : "Preliminary review";

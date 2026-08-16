@@ -1,5 +1,5 @@
-# MyImmigration production image.
-# Build:  docker compose build   (or: docker build -t myimmigration .)
+# ImmigrationOnMe production image.
+# Build:  docker compose build   (or: docker build -t immigrationonme .)
 # The entrypoint applies database migrations, seeds defaults (idempotent), then starts the server.
 
 FROM node:22-alpine AS builder

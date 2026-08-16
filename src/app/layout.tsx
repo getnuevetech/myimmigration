@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [name, tagline] = await Promise.all([
-    getSetting("app.name", "MyImmigration"),
+    getSetting("app.name", "ImmigrationOnMe"),
     getSetting("app.tagline", "Immigration paperwork, organized"),
   ]);
   return { title: { default: name, template: `%s · ${name}` }, description: tagline };

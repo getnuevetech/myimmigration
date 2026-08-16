@@ -1,6 +1,6 @@
-# MyImmigration
+# ImmigrationOnMe
 
-A friendly AI immigration case assistant that helps people understand USCIS notices, immigration documents, deadlines, and case questions in plain English — and turns every situation into a simple, step-by-step plan. MyImmigration is **not** USCIS and is **not** a law firm; it is an informational guidance tool with optional referral or handoff to vetted immigration professionals.
+A friendly AI immigration case assistant that helps people understand USCIS notices, immigration documents, deadlines, and case questions in plain English — and turns every situation into a simple, step-by-step plan. ImmigrationOnMe is **not** USCIS and is **not** a law firm; it is an informational guidance tool with optional referral or handoff to vetted immigration professionals.
 
 ## What's in V1
 
@@ -24,11 +24,11 @@ A friendly AI immigration case assistant that helps people understand USCIS noti
 Six layers, exactly as designed:
 
 1. **Customer input** — situation + goal + documents. Works without an account; a guest session stores everything and attaches it to the user's account on registration.
-2. **Document intelligence** — two independent AI extractors (e.g. Claude + Gemini) map each document into the standardized MyImmigration schema.
+2. **Document intelligence** — two independent AI extractors (e.g. Claude + Gemini) map each document into the standardized ImmigrationOnMe schema.
 3. **Fact normalization** — parsed model outputs merged field-by-field.
 4. **Immigration intelligence** — analysis grounded in an admin-curated **USCIS knowledge base** (forms, instructions, notices, timelines, evidence rules, and interview/RFE guidance), answered as structured questions (issue, evidence, USCIS basis, conditions, confidence, professional review).
 5. **Verification** — a deterministic consensus engine: agreement merges, disagreement is flagged **"verification required"** (never guessed). Case readiness (0–100%) is computed by our own formula: documents + verified facts + USCIS source confirmation − contradictions.
-6. **MyImmigration UI** — models return JSON only; the frontend renders evidence cards, product states (✓ Resolved, ◐ Review, ! Action Needed, ▲ Urgent, ? Information Needed), timelines, deadlines, and progress deterministically. The AI never writes the customer's screen.
+6. **ImmigrationOnMe UI** — models return JSON only; the frontend renders evidence cards, product states (✓ Resolved, ◐ Review, ! Action Needed, ▲ Urgent, ? Information Needed), timelines, deadlines, and progress deterministically. The AI never writes the customer's screen.
 
 If no AI provider is configured yet, the platform runs in a labeled deterministic fallback mode so the product remains usable end-to-end.
 
@@ -58,7 +58,7 @@ Next.js 15 (App Router, server actions) · TypeScript · Tailwind CSS 4 · Prism
 
 ## Getting started (development)
 
-Requires Node.js 20+ and a PostgreSQL database (`createdb myimmigration`).
+Requires Node.js 20+ and a PostgreSQL database (`createdb immigrationonme`).
 
 ```bash
 npm install
@@ -73,6 +73,6 @@ npm run dev
 See **[DEPLOYMENT.md](./DEPLOYMENT.md)** — one-command Docker Compose stack (app + PostgreSQL + persistent volumes), or a bare-metal script (`sudo bash scripts/deploy-local.sh`) that installs PostgreSQL, migrates, seeds, builds, and sets up a systemd service.
 
 - App: http://localhost:3000
-- Admin: http://localhost:3000/admin — seeded super admin: `admin@myimmigration.com` / `ChangeMe!2026` (override with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`; change immediately).
+- Admin: http://localhost:3000/admin — seeded super admin: `admin@immigrationonme.com` / `ChangeMe!2026` (override with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`; change immediately).
 
 To enable real AI analysis, sign in as admin → **AI providers** → paste API keys for the seeded provider slots (or add your own), then review **AI pipelines**.

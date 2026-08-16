@@ -278,7 +278,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
 
                   {outline.length > 0 && (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                      <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Why MyImmigration says this</p>
+                      <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Why ImmigrationOnMe says this</p>
                       <ol className="space-y-3">
                         {outline.map((o, oi) => (
                           <li key={oi} className="grid gap-1 sm:grid-cols-[180px_1fr] sm:gap-4">

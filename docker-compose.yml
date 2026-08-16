@@ -1,23 +1,23 @@
-# MyImmigration — local server deployment.
+# ImmigrationOnMe — local server deployment.
 #
 #   1. cp .env.deploy.example .env.deploy   (then edit passwords)
 #   2. docker compose --env-file .env.deploy up -d --build
 #   3. open http://<server-ip>:3000  (admin backend at /admin)
 #
-# Data persists in named volumes: database in `myimmigration_pgdata`, uploaded files in `myimmigration_uploads`.
+# Data persists in named volumes: database in `immigrationonme_pgdata`, uploaded files in `immigrationonme_uploads`.
 
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-myimmigration}
+      POSTGRES_USER: ${POSTGRES_USER:-immigrationonme}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.deploy}
-      POSTGRES_DB: ${POSTGRES_DB:-myimmigration}
+      POSTGRES_DB: ${POSTGRES_DB:-immigrationonme}
     volumes:
-      - myimmigration_pgdata:/var/lib/postgresql/data
+      - immigrationonme_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myimmigration} -d ${POSTGRES_DB:-myimmigration}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-immigrationonme} -d ${POSTGRES_DB:-immigrationonme}"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -33,17 +33,17 @@ services:
       # passwords with special characters (@ : / # $) work correctly.
       DB_HOST: db
       DB_PORT: "5432"
-      POSTGRES_USER: ${POSTGRES_USER:-myimmigration}
+      POSTGRES_USER: ${POSTGRES_USER:-immigrationonme}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-myimmigration}
+      POSTGRES_DB: ${POSTGRES_DB:-immigrationonme}
       AUTH_SECRET: ${AUTH_SECRET:-}
-      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@myimmigration.com}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@immigrationonme.com}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?set SEED_ADMIN_PASSWORD in .env.deploy}
     ports:
       - "${APP_PORT:-3000}:3000"
     volumes:
-      - myimmigration_uploads:/app/var/uploads
+      - immigrationonme_uploads:/app/var/uploads
 
 volumes:
-  myimmigration_pgdata:
-  myimmigration_uploads:
+  immigrationonme_pgdata:
+  immigrationonme_uploads:

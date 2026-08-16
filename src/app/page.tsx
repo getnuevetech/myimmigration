@@ -48,7 +48,7 @@ export default async function HomePage() {
     "home.cta_secondary",
     "home.hero_images",
   ]);
-  const appName = s["app.name"] ?? "MyImmigration";
+  const appName = s["app.name"] ?? "ImmigrationOnMe";
   let heroImages: string[] = [];
   try {
     const parsed = JSON.parse(s["home.hero_images"] ?? "[]");

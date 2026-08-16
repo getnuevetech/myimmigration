@@ -56,7 +56,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     });
   }
 
-  const appName = await getSetting("app.name", "MyImmigration");
+  const appName = await getSetting("app.name", "ImmigrationOnMe");
   const generatedAt = new Date().toLocaleString("en-US");
   const html = `<!DOCTYPE html>
 <html lang="en">

@@ -1,4 +1,4 @@
-# Deploying MyImmigration to a local server
+# Deploying ImmigrationOnMe to a local server
 
 Two supported paths. Both use PostgreSQL and persist uploads under `var/uploads`.
 
@@ -14,10 +14,10 @@ docker compose --env-file .env.deploy up -d --build
 That's it. The app container waits for the database, applies migrations, seeds defaults (idempotent), and starts on port 3000 (change with `APP_PORT` in `.env.deploy`).
 
 - App: `http://<server-ip>:3000` · Admin backend: `/admin`
-- Database persists in the `myimmigration_pgdata` volume; uploaded documents in `myimmigration_uploads`.
+- Database persists in the `immigrationonme_pgdata` volume; uploaded documents in `immigrationonme_uploads`.
 - Update to a new version: `git pull && docker compose --env-file .env.deploy up -d --build`
 - Logs: `docker compose logs -f app`
-- Backup: `docker compose exec db pg_dump -U myimmigration myimmigration > backup.sql`
+- Backup: `docker compose exec db pg_dump -U immigrationonme immigrationonme > backup.sql`
 
 ## Option B — Bare metal (no Docker)
 
@@ -30,16 +30,16 @@ sudo bash scripts/deploy-local.sh
 The script is idempotent and will:
 
 1. Install PostgreSQL if missing and start it.
-2. Create the `myimmigration` database and user with a generated password, written to `.env`.
+2. Create the `immigrationonme` database and user with a generated password, written to `.env`.
 3. `npm ci`, apply Prisma migrations, seed defaults, and build the production bundle.
-4. Install and start a `myimmigration` systemd service (auto-restart, starts on boot).
+4. Install and start an `immigrationonme` systemd service (auto-restart, starts on boot).
 
 Useful commands afterwards:
 
 ```bash
-journalctl -u myimmigration -f          # tail app logs
-sudo systemctl restart myimmigration    # restart after a git pull + npm run build
-sudo -u postgres pg_dump myimmigration > backup.sql
+journalctl -u immigrationonme -f          # tail app logs
+sudo systemctl restart immigrationonme    # restart after a git pull + npm run build
+sudo -u postgres pg_dump immigrationonme > backup.sql
 ```
 
 If the server has no systemd, the script prints the manual start command instead.
@@ -57,7 +57,7 @@ PORT=3000 npm run start
 
 ## After first start
 
-1. Sign in at `/admin` with the seeded super admin (`admin@myimmigration.com` / `ChangeMe!2026`, or the `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` you provided) and change the password/account.
+1. Sign in at `/admin` with the seeded super admin (`admin@immigrationonme.com` / `ChangeMe!2026`, or the `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` you provided) and change the password/account.
 2. Settings → set **App URL** to the address users will use (needed for OAuth callbacks and payment redirects).
 3. AI providers → paste API keys; review AI pipelines.
 4. Payment gateways → configure Stripe/PayPal (the seeded "Manual / development" gateway activates subscriptions instantly and is for testing only — disable it in production).
@@ -80,12 +80,12 @@ Migrating existing data from the old machine:
 
 ```bash
 # On the OLD machine — export database and uploaded files:
-docker compose --env-file .env.deploy exec db pg_dump -U myimmigration -c myimmigration > myimmigration.sql
-docker run --rm -v myimmigration_myimmigration_uploads:/data -v "$PWD":/backup alpine tar czf /backup/uploads.tgz -C /data .
+docker compose --env-file .env.deploy exec db pg_dump -U immigrationonme -c immigrationonme > immigrationonme.sql
+docker run --rm -v immigrationonme_immigrationonme_uploads:/data -v "$PWD":/backup alpine tar czf /backup/uploads.tgz -C /data .
 
-# Copy myimmigration.sql and uploads.tgz to the new server (scp/AirDrop/USB), then on the NEW server:
-docker compose --env-file .env.deploy exec -T db psql -U myimmigration myimmigration < myimmigration.sql
-docker run --rm -v myimmigration_myimmigration_uploads:/data -v "$PWD":/backup alpine tar xzf /backup/uploads.tgz -C /data
+# Copy immigrationonme.sql and uploads.tgz to the new server (scp/AirDrop/USB), then on the NEW server:
+docker compose --env-file .env.deploy exec -T db psql -U immigrationonme immigrationonme < immigrationonme.sql
+docker run --rm -v immigrationonme_immigrationonme_uploads:/data -v "$PWD":/backup alpine tar xzf /backup/uploads.tgz -C /data
 docker compose --env-file .env.deploy restart app
 ```
 
@@ -107,7 +107,7 @@ sudo systemctl reload caddy
 ## Notes
 
 - **Session secret**: auto-generated on first run and stored in the settings table; set `AUTH_SECRET` to override.
-- **Uploads**: stored on disk (`var/uploads` or the `myimmigration_uploads` volume) with access-controlled serving; include them in backups.
+- **Uploads**: stored on disk (`var/uploads` or the `immigrationonme_uploads` volume) with access-controlled serving; include them in backups.
   - **Single-instance only**: the disk-based upload store is not shared between replicas. If you run more than one app instance (e.g. horizontal scaling in Kubernetes), you must back the volume with network storage (NFS, EFS, GCS Filestore, Azure Files, etc.) or migrate to an object-storage provider (S3, R2, GCS). All instances must resolve the same `var/uploads` path.
 - **Rate limiting**: the authentication endpoints (login, registration, password reset) have no built-in brute-force protection. For internet-facing deployments, add rate limiting at your reverse-proxy layer (e.g. Caddy's `rate_limit` directive, nginx's `limit_req_zone`, Cloudflare's WAF) before routing traffic to port 3000.
 - **Reverse proxy / HTTPS**: for LAN-only use, the built-in server is fine. For anything internet-facing put nginx/Caddy in front with TLS and point it at port 3000.
