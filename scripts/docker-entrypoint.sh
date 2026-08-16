@@ -6,11 +6,11 @@ set -e
 if [ -z "$DATABASE_URL" ]; then
   DATABASE_URL="$(node -e '
     const e = encodeURIComponent;
-    const user = process.env.POSTGRES_USER || "taxonme";
+    const user = process.env.POSTGRES_USER || "myimmigration";
     const pass = process.env.POSTGRES_PASSWORD || "";
     const host = process.env.DB_HOST || "db";
     const port = process.env.DB_PORT || "5432";
-    const dbname = process.env.POSTGRES_DB || "taxonme";
+    const dbname = process.env.POSTGRES_DB || "myimmigration";
     console.log(`postgresql://${e(user)}:${e(pass)}@${host}:${port}/${e(dbname)}?schema=public`);
   ')"
   export DATABASE_URL
@@ -32,5 +32,5 @@ cat /tmp/migrate.log
 echo "Seeding defaults (idempotent)..."
 node node_modules/tsx/dist/cli.mjs prisma/seed.ts
 
-echo "Starting TaxOnMe..."
+echo "Starting MyImmigration..."
 exec npm run start

@@ -24,8 +24,8 @@ export function NewLetterForm({
             </select>
           </Field>
         )}
-        <Field label="What should the letter address?" hint="Explain your side of the story — what you dispute, what you're requesting, and any facts that support you.">
-          <textarea name="context" rows={6} required className={inputClass} placeholder="I want to dispute the proposed amount because my employer issued a corrected I-797 in March…" />
+        <Field label="What should the letter address?" hint="Explain your side of the story — what you are responding to, what you are requesting, and any facts that support you.">
+          <textarea name="context" rows={6} required className={inputClass} placeholder="I want to respond to the RFE by explaining the enclosed relationship evidence and asking USCIS to continue processing my I-485…" />
         </Field>
         <SubmitButton className="w-full py-3">Generate my draft →</SubmitButton>
       </div>

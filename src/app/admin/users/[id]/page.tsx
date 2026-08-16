@@ -40,6 +40,12 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const activeSub = user.subscriptions.find((s) => ["active", "trialing"].includes(s.status));
   const p = user.consultantProfile;
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
+  const credentialName = (type: string) => {
+    if (type === "attorney" || type === "cpa") return "Immigration attorney";
+    if (type === "accredited_representative" || type === "ea") return "Accredited representative";
+    if (type === "tax_consultant") return "Immigration consultant";
+    return type.replace(/_/g, " ");
+  };
 
   return (
     <div>
@@ -130,7 +136,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
               <CardBody>
                 <h2 className="mb-3 text-sm font-semibold text-slate-900">Credentials & practice</h2>
                 <div className="mb-2 flex flex-wrap gap-1.5">
-                  <Badge color="lime">{p.credentialType.toUpperCase().replace("_", " ")}</Badge>
+                  <Badge color="lime">{credentialName(p.credentialType)}</Badge>
                   {p.credentialNumber && <Badge>#{p.credentialNumber}{p.licenseState ? ` (${p.licenseState})` : ""}</Badge>}
                   {p.ptin && <Badge>license/registration number {p.ptin}</Badge>}
                   {p.efin && <Badge>filing-system ID {p.efin}</Badge>}

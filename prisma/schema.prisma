@@ -319,7 +319,7 @@ model Case {
 }
 
 // The clarifying-questions conversation: when the analysis lacks specific
-// facts (amounts, dates, notice codes), the app interviews the customer and
+// facts (forms, receipt numbers, dates, notice codes), the app interviews the customer and
 // feeds every answer back into the analysis automatically.
 model CaseClarifyMessage {
   id        String   @id @default(cuid())
@@ -389,7 +389,7 @@ model ConsensusResult {
 model Issue {
   id             String  @id @default(cuid())
   caseId         String
-  issueType      String  @default("general") // refund_discrepancy | balance_due | missing_return | notice_response | penalty | other
+  issueType      String  @default("general") // uscis_notice_response | deadline_tracking | case_timeline | missing_evidence | status_question | professional_review | other
   taxYear        Int?
   title          String
   description    String  @default("")
@@ -553,7 +553,7 @@ model FormSubmission {
 model ConsultantProfile {
   id                 String    @id @default(cuid())
   userId             String    @unique
-  credentialType     String    @default("tax_consultant") // cpa | ea | tax_consultant
+  credentialType     String    @default("immigration_consultant") // attorney | accredited_representative | immigration_consultant
   credentialNumber   String    @default("")
   licenseState       String    @default("")
   ptin               String    @default("")

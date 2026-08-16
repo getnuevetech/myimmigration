@@ -2,7 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getActivePlan } from "@/lib/access";
-import { PageHeader, Card, CardBody, Stat, ButtonLink, StateMark, ProgressBar, Money, EmptyState, Badge } from "@/components/ui";
+import { PageHeader, Card, CardBody, Stat, ButtonLink, StateMark, ProgressBar, EmptyState, Badge } from "@/components/ui";
 import { markNotificationReadAction } from "@/actions/user";
 import { formatCaseNumber } from "@/lib/case-number";
 
@@ -19,8 +19,8 @@ export default async function DashboardPage() {
   const soon = new Date();
   soon.setDate(soon.getDate() + 30);
   const approaching = deadlines.filter((d) => d.dueDate <= soon).length;
-  const discrepancy = issues.reduce((sum, i) => sum + (i.differenceCents ?? 0), 0);
   const infoNeeded = issues.filter((i) => i.state === "info_needed").length;
+  const actionItems = issues.filter((i) => ["action_needed", "urgent"].includes(i.state)).length;
   const avgReadiness = cases.length
     ? Math.round(cases.reduce((s, c) => s + c.readinessScore, 0) / cases.length)
     : 0;
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Issues identified" value={issues.length} sub={infoNeeded > 0 ? `${infoNeeded} need more info` : undefined} />
         <Stat label="Deadlines approaching" value={approaching} sub="next 30 days" />
-        <Stat label="Amounts in question" value={<Money cents={discrepancy || null} />} sub="across open issues" />
+        <Stat label="Action items" value={actionItems} sub="urgent or needs action" />
         <Card>
           <CardBody>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Case readiness</p>

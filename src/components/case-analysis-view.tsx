@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { Card, CardBody, StateMark, ProgressBar, Money, Badge, EvidenceStatusBadge, EvidenceStrengthLine, ItemKindBadge } from "@/components/ui";
+import { Card, CardBody, StateMark, ProgressBar, Badge, EvidenceStatusBadge, EvidenceStrengthLine, ItemKindBadge } from "@/components/ui";
 import { isVerifiable, VERIFIABLE_ACTIONS } from "@/lib/case-progress";
 import { reanalyzeCaseAction, completePathStepAction, checkCaseProgressAction } from "@/actions/case";
 import { startFormAction } from "@/actions/forms";
@@ -52,6 +52,8 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
 
   const stepCta = (actionKey: string): { label: string; href: string } | null => {
     switch (actionKey.toUpperCase()) {
+      case "GET_CASE_RECORD":
+      case "GET_ACCOUNT_RECORD":
       case "GET_TRANSCRIPT":
       case "GET_ACCOUNT_TRANSCRIPT":
       case "UPLOAD_NOTICE":
@@ -77,14 +79,14 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     if (!neededDocs.some((d) => d.kind === kind)) neededDocs.push({ kind, label, hint });
   };
   for (const issue of c.issues) {
-    if (["uscis_notice_response", "deadline_tracking", "case_timeline", "missing_evidence", "case_update_discrepancy", "balance_due"].includes(issue.issueType)) {
-      wantDoc("receipt", `USCIS receipt or account record${yearHint ? ` (${yearHint})` : ""}`, "Shows receipt number, form type, filing date, and current case status.");
-      wantDoc("filing", `Immigration filing packet${yearHint ? ` for ${yearHint}` : ""}`, "Shows what was filed, for comparison against USCIS records.");
+    if (["uscis_notice_response", "deadline_tracking", "case_timeline", "missing_evidence", "case_update_discrepancy", "status_question"].includes(issue.issueType)) {
+      wantDoc("case_record", `USCIS case record or receipt${yearHint ? ` (${yearHint})` : ""}`, "Shows receipt number, form type, filing date, and current case status.");
+      wantDoc("form", `Immigration filing packet${yearHint ? ` for ${yearHint}` : ""}`, "Shows what was filed, for comparison against USCIS records.");
     }
-    if (issue.issueType === "notice_response") {
-      wantDoc("notice", "The USCIS notice or letter itself", "A phone photo is fine — the notice number, amount, and deadline are printed on it.");
+    if (issue.issueType === "uscis_notice_response" || issue.issueType === "notice_response") {
+      wantDoc("notice", "The USCIS notice or letter itself", "A phone photo is fine — the receipt number, notice type, and deadline are printed on it.");
     }
-    if (issue.issueType === "missing_return") {
+    if (issue.issueType === "missing_evidence") {
       wantDoc("evidence", "Missing evidence documents", "Needed to complete the filing or response packet.");
     }
   }
@@ -100,7 +102,11 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     } catch { /* empty */ }
     switch (run.stageKey) {
       case "summary": {
-        const years = Array.isArray(merged.tax_years) ? (merged.tax_years as unknown[]).join(", ") : "";
+        const years = Array.isArray(merged.case_years)
+          ? (merged.case_years as unknown[]).join(", ")
+          : Array.isArray(merged.tax_years)
+            ? (merged.tax_years as unknown[]).join(", ")
+            : "";
         const notices = Array.isArray(merged.notices_received) ? (merged.notices_received as unknown[]).join(", ") : "";
         const parts = [
           years && `case year(s) ${years}`,
@@ -149,7 +155,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
         )}
         {isPreliminary && (
           <div className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-700">
-            <span className="font-semibold">? Preliminary review.</span> These results are based on the information and
+                  <span className="font-semibold">? Preliminary review.</span> These results are based on the information and
             readable documents provided so far. Items marked &quot;needs verification&quot; firm up as your documents are
             verified — your USCIS case record is usually the record that settles them.
           </div>
@@ -247,23 +253,6 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                       <EvidenceStatusBadge status={issue.evidenceStatus} />
                     </div>
                   </div>
-                  {(issue.expectedCents !== null || issue.differenceCents !== null) && (
-                    <div className="mt-3 grid grid-cols-3 gap-3 rounded-xl bg-slate-50 p-4 text-center">
-                      <div>
-                        <p className="text-xs text-slate-500">Expected</p>
-                        <p className="text-lg font-bold text-slate-900"><Money cents={issue.expectedCents} /></p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">Received / assessed</p>
-                        <p className="text-lg font-bold text-slate-900"><Money cents={issue.receivedCents} /></p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">Difference</p>
-                        <p className="text-lg font-bold text-lime-600"><Money cents={issue.differenceCents} /></p>
-                      </div>
-                    </div>
-                  )}
-
                   <p className="mt-3 mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">What we found</p>
                   <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">{issue.description}</p>
                   <div className="mt-2">
@@ -344,12 +333,12 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                                   {stepCta(issue.nextAction)!.label} →
                                 </a>
                               )}
-                              {["GET_TRANSCRIPT", "GET_ACCOUNT_TRANSCRIPT"].includes(issue.nextAction.toUpperCase()) && (
+                              {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD", "GET_TRANSCRIPT", "GET_ACCOUNT_TRANSCRIPT"].includes(issue.nextAction.toUpperCase()) && (
                                 <>
                                   <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-lime-200 bg-white px-3 py-1.5 text-xs font-medium text-lime-700 hover:bg-lime-50">
                                     Open USCIS sign-up ↗
                                   </a>
-                                  <InlineUpload caseId={c.id} docKind="case record" label="Have it? Upload case record" />
+                                  <InlineUpload caseId={c.id} docKind="case_record" label="Have it? Upload case record" />
                                 </>
                               )}
                             </>
@@ -377,7 +366,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                 <p className="font-semibold text-lime-900">
                   {c.issues.length - 1} more finding{c.issues.length - 1 === 1 ? "" : "s"} in your full analysis
                 </p>
-                <p className="mt-1 text-sm text-lime-700">Upgrade your plan to unlock every finding, amount, and step.</p>
+                <p className="mt-1 text-sm text-lime-700">Upgrade your plan to unlock every finding, evidence detail, and step.</p>
                 <div className="mt-4">
                   <Link href="/app/billing" className="inline-block rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700">See plans →</Link>
                 </div>
@@ -440,7 +429,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                               {stepCta(step.actionKey)!.label} →
                             </a>
                           ) : null}
-                          {(step.actionKey.toUpperCase() === "GET_TRANSCRIPT" || step.actionKey.toUpperCase() === "GET_ACCOUNT_TRANSCRIPT") && (
+                          {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD", "GET_TRANSCRIPT", "GET_ACCOUNT_TRANSCRIPT"].includes(step.actionKey.toUpperCase()) && (
                             <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
                               Open USCIS sign-up ↗
                             </a>
@@ -504,8 +493,8 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
               {interactive && neededDocs.some((d) => !haveKinds.has(d.kind)) && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <InlineUpload caseId={c.id} label="Upload now" />
-                  {neededDocs.some((d) => d.kind === "case record" && !haveKinds.has("case record")) && (
-                    <a href="/app/irs-account" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                  {neededDocs.some((d) => d.kind === "case_record" && !haveKinds.has("case_record")) && (
+                    <a href="/app/uscis-account" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
                       Case record guide →
                     </a>
                   )}
@@ -535,7 +524,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                         {d.fileName}
                       </a>{" "}
                       <Badge>{d.docKind}</Badge>
-                      {!verified && <p className="text-[11px] text-lime-600">Verification needed — on file, figures not yet confirmed</p>}
+                      {!verified && <p className="text-[11px] text-lime-600">Verification needed — on file, details not yet confirmed</p>}
                     </div>
                   </li>
                 );

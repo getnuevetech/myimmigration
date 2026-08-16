@@ -28,7 +28,7 @@ export function ClarifyAnswerForm({ caseId }: { caseId: string }) {
         <textarea
           name="answer"
           rows={2}
-          placeholder="Type your answer… (amounts like $3,214 and dates help most)"
+          placeholder="Type your answer… (receipt numbers, form names, dates, and evidence details help most)"
           className={`${inputClass} flex-1`}
         />
         <Submit />

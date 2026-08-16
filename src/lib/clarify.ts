@@ -1,8 +1,8 @@
 import "server-only";
 import { db } from "./db";
 
-// The clarifying interview: when the analysis is thin (missing amounts,
-// years, dates, documents), the app asks the customer targeted questions in a
+// The clarifying interview: when the analysis is thin (missing case years,
+// forms, receipt numbers, dates, notices, or documents), the app asks the customer targeted questions in a
 // chat conversation. Every answer is folded back into the case narrative in a
 // form the extraction engine parses, and the analysis re-runs automatically —
 // so each answer visibly sharpens the findings.
@@ -10,18 +10,20 @@ import { db } from "./db";
 export type ClarifyQuestion = { key: string; text: string };
 
 // How each answer is written back into the case narrative. The phrasing
-// matters: it gives the amount-classifier the context words it needs.
+// matters: it gives the extraction engine the USCIS context words it needs.
 export function situationLine(key: string, questionText: string, answer: string): string {
   const a = answer.trim();
   switch (key) {
+    case "case_year":
     case "tax_year":
       return `[Clarified] Case year(s) involved: ${a}.`;
     case "case_status_expected":
       return `[Clarified] I expected this immigration case status or result: ${a}.`;
     case "case_status_received":
       return `[Clarified] USCIS actually sent this status or result: ${a}.`;
+    case "fee_or_payment_issue":
     case "fee_or_balance_amount":
-      return `[Clarified] USCIS listed this fee, amount, or balance: ${a}.`;
+      return `[Clarified] USCIS listed this fee or payment issue: ${a}.`;
     case "notice_details":
       return `[Clarified] My USCIS notice: ${a}.`;
     case "missing_filings":
@@ -48,34 +50,34 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
   });
   if (!c || c.status === "closed") return null;
 
-  const answered = new Set(c.clarifyMessages.map((m) => m.questionKey));
-  const hasCaseRecord = c.documents.some((d) => d.docKind === "case record");
+  const answered = new Set(c.clarifyMessages.map((m) => (m.questionKey === "tax_year" ? "case_year" : m.questionKey)));
+  const hasCaseRecord = c.documents.some((d) => ["case_record", "case record", "receipt"].includes(d.docKind));
   const caseUpdateIssue = c.issues.find((i) => i.issueType === "case_update_discrepancy");
-  const balanceIssue = c.issues.find((i) => i.issueType === "balance_due");
-  const noticeIssue = c.issues.find((i) => i.issueType === "notice_response");
-  const unfiledIssue = c.issues.find((i) => i.issueType === "missing_return");
+  const feeIssue = c.issues.find((i) => i.issueType === "fee_or_payment_issue");
+  const noticeIssue = c.issues.find((i) => ["uscis_notice_response", "notice_response"].includes(i.issueType));
+  const filingIssue = c.issues.find((i) => ["missing_filing", "missing_evidence"].includes(i.issueType));
   const hasYear = c.issues.some((i) => i.taxYear);
 
   const questions: (ClarifyQuestion & { needed: boolean })[] = [
     {
-      key: "tax_year",
+      key: "case_year",
       text: "Which case year (or years) does your situation involve? For example: 2024, or 2023 and 2024.",
       needed: !hasYear,
     },
     {
       key: "case_status_expected",
       text: "Let's pin down the expected case status. What did you expect USCIS to do or send next?",
-      needed: Boolean(caseUpdateIssue && caseUpdateIssue.expectedCents === null),
+      needed: Boolean(caseUpdateIssue),
     },
     {
       key: "case_status_received",
       text: "What status, notice, or result did USCIS actually send, and on what date?",
-      needed: Boolean(caseUpdateIssue && caseUpdateIssue.receivedCents === null),
+      needed: Boolean(caseUpdateIssue),
     },
     {
-      key: "fee_or_balance_amount",
-      text: "Does the USCIS notice list any filing fee, balance, or amount? If yes, what amount and where does it appear?",
-      needed: Boolean(balanceIssue && balanceIssue.expectedCents === null && balanceIssue.differenceCents === null),
+      key: "fee_or_payment_issue",
+      text: "Does the USCIS notice list a filing fee or payment issue? If yes, what does it say and where does it appear?",
+      needed: Boolean(feeIssue),
     },
     {
       key: "notice_details",
@@ -85,7 +87,7 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
     {
       key: "missing_filings",
       text: "Which immigration forms or evidence packets are missing, pending, or not yet filed?",
-      needed: Boolean(unfiledIssue),
+      needed: Boolean(filingIssue),
     },
     {
       key: "have_case_record",

@@ -10,6 +10,8 @@ import { verifyCaseProgress } from "../case-progress";
 
 type Json = Record<string, unknown>;
 
+const USCIS_REFERENCE_RE = /\b(?:RFE|NOID|NOIR|NOIT|I-797C?|I-485|I-130|I-765|I-864|I-589|N-400|G-28|AR-11|BIOMETRICS|INTERVIEW|DENIAL|APPROVAL|[A-Z]{3}\d{10})\b/gi;
+
 function fill(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");
 }
@@ -45,9 +47,12 @@ export async function retrieveKnowledge(query: string, limit = 5): Promise<strin
       const hay = `${s.title} ${s.reference} ${s.tags} ${s.content}`.toLowerCase();
       let score = 0;
       for (const t of terms) if (hay.includes(t)) score++;
-      // Notice/form codes like RFE, NOID, I-485, or N-400 are strong signals.
-      const codes = query.toUpperCase().match(/\b(CP|LT|LTR)\s?-?\d{2,4}\b/g) ?? [];
-      for (const c of codes) if (hay.toUpperCase().includes(c.replace(/\s|-/g, ""))) score += 10;
+      // USCIS forms, notice types, and receipt numbers are strong signals.
+      const codes = query.toUpperCase().match(USCIS_REFERENCE_RE) ?? [];
+      for (const c of codes) {
+        const compact = c.replace(/\s|-/g, "");
+        if (hay.toUpperCase().replace(/\s|-/g, "").includes(compact)) score += 10;
+      }
       return { s, score };
     })
     .filter((x) => x.score > 0)
@@ -320,7 +325,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       data: {
         caseId,
         issueType: String(issue.issue_type ?? "other"),
-        taxYear: typeof issue.tax_year === "number" ? issue.tax_year : null,
+        taxYear: typeof issue.case_year === "number" ? issue.case_year : typeof issue.tax_year === "number" ? issue.tax_year : null,
         title: String(issue.title ?? issue.issue_identified ?? `Issue ${i + 1}`).slice(0, 200),
         description: String(issue.what_we_know ?? ""),
         expectedCents: toCents(issue.expected_amount),
@@ -330,7 +335,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
         priority: oneOf(issue.priority, ["urgent", "high", "medium", "low"], "medium"),
         state: oneOf(issue.state, ["resolved", "review", "action_needed", "urgent", "info_needed"], "review"),
         nextAction: String(issue.next_action ?? ""),
-        irsBasis: String(issue.irs_basis ?? ""),
+        irsBasis: String(issue.uscis_basis ?? issue.irs_basis ?? ""),
         // Evidence-based taxonomy: item kind + evidence status + strength.
         itemKind: oneOf(issue.item_kind, ["finding", "issue", "opportunity", "risk", "missing_info"], "issue"),
         evidenceStatus: oneOf(issue.evidence_status, ["confirmed", "likely", "possible", "needs_verification", "not_supported"], "needs_verification"),
@@ -464,19 +469,28 @@ export async function explainNoticeContent(content: string): Promise<Json | null
   const outcome = await runStage(STAGE_KEYS.NOTICE, { input: content });
   const parsed = outcome.stepOutputs.find((o) => o.data)?.data ?? null;
   if (parsed) return parsed;
-  // Deterministic fallback: identify notice code and match knowledge base.
-  const code = (content.toUpperCase().match(/\b(CP|LT|LTR)\s?-?\d{2,4}\b/) ?? [])[0]?.replace(/\s|-/g, "") ?? "";
+  // Deterministic fallback: identify USCIS notice/form/receipt references and match the knowledge base.
+  const code = (content.toUpperCase().match(USCIS_REFERENCE_RE) ?? [])[0]?.replace(/\s|-/g, "") ?? "";
   const kb = code
-    ? await db.knowledgeSource.findFirst({ where: { reference: { contains: code }, isActive: true } })
+    ? await db.knowledgeSource.findFirst({
+        where: {
+          isActive: true,
+          OR: [
+            { reference: { contains: code } },
+            { title: { contains: code } },
+            { tags: { contains: code.toLowerCase() } },
+          ],
+        },
+      })
     : null;
   return {
     notice_type: code || null,
     plain_english_explanation: kb
       ? kb.content.slice(0, 1200)
-      : "We stored your notice safely. Our reference library doesn't cover this notice type yet — a professional review can explain it, and it will be re-examined automatically on your next analysis.",
+      : "We stored your notice safely. Our reference library doesn't cover this USCIS notice type yet. A qualified immigration professional can review it, and it will be re-examined automatically on your next analysis.",
     next_steps: [
       { title: "Keep the notice safe", description: "It's stored in your document vault." },
-      { title: "Check the deadline", description: "USCIS notices usually show a respond-by date near the top right. Add it to your deadlines." },
+      { title: "Check the deadline", description: "USCIS notices usually show a response date, appointment date, or filing deadline. Add it to your deadlines." },
     ],
     urgency: "medium",
     fallback: true,
@@ -502,9 +516,9 @@ export async function generateLetterDraft(context: string): Promise<string> {
 U.S. Citizenship and Immigration Services
 [USCIS ADDRESS FROM YOUR NOTICE]
 
-Re: [NOTICE NUMBER] — Tax Year [YEAR]
+Re: [FORM TYPE / NOTICE TYPE] — Receipt No. [RECEIPT NUMBER]
 Applicant: [YOUR NAME]
-SSN: XXX-XX-[LAST 4]
+A-Number: [A-NUMBER IF ANY]
 
 To Whom It May Concern:
 
@@ -512,7 +526,7 @@ I am writing in response to the notice referenced above.
 
 [Describe your situation here: ${context.slice(0, 300)}]
 
-I respectfully request that you review the enclosed documentation and update my account accordingly. Please contact me at the address or phone number below if you need any additional information.
+I respectfully request that you review the enclosed documentation and update my case record accordingly. Please contact me at the address or phone number below if you need any additional information.
 
 Sincerely,
 

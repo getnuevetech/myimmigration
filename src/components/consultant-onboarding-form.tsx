@@ -36,28 +36,37 @@ export function ConsultantOnboardingForm({
   agreementSlug: string;
   agreementTitle: string;
 }) {
-  const [credType, setCredType] = useState(existing?.credentialType ?? "tax_consultant");
+  const initialCredentialType =
+    existing?.credentialType === "cpa"
+      ? "attorney"
+      : existing?.credentialType === "ea"
+        ? "accredited_representative"
+        : existing?.credentialType === "tax_consultant"
+          ? "immigration_consultant"
+          : existing?.credentialType ?? "immigration_consultant";
+  const [credType, setCredType] = useState(initialCredentialType);
   const [isBusiness, setIsBusiness] = useState(existing?.isBusiness ?? false);
-  const needsLicense = credType === "cpa" || credType === "ea";
+  const needsLicense = ["attorney", "accredited_representative", "cpa", "ea"].includes(credType);
+  const isAttorney = credType === "attorney" || credType === "cpa";
 
   return (
     <ActionForm action={consultantOnboardingAction}>
       <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <Field label="Are you a certified professional?" hint="immigration professional and EA credentials require a license/enrollment number and proof.">
+        <Field label="Professional credential" hint="Attorneys and accredited representatives require a license, accreditation, or registration number and proof.">
           <select name="credentialType" value={credType} onChange={(e) => setCredType(e.target.value)} className={inputClass}>
-            <option value="cpa">immigration professional — Immigration Attorney</option>
-            <option value="ea">EA — accredited representative</option>
-            <option value="tax_consultant">Certified Immigration Consultant / Preparer</option>
+            <option value="attorney">Immigration attorney</option>
+            <option value="accredited_representative">DOJ-accredited representative</option>
+            <option value="immigration_consultant">Qualified immigration consultant / preparer</option>
           </select>
         </Field>
 
         {needsLicense && (
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={credType === "cpa" ? "immigration professional license number" : "EA enrollment number"}>
+            <Field label={isAttorney ? "Bar license number" : "DOJ accreditation or organization recognition number"}>
               <input name="credentialNumber" defaultValue={existing?.credentialNumber} required className={inputClass} />
             </Field>
-            {credType === "cpa" && (
-              <Field label="State of licensure" hint="The state board that issued your immigration professional license.">
+            {isAttorney && (
+              <Field label="State of licensure" hint="The state bar or licensing jurisdiction that issued your attorney license.">
                 <SearchSelect
                   name="licenseState"
                   required
@@ -70,18 +79,18 @@ export function ConsultantOnboardingForm({
           </div>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label={needsLicense ? "license/registration number" : "license/registration number (if you have one)"} hint="USCIS Preparer Tax Identification Number — required by the USCIS for paid preparers.">
-            <input name="ptin" defaultValue={existing?.ptin} placeholder="P00000000" className={inputClass} />
+          <Field label={needsLicense ? "additional registration number" : "license/registration number (if you have one)"} hint="Use this for state consultant registration, EOIR/USCIS account identifiers, or other professional registration numbers.">
+            <input name="ptin" defaultValue={existing?.ptin} placeholder="Registration number" className={inputClass} />
           </Field>
-          <Field label="filing-system ID (if you e-file for clients)" hint="USCIS Electronic Filing Identification Number.">
-            <input name="efin" defaultValue={existing?.efin} placeholder="000000" className={inputClass} />
+          <Field label="USCIS/EOIR filing-system ID (if any)" hint="Optional account, organization, or representative ID used for online filings.">
+            <input name="efin" defaultValue={existing?.efin} placeholder="USCIS or EOIR ID" className={inputClass} />
           </Field>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <Field
             label={needsLicense ? "Credential proof (required)" : "Certification proof"}
-            hint={existing?.hasProof ? "On file ✓ — upload to replace" : "License certificate or EA enrollment card."}
+            hint={existing?.hasProof ? "On file ✓ — upload to replace" : "Bar card, DOJ accreditation letter, consultant registration, or other credential proof."}
           >
             <input type="file" name="proof" accept=".pdf,image/*" className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-lime-50 file:px-3 file:py-1.5 file:text-sm file:text-lime-700" />
           </Field>
@@ -138,9 +147,9 @@ export function ConsultantOnboardingForm({
         <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
           <input type="checkbox" name="attestation" defaultChecked={existing?.attestedCompliance} className="mt-1 h-4 w-4 rounded border-slate-300 text-lime-600" />
           <span>
-            <span className="font-medium text-slate-800">Compliance attestation.</span> I attest that I am compliant with my
-            own federal immigration filing and payment obligations, and that I have not been convicted of any offense or subjected to
-            any sanction that would disqualify me from practicing before the USCIS.
+            <span className="font-medium text-slate-800">Compliance attestation.</span> I attest that I am authorized to provide the
+            immigration help described in my profile, will follow applicable USCIS/EOIR rules, and have not been convicted of any offense or subjected to
+            any sanction that would disqualify me from assisting immigration clients.
           </span>
         </label>
 

@@ -19,11 +19,12 @@ async function seedSettings() {
     ["auth.google_client_id", "", "auth", "Google OAuth client ID", "Leave empty to hide the Google sign-in button."],
     ["auth.google_client_secret", "", "auth", "Google OAuth client secret", ""],
     ["billing.free_plan_key", "free", "billing", "Free plan key", "Plan applied to users without a paid subscription."],
-    ["irs.account_url", "https://my.uscis.gov/", "uscis", "USCIS online account URL", "Official page users are guided to for USCIS account access."],
+    ["uscis.account_url", "https://my.uscis.gov/", "uscis", "USCIS online account URL", "Official page users are guided to for USCIS account access."],
+    ["irs.account_url", "https://my.uscis.gov/", "uscis", "Legacy USCIS account URL", "Legacy setting key kept for existing installs; new code reads uscis.account_url."],
     ["analysis.expected_documents", "3", "analysis", "Expected documents per case", "Used by the deterministic case-readiness formula."],
     ["consultants.auto_approve_enabled", "false", "consultants", "Auto-approve consultants", "Automatically approve immigration professional applications meeting requirements."],
     ["consultants.auto_approve_min_years", "3", "consultants", "Auto-approve minimum years", "Minimum years of experience for automated approval."],
-    ["consultants.auto_criteria", '["credential","ptin","proof","min_years","attestation"]', "consultants", "Auto-approval required criteria", "JSON array of criteria keys required for automated approval (managed on the immigration professional auto-approval page)."],
+    ["consultants.auto_criteria", '["credential","ptin","proof","min_years","attestation"]', "consultants", "Auto-approval required criteria", "JSON array of immigration credential criteria keys required for automated approval (managed on the immigration professional auto-approval page)."],
     ["consultants.auto_assign_enabled", "false", "consultants", "AI auto-assign consultants", "Automatically match flagged cases to the best-fitting consultant (managed on the Assignments page)."],
     ["consultants.auto_assign_min_readiness", "60", "consultants", "Auto-assign minimum readiness (%)", "Flagged cases are only auto-assigned to a consultant when case readiness is at least this percentage; below it, admins are notified instead."],
     ["consultants.subscriptions_enabled", "false", "consultants", "Consultant subscriptions", "Require consultants to hold an active partner plan to accept clients (toggle on the Plans page)."],
@@ -53,6 +54,12 @@ async function seedSettings() {
       create: { key, value, group, label, description, type: key.includes("secret") ? "secret" : "text" },
     });
   }
+  // Repair common TaxOnMe leftovers on existing installs without overwriting
+  // administrator-customized values that are already immigration-specific.
+  await db.setting.updateMany({ where: { key: "app.name", value: "TaxOnMe" }, data: { value: "MyImmigration" } });
+  await db.setting.updateMany({ where: { key: "app.tagline", value: { contains: "tax" } }, data: { value: "Immigration paperwork, organized" } });
+  await db.setting.updateMany({ where: { key: "home.hero_title", value: { contains: "tax" } }, data: { value: "Turn immigration paperwork into a clear case plan" } });
+  await db.setting.updateMany({ where: { key: "home.hero_subtitle", value: { contains: "tax" } }, data: { value: "MyImmigration organizes notices, forms, timelines, evidence gaps, and deadlines so applicants can understand what is happening and what to prepare next." } });
 }
 
 async function seedAdmin() {
@@ -419,6 +426,43 @@ async function seedAiAndPipelines() {
       }
     }
   }
+  const promptRepairs: { stageKey: string; role: string; prompt: string }[] = [
+    { stageKey: "summary", role: "fact_extractor", prompt: DEFAULT_PROMPTS.fact_extractor },
+    { stageKey: "summary", role: "interpreter", prompt: DEFAULT_PROMPTS.interpreter },
+    { stageKey: "summary", role: "skeptic", prompt: DEFAULT_PROMPTS.skeptic },
+    { stageKey: "goal", role: "fact_extractor", prompt: DEFAULT_PROMPTS.fact_extractor },
+    { stageKey: "goal", role: "interpreter", prompt: DEFAULT_PROMPTS.interpreter },
+    { stageKey: "document", role: "extractor_a", prompt: DEFAULT_PROMPTS.extractor_a },
+    { stageKey: "document", role: "extractor_b", prompt: DEFAULT_PROMPTS.extractor_b },
+    { stageKey: "situation", role: "analyst", prompt: DEFAULT_PROMPTS.analyst },
+    { stageKey: "situation", role: "reviewer", prompt: DEFAULT_PROMPTS.reviewer },
+    { stageKey: "presenter", role: "presenter", prompt: DEFAULT_PROMPTS.presenter },
+    { stageKey: "qa", role: "assistant", prompt: DEFAULT_PROMPTS.assistant },
+    { stageKey: "notice", role: "analyst", prompt: DEFAULT_PROMPTS.notice_explainer },
+    { stageKey: "letter", role: "assistant", prompt: DEFAULT_PROMPTS.letter_writer },
+    { stageKey: "guide", role: "assistant", prompt: DEFAULT_PROMPTS.guide },
+    { stageKey: "match", role: "analyst", prompt: DEFAULT_PROMPTS.match_rank },
+    { stageKey: "match", role: "reviewer", prompt: DEFAULT_PROMPTS.match_rank },
+    { stageKey: "match_reason", role: "analyst", prompt: DEFAULT_PROMPTS.match_reason },
+    { stageKey: "match_reason", role: "reviewer", prompt: DEFAULT_PROMPTS.match_reason_review },
+    { stageKey: "closing", role: "presenter", prompt: DEFAULT_PROMPTS.closing },
+  ];
+  for (const repair of promptRepairs) {
+    await db.pipelineStep.updateMany({
+      where: {
+        stageKey: repair.stageKey,
+        role: repair.role,
+        OR: [
+          { promptTemplate: { contains: "TaxOnMe" } },
+          { promptTemplate: { contains: "IRS" } },
+          { promptTemplate: { contains: "tax" } },
+          { promptTemplate: { contains: "SSN" } },
+          { promptTemplate: { contains: "tax_year" } },
+        ],
+      },
+      data: { promptTemplate: repair.prompt },
+    });
+  }
 }
 
 async function seedContent() {
@@ -427,8 +471,8 @@ async function seedContent() {
       slug: "faq",
       title: "Frequently asked questions",
       kind: "page",
-      body: `Q: Is MyImmigration the USCIS or a law firm?
-No. MyImmigration is a immigration case assistant that explains your situation and guides your next steps in plain English. For high-stakes decisions we connect you with licensed professionals.
+      body: `Q: Is MyImmigration USCIS or a law firm?
+No. MyImmigration is an immigration case assistant that explains your situation and guides your next steps in plain English. For high-stakes decisions we connect you with licensed professionals.
 
 Q: How do I check my USCIS case?
 Use your USCIS receipt number at the official USCIS case status site or sign in at my.uscis.gov when available. Upload receipts and notices here so we can organize the case timeline.
@@ -504,7 +548,7 @@ If your case needs a licensed professional, we can help prepare a handoff to an 
       slug: "consultant-agreement",
       title: "Consultant Partner Agreement",
       kind: "agreement_consultant",
-      body: `By registering as a Immigration Consultant partner you agree:
+      body: `By registering as an Immigration Consultant partner you agree:
 
 1. The credentials you provide are accurate and current, and you will keep them updated.
 2. You will handle client materials confidentially and only for the engaged purpose.
@@ -580,7 +624,7 @@ async function seedKnowledge() {
       reference: "Form N-400",
       url: "https://www.uscis.gov/n-400",
       tags: "n-400, naturalization, citizenship, continuous residence",
-      content: "Form N-400 is used to apply for naturalization. A review should consider lawful permanent resident period, continuous residence, physical presence, good moral character, selective service if applicable, tax and support obligations, trips outside the United States, and interview/civics requirements. Complex issues should be reviewed by a qualified professional.",
+      content: "Form N-400 is used to apply for naturalization. A review should consider lawful permanent resident period, continuous residence, physical presence, good moral character, selective service if applicable, support obligations, trips outside the United States, and interview/civics requirements. Complex issues should be reviewed by a qualified professional.",
     },
   ];
 
@@ -693,7 +737,7 @@ async function seedFormTemplates() {
         ]},
         { title: "Travel and history", questions: [
           { key: "long_trips", label: "Any trips outside the U.S. longer than 6 months?", type: "textarea" },
-          { key: "issues", label: "Any arrests, citations, tax, or support issues to review?", type: "textarea" },
+          { key: "issues", label: "Any arrests, citations, child-support obligations, prior denials, or other issues to review?", type: "textarea" },
         ]},
       ],
       outputTemplate: `FORM N-400 PREPARATION SUMMARY\n\nPermanent resident since: {{lpr_since}}\nBasis: {{basis}}\nLong trips: {{long_trips}}\nIssues to review: {{issues}}`,

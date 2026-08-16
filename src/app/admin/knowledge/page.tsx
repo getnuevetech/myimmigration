@@ -14,7 +14,7 @@ export default async function AdminKnowledgePage() {
     <div>
       <PageHeader
         title="USCIS knowledge base"
-        subtitle="The authoritative reference material the AI analysis is grounded in: publications, form instructions, notice guides, transaction codes, and current announcements. Models cite this, not their memory."
+        subtitle="The authoritative reference material the AI analysis is grounded in: publications, form instructions, notice guides, receipt notices, and current announcements. Models cite this, not their memory."
       />
       <div className="space-y-4">
         {sources.map((s) => (

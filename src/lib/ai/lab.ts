@@ -18,7 +18,7 @@ export type LabFunction = {
 };
 
 export const LAB_FUNCTIONS: LabFunction[] = [
-  { key: "fact_extraction", name: "Summary — fact extraction", promptKey: "fact_extractor", usesKnowledge: false, description: "Pull structured facts (years, amounts, notices, goal) out of a applicant's story." },
+  { key: "fact_extraction", name: "Summary — fact extraction", promptKey: "fact_extractor", usesKnowledge: false, description: "Pull structured facts (forms, receipt numbers, dates, notices, deadlines, and goals) out of an applicant's story." },
   { key: "interpretation", name: "Summary — case interpretation", promptKey: "interpreter", usesKnowledge: false, description: "Identify apparent issues, contradictions, and missing evidence." },
   { key: "skeptic", name: "Summary — skeptic review", promptKey: "skeptic", usesKnowledge: false, description: "Find assumptions and unsupported conclusions in the input." },
   { key: "document_extraction", name: "Document analysis — extraction", promptKey: "extractor_a", usesKnowledge: false, description: "Extract uploaded documents (attach files!) into the standardized schema." },

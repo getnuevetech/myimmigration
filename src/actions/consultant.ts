@@ -60,7 +60,7 @@ export async function consultantOnboardingAction(_prev: ActionState, formData: F
   if (user.role !== ROLES.CONSULTANT) return { error: "Only consultant accounts can complete this onboarding." };
   const existing = await db.consultantProfile.findUnique({ where: { userId: user.id } });
 
-  const credentialType = String(formData.get("credentialType") ?? "tax_consultant");
+  const credentialType = String(formData.get("credentialType") ?? "immigration_consultant");
   const credentialNumber = String(formData.get("credentialNumber") ?? "").trim();
   const licenseState = String(formData.get("licenseState") ?? "").trim();
   const ptin = String(formData.get("ptin") ?? "").trim();
@@ -75,11 +75,15 @@ export async function consultantOnboardingAction(_prev: ActionState, formData: F
   const agree = formData.get("agree") === "on";
 
   if (!agree) return { error: "You must accept the consultant agreement." };
-  if ((credentialType === "cpa" || credentialType === "ea") && !credentialNumber) {
-    return { error: "License/enrollment number is required for immigration professional and EA credentials." };
+  const isAttorney = credentialType === "attorney" || credentialType === "cpa";
+  const isAccreditedRepresentative = credentialType === "accredited_representative" || credentialType === "ea";
+  const needsCredentialProof = isAttorney || isAccreditedRepresentative;
+
+  if (needsCredentialProof && !credentialNumber) {
+    return { error: "License, accreditation, or registration number is required for attorney and accredited representative credentials." };
   }
-  if (credentialType === "cpa" && !licenseState) {
-    return { error: "State of licensure is required for immigration professionals." };
+  if (isAttorney && !licenseState) {
+    return { error: "State of licensure is required for immigration attorneys." };
   }
   if (isBusiness && !businessName) return { error: "Business name is required for business accounts." };
   if (specialties.length === 0) return { error: "Select at least one area of specialty." };
@@ -96,8 +100,8 @@ export async function consultantOnboardingAction(_prev: ActionState, formData: F
   const photoIdPath = await pickUpload("photoId", existing?.photoIdPath ?? "");
   const insurancePath = await pickUpload("insurance", existing?.insurancePath ?? "");
 
-  if ((credentialType === "cpa" || credentialType === "ea") && !proofDocumentPath) {
-    return { error: "Please upload proof of your immigration professional license or EA enrollment." };
+  if (needsCredentialProof && !proofDocumentPath) {
+    return { error: "Please upload proof of your attorney license, DOJ accreditation, or professional registration." };
   }
 
   // Automated approval: every admin-required criterion must be satisfied.

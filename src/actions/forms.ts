@@ -83,7 +83,7 @@ export async function saveFormStepAction(_prev: ActionState, formData: FormData)
     },
   });
 
-  // A completed form (e.g. 9465) may satisfy a case path step.
+  // A completed USCIS form (e.g. I-485) may satisfy a case path step.
   if (done) await verifyUserCasesProgress(user.id);
 
   if (done) redirect(`/app/forms/fill/${submissionId}?done=1`);

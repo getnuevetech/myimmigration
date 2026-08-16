@@ -6,11 +6,6 @@ import { consultantRespondAssignmentAction } from "@/actions/consultant";
 import { formatCaseNumber } from "@/lib/case-number";
 import { caseRoutingReason } from "@/lib/matching";
 
-function money(cents: number | null): string | null {
-  if (cents === null || cents === undefined) return null;
-  return `$${(Math.abs(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-}
-
 export const metadata = { title: "Consultant dashboard" };
 
 export default async function ConsultantDashboard({
@@ -25,6 +20,12 @@ export default async function ConsultantDashboard({
   const needsSubscription = subsEnabled && !(await hasActiveConsultantSubscription(user.id));
   const profile = await db.consultantProfile.findUnique({ where: { userId: user.id } });
   const mySpecialties: string[] = profile ? JSON.parse(profile.specialties || "[]") : [];
+  const credentialName = (type: string) => {
+    if (type === "attorney" || type === "cpa") return "Immigration attorney";
+    if (type === "accredited_representative" || type === "ea") return "Accredited representative";
+    if (type === "tax_consultant") return "Immigration consultant";
+    return type.replace(/_/g, " ");
+  };
   const { consultantCompleteness } = await import("@/lib/consultant-completeness");
   const completeness = consultantCompleteness(user, profile);
   const caseInclude = {
@@ -112,7 +113,7 @@ export default async function ConsultantDashboard({
               )}
             </div>
             <Badge color={profile.status === "approved" ? "green" : profile.status === "rejected" ? "red" : "lime"}>
-              {profile.credentialType.toUpperCase().replace("_", " ")}
+              {credentialName(profile.credentialType)}
             </Badge>
           </CardBody>
         </Card>
@@ -199,7 +200,6 @@ export default async function ConsultantDashboard({
                               <div key={i.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-100">
                                 <span className="text-slate-700">
                                   {i.taxYear ? `${i.taxYear} · ` : ""}{i.title}
-                                  {money(i.differenceCents) ? <span className="ml-1.5 font-semibold text-lime-600">{money(i.differenceCents)}</span> : null}
                                 </span>
                                 <StateMark state={i.state} />
                               </div>

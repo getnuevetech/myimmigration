@@ -3,7 +3,7 @@ import { getGuestSession } from "@/lib/guest";
 import { SiteHeader, SiteFooter } from "@/components/site-nav";
 import { QaChat } from "@/components/qa-chat";
 
-export const metadata = { title: "Ask a tax question" };
+export const metadata = { title: "Ask an immigration question" };
 
 export default async function GuestQaPage({
   searchParams,

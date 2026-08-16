@@ -20,6 +20,11 @@ export default async function MyConsultantsPage() {
   });
 
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
+  const credentialLabel = (type: string | undefined) => {
+    if (type === "attorney" || type === "cpa") return "Immigration attorney";
+    if (type === "accredited_representative" || type === "ea") return "Accredited representative";
+    return "Immigration consultant";
+  };
 
   return (
     <div className="max-w-3xl">
@@ -46,7 +51,7 @@ export default async function MyConsultantsPage() {
                         {a.consultant.firstName} {a.consultant.lastName}
                       </h2>
                       <p className="text-sm text-slate-500">
-                        {profile?.credentialType === "cpa" ? "Immigration Attorney" : profile?.credentialType === "ea" ? "accredited representative" : "Immigration Consultant"}
+                        {credentialLabel(profile?.credentialType)}
                         {profile?.isBusiness && profile.businessName ? ` · ${profile.businessName}` : ""}
                         {profile ? ` · ${profile.yearsExperience} yrs experience` : ""}
                       </p>

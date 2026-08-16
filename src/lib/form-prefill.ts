@@ -12,27 +12,12 @@ export type FormPrefill = {
   caseNumber: string | null;
 };
 
-const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
-
-function num(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
-}
-
-// Older analyses stored amounts only in the issue text ("Possible balance due
-// of $2,800.00") — recover them so prefill works for those cases too.
-function amountFromText(text: string): number | null {
-  const m = text.match(/\$\s?([\d,]+(?:\.\d{1,2})?)/);
-  if (!m) return null;
-  const n = Number(m[1].replace(/,/g, ""));
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
 /**
  * Builds prefill values + a "what we already know" fact sheet for a form,
  * from the customer's profile and the analyzed data of their most recent case
  * (extracted facts, issues, notices, deadlines). Field keys follow the
  * conventions used by the seeded templates; admin-created templates that use
- * the same keys (name, ssn, address, phone, tax_years, amount_owed, ...) are
+ * the same keys (name, a_number, address, phone, case_years, receipt_number, ...)
  * prefilled automatically.
  */
 export async function buildFormPrefill(userId: string, steps: WizardStep[]): Promise<FormPrefill> {
@@ -61,7 +46,7 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
   for (const run of kase?.runs ?? []) {
     try {
       const parsed = JSON.parse(run.consensus?.mergedJson || "{}");
-      if (parsed && (parsed.tax_years || parsed.balance_due || parsed.expected_case_update || parsed.notices_received)) {
+      if (parsed && (parsed.case_years || parsed.forms_filed || parsed.receipt_numbers || parsed.notices_received || parsed.current_status)) {
         merged = parsed;
         break;
       }
@@ -72,7 +57,7 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
 
   const yearSet = new Set<number>();
-  if (Array.isArray(merged.tax_years)) for (const y of merged.tax_years) if (typeof y === "number") yearSet.add(y);
+  if (Array.isArray(merged.case_years)) for (const y of merged.case_years) if (typeof y === "number") yearSet.add(y);
   for (const i of kase?.issues ?? []) if (i.taxYear) yearSet.add(i.taxYear);
   for (const n of kase?.notices ?? []) if (n.taxYear) yearSet.add(n.taxYear);
   const years = Array.from(yearSet).sort();
@@ -83,36 +68,21 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
   for (const n of kase?.notices ?? []) if (n.noticeType) noticeSet.add(n.noticeType);
   const notices = Array.from(noticeSet);
 
-  const balanceIssue = kase?.issues.find((i) => i.issueType === "balance_due");
-  const noticeAmount = (kase?.notices ?? []).map((n) => (n.amountCents ? n.amountCents / 100 : 0)).find((a) => a > 0) ?? null;
-  const balanceDue =
-    num(merged.balance_due) ??
-    (balanceIssue?.expectedCents ? balanceIssue.expectedCents / 100 : null) ??
-    (balanceIssue?.differenceCents ? balanceIssue.differenceCents / 100 : null) ??
-    (balanceIssue ? amountFromText(balanceIssue.title) ?? amountFromText(balanceIssue.description) : null) ??
-    noticeAmount;
-
-  const caseUpdateIssue = kase?.issues.find((i) => i.issueType === "case_update_discrepancy");
-  const expectedCaseUpdate = num(merged.expected_case_update) ?? (caseUpdateIssue?.expectedCents ? caseUpdateIssue.expectedCents / 100 : null);
-  const receivedCaseUpdate = num(merged.received_case_update) ?? (caseUpdateIssue?.receivedCents ? caseUpdateIssue.receivedCents / 100 : null);
-  const caseUpdateDifference =
-    (caseUpdateIssue?.differenceCents ? caseUpdateIssue.differenceCents / 100 : null) ??
-    (expectedCaseUpdate !== null && receivedCaseUpdate !== null ? Math.round((expectedCaseUpdate - receivedCaseUpdate) * 100) / 100 : null);
-
-  // USCIS generally accepts balance ÷ 72 as the minimum streamlined monthly payment.
-  const suggestedMonthly = balanceDue ? Math.ceil(balanceDue / 72) : null;
+  const forms = Array.isArray(merged.forms_filed) ? merged.forms_filed.map(String).filter(Boolean) : [];
+  const receipts = Array.isArray(merged.receipt_numbers) ? merged.receipt_numbers.map(String).filter(Boolean) : [];
+  const currentStatus = typeof merged.current_status === "string" ? merged.current_status : "";
   const nextDeadline = kase?.deadlines[0] ?? null;
 
   // ---- Candidate values by field-key convention ----
   const primaryYear = years.length ? String(years[years.length - 1]) : "";
-  const moneyStr = (n: number | null) => (n === null ? "" : String(Math.round(n * 100) / 100));
   const candidates: Record<string, string> = {
     name: fullName,
     full_name: fullName,
     first_name: user?.firstName ?? "",
     last_name: user?.lastName ?? "",
-    ssn: user?.idNumber ?? "",
-    tin: user?.idNumber ?? "",
+    a_number: user?.idNumber ?? "",
+    alien_number: user?.idNumber ?? "",
+    uscis_number: user?.idNumber ?? "",
     id_number: user?.idNumber ?? "",
     address: user?.address ?? "",
     current_address: user?.address ?? "",
@@ -121,18 +91,14 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
     phone_number: user?.phone ?? "",
     daytime_phone: user?.phone ?? "",
     email: user?.email ?? "",
-    tax_form: kase ? "Form I-130" : "",
-    tax_year: primaryYear,
-    tax_years: yearsText,
+    form_number: forms[0] ?? "",
+    forms_filed: forms.join(", "),
+    case_year: primaryYear,
+    case_years: yearsText,
     years: yearsText,
-    amount_owed: moneyStr(balanceDue),
-    amount_due: moneyStr(balanceDue),
-    balance_due: moneyStr(balanceDue),
-    total_owed: moneyStr(balanceDue),
-    monthly_payment: suggestedMonthly === null ? "" : String(suggestedMonthly),
-    expected_case_update: moneyStr(expectedCaseUpdate),
-    received_case_update: moneyStr(receivedCaseUpdate),
-    case_update_difference: moneyStr(caseUpdateDifference),
+    receipt_number: receipts[0] ?? "",
+    receipt_numbers: receipts.join(", "),
+    current_status: currentStatus,
     notice_number: notices.join(", "),
     notice_type: notices.join(", "),
   };
@@ -167,12 +133,10 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
   if (kase) {
     add("Case", `${formatCaseNumber(kase.number)} — ${kase.title.slice(0, 60)}`);
     add("Case year(s)", yearsText);
+    add("Forms filed", forms.join(", "));
+    add("Receipt number(s)", receipts.join(", "));
+    add("Current status", currentStatus);
     add("USCIS notice(s)", notices.join(", "));
-    add("Balance owed (from analysis)", balanceDue === null ? "" : usd(balanceDue));
-    add("Expected case update", expectedCaseUpdate === null ? "" : usd(expectedCaseUpdate));
-    add("Case update received", receivedCaseUpdate === null ? "" : usd(receivedCaseUpdate));
-    add("Case update difference", caseUpdateDifference === null ? "" : usd(caseUpdateDifference));
-    add("Suggested monthly payment (balance ÷ 72)", suggestedMonthly === null ? "" : usd(suggestedMonthly));
     add("Next deadline", nextDeadline ? `${nextDeadline.title} — ${nextDeadline.dueDate.toLocaleDateString("en-US")}` : "");
     add("Your goal", kase.goal?.slice(0, 120));
   }

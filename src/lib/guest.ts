@@ -6,7 +6,7 @@ import { secureCookiesEnabled } from "./auth";
 
 const GUEST_COOKIE = "myimmigration_guest";
 
-// Guest sessions let visitors start their tax intake without an account.
+// Guest sessions let visitors start their immigration case intake without an account.
 // Everything they provide is stored against the session and attached to
 // their account when they register.
 
