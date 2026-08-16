@@ -65,7 +65,6 @@ export async function fallbackAnalyze(
 ): Promise<FallbackResult> {
   const narrative = `${situation}\n${goal}`;
   const text = `${narrative}\n${documentsText}`;
-  const upper = text.toUpperCase();
   const lower = text.toLowerCase();
   const forms = uniq(text.toUpperCase().match(USCIS_FORM_RE) ?? []);
   const receiptNumbers = uniq(text.toUpperCase().match(RECEIPT_RE) ?? []);

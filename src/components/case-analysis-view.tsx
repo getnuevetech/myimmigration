@@ -93,7 +93,6 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const chronological = [...c.runs].reverse();
   const latestStart = c.runs[0]?.startedAt?.getTime() ?? 0;
   const latestBatch = chronological.filter((r) => latestStart - r.startedAt.getTime() < 5 * 60 * 1000);
-  const money = (v: unknown) => (typeof v === "number" ? v.toLocaleString("en-US", { style: "currency", currency: "USD" }) : null);
   const describeRun = (run: (typeof latestBatch)[number]): string => {
     let merged: Record<string, unknown> = {};
     try {

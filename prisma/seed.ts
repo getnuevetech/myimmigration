@@ -722,19 +722,28 @@ async function seedFormTemplates() {
 
   for (const template of templates) {
     const { steps, ...data } = template;
-    await db.irsFormTemplate.upsert({
+    const existing = await db.irsFormTemplate.findFirst({
       where: { formNumber: data.formNumber },
-      update: {
-        ...data,
-        stepsJson: JSON.stringify(steps),
-        isPublished: true,
-      },
-      create: {
-        ...data,
-        stepsJson: JSON.stringify(steps),
-        isPublished: true,
-      },
+      select: { id: true },
     });
+    if (existing) {
+      await db.irsFormTemplate.update({
+        where: { id: existing.id },
+        data: {
+          ...data,
+          stepsJson: JSON.stringify(steps),
+          isPublished: true,
+        },
+      });
+    } else {
+      await db.irsFormTemplate.create({
+        data: {
+        ...data,
+        stepsJson: JSON.stringify(steps),
+        isPublished: true,
+      },
+      });
+    }
   }
 }
 
