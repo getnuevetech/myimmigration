@@ -29,7 +29,7 @@ export default async function LettersPage() {
         <div className="space-y-3">
           {letters.map((l) => (
             <Link key={l.id} href={`/app/letters/${l.id}`} className="block">
-              <Card className="transition hover:border-indigo-300">
+              <Card className="transition hover:border-orange-300">
                 <CardBody className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-slate-900">{l.title}</p>

@@ -32,7 +32,7 @@ export function InlineUpload({
       <input type="hidden" name="docKind" value={docKind} />
       <label
         className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-          pending ? "bg-slate-300 text-slate-500" : "bg-indigo-600 text-white hover:bg-indigo-700"
+          pending ? "bg-slate-300 text-slate-500" : "bg-orange-600 text-white hover:bg-orange-700"
         }`}
       >
         {pending ? "Uploading & re-analyzing…" : `${label} →`}

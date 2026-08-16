@@ -54,11 +54,11 @@ export function AiProviderForm({ provider }: { provider: Provider }) {
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-6">
         <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" name="isEnabled" defaultChecked={provider?.isEnabled ?? true} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+          <input type="checkbox" name="isEnabled" defaultChecked={provider?.isEnabled ?? true} className="h-4 w-4 rounded border-slate-300 text-orange-600" />
           Enabled
         </label>
         <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" name="supportsVision" defaultChecked={provider?.supportsVision} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+          <input type="checkbox" name="supportsVision" defaultChecked={provider?.supportsVision} className="h-4 w-4 rounded border-slate-300 text-orange-600" />
           Supports vision / PDF understanding
         </label>
       </div>

@@ -68,9 +68,9 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
 <title>${esc(appName)} Case Report ${ref}</title>
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: #1e293b; max-width: 800px; margin: 0 auto; padding: 40px 24px; line-height: 1.55; }
-  header { border-bottom: 3px solid #4338ca; padding-bottom: 16px; margin-bottom: 28px; }
+  header { border-bottom: 3px solid #9a3412; padding-bottom: 16px; margin-bottom: 28px; }
   h1 { font-size: 26px; margin: 0; color: #1e1b4b; }
-  h2 { font-size: 18px; color: #4338ca; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-top: 32px; }
+  h2 { font-size: 18px; color: #9a3412; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-top: 32px; }
   h3 { font-size: 15px; margin-bottom: 4px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0; }
   th, td { border: 1px solid #e2e8f0; padding: 6px 10px; text-align: left; vertical-align: top; }

@@ -55,7 +55,7 @@ function ValueView({ value, depth = 0 }: { value: unknown; depth?: number }) {
         <ul className="space-y-1">
           {value.map((v, i) => (
             <li key={i} className="flex items-start gap-1.5">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-400" />
               <ValueView value={v} depth={depth + 1} />
             </li>
           ))}
@@ -66,7 +66,7 @@ function ValueView({ value, depth = 0 }: { value: unknown; depth?: number }) {
       <div className="space-y-2">
         {value.map((v, i) => (
           <div key={i} className="rounded-lg bg-white p-2.5 ring-1 ring-slate-200">
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-indigo-400">#{i + 1}</p>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-orange-400">#{i + 1}</p>
             <ValueView value={v} depth={depth + 1} />
           </div>
         ))}
@@ -170,9 +170,9 @@ export function AiLab({ providers, functions }: { providers: Provider[]; functio
                 title={usable ? p.model : "No API key saved"}
                 className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
                   active
-                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    ? "border-orange-600 bg-orange-600 text-white"
                     : usable
-                      ? "border-slate-300 bg-white text-slate-700 hover:border-indigo-400"
+                      ? "border-slate-300 bg-white text-slate-700 hover:border-orange-400"
                       : "border-slate-200 bg-slate-50 text-slate-300"
                 }`}
               >
@@ -217,7 +217,7 @@ export function AiLab({ providers, functions }: { providers: Provider[]; functio
               name="files"
               multiple
               accept="image/*,.pdf,.txt,.csv"
-              className="text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-indigo-700"
+              className="text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-orange-50 file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-orange-700"
             />
             <div className="flex items-center gap-2">
               {rounds.length > 0 && (
@@ -232,7 +232,7 @@ export function AiLab({ providers, functions }: { providers: Provider[]; functio
               <button
                 type="submit"
                 disabled={pending || selected.length === 0}
-                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="rounded-lg bg-orange-600 px-5 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50"
               >
                 {pending ? `Running ${selected.length} model${selected.length === 1 ? "" : "s"}…` : `Run comparison →`}
               </button>
@@ -263,7 +263,7 @@ export function AiLab({ providers, functions }: { providers: Provider[]; functio
                   <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2.5">
                     <span className="font-semibold text-slate-900">{r.providerName}</span>
                     <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-500">{r.model}</span>
-                    {r.visionUsed && <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">read files 👁</span>}
+                    {r.visionUsed && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">read files 👁</span>}
                     <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-semibold ${r.ok ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
                       {r.ok ? `${(r.latencyMs / 1000).toFixed(1)}s` : "failed"}
                     </span>
@@ -274,7 +274,7 @@ export function AiLab({ providers, functions }: { providers: Provider[]; functio
                         <>
                           <StructuredOutput data={r.parsed} />
                           <details className="mt-3 border-t border-slate-100 pt-2">
-                            <summary className="cursor-pointer text-[11px] font-medium text-slate-400 hover:text-indigo-600">Raw response (technical)</summary>
+                            <summary className="cursor-pointer text-[11px] font-medium text-slate-400 hover:text-orange-600">Raw response (technical)</summary>
                             <p className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-slate-500">{r.text}</p>
                           </details>
                         </>
@@ -296,8 +296,8 @@ export function AiLab({ providers, functions }: { providers: Provider[]; functio
           </p>
         )}
         {pending && (
-          <div className="flex items-center gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-6 text-sm text-indigo-900">
-            <span className="h-3 w-3 animate-ping rounded-full bg-indigo-500" />
+          <div className="flex items-center gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-6 text-sm text-orange-900">
+            <span className="h-3 w-3 animate-ping rounded-full bg-orange-500" />
             Running the comparison — all selected models are called in parallel…
           </div>
         )}

@@ -48,7 +48,7 @@ export function GuideWidget() {
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Open your case guide"
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700"
+        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-white shadow-lg transition hover:bg-orange-700"
       >
         {open ? (
           <span className="text-xl leading-none">×</span>
@@ -59,10 +59,10 @@ export function GuideWidget() {
 
       {open && (
         <div className="fixed bottom-24 right-5 z-40 flex h-[520px] w-[360px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-          <div className="flex items-center justify-between bg-indigo-600 px-4 py-3 text-white">
+          <div className="flex items-center justify-between bg-orange-600 px-4 py-3 text-white">
             <div>
               <p className="text-sm font-semibold">Your case guide</p>
-              <p className="text-xs text-indigo-200">Always watching your next step</p>
+              <p className="text-xs text-orange-200">Always watching your next step</p>
             </div>
           </div>
 
@@ -72,7 +72,7 @@ export function GuideWidget() {
                 <div className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[90%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                      m.role === "user" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-800"
+                      m.role === "user" ? "bg-orange-600 text-white" : "bg-slate-100 text-slate-800"
                     }`}
                   >
                     {m.content}
@@ -86,7 +86,7 @@ export function GuideWidget() {
                         href={a.href}
                         className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                           a.type === "upgrade" || a.type === "new_case"
-                            ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                            ? "bg-orange-600 text-white hover:bg-orange-700"
                             : a.type === "ticket_tech" || a.type === "ticket_service"
                               ? "border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
                               : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
@@ -114,12 +114,12 @@ export function GuideWidget() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
                 placeholder="Ask about your next step…"
-                className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
               />
               <button
                 onClick={send}
                 disabled={pending || !input.trim()}
-                className="rounded-xl bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="rounded-xl bg-orange-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50"
               >
                 Send
               </button>

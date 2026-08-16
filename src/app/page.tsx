@@ -64,7 +64,7 @@ export default async function HomePage() {
                   `${appName} turns confusing USCIS notices, immigration documents, and case questions into a simple step-by-step plan. Start free — no account needed.`}
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <ButtonLink href="/start" className="rounded-full px-7 py-3.5 text-base shadow-lg shadow-indigo-600/25">
+                <ButtonLink href="/start" className="rounded-full px-7 py-3.5 text-base shadow-lg shadow-orange-700/25">
                   {s["home.cta_primary"] ?? "Explain my immigration situation"} →
                 </ButtonLink>
                 <ButtonLink href="/start/qa" variant="secondary" className="rounded-full px-7 py-3.5 text-base">
@@ -93,7 +93,7 @@ export default async function HomePage() {
             <div className="mt-12 divide-y divide-slate-300/60 border-t border-slate-300/60">
               {steps.map((step) => (
                 <div key={step.n} className="grid gap-3 py-9 md:grid-cols-[100px_1fr_1.2fr] md:items-baseline md:gap-8">
-                  <p className="font-serif text-4xl font-medium italic text-indigo-600">{step.n}</p>
+                  <p className="font-serif text-4xl font-medium italic text-orange-600">{step.n}</p>
                   <h3 className="font-serif text-2xl font-bold text-slate-900">{step.title}</h3>
                   <p className="text-sm leading-relaxed text-slate-600">{step.body}</p>
                 </div>
@@ -127,7 +127,7 @@ export default async function HomePage() {
                 <div key={f.title} className="group grid grid-cols-[56px_1fr] gap-4 py-8">
                   <p className="pt-1 font-mono text-xs text-slate-400">/ {String(i + 1).padStart(2, "0")}</p>
                   <div>
-                    <h3 className={`font-serif text-2xl font-bold transition ${i === 0 ? "text-indigo-600" : "text-slate-900 group-hover:text-indigo-600"}`}>
+                    <h3 className={`font-serif text-2xl font-bold transition ${i === 0 ? "text-orange-600" : "text-slate-900 group-hover:text-orange-600"}`}>
                       {f.title}
                     </h3>
                     <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-600">{f.body}</p>
@@ -142,15 +142,15 @@ export default async function HomePage() {
         <section className="border-b border-slate-200 bg-[#fbfaf7]">
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 text-center sm:grid-cols-3">
             <div>
-              <p className="font-serif text-6xl font-bold italic text-indigo-600">9+</p>
+              <p className="font-serif text-6xl font-bold italic text-orange-600">9+</p>
               <p className="mt-2 text-sm text-slate-600">USCIS forms turned into friendly quizzes</p>
             </div>
             <div>
-              <p className="font-serif text-6xl font-bold italic text-indigo-600">5</p>
-              <p className="mt-2 text-sm text-slate-600">Cross-checking every amount in your case</p>
+              <p className="font-serif text-6xl font-bold italic text-orange-600">5</p>
+              <p className="mt-2 text-sm text-slate-600">Cross-checking dates, receipts, and deadlines</p>
             </div>
             <div>
-              <p className="font-serif text-6xl font-bold italic text-indigo-600">100%</p>
+              <p className="font-serif text-6xl font-bold italic text-orange-600">100%</p>
               <p className="mt-2 text-sm text-slate-600">yours — delete your data anytime</p>
             </div>
           </div>
@@ -160,13 +160,13 @@ export default async function HomePage() {
         <section className="bg-[#0b1322]">
           <div className="mx-auto max-w-6xl px-4 pb-4 pt-20">
             <h2 className="max-w-2xl font-serif text-4xl font-bold leading-tight text-white sm:text-5xl">
-              <Accent text="Worried about a letter sitting on your *table*?" accentClass="font-serif italic text-indigo-400" />
+              <Accent text="Worried about a letter sitting on your *table*?" accentClass="font-serif italic text-orange-400" />
             </h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
-              Upload it now. In minutes you&apos;ll know what it means, what it costs, and exactly what to do next.
+              Upload it now. In minutes you&apos;ll know what it means, what USCIS is asking for, and exactly what to organize next.
             </p>
             <div className="mt-8">
-              <ButtonLink href="/start" className="rounded-full px-8 py-3.5 text-base shadow-lg shadow-indigo-600/30">
+              <ButtonLink href="/start" className="rounded-full px-8 py-3.5 text-base shadow-lg shadow-orange-700/30">
                 Start free →
               </ButtonLink>
             </div>

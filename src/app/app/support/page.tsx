@@ -33,7 +33,7 @@ export default async function SupportPage() {
         <div className="space-y-3">
           {tickets.map((t) => (
             <Link key={t.id} href={`/app/support/${t.id}`} className="block">
-              <Card className="transition hover:border-indigo-300">
+              <Card className="transition hover:border-orange-300">
                 <CardBody className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-medium text-slate-900">{t.subject}</p>

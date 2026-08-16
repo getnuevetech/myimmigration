@@ -30,7 +30,7 @@ export default async function IrsAccountPage() {
             href={irsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-4 inline-flex rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+            className="mt-4 inline-flex rounded-lg bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-700"
           >
             Open the official USCIS account page ↗
           </a>
@@ -40,7 +40,7 @@ export default async function IrsAccountPage() {
         {steps.map((s, i) => (
           <Card key={i}>
             <CardBody className="flex gap-4">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700">
                 {i + 1}
               </span>
               <div>

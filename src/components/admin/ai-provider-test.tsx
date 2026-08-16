@@ -21,7 +21,7 @@ export function AiProviderTest({ providerId, disabled }: { providerId: string; d
             setResult(res ?? { error: "No response from the test." });
           })
         }
-        className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50"
+        className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 transition hover:bg-orange-100 disabled:opacity-50"
         title={disabled ? "Save an API key first" : "Send a live test prompt to this model"}
       >
         {pending ? "Testing…" : "▶ Test connection"}

@@ -44,7 +44,7 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
                   <CardBody>
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold text-slate-900">
-                        <span className="mr-2 font-mono text-xs text-indigo-600">{formatCaseNumber(c.number)}</span>
+                        <span className="mr-2 font-mono text-xs text-orange-600">{formatCaseNumber(c.number)}</span>
                         {c.title}
                       </p>
                       <Badge>{c.status.replace(/_/g, " ")}</Badge>
@@ -62,7 +62,7 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
                     <div className="mt-4 flex gap-2">
                       <Link
                         href={`/consultant/clients/${assignment.id}/cases/${c.id}`}
-                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                        className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
                       >
                         Open full analysis →
                       </Link>
@@ -88,7 +88,7 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
                   {client.documents.map((d) => (
                     <li key={d.id} className="flex items-center justify-between py-2">
                       <div>
-                        <Link href={`/api/files/${d.id}`} target="_blank" className="text-sm font-medium text-indigo-600 underline">
+                        <Link href={`/api/files/${d.id}`} target="_blank" className="text-sm font-medium text-orange-600 underline">
                           {d.fileName}
                         </Link>
                         <p className="text-xs text-slate-400">{d.uploadedAt.toLocaleDateString("en-US")}</p>

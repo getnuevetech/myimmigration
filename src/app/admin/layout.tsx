@@ -42,7 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="border-b border-slate-800 bg-slate-900 text-white">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
           <Link href="/admin" className="flex items-center gap-2 font-bold">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500 text-xs font-bold">T</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500 text-xs font-bold">T</span>
             {appName} <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-300">Admin</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">

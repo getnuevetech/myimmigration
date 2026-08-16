@@ -14,7 +14,7 @@ function NewCaseForm() {
     <div className="max-w-2xl">
       <PageHeader title="Start a new case" subtitle="Tell us what happened and what you want to achieve. We'll do the rest." />
       {prefill && (
-        <div className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800">
+        <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
           We carried over what you told the guide — review it, add anything missing, and confirm to open this as a new case.
         </div>
       )}

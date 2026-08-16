@@ -71,7 +71,7 @@ export default async function AdminPlansPage() {
               <div className="mb-3 flex items-center gap-2">
                 <h3 className="font-semibold text-slate-900">{p.name}</h3>
                 <Badge>{p.key}</Badge>
-                <Badge color={p.audience === "consultant" ? "amber" : "indigo"}>
+                <Badge color={p.audience === "consultant" ? "amber" : "orange"}>
                   {p.audience === "consultant" ? "Immigration Consultants" : "Customers"}
                 </Badge>
                 {!p.isActive && <Badge color="red">inactive</Badge>}

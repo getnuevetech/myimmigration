@@ -27,7 +27,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 }
 
 const buttonStyles = {
-  primary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm",
+  primary: "bg-orange-600 text-white hover:bg-orange-700 shadow-sm",
   secondary: "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50",
   danger: "bg-white text-red-600 border border-red-200 hover:bg-red-50",
   ghost: "text-slate-600 hover:bg-slate-100",
@@ -73,7 +73,7 @@ export function Button({
 }
 
 export const inputClass =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100";
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -90,8 +90,8 @@ const badgeStyles: Record<string, string> = {
   green: "bg-emerald-100 text-emerald-800",
   amber: "bg-amber-100 text-amber-800",
   red: "bg-red-100 text-red-700",
-  indigo: "bg-indigo-100 text-indigo-700",
-  blue: "bg-sky-100 text-sky-800",
+  orange: "bg-orange-100 text-orange-700",
+  blue: "bg-amber-100 text-amber-800",
 };
 
 export function Badge({ children, color = "slate" }: { children: ReactNode; color?: string }) {
@@ -166,7 +166,7 @@ export function EvidenceStrengthLine({ strength }: { strength: string }) {
 
 // Item classification — richer than calling everything a "finding".
 export const ITEM_KINDS: Record<string, { label: string; color: string }> = {
-  finding: { label: "Finding", color: "indigo" },
+  finding: { label: "Finding", color: "orange" },
   issue: { label: "Issue", color: "amber" },
   opportunity: { label: "Opportunity", color: "green" },
   risk: { label: "Risk", color: "red" },
@@ -194,7 +194,7 @@ export function ProgressBar({ value, label }: { value: number; label?: string })
       )}
       <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
         <div
-          className={`h-full rounded-full transition-all ${clamped >= 70 ? "bg-emerald-500" : clamped >= 40 ? "bg-amber-500" : "bg-indigo-500"}`}
+          className={`h-full rounded-full transition-all ${clamped >= 70 ? "bg-emerald-500" : clamped >= 40 ? "bg-amber-500" : "bg-orange-500"}`}
           style={{ width: `${clamped}%` }}
         />
       </div>

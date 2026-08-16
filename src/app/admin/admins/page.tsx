@@ -48,10 +48,10 @@ export default async function AdminUsersPage() {
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {a.role === "super_admin" ? (
-                        <Badge color="indigo">Super admin — all areas</Badge>
+                        <Badge color="orange">Super admin — all areas</Badge>
                       ) : a.adminRole ? (
                         <>
-                          <Badge color="indigo">{a.adminRole.name}</Badge>
+                          <Badge color="orange">{a.adminRole.name}</Badge>
                           {roleAreas.map((k) => <Badge key={k}>{areaName(k)}</Badge>)}
                         </>
                       ) : a.adminPermissions.length > 0 ? (

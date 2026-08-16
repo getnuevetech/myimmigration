@@ -23,7 +23,7 @@ export default async function AdminContentPage() {
               <details>
                 <summary className="flex cursor-pointer flex-wrap items-center gap-2">
                   <span className="font-semibold text-slate-900">{p.title}</span>
-                  <Badge color="indigo">{p.kind.replace(/_/g, " ")}</Badge>
+                  <Badge color="orange">{p.kind.replace(/_/g, " ")}</Badge>
                   <Badge>v{p.version}</Badge>
                   <Badge>{p.audience}</Badge>
                   <Badge color={p.isPublished ? "green" : "red"}>{p.isPublished ? "published" : "draft"}</Badge>

@@ -42,7 +42,7 @@ export function PlanForm({ plan }: { plan: Plan }) {
       </div>
       <div className="mt-3 flex items-center justify-between">
         <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" name="isActive" defaultChecked={plan?.isActive ?? true} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+          <input type="checkbox" name="isActive" defaultChecked={plan?.isActive ?? true} className="h-4 w-4 rounded border-slate-300 text-orange-600" />
           Active (visible on pricing page)
         </label>
         <SubmitButton>{plan ? "Save plan" : "Add plan"}</SubmitButton>
@@ -62,7 +62,7 @@ export function ProrationToggle({ enabled, downgradeEnabled }: { enabled: boolea
             name="setting:billing.proration_enabled"
             value="true"
             defaultChecked={enabled}
-            className="h-5 w-5 rounded border-slate-300 text-indigo-600"
+            className="h-5 w-5 rounded border-slate-300 text-orange-600"
           />
           Enable proration (plan upgrades)
         </label>
@@ -73,7 +73,7 @@ export function ProrationToggle({ enabled, downgradeEnabled }: { enabled: boolea
             name="setting:billing.proration_downgrade_enabled"
             value="true"
             defaultChecked={downgradeEnabled}
-            className="h-5 w-5 rounded border-slate-300 text-indigo-600"
+            className="h-5 w-5 rounded border-slate-300 text-orange-600"
           />
           Also apply credit on downgrades
         </label>
@@ -94,7 +94,7 @@ export function ConsultantSubsToggle({ enabled }: { enabled: boolean }) {
             name="setting:consultants.subscriptions_enabled"
             value="true"
             defaultChecked={enabled}
-            className="h-5 w-5 rounded border-slate-300 text-indigo-600"
+            className="h-5 w-5 rounded border-slate-300 text-orange-600"
           />
           Require a partner subscription for consultants to accept clients
         </label>
@@ -144,7 +144,7 @@ export function FeatureMatrix({
                           type="checkbox"
                           name={`f:${p.id}:${f.key}`}
                           defaultChecked={v?.enabled ?? false}
-                          className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                          className="h-4 w-4 rounded border-slate-300 text-orange-600"
                         />
                         <input
                           name={`l:${p.id}:${f.key}`}

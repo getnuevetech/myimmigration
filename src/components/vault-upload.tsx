@@ -14,7 +14,7 @@ export function VaultUpload() {
           name="files"
           multiple
           required
-          className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+          className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-orange-700 hover:file:bg-orange-100"
         />
         <select name="docKind" className={`${inputClass} !w-auto`}>
           {DOC_KINDS.map((k) => (

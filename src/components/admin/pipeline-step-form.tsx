@@ -54,7 +54,7 @@ export function PipelineStepForm({
       </div>
       <div className="mt-3 flex items-center justify-between">
         <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" name="isEnabled" defaultChecked={step?.isEnabled ?? true} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+          <input type="checkbox" name="isEnabled" defaultChecked={step?.isEnabled ?? true} className="h-4 w-4 rounded border-slate-300 text-orange-600" />
           Enabled
         </label>
         <SubmitButton>{step ? "Save step" : "Add step"}</SubmitButton>

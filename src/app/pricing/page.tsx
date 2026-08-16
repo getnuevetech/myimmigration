@@ -28,7 +28,7 @@ export default async function PricingPage() {
             const monthly = applyDiscount(plan.priceMonthlyCents, deal);
             const onSale = Boolean(deal) && monthly < plan.priceMonthlyCents;
             return (
-            <Card key={plan.id} className={onSale ? "relative ring-2 ring-emerald-500" : plan.badge ? "ring-2 ring-indigo-500" : ""}>
+            <Card key={plan.id} className={onSale ? "relative ring-2 ring-emerald-500" : plan.badge ? "ring-2 ring-orange-500" : ""}>
               <CardBody className="flex h-full flex-col">
                 {onSale && (
                   <span className="absolute -top-3 left-4 rounded-full bg-emerald-600 px-3 py-0.5 text-xs font-bold text-white shadow">
@@ -37,7 +37,7 @@ export default async function PricingPage() {
                 )}
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold text-slate-900">{plan.name}</h2>
-                  {plan.badge && <Badge color="indigo">{plan.badge}</Badge>}
+                  {plan.badge && <Badge color="orange">{plan.badge}</Badge>}
                 </div>
                 <p className="mt-1 text-sm text-slate-500">{plan.description}</p>
                 <p className="mt-4">

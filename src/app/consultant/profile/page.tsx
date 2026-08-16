@@ -70,7 +70,7 @@ export default async function ConsultantProfilePage() {
                   {i.done ? (
                     <span className="text-slate-400 line-through">{i.label}</span>
                   ) : (
-                    <Link href={i.href} className="font-medium text-slate-700 hover:text-indigo-600">{i.label}</Link>
+                    <Link href={i.href} className="font-medium text-slate-700 hover:text-orange-600">{i.label}</Link>
                   )}
                 </li>
               ))}

@@ -52,7 +52,7 @@ export default async function MyConsultantsPage() {
                       </p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {specialties.map((s) => (
-                          <Badge key={s} color="indigo">{specialtyName(s)}</Badge>
+                          <Badge key={s} color="orange">{specialtyName(s)}</Badge>
                         ))}
                       </div>
                       {(a.reasonSummary || a.note) && (
@@ -63,7 +63,7 @@ export default async function MyConsultantsPage() {
                       )}
                       {a.reasonDetail && (
                         <details className="mt-1">
-                          <summary className="cursor-pointer text-xs font-medium text-indigo-600">See the detailed reasoning</summary>
+                          <summary className="cursor-pointer text-xs font-medium text-orange-600">See the detailed reasoning</summary>
                           <p className="mt-1 whitespace-pre-line rounded-lg bg-slate-50 p-3 text-xs text-slate-600">{a.reasonDetail}</p>
                         </details>
                       )}
@@ -79,7 +79,7 @@ export default async function MyConsultantsPage() {
                         By accepting, you authorize this consultant to view your case details and the documents you&apos;ve shared,
                         under the{" "}
                         {agreement ? (
-                          <a href={`/p/${agreement.slug}`} target="_blank" className="font-medium text-indigo-600 underline">
+                          <a href={`/p/${agreement.slug}`} target="_blank" className="font-medium text-orange-600 underline">
                             {agreement.title}
                           </a>
                         ) : (
@@ -89,7 +89,7 @@ export default async function MyConsultantsPage() {
                       </p>
                       <div className="mt-3 flex gap-2">
                         <form action={respondToAssignmentAction.bind(null, a.id, true)}>
-                          <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                          <button className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700">
                             I agree — connect us
                           </button>
                         </form>

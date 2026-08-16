@@ -33,7 +33,7 @@ export default async function GuestResultPage({
       <div className="flex min-h-screen flex-col">
         <SiteHeader />
         <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-24 text-center">
-          <span className="mx-auto block h-4 w-4 animate-ping rounded-full bg-indigo-500" />
+          <span className="mx-auto block h-4 w-4 animate-ping rounded-full bg-orange-500" />
           <h1 className="mt-6 text-2xl font-extrabold text-slate-900">Analyzing your situation…</h1>
           <p className="mt-2 text-slate-600">
             We&apos;re reading your summary, goal, and documents. This page updates automatically — most analyses finish in
@@ -98,14 +98,14 @@ export default async function GuestResultPage({
           </div>
         )}
 
-        <div className="mt-8 rounded-2xl bg-indigo-600 p-8 text-center text-white">
+        <div className="mt-8 rounded-2xl bg-orange-600 p-8 text-center text-white">
           <h2 className="text-xl font-bold">Unlock your full analysis</h2>
-          <p className="mx-auto mt-1 max-w-md text-sm text-indigo-100">
+          <p className="mx-auto mt-1 max-w-md text-sm text-orange-100">
             Your answers and {c.documents.length > 0 ? `${c.documents.length} uploaded document${c.documents.length > 1 ? "s" : ""}` : "results"} will be attached to your account automatically — nothing is lost.
           </p>
           <div className="mt-5 flex justify-center gap-3">
             <ButtonLink href="/register" variant="secondary" className="px-6 py-3">Create free account</ButtonLink>
-            <Link href="/login" className="inline-flex items-center px-4 text-sm font-medium text-indigo-100 underline hover:text-white">
+            <Link href="/login" className="inline-flex items-center px-4 text-sm font-medium text-orange-100 underline hover:text-white">
               I already have one
             </Link>
           </div>

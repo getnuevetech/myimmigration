@@ -51,7 +51,7 @@ export default async function AdminCasesPage() {
               return (
                 <tr key={c.id} className="hover:bg-slate-50">
                   <td className="max-w-xs px-4 py-3">
-                    <Link href={`/admin/cases/${c.id}`} className="font-medium text-indigo-600 underline">
+                    <Link href={`/admin/cases/${c.id}`} className="font-medium text-orange-600 underline">
                       {c.title.slice(0, 60)}
                     </Link>
                     <p className="font-mono text-xs text-slate-400">{formatCaseNumber(c.number)}</p>

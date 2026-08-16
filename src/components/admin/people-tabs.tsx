@@ -26,7 +26,7 @@ export async function PeopleTabs({ active }: { active: "customers" | "consultant
           }`}
         >
           {t.label}
-          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${active === t.key ? "bg-indigo-100 text-indigo-700" : "bg-slate-300/70 text-slate-600"}`}>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${active === t.key ? "bg-orange-100 text-orange-700" : "bg-slate-300/70 text-slate-600"}`}>
             {t.count}
           </span>
         </Link>

@@ -90,7 +90,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             <CardBody>
               <h2 className="mb-3 text-sm font-semibold text-slate-900">Plan & billing</h2>
               <p className="text-sm text-slate-800">
-                <Badge color={activeSub ? "indigo" : "slate"}>{activeSub?.plan.name ?? "Free / none"}</Badge>
+                <Badge color={activeSub ? "orange" : "slate"}>{activeSub?.plan.name ?? "Free / none"}</Badge>
                 {activeSub?.currentPeriodEnd && (
                   <span className="ml-2 text-xs text-slate-500">renews {activeSub.currentPeriodEnd.toLocaleDateString("en-US")}</span>
                 )}
@@ -99,7 +99,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 <tbody className="divide-y divide-slate-100">
                   {user.transactions.map((t) => (
                     <tr key={t.id}>
-                      <td className="py-1.5 font-mono text-indigo-700">{formatTransactionNumber(t.number)}</td>
+                      <td className="py-1.5 font-mono text-orange-700">{formatTransactionNumber(t.number)}</td>
                       <td className="py-1.5"><Money cents={t.amountCents} /></td>
                       <td className="py-1.5 text-slate-500">{t.plan?.name ?? "—"}</td>
                       <td className="py-1.5 text-right"><Badge color={t.status === "succeeded" ? "green" : t.status === "pending" ? "amber" : "slate"}>{t.status}</Badge></td>
@@ -130,7 +130,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
               <CardBody>
                 <h2 className="mb-3 text-sm font-semibold text-slate-900">Credentials & practice</h2>
                 <div className="mb-2 flex flex-wrap gap-1.5">
-                  <Badge color="indigo">{p.credentialType.toUpperCase().replace("_", " ")}</Badge>
+                  <Badge color="orange">{p.credentialType.toUpperCase().replace("_", " ")}</Badge>
                   {p.credentialNumber && <Badge>#{p.credentialNumber}{p.licenseState ? ` (${p.licenseState})` : ""}</Badge>}
                   {p.ptin && <Badge>license/registration number {p.ptin}</Badge>}
                   {p.efin && <Badge>filing-system ID {p.efin}</Badge>}
@@ -143,9 +143,9 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                   {p.statesServed && <> · States: {p.statesServed}</>}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                  {p.proofDocumentPath && <a href={`/api/admin/files/${p.proofDocumentPath}`} target="_blank" className="text-indigo-600 underline">Credential proof ↗</a>}
-                  {p.photoIdPath && <a href={`/api/admin/files/${p.photoIdPath}`} target="_blank" className="text-indigo-600 underline">Photo ID ↗</a>}
-                  {p.insurancePath && <a href={`/api/admin/files/${p.insurancePath}`} target="_blank" className="text-indigo-600 underline">E&amp;O insurance ↗</a>}
+                  {p.proofDocumentPath && <a href={`/api/admin/files/${p.proofDocumentPath}`} target="_blank" className="text-orange-600 underline">Credential proof ↗</a>}
+                  {p.photoIdPath && <a href={`/api/admin/files/${p.photoIdPath}`} target="_blank" className="text-orange-600 underline">Photo ID ↗</a>}
+                  {p.insurancePath && <a href={`/api/admin/files/${p.insurancePath}`} target="_blank" className="text-orange-600 underline">E&amp;O insurance ↗</a>}
                   <span className={p.attestedCompliance ? "text-emerald-600" : "text-amber-600"}>
                     {p.attestedCompliance ? "Compliance attested ✓" : "No attestation"}
                   </span>
@@ -170,9 +170,9 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </h2>
                 <div className="space-y-2">
                   {user.cases.map((c) => (
-                    <Link key={c.id} href={`/admin/cases/${c.id}`} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm hover:border-indigo-300">
+                    <Link key={c.id} href={`/admin/cases/${c.id}`} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm hover:border-orange-300">
                       <span className="min-w-0 truncate">
-                        <span className="mr-2 font-mono text-xs text-indigo-600">{formatCaseNumber(c.number)}</span>
+                        <span className="mr-2 font-mono text-xs text-orange-600">{formatCaseNumber(c.number)}</span>
                         {c.title.slice(0, 60)}
                       </span>
                       <span className="ml-2 flex shrink-0 items-center gap-2 text-xs text-slate-500">
@@ -216,9 +216,9 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
               <h2 className="mb-3 text-sm font-semibold text-slate-900">Support tickets ({user.tickets.length})</h2>
               <div className="space-y-1.5">
                 {user.tickets.map((t) => (
-                  <Link key={t.id} href={`/admin/tickets/${t.id}`} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm hover:border-indigo-300">
+                  <Link key={t.id} href={`/admin/tickets/${t.id}`} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm hover:border-orange-300">
                     <span className="min-w-0 truncate">
-                      <span className="mr-2 font-mono text-xs text-indigo-600">{formatTicketNumber(t.number)}</span>
+                      <span className="mr-2 font-mono text-xs text-orange-600">{formatTicketNumber(t.number)}</span>
                       {t.subject.slice(0, 50)}
                     </span>
                     <Badge color={t.status === "resolved" ? "green" : t.status === "closed" ? "slate" : "amber"}>{t.status.replace(/_/g, " ")}</Badge>

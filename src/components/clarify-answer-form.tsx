@@ -11,7 +11,7 @@ function Submit() {
     <button
       type="submit"
       disabled={pending}
-      className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+      className="shrink-0 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:opacity-50"
     >
       {pending ? "Updating analysis…" : "Send ↵"}
     </button>
@@ -39,7 +39,7 @@ export function ClarifyAnswerForm({ caseId }: { caseId: string }) {
           name="files"
           multiple
           accept="image/*,.pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.heic,.webp"
-          className="text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-white file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-indigo-700 file:ring-1 file:ring-indigo-200"
+          className="text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-white file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-orange-700 file:ring-1 file:ring-orange-200"
         />
         <span className="text-[11px] text-slate-400">
           Attach documents or photos — they join your document vault and the analysis automatically.

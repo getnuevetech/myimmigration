@@ -1,11 +1,11 @@
 // Dependency-free chart primitives for the admin analytics dashboard.
 
-const PALETTE = ["#4f46e5", "#8b5cf6", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#64748b", "#ec4899"];
+const PALETTE = ["#c2410c", "#8b5cf6", "#ea580c", "#10b981", "#f59e0b", "#ef4444", "#64748b", "#ec4899"];
 
 export function BarSeries({
   data,
   height = 120,
-  color = "#4f46e5",
+  color = "#c2410c",
   valueFormat = (v: number) => String(v),
 }: {
   data: { label: string; value: number }[];

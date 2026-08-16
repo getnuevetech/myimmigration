@@ -16,7 +16,7 @@ function CopyButton({ value }: { value: string }) {
         } catch { /* clipboard unavailable (http) — user can still select the text */ }
       }}
       className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold transition ${
-        copied ? "bg-emerald-100 text-emerald-700" : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+        copied ? "bg-emerald-100 text-emerald-700" : "bg-orange-50 text-orange-600 hover:bg-orange-100"
       }`}
     >
       {copied ? "Copied ✓" : "Copy"}
@@ -27,7 +27,7 @@ function CopyButton({ value }: { value: string }) {
 export function KnownFactsPanel({ facts }: { facts: KnownFact[] }) {
   if (facts.length === 0) return null;
   return (
-    <aside className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-5">
+    <aside className="rounded-2xl border border-orange-100 bg-orange-50/40 p-5">
       <h3 className="text-sm font-bold text-slate-900">What we already know</h3>
       <p className="mt-1 text-xs text-slate-500">
         From your profile and case analysis. Copy anything you need while completing this form.

@@ -24,7 +24,7 @@ export default async function AdminPaymentsPage() {
           </Link>
         }
       />
-      <Card className="mb-6 border-indigo-200">
+      <Card className="mb-6 border-orange-200">
         <CardBody>
           <h2 className="text-sm font-semibold text-slate-900">Stripe webhook endpoint</h2>
           <p className="mt-1 text-xs text-slate-500">
@@ -55,7 +55,7 @@ export default async function AdminPaymentsPage() {
                 <h2 className="font-semibold text-slate-900">{g.name}</h2>
                 <Badge>{g.kind}</Badge>
                 <Badge color={g.mode === "live" ? "green" : "amber"}>{g.mode}</Badge>
-                {g.isDefault && <Badge color="indigo">default</Badge>}
+                {g.isDefault && <Badge color="orange">default</Badge>}
                 {!g.isActive && <Badge color="red">inactive</Badge>}
               </div>
               <GatewayForm

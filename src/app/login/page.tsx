@@ -31,7 +31,7 @@ export default async function LoginPage() {
         </div>
         <p className="mt-4 text-center text-sm text-slate-500">
           New here?{" "}
-          <Link href="/register" className="font-medium text-indigo-600 underline">Create a free account</Link>
+          <Link href="/register" className="font-medium text-orange-600 underline">Create a free account</Link>
         </p>
       </main>
     </div>

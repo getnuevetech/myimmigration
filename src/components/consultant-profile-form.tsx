@@ -27,14 +27,14 @@ export function ConsultantProfileForm({
         <div className="flex items-center gap-4">
           {user.avatarPath ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src="/api/avatar" alt="Profile" className="h-16 w-16 rounded-full object-cover ring-2 ring-indigo-100" />
+            <img src="/api/avatar" alt="Profile" className="h-16 w-16 rounded-full object-cover ring-2 ring-orange-100" />
           ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-xl font-bold text-indigo-700">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 text-xl font-bold text-orange-700">
               {user.firstName?.[0]?.toUpperCase() ?? user.email[0].toUpperCase()}
             </div>
           )}
           <Field label="Profile picture" hint="Shown to clients you're matched with.">
-            <input type="file" name="avatar" accept="image/*" className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:text-indigo-700" />
+            <input type="file" name="avatar" accept="image/*" className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1.5 file:text-sm file:text-orange-700" />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">

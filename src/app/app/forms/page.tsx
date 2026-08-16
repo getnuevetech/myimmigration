@@ -42,7 +42,7 @@ export default async function FormsPage() {
                   <div className="mt-3 flex items-center justify-between">
                     <Link
                       href={`/app/forms/fill/${s.id}${s.status === "completed" ? "?done=1" : ""}`}
-                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-800"
+                      className="text-sm font-semibold text-orange-600 hover:text-orange-800"
                     >
                       {s.status === "completed" ? "View completed form →" : "Continue →"}
                     </Link>
@@ -65,7 +65,7 @@ export default async function FormsPage() {
           {templates.map((t) => {
             const steps = JSON.parse(t.stepsJson || "[]") as unknown[];
             return (
-              <Card key={t.id} className="transition hover:border-indigo-300">
+              <Card key={t.id} className="transition hover:border-orange-300">
                 <CardBody>
                   <div className="flex items-center justify-between">
                     <p className="text-lg font-bold text-slate-900">Form {t.formNumber}</p>
@@ -74,7 +74,7 @@ export default async function FormsPage() {
                   <p className="font-medium text-slate-700">{t.title}</p>
                   <p className="mt-1 text-sm text-slate-500">{t.description}</p>
                   <form action={startFormAction.bind(null, t.id)} className="mt-4">
-                    <button className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                    <button className="w-full rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700">
                       Start — it&apos;s like a quiz →
                     </button>
                   </form>

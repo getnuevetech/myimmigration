@@ -58,7 +58,7 @@ export default async function NoticesPage() {
                       <ol className="mt-2 space-y-2">
                         {steps.map((s, i) => (
                           <li key={i} className="flex gap-3 text-sm">
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-700">
                               {i + 1}
                             </span>
                             <div>

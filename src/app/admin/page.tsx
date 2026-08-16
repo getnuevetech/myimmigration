@@ -62,7 +62,7 @@ export default async function AdminOverviewPage() {
         </CardBody></Card>
         <Card><CardBody>
           <h3 className="mb-2 text-sm font-semibold text-slate-900">Cases opened — last 30 days</h3>
-          <BarSeries data={a.cases.caseSeries} color="#0ea5e9" />
+          <BarSeries data={a.cases.caseSeries} color="#ea580c" />
         </CardBody></Card>
         <Card><CardBody>
           <h3 className="mb-2 text-sm font-semibold text-slate-900">Revenue — last 30 days ($)</h3>
@@ -179,7 +179,7 @@ export default async function AdminOverviewPage() {
                       <Badge color={n.kind === "consultant_needed" ? "amber" : "slate"}>{n.kind.replace(/_/g, " ")}</Badge>
                     </div>
                     <p className="text-sm text-slate-500">{n.body}</p>
-                    {n.link && <Link href={n.link} className="text-sm font-medium text-indigo-600 underline">Open →</Link>}
+                    {n.link && <Link href={n.link} className="text-sm font-medium text-orange-600 underline">Open →</Link>}
                   </div>
                   <form action={markNotificationReadAction.bind(null, n.id)}>
                     <button className="text-xs text-slate-400 hover:text-slate-700">Dismiss</button>

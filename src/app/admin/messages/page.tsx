@@ -65,7 +65,7 @@ export default async function AdminMessagesPage() {
                         <span className="font-semibold text-slate-900">{t.name}</span>
                         <Badge>{t.key}</Badge>
                         {t.kind === "scheduled" && t.offsetDays !== null && (
-                          <Badge color="indigo">
+                          <Badge color="orange">
                             {t.offsetDays < 0
                               ? `${-t.offsetDays} day${-t.offsetDays === 1 ? "" : "s"} before expiration`
                               : t.offsetDays === 0

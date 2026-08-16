@@ -44,7 +44,7 @@ export default async function BillingPage({
         </div>
       )}
       {pending && !justActivated && (
-        <div className="mb-6 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Payment received — your plan activates as soon as the payment processor confirms it (usually within a
           minute). Refresh this page shortly.
         </div>

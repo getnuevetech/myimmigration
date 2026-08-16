@@ -17,16 +17,34 @@ export function HeroCarousel({ images, intervalMs = 5000 }: { images: string[]; 
 
   return (
     <div className="relative">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-3xl shadow-2xl ring-1 ring-slate-200">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50 to-stone-100 shadow-2xl ring-1 ring-orange-100">
         {images.map((src, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             key={src}
             src={src}
             alt="MyImmigration makes immigration matters feel simple"
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${i === index ? "opacity-100" : "opacity-0"}`}
+            className={`absolute inset-0 h-full w-full object-cover opacity-30 mix-blend-multiply transition-opacity duration-1000 ${i === index ? "opacity-100" : "opacity-0"}`}
           />
         ))}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-orange-50/80 to-orange-100/70" />
+        <div className="absolute inset-x-8 top-8 rounded-3xl border border-orange-100 bg-white/90 p-5 shadow-xl backdrop-blur">
+          <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-500">
+            USCIS case file
+          </p>
+          <div className="mt-4 space-y-3">
+            {[
+              ["I-797C receipt", "Receipt number detected"],
+              ["RFE deadline", "Evidence checklist ready"],
+              ["I-485 packet", "Timeline cross-check"],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <p className="text-sm font-semibold text-slate-900">{title}</p>
+                <p className="text-xs text-slate-500">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Floating product chips for a software feel */}
@@ -34,17 +52,17 @@ export function HeroCarousel({ images, intervalMs = 5000 }: { images: string[]; 
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Case readiness</p>
         <div className="mt-1 flex items-center gap-2">
           <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200">
-            <div className="h-full w-[72%] rounded-full bg-emerald-500" />
+            <div className="h-full w-[72%] rounded-full bg-orange-600" />
           </div>
           <span className="text-xs font-bold text-slate-800">72%</span>
         </div>
       </div>
       <div className="absolute -right-4 bottom-16 hidden rounded-2xl bg-white px-4 py-3 shadow-lg ring-1 ring-slate-200 sm:block">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-700">✓</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-[10px] font-bold text-orange-700">✓</span>
           Missing evidence checklist created
         </p>
-        <p className="mt-0.5 text-[10px] text-slate-400">Case TOM-000123 · verified against case record</p>
+        <p className="mt-0.5 text-[10px] text-slate-400">Case IMM-000123 · USCIS receipt found</p>
       </div>
 
       {images.length > 1 && (
@@ -54,7 +72,7 @@ export function HeroCarousel({ images, intervalMs = 5000 }: { images: string[]; 
               key={i}
               onClick={() => setIndex(i)}
               aria-label={`Show image ${i + 1}`}
-              className={`h-2 rounded-full transition-all ${i === index ? "w-6 bg-indigo-600" : "w-2 bg-slate-300 hover:bg-slate-400"}`}
+              className={`h-2 rounded-full transition-all ${i === index ? "w-6 bg-orange-600" : "w-2 bg-slate-300 hover:bg-slate-400"}`}
             />
           ))}
         </div>

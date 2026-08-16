@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
 // Editorial headline helper: words wrapped in *asterisks* render as italic
-// serif accents in brand blue. When no markers are present, the final word is
+// serif accents in brand orange. When no markers are present, the final word is
 // accented automatically — so admin-edited copy always gets the treatment.
-export function Accent({ text, accentClass = "font-serif italic text-indigo-600" }: { text: string; accentClass?: string }) {
+export function Accent({ text, accentClass = "font-serif italic text-orange-600" }: { text: string; accentClass?: string }) {
   let source = text;
   if (!/\*[^*]+\*/.test(source)) {
     const match = source.match(/^([\s\S]*?)(\S+?)([.!?…]*)$/);
@@ -25,8 +25,8 @@ export function Accent({ text, accentClass = "font-serif italic text-indigo-600"
 // Small uppercase kicker with the leading dash, as in the reference design.
 export function Kicker({ children, light = false }: { children: ReactNode; light?: boolean }) {
   return (
-    <p className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.25em] ${light ? "text-indigo-300" : "text-indigo-600"}`}>
-      <span className={`inline-block h-px w-8 ${light ? "bg-indigo-300" : "bg-indigo-600"}`} />
+    <p className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.25em] ${light ? "text-orange-300" : "text-orange-600"}`}>
+      <span className={`inline-block h-px w-8 ${light ? "bg-orange-300" : "bg-orange-600"}`} />
       {children}
     </p>
   );

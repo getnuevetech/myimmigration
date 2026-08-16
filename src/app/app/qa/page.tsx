@@ -27,7 +27,7 @@ export default async function QaPage() {
             {threads.length === 0 && <p className="text-sm text-slate-400">No conversations yet.</p>}
             {threads.map((t) => (
               <Link key={t.id} href={`/app/qa/${t.id}`} className="block">
-                <Card className="transition hover:border-indigo-300">
+                <Card className="transition hover:border-orange-300">
                   <CardBody className="!p-3">
                     <p className="truncate text-sm font-medium text-slate-800">{t.title}</p>
                     <p className="text-xs text-slate-400">{t.createdAt.toLocaleDateString("en-US")}</p>

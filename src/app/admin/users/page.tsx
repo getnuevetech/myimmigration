@@ -48,13 +48,13 @@ export default async function AdminCustomersPage() {
             {users.map((u) => (
               <tr key={u.id}>
                 <td className="px-4 py-3">
-                  <Link href={`/admin/users/${u.id}`} className="font-medium text-indigo-600 underline">
+                  <Link href={`/admin/users/${u.id}`} className="font-medium text-orange-600 underline">
                     {`${u.firstName} ${u.lastName}`.trim() || u.email}
                   </Link>
                   <p className="text-xs text-slate-500">{u.email}{u.phone ? ` · ${u.phone}` : ""}</p>
                 </td>
                 <td className="px-4 py-3">
-                  <Badge color={u.subscriptions[0] ? "indigo" : "slate"}>{u.subscriptions[0]?.plan.name ?? "Free"}</Badge>
+                  <Badge color={u.subscriptions[0] ? "orange" : "slate"}>{u.subscriptions[0]?.plan.name ?? "Free"}</Badge>
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-500">
                   {u._count.cases} cases · {u._count.documents} docs

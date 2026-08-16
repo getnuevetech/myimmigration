@@ -3,7 +3,7 @@ import { getVisibleComments, getComposerCheckbox, type ViewerRole } from "@/lib/
 import { CommentComposer } from "./comment-composer";
 
 const roleBadge: Record<string, { label: string; color: string }> = {
-  customer: { label: "Customer", color: "indigo" },
+  customer: { label: "Customer", color: "orange" },
   consultant: { label: "Consultant", color: "amber" },
   admin: { label: "Support team", color: "blue" },
 };
@@ -46,7 +46,7 @@ export async function CaseComments({ caseId, viewer }: { caseId: string; viewer:
                           <img
                             src={`/api/files/${att.id}`}
                             alt={att.fileName}
-                            className="h-24 w-24 rounded-lg object-cover ring-1 ring-slate-200 transition hover:ring-indigo-400"
+                            className="h-24 w-24 rounded-lg object-cover ring-1 ring-slate-200 transition hover:ring-orange-400"
                           />
                         </a>
                       ) : (
@@ -54,7 +54,7 @@ export async function CaseComments({ caseId, viewer }: { caseId: string; viewer:
                           key={att.id}
                           href={`/api/files/${att.id}`}
                           target="_blank"
-                          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50"
                         >
                           📎 {att.fileName}
                         </a>

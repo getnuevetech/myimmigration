@@ -144,7 +144,7 @@ export function AttachmentList({
           key={a.id}
           href={`/api/tickets/files/${a.id}`}
           target="_blank"
-          className={`block truncate text-xs underline ${light ? "text-indigo-100" : "text-indigo-600"}`}
+          className={`block truncate text-xs underline ${light ? "text-orange-100" : "text-orange-600"}`}
         >
           📎 {a.fileName}
         </a>

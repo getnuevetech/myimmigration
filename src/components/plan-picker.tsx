@@ -60,7 +60,7 @@ export function PlanPicker({
           return (
             <div
               key={plan.id}
-              className={`relative flex flex-col rounded-2xl border bg-white p-5 shadow-sm ${onSale ? "border-emerald-400 ring-1 ring-emerald-400" : plan.badge ? "border-indigo-400 ring-1 ring-indigo-400" : "border-slate-200"}`}
+              className={`relative flex flex-col rounded-2xl border bg-white p-5 shadow-sm ${onSale ? "border-emerald-400 ring-1 ring-emerald-400" : plan.badge ? "border-orange-400 ring-1 ring-orange-400" : "border-slate-200"}`}
             >
               {onSale && (
                 <span className="absolute -top-3 left-4 rounded-full bg-emerald-600 px-3 py-0.5 text-xs font-bold text-white shadow">
@@ -70,7 +70,7 @@ export function PlanPicker({
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-slate-900">{plan.name}</h3>
                 {plan.badge && (
-                  <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700">{plan.badge}</span>
+                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">{plan.badge}</span>
                 )}
               </div>
               <p className="mt-1 text-sm text-slate-500">{plan.description}</p>

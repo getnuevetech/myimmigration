@@ -47,7 +47,7 @@ export default async function PipelinesPage() {
                   <details key={step.id} className="rounded-xl border border-slate-200">
                     <summary className="flex cursor-pointer flex-wrap items-center gap-2 px-4 py-3 text-sm">
                       <span className="font-semibold text-slate-800">#{step.sortOrder}</span>
-                      <Badge color="indigo">{step.role.replace(/_/g, " ")}</Badge>
+                      <Badge color="orange">{step.role.replace(/_/g, " ")}</Badge>
                       <span className="text-slate-600">{step.provider.name}</span>
                       {!step.isEnabled && <Badge>disabled</Badge>}
                     </summary>
@@ -71,7 +71,7 @@ export default async function PipelinesPage() {
                   </details>
                 ))}
                 <details className="rounded-xl border border-dashed border-slate-300">
-                  <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-indigo-600">+ Add a model to this stage</summary>
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-orange-600">+ Add a model to this stage</summary>
                   <div className="border-t border-slate-100 p-4">
                     <PipelineStepForm stageKey={stage.key} providers={providers} step={null} />
                   </div>

@@ -105,7 +105,7 @@ export default async function AdminAssignmentsPage({
                 {a.reasonSummary && <p className="mt-1 text-xs text-slate-600">{a.reasonSummary}</p>}
                 {a.reasonDetail && (
                   <details className="mt-0.5">
-                    <summary className="cursor-pointer text-xs font-medium text-indigo-600">Detailed reasoning</summary>
+                    <summary className="cursor-pointer text-xs font-medium text-orange-600">Detailed reasoning</summary>
                     <p className="mt-1 whitespace-pre-line rounded-lg bg-slate-50 p-2 text-xs text-slate-600">{a.reasonDetail}</p>
                   </details>
                 )}

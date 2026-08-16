@@ -15,7 +15,7 @@ export function AutoAssignToggle({ enabled }: { enabled: boolean }) {
             name="setting:consultants.auto_assign_enabled"
             value="true"
             defaultChecked={enabled}
-            className="h-5 w-5 rounded border-slate-300 text-indigo-600"
+            className="h-5 w-5 rounded border-slate-300 text-orange-600"
           />
           Enable AI auto-assignment of consultants
         </label>

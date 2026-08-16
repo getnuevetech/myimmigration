@@ -13,7 +13,7 @@ export function LoginForm() {
         <input name="password" type="password" required placeholder="Password" className={inputClass} />
         <SubmitButton className="w-full py-2.5">Sign in</SubmitButton>
         <p className="text-center">
-          <Link href="/forgot-password" className="text-sm font-medium text-indigo-600 hover:underline">
+          <Link href="/forgot-password" className="text-sm font-medium text-orange-600 hover:underline">
             Forgot your password?
           </Link>
         </p>
@@ -71,11 +71,11 @@ export function RegisterForm({
         <input name="address" placeholder="Address (optional — you can add it later)" className={inputClass} />
         <input name="password" type="password" required placeholder="Password (8+ characters)" className={inputClass} />
         <label className="flex items-start gap-2 text-sm text-slate-600">
-          <input type="checkbox" name="agree" required className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600" />
+          <input type="checkbox" name="agree" required className="mt-1 h-4 w-4 rounded border-slate-300 text-orange-600" />
           <span>
             I have read and agree to the{" "}
             {agreementSlug ? (
-              <Link href={`/p/${agreementSlug}`} target="_blank" className="font-medium text-indigo-600 underline">
+              <Link href={`/p/${agreementSlug}`} target="_blank" className="font-medium text-orange-600 underline">
                 {agreementTitle}
               </Link>
             ) : (

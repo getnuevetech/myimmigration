@@ -22,14 +22,14 @@ export default async function AdminSettingsPage() {
         subtitle="Every variable the app uses — branding, URLs, OAuth keys, analysis parameters — lives here. Nothing is hardcoded."
       />
 
-      <Card className="mb-6 border-indigo-200">
+      <Card className="mb-6 border-orange-200">
         <CardBody>
           <h2 className="text-sm font-semibold text-slate-900">
             Google sign-in setup {googleConfigured ? "· configured" : "· not configured"}
           </h2>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-slate-600">
             <li>
-              In <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="font-medium text-indigo-600 underline">Google Cloud Console → APIs &amp; Services → Credentials</a>,
+              In <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="font-medium text-orange-600 underline">Google Cloud Console → APIs &amp; Services → Credentials</a>,
               create an <strong>OAuth client ID</strong> (type: Web application).
             </li>
             <li>

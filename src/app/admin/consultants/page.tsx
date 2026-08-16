@@ -89,26 +89,26 @@ export default async function AdminConsultantsPage() {
                           {p.isBusiness && p.businessName && ` · ${p.businessName}${p.ein ? ` (EIN ${p.ein})` : ""}`}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {specialties.map((s) => <Badge key={s} color="indigo">{specialtyName(s)}</Badge>)}
+                          {specialties.map((s) => <Badge key={s} color="orange">{specialtyName(s)}</Badge>)}
                           {p.statesServed && <Badge>States: {p.statesServed}</Badge>}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-3 text-xs">
                           {p.proofDocumentPath ? (
-                            <a href={`/api/admin/files/${p.proofDocumentPath}`} target="_blank" className="font-medium text-indigo-600 underline">
+                            <a href={`/api/admin/files/${p.proofDocumentPath}`} target="_blank" className="font-medium text-orange-600 underline">
                               Credential proof ↗
                             </a>
                           ) : (
                             <span className="text-amber-600">No credential proof</span>
                           )}
                           {p.photoIdPath ? (
-                            <a href={`/api/admin/files/${p.photoIdPath}`} target="_blank" className="font-medium text-indigo-600 underline">
+                            <a href={`/api/admin/files/${p.photoIdPath}`} target="_blank" className="font-medium text-orange-600 underline">
                               Photo ID ↗
                             </a>
                           ) : (
                             <span className="text-slate-400">No photo ID</span>
                           )}
                           {p.insurancePath ? (
-                            <a href={`/api/admin/files/${p.insurancePath}`} target="_blank" className="font-medium text-indigo-600 underline">
+                            <a href={`/api/admin/files/${p.insurancePath}`} target="_blank" className="font-medium text-orange-600 underline">
                               E&amp;O insurance ↗
                             </a>
                           ) : (
@@ -183,7 +183,7 @@ export default async function AdminConsultantsPage() {
               return (
                 <tr key={a.id}>
                   <td className="px-4 py-3">
-                    <Link href={`/admin/users/${a.id}`} className="font-medium text-indigo-600 underline">
+                    <Link href={`/admin/users/${a.id}`} className="font-medium text-orange-600 underline">
                       {`${a.firstName} ${a.lastName}`.trim() || a.email}
                     </Link>
                     <p className="text-xs text-slate-500">{a.email}</p>
@@ -222,9 +222,9 @@ export default async function AdminConsultantsPage() {
 
       <p className="mt-4 text-sm text-slate-500">
         Automated approval rules live under{" "}
-        <Link href="/admin/consultant-approval" className="text-indigo-600 underline">immigration professional auto-approval</Link>. Assign
+        <Link href="/admin/consultant-approval" className="text-orange-600 underline">immigration professional auto-approval</Link>. Assign
         approved consultants to customers from the{" "}
-        <Link href="/admin/assignments" className="text-indigo-600 underline">Assignments</Link> page — connections
+        <Link href="/admin/assignments" className="text-orange-600 underline">Assignments</Link> page — connections
         require both parties&apos; consent.
       </p>
     </div>

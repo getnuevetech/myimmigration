@@ -55,7 +55,7 @@ export default async function AdminTicketDetailPage({
       )}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Badge color={ticket.status === "resolved" ? "green" : ticket.status === "in_progress" ? "blue" : "amber"}>{ticket.status.replace(/_/g, " ")}</Badge>
-        <Badge color={ticket.category === "tech_support" ? "blue" : "indigo"}>
+        <Badge color={ticket.category === "tech_support" ? "blue" : "orange"}>
           {ticket.category === "tech_support" ? "Tech support" : "Customer service"}
         </Badge>
         <Badge color={ticket.priority === "urgent" ? "red" : ticket.priority === "high" ? "amber" : "slate"}>{ticket.priority}</Badge>
@@ -125,14 +125,14 @@ export default async function AdminTicketDetailPage({
                     m.internal
                       ? "border border-amber-300 bg-amber-50 text-amber-900"
                       : m.fromStaff
-                        ? "bg-indigo-600 text-white"
+                        ? "bg-orange-600 text-white"
                         : "bg-slate-100 text-slate-800"
                   }`}
                 >
                   {m.internal && <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-amber-600">Internal note</p>}
                   <p className="whitespace-pre-wrap">{m.body}</p>
                   <AttachmentList attachments={m.attachments} light={m.fromStaff && !m.internal} />
-                  <p className={`mt-1 text-[10px] ${m.internal ? "text-amber-500" : m.fromStaff ? "text-indigo-200" : "text-slate-400"}`}>
+                  <p className={`mt-1 text-[10px] ${m.internal ? "text-amber-500" : m.fromStaff ? "text-orange-200" : "text-slate-400"}`}>
                     {m.fromStaff ? "Support team" : "User"} · {m.createdAt.toLocaleString("en-US")}
                   </p>
                 </div>
