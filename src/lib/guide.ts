@@ -23,10 +23,6 @@ const STEP_TIPS: Record<string, string> = {
     "Fastest way to verify your USCIS case: sign in at my.uscis.gov or use the official USCIS case-status tool with your receipt number. Save any notices, receipt details, filing dates, or status updates you can access, then upload them here.",
   GET_ACCOUNT_RECORD:
     "Sign in at my.uscis.gov and collect the receipt number, form type, filing date, latest status, and any available notice PDFs. Upload those records to your case documents here.",
-  GET_TRANSCRIPT:
-    "This older step means we need your USCIS case record. Sign in at my.uscis.gov or use the official USCIS case-status tool, then upload any receipt details, status updates, or notices you can access.",
-  GET_ACCOUNT_TRANSCRIPT:
-    "This step means we need your USCIS online account record. Sign in at my.uscis.gov, save any available case details or notices, and upload them to your case documents here.",
   UPLOAD_DOCUMENTS:
     "Add your USCIS notices, receipts, immigration forms, identity records, and supporting evidence. Photos from your phone work fine. The more you add, the more precisely we can verify dates, receipt numbers, and deadlines.",
   REVIEW_ANALYSIS:
@@ -35,8 +31,6 @@ const STEP_TIPS: Record<string, string> = {
     "Use Response letters → New letter. Describe what you want to say in plain English; we draft a professional letter you can edit and print. Mail it before your deadline (certified mail with return receipt is safest).",
   COMPLETE_FORM_I485:
     "Open USCIS forms → Form I-485 and answer the guided questions. Review the draft against the official USCIS instructions before filing.",
-  COMPLETE_FORM_9465:
-    "This older step maps to USCIS forms now. Open USCIS forms and choose the form that matches your case, such as I-485 for adjustment of status.",
 };
 
 type Snapshot = {
@@ -84,7 +78,7 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
 
 function detectIntent(question: string): "new_case" | "tech" | "service" | null {
   const q = question.toLowerCase();
-  if (/(new (case|situation|problem|issue)|another (case|problem|letter)|also got|just received|different (year|issue)|open a case|start a case)/.test(q)) return "new_case";
+  if (/(new (case|situation|problem|issue)|another (case|situation|matter|problem|letter)|also got|just received|different (case|situation|matter)|open a case|start a case)/.test(q)) return "new_case";
   if (/(bug|error|broken|crash|can'?t (log|sign) ?in|password|upload(ing)? (fail|isn|not)|page (won'?t|not) load|payment failed|charge[d]? twice|site .*(slow|down)|glitch)/.test(q)) return "tech";
   if (/(case update me|cancel (my )?subscription|billing (problem|issue)|complain|speak (to|with) (someone|human|agent|person)|customer service|talk to a human)/.test(q)) return "service";
   return null;
@@ -166,7 +160,9 @@ export async function guideRespond(
     };
   }
 
-  // AI coaching: try each configured model in order (up to all five) until one answers.
+  // AI coaching: run each configured model in order. Later providers see prior
+  // drafts and produce a refined final answer, so the guide benefits from all
+  // available models while still falling back deterministically when needed.
   const stage = await db.pipelineStage.findUnique({
     where: { key: STAGE_KEYS.GUIDE },
     include: {
@@ -175,12 +171,16 @@ export async function guideRespond(
   });
   const steps = (stage?.isEnabled ? stage.steps : []).filter((s) => s.provider.isEnabled && s.provider.apiKey);
   const convo = history.map((m) => `${m.role === "user" ? "User" : "Guide"}: ${m.content}`).join("\n");
+  const drafts: string[] = [];
   for (const step of steps) {
     try {
-      const prompt = step.promptTemplate.replace("{{context}}", snapshot.text).replace("{{input}}", convo);
+      const priorDrafts = drafts.length
+        ? `\n\nPRIOR GUIDE DRAFTS TO IMPROVE (do not mention them; return one final reply under 150 words):\n${drafts.map((draft, i) => `[Draft ${i + 1}]\n${draft}`).join("\n\n")}`
+        : "";
+      const prompt = step.promptTemplate.replace("{{context}}", snapshot.text).replace("{{input}}", `${convo}${priorDrafts}`);
       const result = await callProvider(step.provider, [{ role: "user", content: prompt }]);
       if (result.text.trim()) {
-        return { message: result.text.trim(), actions: baseActions() };
+        drafts.push(result.text.trim());
       }
     } catch (err) {
       const { logSystem } = await import("./syslog");
@@ -188,14 +188,18 @@ export async function guideRespond(
       // fall through to the next configured model
     }
   }
+  if (drafts.length > 0) return { message: drafts[drafts.length - 1], actions: baseActions() };
 
   // Deterministic fallback when no AI is reachable: coach the current step.
   const tip = snapshot.currentStep
     ? STEP_TIPS[snapshot.currentStep.actionKey.toUpperCase()] ??
       `Your current step is "${snapshot.currentStep.title}" — open your case and it will tell you exactly what completes it.`
     : "Start by creating a case — describe what happened and your goal, and we'll build your step-by-step plan.";
+  const statusHint = /(status|receipt|rfe|notice|deadline|interview|biometrics)/i.test(lastQuestion)
+    ? " If your question is about status, an RFE, a notice, or a deadline, upload the USCIS notice or receipt number so the case page can verify it."
+    : "";
   return {
-    message: `Here's what I can tell you right now: ${tip}\n\nIf that doesn't answer your question, the FAQ covers the most common ones, or I can connect you with our customer service team.`,
+    message: `Here's what I can tell you right now: ${tip}${statusHint}\n\nIf that doesn't answer your question, the FAQ covers the most common ones, or I can connect you with our customer service team.`,
     actions: snapshot.currentStep
       ? [{ type: "link", label: "Open my case", href: `/app/cases/${snapshot.currentStep.caseId}` }, ...baseActions()]
       : [{ type: "link", label: "Start a case", href: "/app/cases/new" }, ...baseActions()],

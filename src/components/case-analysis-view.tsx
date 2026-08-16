@@ -54,13 +54,14 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     switch (actionKey.toUpperCase()) {
       case "GET_CASE_RECORD":
       case "GET_ACCOUNT_RECORD":
-      case "GET_TRANSCRIPT":
-      case "GET_ACCOUNT_TRANSCRIPT":
       case "UPLOAD_NOTICE":
         return { label: "Upload USCIS records", href: "/app/documents" };
+      case "ADD_CASE_DETAILS":
+        return { label: "Answer case questions", href: "#clarify" };
+      case "PREPARE_APPOINTMENT":
+        return { label: "Upload appointment notice", href: "/app/documents" };
       case "DRAFT_LETTER":
         return { label: "Draft my letter", href: "/app/letters/new" };
-      case "COMPLETE_FORM_9465":
       case "COMPLETE_FORM_I485":
       case "PREPARE_FORM":
         return { label: "Open USCIS forms", href: "/app/forms" };
@@ -83,7 +84,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       wantDoc("case_record", `USCIS case record or receipt${yearHint ? ` (${yearHint})` : ""}`, "Shows receipt number, form type, filing date, and current case status.");
       wantDoc("form", `Immigration filing packet${yearHint ? ` for ${yearHint}` : ""}`, "Shows what was filed, for comparison against USCIS records.");
     }
-    if (issue.issueType === "uscis_notice_response" || issue.issueType === "notice_response") {
+    if (issue.issueType === "uscis_notice_response") {
       wantDoc("notice", "The USCIS notice or letter itself", "A phone photo is fine — the receipt number, notice type, and deadline are printed on it.");
     }
     if (issue.issueType === "missing_evidence") {
@@ -107,7 +108,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           : "";
         const notices = Array.isArray(merged.notices_received) ? (merged.notices_received as unknown[]).join(", ") : "";
         const parts = [
-          years && `case year(s) ${years}`,
+          years && `timeline year(s) ${years}`,
           notices && `notice ${notices}`,
           merged.current_status && `current status ${String(merged.current_status)}`,
           merged.receipt_numbers && `receipt numbers ${(merged.receipt_numbers as unknown[]).join(", ")}`,
@@ -331,10 +332,10 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                                   {stepCta(issue.nextAction)!.label} →
                                 </a>
                               )}
-                              {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD", "GET_TRANSCRIPT", "GET_ACCOUNT_TRANSCRIPT"].includes(issue.nextAction.toUpperCase()) && (
+                              {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD"].includes(issue.nextAction.toUpperCase()) && (
                                 <>
-                                  <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-lime-200 bg-white px-3 py-1.5 text-xs font-medium text-lime-700 hover:bg-lime-50">
-                                    Open USCIS sign-up ↗
+                                  <a href="/app/uscis-account" className="rounded-lg border border-lime-200 bg-white px-3 py-1.5 text-xs font-medium text-lime-700 hover:bg-lime-50">
+                                    Open USCIS account guide →
                                   </a>
                                   <InlineUpload caseId={c.id} docKind="case_record" label="Have it? Upload case record" />
                                 </>
@@ -414,7 +415,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                                 Re-run the analysis now →
                               </button>
                             </form>
-                          ) : ["COMPLETE_FORM_9465", "COMPLETE_FORM_I485"].includes(step.actionKey.toUpperCase()) && formI485 ? (
+                          ) : step.actionKey.toUpperCase() === "COMPLETE_FORM_I485" && formI485 ? (
                             <form action={startFormAction.bind(null, formI485.id)}>
                               <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
                                 Start the USCIS form →
@@ -427,9 +428,9 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                               {stepCta(step.actionKey)!.label} →
                             </a>
                           ) : null}
-                          {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD", "GET_TRANSCRIPT", "GET_ACCOUNT_TRANSCRIPT"].includes(step.actionKey.toUpperCase()) && (
-                            <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                              Open USCIS sign-up ↗
+                          {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD"].includes(step.actionKey.toUpperCase()) && (
+                            <a href="/app/uscis-account" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                              Open USCIS account guide →
                             </a>
                           )}
                         </div>

@@ -21,9 +21,8 @@ export default async function ConsultantDashboard({
   const profile = await db.consultantProfile.findUnique({ where: { userId: user.id } });
   const mySpecialties: string[] = profile ? JSON.parse(profile.specialties || "[]") : [];
   const credentialName = (type: string) => {
-    if (type === "attorney" || type === "cpa") return "Immigration attorney";
-    if (type === "accredited_representative" || type === "ea") return "Accredited representative";
-    if (type === "tax_consultant") return "Immigration consultant";
+    if (type === "attorney") return "Immigration attorney";
+    if (type === "accredited_representative") return "Accredited representative";
     return type.replace(/_/g, " ");
   };
   const { consultantCompleteness } = await import("@/lib/consultant-completeness");

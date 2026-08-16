@@ -389,7 +389,7 @@ model ConsensusResult {
 model Issue {
   id             String  @id @default(cuid())
   caseId         String
-  issueType      String  @default("general") // uscis_notice_response | deadline_tracking | case_timeline | missing_evidence | status_question | professional_review | other
+  issueType      String  @default("general") // uscis_notice_response | deadline_tracking | case_timeline | missing_evidence | status_question | case_update_discrepancy | fee_or_payment_issue | missing_filing | appointment_preparation | case_organization | professional_review | other
   caseYear       Int?
   title          String
   description    String  @default("")

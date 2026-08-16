@@ -20,7 +20,6 @@ const ISSUE_SPECIALTY_MAP: Record<string, string[]> = {
   case_update_discrepancy: ["notices"],
   fee_or_payment_issue: ["notices"],
   missing_filing: ["notices"],
-  notice_response: ["notices", "rfe"],
   other: ["notices"],
 };
 
@@ -64,7 +63,7 @@ export async function rankConsultantsForCase(caseId: string): Promise<Candidate[
     let score = 0;
     for (const s of specialties) if (wantedSpecialties.has(s)) score += 3;
     score += Math.min(p.yearsExperience, 10) * 0.3;
-    if (["attorney", "accredited_representative", "cpa", "ea"].includes(p.credentialType)) score += 1.5;
+    if (["attorney", "accredited_representative"].includes(p.credentialType)) score += 1.5;
     for (const pc of pastCases) {
       if (wantedSpecialties.has(pc.category) || issueTypes.includes(pc.category)) score += 1;
       else score += 0.2; // any track record counts a little
@@ -101,8 +100,8 @@ function caseSummaryText(c: { title: string; situation: string; goal: string }, 
 }
 
 export function credentialLabel(type: string): string {
-  if (type === "attorney" || type === "cpa") return "immigration attorney";
-  if (type === "accredited_representative" || type === "ea") return "accredited representative";
+  if (type === "attorney") return "immigration attorney";
+  if (type === "accredited_representative") return "accredited representative";
   return "Immigration Consultant";
 }
 
@@ -116,7 +115,6 @@ const ISSUE_TYPE_PHRASES: Record<string, string> = {
   case_update_discrepancy: "a case status discrepancy",
   fee_or_payment_issue: "an agency fee or payment issue",
   missing_filing: "an unfiled immigration filing",
-  notice_response: "a USCIS notice that needs a response",
   other: "a general immigration issue",
 };
 

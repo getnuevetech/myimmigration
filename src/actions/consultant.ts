@@ -75,8 +75,8 @@ export async function consultantOnboardingAction(_prev: ActionState, formData: F
   const agree = formData.get("agree") === "on";
 
   if (!agree) return { error: "You must accept the consultant agreement." };
-  const isAttorney = credentialType === "attorney" || credentialType === "cpa";
-  const isAccreditedRepresentative = credentialType === "accredited_representative" || credentialType === "ea";
+  const isAttorney = credentialType === "attorney";
+  const isAccreditedRepresentative = credentialType === "accredited_representative";
   const needsCredentialProof = isAttorney || isAccreditedRepresentative;
 
   if (needsCredentialProof && !credentialNumber) {
