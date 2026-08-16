@@ -40,9 +40,8 @@ export default async function AdminAssignmentsPage({
 
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
   const credentialName = (type: string | undefined) => {
-    if (type === "attorney" || type === "cpa") return "Immigration attorney";
-    if (type === "accredited_representative" || type === "ea") return "Accredited representative";
-    if (type === "tax_consultant") return "Immigration consultant";
+    if (type === "attorney") return "Immigration attorney";
+    if (type === "accredited_representative") return "Accredited representative";
     return type?.replace(/_/g, " ") ?? "Immigration consultant";
   };
 

@@ -451,17 +451,24 @@ export async function runQaChat(history: { role: string; content: string }[]): P
   if (steps.length === 0) {
     return "The assistant isn't available just yet. Meanwhile, you can upload your documents to your vault and browse the guides — everything you add will be analyzed as soon as the assistant comes online.";
   }
-  // Try every configured model in order; log each failure to the system log.
+  // Run every configured model in order. Later models receive earlier drafts so
+  // the final answer benefits from all available providers instead of stopping
+  // at the first successful response.
+  const drafts: string[] = [];
   for (const step of steps) {
     try {
-      const prompt = fill(step.promptTemplate, { input: convo, knowledge: knowledge || "(none)" });
+      const priorDrafts = drafts.length
+        ? `\n\nPRIOR DRAFTS TO IMPROVE (do not mention them; correct any errors and produce one final answer):\n${drafts.map((draft, i) => `[Draft ${i + 1}]\n${draft}`).join("\n\n")}`
+        : "";
+      const prompt = fill(step.promptTemplate, { input: `${convo}${priorDrafts}`, knowledge: knowledge || "(none)" });
       const result = await callProvider(step.provider, [{ role: "user", content: prompt }]);
-      if (result.text.trim()) return result.text;
+      if (result.text.trim()) drafts.push(result.text.trim());
     } catch (err) {
       const { logSystem } = await import("../syslog");
       await logSystem("error", "ai_call", `${step.provider.name} failed answering the immigration Q&A chat`, String(err));
     }
   }
+  if (drafts.length > 0) return drafts[drafts.length - 1];
   return "Our assistant couldn't respond just now — the issue has been reported to our team. Please try again in a moment, or open a support ticket if it keeps happening.";
 }
 

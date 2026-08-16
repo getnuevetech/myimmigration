@@ -21,7 +21,6 @@ export function situationLine(key: string, questionText: string, answer: string)
     case "case_status_received":
       return `[Clarified] USCIS actually sent this status or result: ${a}.`;
     case "fee_or_payment_issue":
-    case "fee_or_balance_amount":
       return `[Clarified] USCIS listed this fee or payment issue: ${a}.`;
     case "notice_details":
       return `[Clarified] My USCIS notice: ${a}.`;
@@ -53,7 +52,7 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
   const hasCaseRecord = c.documents.some((d) => ["case_record", "case record", "receipt"].includes(d.docKind));
   const caseUpdateIssue = c.issues.find((i) => i.issueType === "case_update_discrepancy");
   const feeIssue = c.issues.find((i) => i.issueType === "fee_or_payment_issue");
-  const noticeIssue = c.issues.find((i) => ["uscis_notice_response", "notice_response"].includes(i.issueType));
+  const noticeIssue = c.issues.find((i) => i.issueType === "uscis_notice_response");
   const filingIssue = c.issues.find((i) => ["missing_filing", "missing_evidence"].includes(i.issueType));
   const hasYear = c.issues.some((i) => i.caseYear);
 

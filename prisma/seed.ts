@@ -344,9 +344,13 @@ async function seedAiAndPipelines() {
     {
       key: "qa",
       name: "AI immigration Q&A",
-      description: "Conversational assistant grounded in the USCIS knowledge base.",
+      description: "Conversational assistant grounded in the USCIS knowledge base. Configured providers run in order and later models refine earlier drafts.",
       steps: [
         { provider: "OpenAI GPT-5.6 Sol", role: "assistant", prompt: DEFAULT_PROMPTS.assistant, order: 0 },
+        { provider: "Anthropic Claude Sonnet 5", role: "assistant", prompt: DEFAULT_PROMPTS.assistant, order: 1 },
+        { provider: "Google Gemini 3.1 Pro", role: "assistant", prompt: DEFAULT_PROMPTS.assistant, order: 2 },
+        { provider: "OpenAI GPT-5.6 Terra", role: "assistant", prompt: DEFAULT_PROMPTS.assistant, order: 3 },
+        { provider: "Anthropic Claude Opus 5", role: "assistant", prompt: DEFAULT_PROMPTS.assistant, order: 4 },
       ],
     },
     {
@@ -373,8 +377,8 @@ async function seedAiAndPipelines() {
         { provider: "OpenAI GPT-5.6 Sol", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 0 },
         { provider: "Anthropic Claude Sonnet 5", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 1 },
         { provider: "Google Gemini 3.1 Pro", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 2 },
-        { provider: "Anthropic Claude Opus 5", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 3 },
-        { provider: "OpenAI GPT-5.6 Terra", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 4 },
+        { provider: "OpenAI GPT-5.6 Terra", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 3 },
+        { provider: "Anthropic Claude Opus 5", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 4 },
       ],
     },
     {
@@ -425,6 +429,25 @@ async function seedAiAndPipelines() {
         });
       }
     }
+    for (const step of s.steps) {
+      const providerId = providers[step.provider];
+      const existingStep = await db.pipelineStep.findFirst({
+        where: { stageKey: stage.key, providerId, role: step.role },
+      });
+      if (!existingStep) {
+        await db.pipelineStep.create({
+          data: {
+            stageKey: stage.key,
+            providerId,
+            role: step.role,
+            promptTemplate: step.prompt,
+            sortOrder: step.order,
+          },
+        });
+      } else if (existingStep.sortOrder !== step.order) {
+        await db.pipelineStep.update({ where: { id: existingStep.id }, data: { sortOrder: step.order } });
+      }
+    }
   }
   const promptRepairs: { stageKey: string; role: string; prompt: string }[] = [
     { stageKey: "summary", role: "fact_extractor", prompt: DEFAULT_PROMPTS.fact_extractor },
@@ -462,6 +485,9 @@ async function seedAiAndPipelines() {
       data: { promptTemplate: repair.prompt },
     });
   }
+  await db.pipelineStep.updateMany({ where: { stageKey: "qa", role: "assistant" }, data: { promptTemplate: DEFAULT_PROMPTS.assistant } });
+  await db.pipelineStep.updateMany({ where: { stageKey: "guide", role: "assistant" }, data: { promptTemplate: DEFAULT_PROMPTS.guide } });
+  await db.pipelineStep.updateMany({ where: { stageKey: "presenter", role: "presenter" }, data: { promptTemplate: DEFAULT_PROMPTS.presenter } });
 }
 
 async function seedContent() {

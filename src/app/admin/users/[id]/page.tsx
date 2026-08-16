@@ -41,9 +41,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const p = user.consultantProfile;
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
   const credentialName = (type: string) => {
-    if (type === "attorney" || type === "cpa") return "Immigration attorney";
-    if (type === "accredited_representative" || type === "ea") return "Accredited representative";
-    if (type === "tax_consultant") return "Immigration consultant";
+    if (type === "attorney") return "Immigration attorney";
+    if (type === "accredited_representative") return "Accredited representative";
     return type.replace(/_/g, " ");
   };
 

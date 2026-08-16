@@ -90,7 +90,7 @@ export type ApplicationFacts = {
 export function criterionSatisfied(key: string, f: ApplicationFacts, minYears: number): boolean {
   switch (key) {
     case "credential":
-      return ["attorney", "accredited_representative", "cpa", "ea"].includes(f.credentialType) && !!f.credentialNumber && (!["attorney", "cpa"].includes(f.credentialType) || !!f.licenseState);
+      return ["attorney", "accredited_representative"].includes(f.credentialType) && !!f.credentialNumber && (f.credentialType !== "attorney" || !!f.licenseState);
     case "ptin":
       return f.ptin.trim().length > 0;
     case "proof":

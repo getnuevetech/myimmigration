@@ -36,18 +36,11 @@ export function ConsultantOnboardingForm({
   agreementSlug: string;
   agreementTitle: string;
 }) {
-  const initialCredentialType =
-    existing?.credentialType === "cpa"
-      ? "attorney"
-      : existing?.credentialType === "ea"
-        ? "accredited_representative"
-        : existing?.credentialType === "tax_consultant"
-          ? "immigration_consultant"
-          : existing?.credentialType ?? "immigration_consultant";
+  const initialCredentialType = existing?.credentialType ?? "immigration_consultant";
   const [credType, setCredType] = useState(initialCredentialType);
   const [isBusiness, setIsBusiness] = useState(existing?.isBusiness ?? false);
-  const needsLicense = ["attorney", "accredited_representative", "cpa", "ea"].includes(credType);
-  const isAttorney = credType === "attorney" || credType === "cpa";
+  const needsLicense = ["attorney", "accredited_representative"].includes(credType);
+  const isAttorney = credType === "attorney";
 
   return (
     <ActionForm action={consultantOnboardingAction}>

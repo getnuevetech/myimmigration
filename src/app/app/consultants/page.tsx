@@ -21,8 +21,8 @@ export default async function MyConsultantsPage() {
 
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
   const credentialLabel = (type: string | undefined) => {
-    if (type === "attorney" || type === "cpa") return "Immigration attorney";
-    if (type === "accredited_representative" || type === "ea") return "Accredited representative";
+    if (type === "attorney") return "Immigration attorney";
+    if (type === "accredited_representative") return "Accredited representative";
     return "Immigration consultant";
   };
 
