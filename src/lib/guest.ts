@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { db } from "./db";
 import { secureCookiesEnabled } from "./auth";
 
-const GUEST_COOKIE = "immigrationonme_guest";
+const GUEST_COOKIE = "myimmigration_guest";
 
 // Guest sessions let visitors start their immigration case intake without an account.
 // Everything they provide is stored against the session and attached to
