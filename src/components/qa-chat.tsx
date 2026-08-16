@@ -10,7 +10,7 @@ function Submit() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:opacity-50"
+      className="rounded-xl bg-lime-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-lime-700 disabled:opacity-50"
     >
       {pending ? "Thinking…" : "Ask"}
     </button>
@@ -48,7 +48,7 @@ export function QaChat({
           <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
               className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                m.role === "user" ? "bg-orange-600 text-white" : "bg-slate-100 text-slate-800"
+                m.role === "user" ? "bg-lime-600 text-white" : "bg-slate-100 text-slate-800"
               }`}
             >
               {m.content}
@@ -67,7 +67,7 @@ export function QaChat({
             name="question"
             placeholder="Type your tax question…"
             autoComplete="off"
-            className="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+            className="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-lime-500 focus:outline-none focus:ring-2 focus:ring-lime-100"
           />
           <Submit />
         </div>

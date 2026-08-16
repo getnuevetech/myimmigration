@@ -44,13 +44,13 @@ export default async function BillingPage({
         </div>
       )}
       {pending && !justActivated && (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
           Payment received — your plan activates as soon as the payment processor confirms it (usually within a
           minute). Refresh this page shortly.
         </div>
       )}
       {isTestGateway && (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
           <span className="font-semibold">Test mode.</span> Payments are currently simulated
           {activeGateway ? ` (gateway: ${activeGateway.name})` : " (no payment gateway configured)"} — subscriptions
           activate without charging a card. A live payment gateway can be connected in the admin backend.

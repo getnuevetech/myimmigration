@@ -56,7 +56,7 @@ export function PlanDiscountForm({ planId, discount }: { planId: string; discoun
           <input name="endsAt" type="date" defaultValue={discount?.endsAt ?? ""} className={inputClass} />
         </Field>
         <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">
-          <input type="checkbox" name="isActive" defaultChecked={discount?.isActive ?? true} className="h-4 w-4 rounded border-slate-300 text-orange-600" />
+          <input type="checkbox" name="isActive" defaultChecked={discount?.isActive ?? true} className="h-4 w-4 rounded border-slate-300 text-lime-600" />
           Active
         </label>
       </div>

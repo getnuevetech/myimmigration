@@ -36,18 +36,18 @@ export default async function DashboardPage() {
       {notifications.length > 0 && (
         <div className="mb-6 space-y-2">
           {notifications.map((n) => (
-            <div key={n.id} className="flex items-start justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+            <div key={n.id} className="flex items-start justify-between gap-3 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3">
               <div>
-                <p className="text-sm font-semibold text-orange-900">{n.title}</p>
-                {n.body && <p className="text-sm text-orange-700">{n.body}</p>}
+                <p className="text-sm font-semibold text-lime-900">{n.title}</p>
+                {n.body && <p className="text-sm text-lime-700">{n.body}</p>}
                 {n.link && (
-                  <Link href={n.link} className="text-sm font-medium text-orange-600 underline">
+                  <Link href={n.link} className="text-sm font-medium text-lime-600 underline">
                     View →
                   </Link>
                 )}
               </div>
               <form action={markNotificationReadAction.bind(null, n.id)}>
-                <button className="text-xs text-orange-400 hover:text-orange-700">Dismiss</button>
+                <button className="text-xs text-lime-400 hover:text-lime-700">Dismiss</button>
               </form>
             </div>
           ))}
@@ -82,7 +82,7 @@ export default async function DashboardPage() {
             <div className="space-y-3">
               {cases.map((c) => (
                 <Link key={c.id} href={`/app/cases/${c.id}`} className="block">
-                  <Card className="transition hover:border-orange-300">
+                  <Card className="transition hover:border-lime-300">
                     <CardBody className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-medium text-slate-900">{c.title}</p>
@@ -90,7 +90,7 @@ export default async function DashboardPage() {
                           {formatCaseNumber(c.number)} · {c.issues.length} issue{c.issues.length === 1 ? "" : "s"} · readiness {c.readinessScore}%
                         </p>
                       </div>
-                      <Badge color={c.status === "analyzed" ? "green" : c.status === "consultant_recommended" ? "amber" : "slate"}>
+                      <Badge color={c.status === "analyzed" ? "green" : c.status === "consultant_recommended" ? "lime" : "slate"}>
                         {c.status.replace(/_/g, " ")}
                       </Badge>
                     </CardBody>

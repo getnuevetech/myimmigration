@@ -24,7 +24,7 @@ export default async function AdminPaymentsPage() {
           </Link>
         }
       />
-      <Card className="mb-6 border-orange-200">
+      <Card className="mb-6 border-lime-200">
         <CardBody>
           <h2 className="text-sm font-semibold text-slate-900">Stripe webhook endpoint</h2>
           <p className="mt-1 text-xs text-slate-500">
@@ -40,7 +40,7 @@ export default async function AdminPaymentsPage() {
             {appUrl}/api/webhooks/stripe
           </p>
           {appUrl.includes("localhost") && (
-            <p className="mt-1 text-xs text-amber-600">
+            <p className="mt-1 text-xs text-lime-600">
               Note: your App URL is currently localhost — Stripe can&apos;t reach it. Set your public App URL in Settings once deployed.
             </p>
           )}
@@ -54,8 +54,8 @@ export default async function AdminPaymentsPage() {
               <div className="mb-3 flex items-center gap-2">
                 <h2 className="font-semibold text-slate-900">{g.name}</h2>
                 <Badge>{g.kind}</Badge>
-                <Badge color={g.mode === "live" ? "green" : "amber"}>{g.mode}</Badge>
-                {g.isDefault && <Badge color="orange">default</Badge>}
+                <Badge color={g.mode === "live" ? "green" : "lime"}>{g.mode}</Badge>
+                {g.isDefault && <Badge color="lime">default</Badge>}
                 {!g.isActive && <Badge color="red">inactive</Badge>}
               </div>
               <GatewayForm

@@ -26,7 +26,7 @@ export default async function ResetPasswordPage({
               <p className="text-sm text-slate-600">
                 This reset link is invalid or has expired. Links are valid for 1 hour.
               </p>
-              <Link href="/forgot-password" className="mt-3 inline-block text-sm font-medium text-orange-600 underline">
+              <Link href="/forgot-password" className="mt-3 inline-block text-sm font-medium text-lime-600 underline">
                 Request a new link
               </Link>
             </div>

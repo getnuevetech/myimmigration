@@ -149,7 +149,7 @@ export default async function AdminTransactionsPage({
           </div>
         </div>
         <div className="mt-3 flex items-center gap-3">
-          <button className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700">
+          <button className="rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700">
             Apply filters
           </button>
           {hasFilters && (
@@ -184,7 +184,7 @@ export default async function AdminTransactionsPage({
             )}
             {transactions.map((t) => (
               <tr key={t.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-mono text-xs font-semibold text-orange-700">{formatTransactionNumber(t.number)}</td>
+                <td className="px-4 py-3 font-mono text-xs font-semibold text-lime-700">{formatTransactionNumber(t.number)}</td>
                 <td className="px-4 py-3 text-slate-600">
                   <p>{t.createdAt.toLocaleDateString("en-US")}</p>
                   <p className="text-xs text-slate-400">{t.createdAt.toLocaleTimeString("en-US")}</p>
@@ -204,7 +204,7 @@ export default async function AdminTransactionsPage({
                   </p>
                 </td>
                 <td className="px-4 py-3">
-                  <Badge color={t.status === "succeeded" ? "green" : t.status === "failed" ? "red" : t.status === "refunded" ? "amber" : "slate"}>
+                  <Badge color={t.status === "succeeded" ? "green" : t.status === "failed" ? "red" : t.status === "refunded" ? "lime" : "slate"}>
                     {t.status}
                   </Badge>
                 </td>

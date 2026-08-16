@@ -18,7 +18,7 @@ export async function CaseClarify({ caseId }: { caseId: string }) {
   if (!analyzing && !question && messages.length === 0) return null;
 
   return (
-    <section id="clarify" className="rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50/80 to-white p-5 shadow-sm">
+    <section id="clarify" className="rounded-2xl border border-lime-200 bg-gradient-to-br from-lime-50/80 to-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-900">
@@ -33,7 +33,7 @@ export async function CaseClarify({ caseId }: { caseId: string }) {
           </p>
         </div>
         {(question || analyzing) && (
-          <span className="shrink-0 rounded-full bg-orange-600 px-3 py-1 text-xs font-bold text-white">
+          <span className="shrink-0 rounded-full bg-lime-600 px-3 py-1 text-xs font-bold text-white">
             {messages.filter((m) => m.role === "user").length} answered
           </span>
         )}
@@ -41,14 +41,14 @@ export async function CaseClarify({ caseId }: { caseId: string }) {
 
       {messages.length > 0 && (
         <details className="mt-3" open={messages.length <= 4}>
-          <summary className="cursor-pointer text-xs font-medium text-orange-600">
+          <summary className="cursor-pointer text-xs font-medium text-lime-600">
             Conversation so far ({messages.filter((m) => m.role === "user").length} answer{messages.filter((m) => m.role === "user").length === 1 ? "" : "s"})
           </summary>
           <div className="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
             {messages.map((m) => (
               <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 <p className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
-                  m.role === "user" ? "rounded-br-sm bg-orange-600 text-white" : "rounded-bl-sm bg-white text-slate-700 ring-1 ring-slate-200"
+                  m.role === "user" ? "rounded-br-sm bg-lime-600 text-white" : "rounded-bl-sm bg-white text-slate-700 ring-1 ring-slate-200"
                 }`}>
                   {m.content}
                 </p>
@@ -60,7 +60,7 @@ export async function CaseClarify({ caseId }: { caseId: string }) {
 
       {analyzing ? (
         <div className="mt-4 flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200">
-          <span className="h-2.5 w-2.5 shrink-0 animate-ping rounded-full bg-orange-500" />
+          <span className="h-2.5 w-2.5 shrink-0 animate-ping rounded-full bg-lime-500" />
           Re-analyzing with your answer — this usually takes under a minute; a detailed review can take a few.
           <AutoRefresh />
         </div>

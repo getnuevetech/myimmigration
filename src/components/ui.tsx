@@ -27,7 +27,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 }
 
 const buttonStyles = {
-  primary: "bg-orange-600 text-white hover:bg-orange-700 shadow-sm",
+  primary: "bg-lime-300 text-slate-950 hover:bg-lime-400 shadow-sm",
   secondary: "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50",
   danger: "bg-white text-red-600 border border-red-200 hover:bg-red-50",
   ghost: "text-slate-600 hover:bg-slate-100",
@@ -73,7 +73,7 @@ export function Button({
 }
 
 export const inputClass =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-lime-500 focus:outline-none focus:ring-2 focus:ring-lime-100";
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -88,10 +88,10 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 const badgeStyles: Record<string, string> = {
   slate: "bg-slate-100 text-slate-700",
   green: "bg-emerald-100 text-emerald-800",
-  amber: "bg-amber-100 text-amber-800",
+  amber: "bg-lime-100 text-lime-800",
   red: "bg-red-100 text-red-700",
-  orange: "bg-orange-100 text-orange-700",
-  blue: "bg-amber-100 text-amber-800",
+  lime: "bg-lime-100 text-lime-700",
+  blue: "bg-lime-100 text-lime-800",
 };
 
 export function Badge({ children, color = "slate" }: { children: ReactNode; color?: string }) {
@@ -109,7 +109,7 @@ export function StateMark({ state }: { state: string }) {
   const colors: Record<string, string> = {
     resolved: "green",
     review: "blue",
-    action_needed: "amber",
+    action_needed: "lime",
     urgent: "red",
     info_needed: "slate",
   };
@@ -124,7 +124,7 @@ export function StateMark({ state }: { state: string }) {
 export function ConfidenceBadge({ level }: { level: string }) {
   const map: Record<string, { label: string; color: string }> = {
     high: { label: "High confidence", color: "green" },
-    medium: { label: "Moderate confidence", color: "amber" },
+    medium: { label: "Moderate confidence", color: "lime" },
     low: { label: "Needs verification", color: "red" },
   };
   const def = map[level] ?? map.medium;
@@ -135,7 +135,7 @@ export function ConfidenceBadge({ level }: { level: string }) {
 export const EVIDENCE_STATUSES: Record<string, { label: string; color: string; explain: string }> = {
   confirmed: { label: "Confirmed", color: "green", explain: "Evidence supports this finding." },
   likely: { label: "Likely", color: "blue", explain: "Strong indicators, but additional verification needed." },
-  possible: { label: "Possible", color: "amber", explain: "There are indicators, but insufficient evidence." },
+  possible: { label: "Possible", color: "lime", explain: "There are indicators, but insufficient evidence." },
   needs_verification: { label: "Needs verification", color: "red", explain: "Important information is missing or conflicting." },
   not_supported: { label: "Not supported", color: "slate", explain: "The available evidence doesn't support the concern." },
 };
@@ -166,8 +166,8 @@ export function EvidenceStrengthLine({ strength }: { strength: string }) {
 
 // Item classification — richer than calling everything a "finding".
 export const ITEM_KINDS: Record<string, { label: string; color: string }> = {
-  finding: { label: "Finding", color: "orange" },
-  issue: { label: "Issue", color: "amber" },
+  finding: { label: "Finding", color: "lime" },
+  issue: { label: "Issue", color: "lime" },
   opportunity: { label: "Opportunity", color: "green" },
   risk: { label: "Risk", color: "red" },
   missing_info: { label: "Missing information", color: "slate" },
@@ -194,7 +194,7 @@ export function ProgressBar({ value, label }: { value: number; label?: string })
       )}
       <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
         <div
-          className={`h-full rounded-full transition-all ${clamped >= 70 ? "bg-emerald-500" : clamped >= 40 ? "bg-amber-500" : "bg-orange-500"}`}
+          className={`h-full rounded-full transition-all ${clamped >= 70 ? "bg-emerald-500" : clamped >= 40 ? "bg-lime-500" : "bg-lime-500"}`}
           style={{ width: `${clamped}%` }}
         />
       </div>

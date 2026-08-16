@@ -129,8 +129,8 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
         {c.status === "analyzing" && (
-          <div className="flex items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
-            <span className="h-3 w-3 shrink-0 animate-ping rounded-full bg-orange-500" />
+          <div className="flex items-center gap-3 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
+            <span className="h-3 w-3 shrink-0 animate-ping rounded-full bg-lime-500" />
             <span>
               <span className="font-semibold">Analysis in progress…</span> Your findings update on this page automatically —
               a detailed review can take a couple of minutes.
@@ -155,23 +155,23 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           </div>
         )}
         {c.status === "consultant_recommended" && (
-          <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-xl border border-lime-300 bg-lime-50 px-4 py-3 text-sm text-lime-900">
             <span className="font-semibold">▲ Professional review recommended.</span> Based on the analysis, this case would benefit
             from a licensed professional.
           </div>
         )}
         {verificationFlags > 0 && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
             <span className="font-semibold">◐ Verification required.</span> Some values in this case couldn&apos;t be confirmed
             against each other — we flag disagreements instead of guessing. More documents (like the USCIS account
             case record) resolve this.
           </div>
         )}
         {conflicts.map((cf, ci) => (
-          <div key={ci} className="rounded-xl border border-orange-300 bg-orange-50 px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-orange-700">Information conflict — {cf.topic}</p>
-            <p className="mt-1 text-sm text-orange-900">{cf.description}</p>
-            {cf.resolution && <p className="mt-1 text-xs text-orange-700">{cf.resolution}</p>}
+          <div key={ci} className="rounded-xl border border-lime-300 bg-lime-50 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-lime-700">Information conflict — {cf.topic}</p>
+            <p className="mt-1 text-sm text-lime-900">{cf.description}</p>
+            {cf.resolution && <p className="mt-1 text-xs text-lime-700">{cf.resolution}</p>}
           </div>
         ))}
 
@@ -188,13 +188,13 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                 <ol className="space-y-3">
                   {latestBatch.map((run, i) => (
                     <li key={run.id} className="flex gap-3">
-                      <span className="mt-1 flex h-2.5 w-2.5 shrink-0 rounded-full bg-orange-500" />
+                      <span className="mt-1 flex h-2.5 w-2.5 shrink-0 rounded-full bg-lime-500" />
                       <div>
                         <p className="text-sm leading-relaxed text-slate-700">
                           <span className="font-semibold text-slate-900">{i + 1}.</span> {describeRun(run)}
                         </p>
                         {run.consensus?.verificationRequired && (
-                          <p className="text-xs font-medium text-amber-600">◐ Some values disagreed — flagged for verification instead of guessing.</p>
+                          <p className="text-xs font-medium text-lime-600">◐ Some values disagreed — flagged for verification instead of guessing.</p>
                         )}
                       </div>
                     </li>
@@ -259,7 +259,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Difference</p>
-                        <p className="text-lg font-bold text-orange-600"><Money cents={issue.differenceCents} /></p>
+                        <p className="text-lg font-bold text-lime-600"><Money cents={issue.differenceCents} /></p>
                       </div>
                     </div>
                   )}
@@ -295,7 +295,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                         {outline.map((o, oi) => (
                           <li key={oi} className="grid gap-1 sm:grid-cols-[180px_1fr] sm:gap-4">
                             <p className="text-sm font-semibold text-slate-800">
-                              <span className="mr-1.5 font-mono text-xs text-orange-500">{String(oi + 1).padStart(2, "0")}</span>
+                              <span className="mr-1.5 font-mono text-xs text-lime-500">{String(oi + 1).padStart(2, "0")}</span>
                               {o.heading}
                             </p>
                             <div>
@@ -314,7 +314,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                       <ul className="space-y-1">
                         {unclear.map((u, ui) => (
                           <li key={ui} className="flex items-start gap-2 text-sm text-slate-600">
-                            <span className="mt-0.5 font-bold text-amber-500">?</span>
+                            <span className="mt-0.5 font-bold text-lime-500">?</span>
                             <span>{u}</span>
                           </li>
                         ))}
@@ -323,14 +323,14 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                   )}
 
                   {issue.nextAction && issue.state !== "resolved" && (
-                    <div className="mt-4 rounded-lg bg-orange-50 px-3 py-2.5">
-                      <p className="text-xs font-bold uppercase tracking-wide text-orange-400">What you can do next</p>
+                    <div className="mt-4 rounded-lg bg-lime-50 px-3 py-2.5">
+                      <p className="text-xs font-bold uppercase tracking-wide text-lime-400">What you can do next</p>
                       <div className="mt-1.5 flex flex-wrap items-center gap-3">
-                        <p className="text-sm font-medium text-orange-800">
+                        <p className="text-sm font-medium text-lime-800">
                           {issue.nextAction.replace(/_/g, " ").toLowerCase().replace(/^./, (ch) => ch.toUpperCase())}
                         </p>
                         {interactive && ["missing_info"].includes(issue.itemKind) && (
-                          <a href="#clarify" className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-700">
+                          <a href="#clarify" className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
                             Answer a few questions →
                           </a>
                         )}
@@ -340,13 +340,13 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                           ) : (
                             <>
                               {stepCta(issue.nextAction) && (
-                                <a href={stepCta(issue.nextAction)!.href} className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-700">
+                                <a href={stepCta(issue.nextAction)!.href} className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
                                   {stepCta(issue.nextAction)!.label} →
                                 </a>
                               )}
                               {["GET_TRANSCRIPT", "GET_ACCOUNT_TRANSCRIPT"].includes(issue.nextAction.toUpperCase()) && (
                                 <>
-                                  <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-orange-200 bg-white px-3 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50">
+                                  <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-lime-200 bg-white px-3 py-1.5 text-xs font-medium text-lime-700 hover:bg-lime-50">
                                     Open USCIS sign-up ↗
                                   </a>
                                   <InlineUpload caseId={c.id} docKind="case record" label="Have it? Upload case record" />
@@ -357,7 +357,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                         )}
                       </div>
                       {issue.altAction && (
-                        <p className="mt-1.5 text-xs text-orange-700">
+                        <p className="mt-1.5 text-xs text-lime-700">
                           <span className="font-semibold">Alternative:</span> {issue.altAction}
                           {interactive && /professional/i.test(issue.altAction) && (
                             <>
@@ -373,13 +373,13 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
               );
             })}
             {interactive && !fullAccess && c.issues.length > 1 && (
-              <div className="rounded-2xl border border-orange-200 bg-orange-50 p-6 text-center">
-                <p className="font-semibold text-orange-900">
+              <div className="rounded-2xl border border-lime-200 bg-lime-50 p-6 text-center">
+                <p className="font-semibold text-lime-900">
                   {c.issues.length - 1} more finding{c.issues.length - 1 === 1 ? "" : "s"} in your full analysis
                 </p>
-                <p className="mt-1 text-sm text-orange-700">Upgrade your plan to unlock every finding, amount, and step.</p>
+                <p className="mt-1 text-sm text-lime-700">Upgrade your plan to unlock every finding, amount, and step.</p>
                 <div className="mt-4">
-                  <Link href="/app/billing" className="inline-block rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700">See plans →</Link>
+                  <Link href="/app/billing" className="inline-block rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700">See plans →</Link>
                 </div>
               </div>
             )}
@@ -402,9 +402,9 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
               {c.pathSteps.map((step, i) => {
                 const verifiable = isVerifiable(step.actionKey);
                 return (
-                  <div key={step.id} className={`flex items-start gap-3 rounded-xl p-3 ${step.status === "current" ? "bg-orange-50" : ""}`}>
+                  <div key={step.id} className={`flex items-start gap-3 rounded-xl p-3 ${step.status === "current" ? "bg-lime-50" : ""}`}>
                     <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                      step.status === "done" ? "bg-emerald-100 text-emerald-700" : step.status === "current" ? "bg-orange-600 text-white" : "bg-slate-100 text-slate-400"
+                      step.status === "done" ? "bg-emerald-100 text-emerald-700" : step.status === "current" ? "bg-lime-600 text-white" : "bg-slate-100 text-slate-400"
                     }`}>
                       {step.status === "done" ? "✓" : i + 1}
                     </span>
@@ -412,7 +412,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                       <p className={`font-medium ${step.status === "done" ? "text-slate-400 line-through" : "text-slate-900"}`}>{step.title}</p>
                       <p className="text-sm text-slate-500">{step.description}</p>
                       {verifiable && step.status !== "done" && (
-                        <p className="mt-1 text-xs font-medium text-orange-600">
+                        <p className="mt-1 text-xs font-medium text-lime-600">
                           ◐ Verified automatically — {VERIFIABLE_ACTIONS[step.actionKey.toUpperCase()].toLowerCase()}
                         </p>
                       )}
@@ -423,20 +423,20 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                         <div className="mt-2 flex flex-wrap gap-2">
                           {(step.actionKey.toUpperCase() === "REVIEW_ANALYSIS" || step.actionKey.toUpperCase() === "RERUN_ANALYSIS") ? (
                             <form action={reanalyzeCaseAction.bind(null, c.id)}>
-                              <button className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-700">
+                              <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
                                 Re-run the analysis now →
                               </button>
                             </form>
                           ) : ["COMPLETE_FORM_9465", "COMPLETE_FORM_I485"].includes(step.actionKey.toUpperCase()) && formI485 ? (
                             <form action={startFormAction.bind(null, formI485.id)}>
-                              <button className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-700">
+                              <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
                                 Start the USCIS form →
                               </button>
                             </form>
                           ) : step.actionKey.toUpperCase() === "UPLOAD_DOCUMENTS" ? (
                             <InlineUpload caseId={c.id} label="Upload documents" />
                           ) : stepCta(step.actionKey) ? (
-                            <a href={stepCta(step.actionKey)!.href} className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-700">
+                            <a href={stepCta(step.actionKey)!.href} className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
                               {stepCta(step.actionKey)!.label} →
                             </a>
                           ) : null}
@@ -450,7 +450,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                     </div>
                     {interactive && !verifiable && step.status === "current" && (
                       <form action={completePathStepAction.bind(null, step.id)}>
-                        <button className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-700">
+                        <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
                           I&apos;ve done this ✓
                         </button>
                       </form>
@@ -527,15 +527,15 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                   d.extractedJson.length > 0;
                 return (
                   <li key={d.id} className="flex items-start gap-2">
-                    <span className={`mt-0.5 text-sm font-bold ${verified ? "text-emerald-600" : "text-amber-500"}`}>
+                    <span className={`mt-0.5 text-sm font-bold ${verified ? "text-emerald-600" : "text-lime-500"}`}>
                       {verified ? "✓" : "⚠"}
                     </span>
                     <div className="min-w-0">
-                      <a href={`/api/files/${d.id}`} target="_blank" className="break-words text-sm text-orange-600 underline">
+                      <a href={`/api/files/${d.id}`} target="_blank" className="break-words text-sm text-lime-600 underline">
                         {d.fileName}
                       </a>{" "}
                       <Badge>{d.docKind}</Badge>
-                      {!verified && <p className="text-[11px] text-amber-600">Verification needed — on file, figures not yet confirmed</p>}
+                      {!verified && <p className="text-[11px] text-lime-600">Verification needed — on file, figures not yet confirmed</p>}
                     </div>
                   </li>
                 );

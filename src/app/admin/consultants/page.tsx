@@ -51,7 +51,7 @@ export default async function AdminConsultantsPage() {
 
   const credentialBadge = (p: (typeof accounts)[number]["consultantProfile"]) => {
     if (!p) return <Badge color="slate">onboarding not submitted</Badge>;
-    const color = p.status === "approved" ? "green" : p.status === "rejected" ? "red" : p.status === "suspended" ? "red" : "amber";
+    const color = p.status === "approved" ? "green" : p.status === "rejected" ? "red" : p.status === "suspended" ? "red" : "lime";
     return <Badge color={color}>{p.status}{p.autoApproved ? " (auto)" : ""}</Badge>;
   };
 
@@ -74,7 +74,7 @@ export default async function AdminConsultantsPage() {
               const p = a.consultantProfile!;
               const specialties: string[] = JSON.parse(p.specialties || "[]");
               return (
-                <Card key={p.id} className="border-amber-300">
+                <Card key={p.id} className="border-lime-300">
                   <CardBody>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -89,32 +89,32 @@ export default async function AdminConsultantsPage() {
                           {p.isBusiness && p.businessName && ` · ${p.businessName}${p.ein ? ` (EIN ${p.ein})` : ""}`}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {specialties.map((s) => <Badge key={s} color="orange">{specialtyName(s)}</Badge>)}
+                          {specialties.map((s) => <Badge key={s} color="lime">{specialtyName(s)}</Badge>)}
                           {p.statesServed && <Badge>States: {p.statesServed}</Badge>}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-3 text-xs">
                           {p.proofDocumentPath ? (
-                            <a href={`/api/admin/files/${p.proofDocumentPath}`} target="_blank" className="font-medium text-orange-600 underline">
+                            <a href={`/api/admin/files/${p.proofDocumentPath}`} target="_blank" className="font-medium text-lime-600 underline">
                               Credential proof ↗
                             </a>
                           ) : (
-                            <span className="text-amber-600">No credential proof</span>
+                            <span className="text-lime-600">No credential proof</span>
                           )}
                           {p.photoIdPath ? (
-                            <a href={`/api/admin/files/${p.photoIdPath}`} target="_blank" className="font-medium text-orange-600 underline">
+                            <a href={`/api/admin/files/${p.photoIdPath}`} target="_blank" className="font-medium text-lime-600 underline">
                               Photo ID ↗
                             </a>
                           ) : (
                             <span className="text-slate-400">No photo ID</span>
                           )}
                           {p.insurancePath ? (
-                            <a href={`/api/admin/files/${p.insurancePath}`} target="_blank" className="font-medium text-orange-600 underline">
+                            <a href={`/api/admin/files/${p.insurancePath}`} target="_blank" className="font-medium text-lime-600 underline">
                               E&amp;O insurance ↗
                             </a>
                           ) : (
                             <span className="text-slate-400">No insurance proof</span>
                           )}
-                          <span className={p.attestedCompliance ? "text-emerald-600" : "text-amber-600"}>
+                          <span className={p.attestedCompliance ? "text-emerald-600" : "text-lime-600"}>
                             {p.attestedCompliance ? "Compliance attested ✓" : "No compliance attestation"}
                           </span>
                         </div>
@@ -183,7 +183,7 @@ export default async function AdminConsultantsPage() {
               return (
                 <tr key={a.id}>
                   <td className="px-4 py-3">
-                    <Link href={`/admin/users/${a.id}`} className="font-medium text-orange-600 underline">
+                    <Link href={`/admin/users/${a.id}`} className="font-medium text-lime-600 underline">
                       {`${a.firstName} ${a.lastName}`.trim() || a.email}
                     </Link>
                     <p className="text-xs text-slate-500">{a.email}</p>
@@ -201,7 +201,7 @@ export default async function AdminConsultantsPage() {
                     <div className="flex flex-wrap items-start justify-end gap-3 text-xs font-medium">
                       <ResetLinkButton userId={a.id} />
                       <form action={setConsultantAccountStatusAction.bind(null, a.id, a.status === "active" ? "suspended" : "active")}>
-                        <button className="text-amber-600 hover:text-amber-800">
+                        <button className="text-lime-600 hover:text-lime-800">
                           {a.status === "active" ? "Suspend" : "Reactivate"}
                         </button>
                       </form>
@@ -222,9 +222,9 @@ export default async function AdminConsultantsPage() {
 
       <p className="mt-4 text-sm text-slate-500">
         Automated approval rules live under{" "}
-        <Link href="/admin/consultant-approval" className="text-orange-600 underline">immigration professional auto-approval</Link>. Assign
+        <Link href="/admin/consultant-approval" className="text-lime-600 underline">immigration professional auto-approval</Link>. Assign
         approved consultants to customers from the{" "}
-        <Link href="/admin/assignments" className="text-orange-600 underline">Assignments</Link> page — connections
+        <Link href="/admin/assignments" className="text-lime-600 underline">Assignments</Link> page — connections
         require both parties&apos; consent.
       </p>
     </div>

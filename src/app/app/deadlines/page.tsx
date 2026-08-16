@@ -44,7 +44,7 @@ export default async function DeadlinesPage() {
                   <div className="flex items-center gap-3">
                     <StateMark state={d.status === "done" ? "resolved" : overdue ? "urgent" : urgent ? "action_needed" : "review"} />
                     <form action={setDeadlineStatusAction.bind(null, d.id, d.status === "done" ? "open" : "done")}>
-                      <button className="text-xs font-medium text-orange-600 hover:text-orange-800">
+                      <button className="text-xs font-medium text-lime-600 hover:text-lime-800">
                         {d.status === "done" ? "Reopen" : "Mark done ✓"}
                       </button>
                     </form>

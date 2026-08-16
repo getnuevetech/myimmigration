@@ -30,7 +30,7 @@ export default async function AdminRolesManagementPage() {
                 <details>
                   <summary className="flex cursor-pointer flex-wrap items-center gap-2">
                     <span className="font-semibold text-slate-900">{r.name}</span>
-                    <Badge color="orange">{areas.length} area{areas.length === 1 ? "" : "s"}</Badge>
+                    <Badge color="lime">{areas.length} area{areas.length === 1 ? "" : "s"}</Badge>
                     <Badge>{r.users.length} admin{r.users.length === 1 ? "" : "s"}</Badge>
                     {r.description && <span className="text-sm text-slate-500">{r.description}</span>}
                   </summary>

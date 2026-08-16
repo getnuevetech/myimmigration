@@ -3,8 +3,8 @@ import { getVisibleComments, getComposerCheckbox, type ViewerRole } from "@/lib/
 import { CommentComposer } from "./comment-composer";
 
 const roleBadge: Record<string, { label: string; color: string }> = {
-  customer: { label: "Customer", color: "orange" },
-  consultant: { label: "Consultant", color: "amber" },
+  customer: { label: "Customer", color: "lime" },
+  consultant: { label: "Consultant", color: "lime" },
   admin: { label: "Support team", color: "blue" },
 };
 
@@ -28,11 +28,11 @@ export async function CaseComments({ caseId, viewer }: { caseId: string; viewer:
               </p>
             )}
             {comments.map((cm) => (
-              <div key={cm.id} className={`rounded-xl border p-3.5 ${cm.visibility === "private" ? "border-slate-200 bg-slate-50" : cm.visibility === "hidden_from_customer" ? "border-amber-200 bg-amber-50/60" : "border-slate-200 bg-white"}`}>
+              <div key={cm.id} className={`rounded-xl border p-3.5 ${cm.visibility === "private" ? "border-slate-200 bg-slate-50" : cm.visibility === "hidden_from_customer" ? "border-lime-200 bg-lime-50/60" : "border-slate-200 bg-white"}`}>
                 <div className="mb-1 flex flex-wrap items-center gap-2">
                   <span className="text-sm font-semibold text-slate-900">{cm.isOwn ? "You" : cm.authorName}</span>
                   <Badge color={roleBadge[cm.authorRole]?.color ?? "slate"}>{roleBadge[cm.authorRole]?.label ?? cm.authorRole}</Badge>
-                  {cm.visibility === "hidden_from_customer" && <Badge color="amber">Hidden from customer</Badge>}
+                  {cm.visibility === "hidden_from_customer" && <Badge color="lime">Hidden from customer</Badge>}
                   {cm.visibility === "private" && <Badge>Private note</Badge>}
                   <span className="text-xs text-slate-400">{cm.createdAt.toLocaleString("en-US")}</span>
                 </div>
@@ -46,7 +46,7 @@ export async function CaseComments({ caseId, viewer }: { caseId: string; viewer:
                           <img
                             src={`/api/files/${att.id}`}
                             alt={att.fileName}
-                            className="h-24 w-24 rounded-lg object-cover ring-1 ring-slate-200 transition hover:ring-orange-400"
+                            className="h-24 w-24 rounded-lg object-cover ring-1 ring-slate-200 transition hover:ring-lime-400"
                           />
                         </a>
                       ) : (
@@ -54,7 +54,7 @@ export async function CaseComments({ caseId, viewer }: { caseId: string; viewer:
                           key={att.id}
                           href={`/api/files/${att.id}`}
                           target="_blank"
-                          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50"
+                          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-lime-700 hover:bg-lime-50"
                         >
                           📎 {att.fileName}
                         </a>

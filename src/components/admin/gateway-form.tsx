@@ -46,11 +46,11 @@ export function GatewayForm({ gateway }: { gateway: Gateway }) {
       <div className="mt-3 flex items-center justify-between">
         <div className="flex gap-5">
           <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" name="isActive" defaultChecked={gateway?.isActive ?? false} className="h-4 w-4 rounded border-slate-300 text-orange-600" />
+            <input type="checkbox" name="isActive" defaultChecked={gateway?.isActive ?? false} className="h-4 w-4 rounded border-slate-300 text-lime-600" />
             Active
           </label>
           <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" name="isDefault" defaultChecked={gateway?.isDefault ?? false} className="h-4 w-4 rounded border-slate-300 text-orange-600" />
+            <input type="checkbox" name="isDefault" defaultChecked={gateway?.isDefault ?? false} className="h-4 w-4 rounded border-slate-300 text-lime-600" />
             Default gateway
           </label>
         </div>

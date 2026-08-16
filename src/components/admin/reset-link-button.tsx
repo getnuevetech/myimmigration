@@ -11,7 +11,7 @@ export function ResetLinkButton({ userId }: { userId: string }) {
     <div>
       <form action={formAction}>
         <input type="hidden" name="userId" value={userId} />
-        <button disabled={pending} className="text-xs font-medium text-orange-600 hover:text-orange-800 disabled:opacity-50">
+        <button disabled={pending} className="text-xs font-medium text-lime-600 hover:text-lime-800 disabled:opacity-50">
           {pending ? "Sending…" : "Password reset"}
         </button>
       </form>
@@ -21,7 +21,7 @@ export function ResetLinkButton({ userId }: { userId: string }) {
           <p>{state.info}</p>
           {state.link && (
             <div className="mt-1 flex items-center gap-2">
-              <a href={state.link} target="_blank" className="font-medium text-orange-600 underline">
+              <a href={state.link} target="_blank" className="font-medium text-lime-600 underline">
                 Open reset link ↗
               </a>
               <button

@@ -22,13 +22,13 @@ export function RoleForm({ role }: { role: Role }) {
       <p className="mb-2 mt-4 text-sm font-medium text-slate-700">Which admin areas can this role manage?</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {ADMIN_AREAS.map((a) => (
-          <label key={a.key} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm has-checked:border-orange-400 has-checked:bg-orange-50">
+          <label key={a.key} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm has-checked:border-lime-400 has-checked:bg-lime-50">
             <input
               type="checkbox"
               name="areas"
               value={a.key}
               defaultChecked={role?.areas.includes(a.key)}
-              className="h-4 w-4 rounded border-slate-300 text-orange-600"
+              className="h-4 w-4 rounded border-slate-300 text-lime-600"
             />
             {a.name}
           </label>

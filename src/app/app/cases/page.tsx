@@ -31,14 +31,14 @@ export default async function CasesPage() {
         <div className="space-y-4">
           {cases.map((c) => (
             <Link key={c.id} href={`/app/cases/${c.id}`} className="block">
-              <Card className="transition hover:border-orange-300">
+              <Card className="transition hover:border-lime-300">
                 <CardBody>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-slate-900">
-                      <span className="mr-2 font-mono text-xs text-orange-600">{formatCaseNumber(c.number)}</span>
+                      <span className="mr-2 font-mono text-xs text-lime-600">{formatCaseNumber(c.number)}</span>
                       {c.title}
                     </p>
-                    <Badge color={c.status === "analyzed" ? "green" : c.status === "consultant_recommended" ? "amber" : "slate"}>
+                    <Badge color={c.status === "analyzed" ? "green" : c.status === "consultant_recommended" ? "lime" : "slate"}>
                       {c.status.replace(/_/g, " ")}
                     </Badge>
                   </div>

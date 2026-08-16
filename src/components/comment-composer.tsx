@@ -26,7 +26,7 @@ export function CommentComposer({ caseId, checkboxLabel }: { caseId: string; che
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50"
+          className="rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700 disabled:opacity-50"
         >
           {pending ? "Posting…" : "Post"}
         </button>
@@ -37,7 +37,7 @@ export function CommentComposer({ caseId, checkboxLabel }: { caseId: string; che
           name="files"
           multiple
           accept="image/*,.pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.heic,.webp"
-          className="text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-orange-50 file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-orange-700"
+          className="text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-lime-50 file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-lime-700"
         />
         <span className="text-[11px] text-slate-400">
           Attached files join the case documents and are analyzed automatically.
@@ -45,7 +45,7 @@ export function CommentComposer({ caseId, checkboxLabel }: { caseId: string; che
       </div>
       {checkboxLabel && (
         <label className="mt-2 flex items-start gap-2 text-xs text-slate-600">
-          <input type="checkbox" name="hide" className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600" />
+          <input type="checkbox" name="hide" className="mt-0.5 h-4 w-4 rounded border-slate-300 text-lime-600" />
           {checkboxLabel}
         </label>
       )}

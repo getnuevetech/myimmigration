@@ -62,7 +62,7 @@ export default async function DeletedAccountsPage() {
                   <p className="text-xs text-slate-500">{u.email}</p>
                 </td>
                 <td className="px-4 py-3">
-                  <Badge color={u.role === "consultant" ? "amber" : u.role === "admin" ? "blue" : "slate"}>
+                  <Badge color={u.role === "consultant" ? "lime" : u.role === "admin" ? "blue" : "slate"}>
                     {u.role.replace(/_/g, " ")}
                   </Badge>
                 </td>

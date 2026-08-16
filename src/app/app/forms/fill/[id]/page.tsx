@@ -50,14 +50,14 @@ export default async function FillFormPage({
             canDownload ? (
               <a
                 href={`/api/forms/${submission.id}/download`}
-                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+                className="rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700"
               >
                 {hasOfficialPdf ? "⬇ Download official USCIS PDF" : "⬇ Download completed form"}
               </a>
             ) : (
               <Link
                 href="/app/billing?upgrade=forms-download"
-                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+                className="rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700"
               >
                 🔒 Unlock download
               </Link>
@@ -68,7 +68,7 @@ export default async function FillFormPage({
           Level complete — every question answered. Nicely done.
         </div>
         {!canDownload && (
-          <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
+          <div className="mb-4 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
             Your completed form is saved. Downloading a print-ready copy is included in higher plans —{" "}
             <Link href="/app/billing?upgrade=forms-download" className="font-semibold underline">see plans</Link>.
           </div>
@@ -87,7 +87,7 @@ export default async function FillFormPage({
           >
             Edit my answers
           </Link>
-          <Link href="/app/forms" className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700">
+          <Link href="/app/forms" className="rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700">
             Back to forms
           </Link>
         </div>
@@ -129,7 +129,7 @@ export default async function FillFormPage({
           </div>
         </div>
         {prefilledKeys.length > 0 && (
-          <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
+          <div className="mb-4 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
             We prefilled {prefilledKeys.length} answer{prefilledKeys.length === 1 ? "" : "s"} on this step from your
             profile{prefill.caseNumber ? ` and case ${prefill.caseNumber}` : ""} — review each before continuing.
           </div>

@@ -6,7 +6,7 @@ import { formatTicketNumber } from "@/lib/ticket-number";
 
 export const metadata = { title: "Support tickets" };
 
-const statusColor = (s: string) => (s === "resolved" ? "green" : s === "closed" ? "slate" : s === "in_progress" ? "blue" : "amber");
+const statusColor = (s: string) => (s === "resolved" ? "green" : s === "closed" ? "slate" : s === "in_progress" ? "blue" : "lime");
 
 export default async function SupportPage() {
   const user = await requireUser();
@@ -33,7 +33,7 @@ export default async function SupportPage() {
         <div className="space-y-3">
           {tickets.map((t) => (
             <Link key={t.id} href={`/app/support/${t.id}`} className="block">
-              <Card className="transition hover:border-orange-300">
+              <Card className="transition hover:border-lime-300">
                 <CardBody className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-medium text-slate-900">{t.subject}</p>

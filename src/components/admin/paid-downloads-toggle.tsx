@@ -14,7 +14,7 @@ export function PaidDownloadsToggle({ paid }: { paid: boolean }) {
             name="setting:forms.paid_downloads"
             value="true"
             defaultChecked={paid}
-            className="h-5 w-5 rounded border-slate-300 text-orange-600"
+            className="h-5 w-5 rounded border-slate-300 text-lime-600"
           />
           Completed form downloads are a paid feature
         </label>

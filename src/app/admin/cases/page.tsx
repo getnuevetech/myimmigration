@@ -20,7 +20,7 @@ export default async function AdminCasesPage() {
   });
 
   const statusColor = (s: string) =>
-    s === "analyzed" ? "green" : s === "consultant_recommended" ? "amber" : s === "analyzing" ? "blue" : "slate";
+    s === "analyzed" ? "green" : s === "consultant_recommended" ? "lime" : s === "analyzing" ? "blue" : "slate";
 
   return (
     <div>
@@ -51,7 +51,7 @@ export default async function AdminCasesPage() {
               return (
                 <tr key={c.id} className="hover:bg-slate-50">
                   <td className="max-w-xs px-4 py-3">
-                    <Link href={`/admin/cases/${c.id}`} className="font-medium text-orange-600 underline">
+                    <Link href={`/admin/cases/${c.id}`} className="font-medium text-lime-600 underline">
                       {c.title.slice(0, 60)}
                     </Link>
                     <p className="font-mono text-xs text-slate-400">{formatCaseNumber(c.number)}</p>
@@ -61,7 +61,7 @@ export default async function AdminCasesPage() {
                   </td>
                   <td className="px-4 py-3"><Badge color={statusColor(c.status)}>{c.status.replace(/_/g, " ")}</Badge></td>
                   <td className="px-4 py-3">
-                    <Badge color={usedAi ? "green" : "amber"}>{usedAi ? "AI pipeline" : "rule-based"}</Badge>
+                    <Badge color={usedAi ? "green" : "lime"}>{usedAi ? "AI pipeline" : "rule-based"}</Badge>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{c.issues.length}</td>
                   <td className="px-4 py-3 text-slate-600">{c.documents.length}</td>

@@ -24,11 +24,11 @@ export function ProfileForm({
     <ActionForm action={updateProfileAction} successMessage="Profile saved.">
       <div className="space-y-4">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-orange-100 text-xl font-bold text-orange-700">
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-lime-100 text-xl font-bold text-lime-700">
             {user.firstName?.[0]?.toUpperCase() ?? user.email[0].toUpperCase()}
           </div>
           <Field label="Profile picture">
-            <input type="file" name="avatar" accept="image/*" className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1.5 file:text-sm file:text-orange-700" />
+            <input type="file" name="avatar" accept="image/*" className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-lime-50 file:px-3 file:py-1.5 file:text-sm file:text-lime-700" />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">

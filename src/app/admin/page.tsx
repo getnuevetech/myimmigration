@@ -26,7 +26,7 @@ export default async function AdminOverviewPage() {
       {(a.engine.providers === 0 || !liveGateway || a.engine.aiCallsFailed > 0) && (
         <div className="mb-6 space-y-2">
           {a.engine.providers === 0 && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+            <div className="rounded-xl border border-lime-300 bg-lime-50 px-4 py-2.5 text-sm text-lime-900">
               AI not connected — analyses run in rule-based mode. <Link href="/admin/ai-providers" className="font-semibold underline">Add providers</Link>.
             </div>
           )}
@@ -37,7 +37,7 @@ export default async function AdminOverviewPage() {
             </div>
           )}
           {!liveGateway && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+            <div className="rounded-xl border border-lime-300 bg-lime-50 px-4 py-2.5 text-sm text-lime-900">
               Payments in test mode — subscriptions activate without charging. <Link href="/admin/payments" className="font-semibold underline">Configure a live gateway</Link>.
             </div>
           )}
@@ -62,7 +62,7 @@ export default async function AdminOverviewPage() {
         </CardBody></Card>
         <Card><CardBody>
           <h3 className="mb-2 text-sm font-semibold text-slate-900">Cases opened — last 30 days</h3>
-          <BarSeries data={a.cases.caseSeries} color="#ea580c" />
+          <BarSeries data={a.cases.caseSeries} color="#a3e635" />
         </CardBody></Card>
         <Card><CardBody>
           <h3 className="mb-2 text-sm font-semibold text-slate-900">Revenue — last 30 days ($)</h3>
@@ -110,7 +110,7 @@ export default async function AdminOverviewPage() {
           <h3 className="mb-3 text-sm font-semibold text-slate-900">Consultant network</h3>
           <dl className="space-y-2.5 text-sm">
             <div className="flex justify-between"><dt className="text-slate-600">Consultants (approved)</dt><dd className="font-semibold text-slate-900">{a.users.consultantsTotal} ({a.users.consultantsApproved})</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-600">Applications pending</dt><dd className={`font-semibold ${a.users.consultantsPending > 0 ? "text-amber-600" : "text-slate-900"}`}>{a.users.consultantsPending}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-600">Applications pending</dt><dd className={`font-semibold ${a.users.consultantsPending > 0 ? "text-lime-600" : "text-slate-900"}`}>{a.users.consultantsPending}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-600">AI auto-assignments</dt><dd className="font-semibold text-slate-900">{a.consultantsOps.autoAssigned}</dd></div>
           </dl>
           <div className="mt-3">
@@ -176,10 +176,10 @@ export default async function AdminOverviewPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-slate-900">{n.title}</p>
-                      <Badge color={n.kind === "consultant_needed" ? "amber" : "slate"}>{n.kind.replace(/_/g, " ")}</Badge>
+                      <Badge color={n.kind === "consultant_needed" ? "lime" : "slate"}>{n.kind.replace(/_/g, " ")}</Badge>
                     </div>
                     <p className="text-sm text-slate-500">{n.body}</p>
-                    {n.link && <Link href={n.link} className="text-sm font-medium text-orange-600 underline">Open →</Link>}
+                    {n.link && <Link href={n.link} className="text-sm font-medium text-lime-600 underline">Open →</Link>}
                   </div>
                   <form action={markNotificationReadAction.bind(null, n.id)}>
                     <button className="text-xs text-slate-400 hover:text-slate-700">Dismiss</button>

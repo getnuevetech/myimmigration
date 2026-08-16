@@ -91,7 +91,7 @@ export function TicketReplyForm({
         <input type="file" name="files" multiple className={fileInputClass} />
         {staff && (
           <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input type="checkbox" name="internal" className="h-4 w-4 rounded border-slate-300 text-amber-600" />
+            <input type="checkbox" name="internal" className="h-4 w-4 rounded border-slate-300 text-lime-600" />
             Internal note — visible to staff only, the user is not notified
           </label>
         )}
@@ -115,7 +115,7 @@ export function RateTicket({ ticketId }: { ticketId: string }) {
             type="button"
             onClick={() => setRating(n)}
             aria-label={`${n} star${n > 1 ? "s" : ""}`}
-            className={`text-2xl transition ${n <= rating ? "text-amber-400" : "text-slate-300 hover:text-amber-300"}`}
+            className={`text-2xl transition ${n <= rating ? "text-lime-400" : "text-slate-300 hover:text-lime-300"}`}
           >
             ★
           </button>
@@ -144,7 +144,7 @@ export function AttachmentList({
           key={a.id}
           href={`/api/tickets/files/${a.id}`}
           target="_blank"
-          className={`block truncate text-xs underline ${light ? "text-orange-100" : "text-orange-600"}`}
+          className={`block truncate text-xs underline ${light ? "text-lime-100" : "text-lime-600"}`}
         >
           📎 {a.fileName}
         </a>

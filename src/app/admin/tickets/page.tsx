@@ -74,7 +74,7 @@ export default async function AdminTicketsPage({
   const filterLink = (label: string, params: string, active: boolean) => (
     <Link
       href={`/admin/tickets${params}`}
-      className={`rounded-full px-3 py-1.5 text-xs font-medium ${active ? "bg-orange-600 text-white" : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"}`}
+      className={`rounded-full px-3 py-1.5 text-xs font-medium ${active ? "bg-lime-600 text-white" : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"}`}
     >
       {label}
     </Link>
@@ -101,7 +101,7 @@ export default async function AdminTicketsPage({
       <Card className="mb-6">
         <CardBody>
           <details>
-            <summary className="cursor-pointer text-sm font-semibold text-orange-600">
+            <summary className="cursor-pointer text-sm font-semibold text-lime-600">
               + Create a ticket on behalf of a customer or consultant
             </summary>
             <div className="mt-4">
@@ -116,7 +116,7 @@ export default async function AdminTicketsPage({
       <Card className="mb-6">
         <CardBody>
           <details>
-            <summary className="cursor-pointer text-sm font-semibold text-orange-600">
+            <summary className="cursor-pointer text-sm font-semibold text-lime-600">
               Canned responses ({canned.length}) & inbound email
             </summary>
             <div className="mt-4 space-y-4">
@@ -172,7 +172,7 @@ export default async function AdminTicketsPage({
             name="q"
             defaultValue={f.q ?? ""}
             placeholder="Search: TKT number, subject, user…"
-            className="w-64 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none"
+            className="w-64 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:border-lime-500 focus:outline-none"
           />
           <button className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700">Search</button>
         </form>
@@ -199,14 +199,14 @@ export default async function AdminTicketsPage({
             {tickets.map((t) => (
               <tr key={t.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3">
-                  <Link href={`/admin/tickets/${t.id}`} className="font-medium text-orange-600 underline">
+                  <Link href={`/admin/tickets/${t.id}`} className="font-medium text-lime-600 underline">
                     {t.subject.slice(0, 60)}
                   </Link>
                   <p className="text-xs text-slate-400">{formatTicketNumber(t.number)} · {t._count.messages} msg</p>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{t.user.email}</td>
                 <td className="px-4 py-3">
-                  <Badge color={t.category === "tech_support" ? "blue" : "orange"}>
+                  <Badge color={t.category === "tech_support" ? "blue" : "lime"}>
                     {t.category === "tech_support" ? "Tech support" : "Customer service"}
                   </Badge>
                 </td>
@@ -214,13 +214,13 @@ export default async function AdminTicketsPage({
                   {t.assignedTo ? `${t.assignedTo.firstName} ${t.assignedTo.lastName}`.trim() || t.assignedTo.email : <span className="text-slate-400">—</span>}
                 </td>
                 <td className="px-4 py-3">
-                  <Badge color={t.priority === "urgent" ? "red" : t.priority === "high" ? "amber" : "slate"}>{t.priority}</Badge>
+                  <Badge color={t.priority === "urgent" ? "red" : t.priority === "high" ? "lime" : "slate"}>{t.priority}</Badge>
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-500">{t.source}</td>
                 <td className="px-4 py-3 text-xs text-slate-500">{t.updatedAt.toLocaleString("en-US")}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col items-start gap-1">
-                    <Badge color={t.status === "resolved" ? "green" : t.status === "closed" ? "slate" : t.status === "in_progress" ? "blue" : "amber"}>
+                    <Badge color={t.status === "resolved" ? "green" : t.status === "closed" ? "slate" : t.status === "in_progress" ? "blue" : "lime"}>
                       {t.status.replace(/_/g, " ")}
                     </Badge>
                     {isOverdue(t) && <Badge color="red">SLA overdue</Badge>}

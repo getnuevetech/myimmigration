@@ -83,18 +83,18 @@ export function ConsultantOnboardingForm({
             label={needsLicense ? "Credential proof (required)" : "Certification proof"}
             hint={existing?.hasProof ? "On file ✓ — upload to replace" : "License certificate or EA enrollment card."}
           >
-            <input type="file" name="proof" accept=".pdf,image/*" className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1.5 file:text-sm file:text-orange-700" />
+            <input type="file" name="proof" accept=".pdf,image/*" className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-lime-50 file:px-3 file:py-1.5 file:text-sm file:text-lime-700" />
           </Field>
           <Field label="Government photo ID" hint={existing?.hasPhotoId ? "On file ✓ — upload to replace" : "Driver's license, passport, or state ID."}>
-            <input type="file" name="photoId" accept=".pdf,image/*" className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1.5 file:text-sm file:text-orange-700" />
+            <input type="file" name="photoId" accept=".pdf,image/*" className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-lime-50 file:px-3 file:py-1.5 file:text-sm file:text-lime-700" />
           </Field>
           <Field label="E&O insurance proof" hint={existing?.hasInsurance ? "On file ✓ — upload to replace" : "Current professional liability coverage."}>
-            <input type="file" name="insurance" accept=".pdf,image/*" className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1.5 file:text-sm file:text-orange-700" />
+            <input type="file" name="insurance" accept=".pdf,image/*" className="text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-lime-50 file:px-3 file:py-1.5 file:text-sm file:text-lime-700" />
           </Field>
         </div>
 
         <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-          <input type="checkbox" name="isBusiness" checked={isBusiness} onChange={(e) => setIsBusiness(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-orange-600" />
+          <input type="checkbox" name="isBusiness" checked={isBusiness} onChange={(e) => setIsBusiness(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-lime-600" />
           I operate as a business (firm/practice) rather than an individual
         </label>
         {isBusiness && (
@@ -121,13 +121,13 @@ export function ConsultantOnboardingForm({
         <Field label="Areas of specialty" hint="Used to match you with clients whose situation fits your expertise.">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {CONSULTANT_SPECIALTIES.map((s) => (
-              <label key={s.key} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm has-checked:border-orange-400 has-checked:bg-orange-50">
+              <label key={s.key} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm has-checked:border-lime-400 has-checked:bg-lime-50">
                 <input
                   type="checkbox"
                   name="specialties"
                   value={s.key}
                   defaultChecked={existing?.specialties.includes(s.key)}
-                  className="h-4 w-4 rounded border-slate-300 text-orange-600"
+                  className="h-4 w-4 rounded border-slate-300 text-lime-600"
                 />
                 {s.name}
               </label>
@@ -136,7 +136,7 @@ export function ConsultantOnboardingForm({
         </Field>
 
         <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-          <input type="checkbox" name="attestation" defaultChecked={existing?.attestedCompliance} className="mt-1 h-4 w-4 rounded border-slate-300 text-orange-600" />
+          <input type="checkbox" name="attestation" defaultChecked={existing?.attestedCompliance} className="mt-1 h-4 w-4 rounded border-slate-300 text-lime-600" />
           <span>
             <span className="font-medium text-slate-800">Compliance attestation.</span> I attest that I am compliant with my
             own federal immigration filing and payment obligations, and that I have not been convicted of any offense or subjected to
@@ -145,11 +145,11 @@ export function ConsultantOnboardingForm({
         </label>
 
         <label className="flex items-start gap-2 text-sm text-slate-600">
-          <input type="checkbox" name="agree" required className="mt-1 h-4 w-4 rounded border-slate-300 text-orange-600" />
+          <input type="checkbox" name="agree" required className="mt-1 h-4 w-4 rounded border-slate-300 text-lime-600" />
           <span>
             I confirm the information above is accurate and agree to the{" "}
             {agreementSlug ? (
-              <Link href={`/p/${agreementSlug}`} target="_blank" className="font-medium text-orange-600 underline">{agreementTitle}</Link>
+              <Link href={`/p/${agreementSlug}`} target="_blank" className="font-medium text-lime-600 underline">{agreementTitle}</Link>
             ) : (
               agreementTitle
             )}

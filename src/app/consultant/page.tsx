@@ -63,7 +63,7 @@ export default async function ConsultantDashboard({
       )}
 
       {needsSubscription && (
-        <Card className="mb-6 border-amber-300">
+        <Card className="mb-6 border-lime-300">
           <CardBody className="flex items-center justify-between gap-4">
             <div>
               <p className="font-semibold text-slate-900">Partner subscription required</p>
@@ -75,7 +75,7 @@ export default async function ConsultantDashboard({
       )}
 
       {!profile && (
-        <Card className="mb-6 border-amber-300">
+        <Card className="mb-6 border-lime-300">
           <CardBody className="flex items-center justify-between gap-4">
             <div>
               <p className="font-semibold text-slate-900">Complete your professional onboarding</p>
@@ -111,7 +111,7 @@ export default async function ConsultantDashboard({
                 <p className="text-xs text-red-500">Reason: {profile.rejectionReason}</p>
               )}
             </div>
-            <Badge color={profile.status === "approved" ? "green" : profile.status === "rejected" ? "red" : "amber"}>
+            <Badge color={profile.status === "approved" ? "green" : profile.status === "rejected" ? "red" : "lime"}>
               {profile.credentialType.toUpperCase().replace("_", " ")}
             </Badge>
           </CardBody>
@@ -142,7 +142,7 @@ export default async function ConsultantDashboard({
                     <p className="font-semibold text-slate-900">{a.user.firstName} {a.user.lastName}</p>
                     <p className="text-sm text-slate-500">{a.status === "active" ? a.user.email : "Contact details unlock when the connection is active"}</p>
                   </div>
-                  <Badge color={a.status === "active" ? "green" : "amber"}>{a.status.replace(/_/g, " ")}</Badge>
+                  <Badge color={a.status === "active" ? "green" : "lime"}>{a.status.replace(/_/g, " ")}</Badge>
                 </div>
 
                 {a.status === "active" && kase && (
@@ -150,7 +150,7 @@ export default async function ConsultantDashboard({
                     <a
                       href={`/api/cases/${kase.id}/report`}
                       target="_blank"
-                      className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+                      className="rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700"
                     >
                       Case report ↗
                     </a>
@@ -166,18 +166,18 @@ export default async function ConsultantDashboard({
                 {kase ? (
                   <details className="group mt-4 rounded-xl border border-slate-200 bg-slate-50/60">
                     <summary className="flex cursor-pointer items-start gap-2 p-4 text-sm text-slate-600 [&::-webkit-details-marker]:hidden">
-                      <span className="mt-0.5 text-xs text-orange-500 transition-transform group-open:rotate-90">▶</span>
+                      <span className="mt-0.5 text-xs text-lime-500 transition-transform group-open:rotate-90">▶</span>
                       <span>
                         <span className="font-semibold text-slate-800">Why this case was routed to you: </span>
                         {routingReason ?? "This client's case is awaiting analysis — open for the case details."}
-                        <span className="ml-1.5 text-xs font-medium text-orange-600">Case details</span>
+                        <span className="ml-1.5 text-xs font-medium text-lime-600">Case details</span>
                       </span>
                     </summary>
 
                     <div className="border-t border-slate-200 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-semibold text-slate-900">
-                          <span className="mr-2 font-mono text-xs text-orange-600">{formatCaseNumber(kase.number)}</span>
+                          <span className="mr-2 font-mono text-xs text-lime-600">{formatCaseNumber(kase.number)}</span>
                           {kase.title}
                         </p>
                         <Badge>{kase.status.replace(/_/g, " ")}</Badge>
@@ -199,7 +199,7 @@ export default async function ConsultantDashboard({
                               <div key={i.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-100">
                                 <span className="text-slate-700">
                                   {i.taxYear ? `${i.taxYear} · ` : ""}{i.title}
-                                  {money(i.differenceCents) ? <span className="ml-1.5 font-semibold text-orange-600">{money(i.differenceCents)}</span> : null}
+                                  {money(i.differenceCents) ? <span className="ml-1.5 font-semibold text-lime-600">{money(i.differenceCents)}</span> : null}
                                 </span>
                                 <StateMark state={i.state} />
                               </div>
@@ -240,7 +240,7 @@ export default async function ConsultantDashboard({
                     <p className="text-sm text-slate-600">
                       Accepting means you agree to the{" "}
                       {agreement ? (
-                        <a href={`/p/${agreement.slug}`} target="_blank" className="font-medium text-orange-600 underline">{agreement.title}</a>
+                        <a href={`/p/${agreement.slug}`} target="_blank" className="font-medium text-lime-600 underline">{agreement.title}</a>
                       ) : ("connection agreement")}{" "}
                       covering confidentiality and handling of the client&apos;s sensitive materials.
                     </p>
@@ -249,7 +249,7 @@ export default async function ConsultantDashboard({
                         <ButtonLink href="/consultant/billing?required=1">Subscribe to accept clients →</ButtonLink>
                       ) : (
                         <form action={consultantRespondAssignmentAction.bind(null, a.id, true)}>
-                          <button className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700">
+                          <button className="rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700">
                             Accept assignment
                           </button>
                         </form>

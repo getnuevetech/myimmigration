@@ -11,7 +11,7 @@ function Submit({ isLast }: { isLast: boolean }) {
     <button
       type="submit"
       disabled={pending}
-      className="w-full rounded-xl bg-orange-600 px-6 py-3 text-base font-semibold text-white shadow-md transition hover:bg-orange-700 disabled:opacity-50"
+      className="w-full rounded-xl bg-lime-600 px-6 py-3 text-base font-semibold text-white shadow-md transition hover:bg-lime-700 disabled:opacity-50"
     >
       {pending ? "Saving…" : isLast ? "Finish & build my form ✓" : "Next →"}
     </button>
@@ -56,7 +56,7 @@ export function FormStep({
                   {field.required && <span className="text-red-500"> *</span>}
                 </span>
                 {prefilled.has(field.key) && (
-                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-700">
+                  <span className="rounded-full bg-lime-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-lime-700">
                     Prefilled
                   </span>
                 )}
@@ -73,8 +73,8 @@ export function FormStep({
               ) : field.type === "boolean" ? (
                 <div className="flex gap-3">
                   {["Yes", "No"].map((v) => (
-                    <label key={v} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium has-checked:border-orange-500 has-checked:bg-orange-50">
-                      <input type="radio" name={field.key} value={v} defaultChecked={saved === v} className="h-4 w-4 text-orange-600" />
+                    <label key={v} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium has-checked:border-lime-500 has-checked:bg-lime-50">
+                      <input type="radio" name={field.key} value={v} defaultChecked={saved === v} className="h-4 w-4 text-lime-600" />
                       {v}
                     </label>
                   ))}

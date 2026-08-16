@@ -36,7 +36,7 @@ export default async function TicketPage({
         </div>
       )}
       <div className="mb-4">
-        <Badge color={ticket.status === "resolved" ? "green" : ticket.status === "closed" ? "slate" : ticket.status === "in_progress" ? "blue" : "amber"}>
+        <Badge color={ticket.status === "resolved" ? "green" : ticket.status === "closed" ? "slate" : ticket.status === "in_progress" ? "blue" : "lime"}>
           {ticket.status.replace(/_/g, " ")}
         </Badge>
       </div>
@@ -44,10 +44,10 @@ export default async function TicketPage({
         <CardBody className="space-y-4">
           {ticket.messages.map((m) => (
             <div key={m.id} className={`flex ${m.fromStaff ? "justify-start" : "justify-end"}`}>
-              <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${m.fromStaff ? "bg-slate-100 text-slate-800" : "bg-orange-600 text-white"}`}>
+              <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${m.fromStaff ? "bg-slate-100 text-slate-800" : "bg-lime-600 text-white"}`}>
                 <p className="whitespace-pre-wrap">{m.body}</p>
                 <AttachmentList attachments={m.attachments} light={!m.fromStaff} />
-                <p className={`mt-1 text-[10px] ${m.fromStaff ? "text-slate-400" : "text-orange-200"}`}>
+                <p className={`mt-1 text-[10px] ${m.fromStaff ? "text-slate-400" : "text-lime-200"}`}>
                   {m.fromStaff ? "Support team" : "You"} · {m.createdAt.toLocaleString("en-US")}
                 </p>
               </div>
@@ -56,7 +56,7 @@ export default async function TicketPage({
         </CardBody>
       </Card>
       {["resolved", "closed"].includes(ticket.status) && !ticket.csatRating && (
-        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <div className="mt-4 rounded-2xl border border-lime-200 bg-lime-50 p-4">
           <RateTicket ticketId={ticket.id} />
         </div>
       )}

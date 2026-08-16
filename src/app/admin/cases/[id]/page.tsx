@@ -36,7 +36,7 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
       />
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        <Badge color={usedAi ? "green" : "amber"}>{usedAi ? "AI pipeline" : "rule-based fallback"}</Badge>
+        <Badge color={usedAi ? "green" : "lime"}>{usedAi ? "AI pipeline" : "rule-based fallback"}</Badge>
         {failedCalls.length > 0 && (
           <Badge color="red">{failedCalls.length} failed model call{failedCalls.length === 1 ? "" : "s"} — see diagnostics below</Badge>
         )}
@@ -59,7 +59,7 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
                     <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
                       <span className="font-semibold text-slate-800">{r.stageKey}</span>
                       <Badge color={r.status === "complete" ? "green" : r.status === "failed" ? "red" : "slate"}>{r.status}</Badge>
-                      <Badge color={r.stepResults.length > 0 ? "orange" : "amber"}>
+                      <Badge color={r.stepResults.length > 0 ? "lime" : "lime"}>
                         {r.stepResults.length > 0 ? `${r.stepResults.length} model calls` : "no AI (fallback)"}
                       </Badge>
                       {r.consensus?.verificationRequired && <Badge color="red">verification required</Badge>}
@@ -77,9 +77,9 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
                         </div>
                       ))}
                       {r.consensus && (
-                        <div className="rounded-lg bg-orange-50 p-3 text-xs">
-                          <p className="font-medium text-orange-800">Consensus</p>
-                          <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap text-orange-700">
+                        <div className="rounded-lg bg-lime-50 p-3 text-xs">
+                          <p className="font-medium text-lime-800">Consensus</p>
+                          <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap text-lime-700">
                             {JSON.stringify({ merged: JSON.parse(r.consensus.mergedJson || "{}"), conflicts: JSON.parse(r.consensus.conflictsJson || "[]") }, null, 2).slice(0, 2000)}
                           </pre>
                         </div>

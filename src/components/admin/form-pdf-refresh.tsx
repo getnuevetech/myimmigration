@@ -19,7 +19,7 @@ export function FormPdfRefresh({ templateId }: { templateId: string }) {
             setResult(res ?? { error: "No response." });
           })
         }
-        className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 transition hover:bg-orange-100 disabled:opacity-50"
+        className="rounded-lg border border-lime-300 bg-lime-50 px-3 py-1.5 text-xs font-semibold text-lime-700 transition hover:bg-lime-100 disabled:opacity-50"
       >
         {pending ? "Fetching…" : "⟳ Fetch official PDF"}
       </button>

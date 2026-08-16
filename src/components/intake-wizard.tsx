@@ -16,7 +16,7 @@ function Submit() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl bg-orange-600 px-8 py-3 text-base font-semibold text-white shadow-md transition hover:bg-orange-700 disabled:opacity-60"
+      className="rounded-xl bg-lime-600 px-8 py-3 text-base font-semibold text-white shadow-md transition hover:bg-lime-700 disabled:opacity-60"
     >
       {pending ? "Analyzing your situation…" : "Analyze my situation →"}
     </button>
@@ -42,7 +42,7 @@ export function IntakeWizard() {
         </div>
         <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
           <div
-            className="h-full rounded-full bg-orange-600 transition-all duration-500"
+            className="h-full rounded-full bg-lime-600 transition-all duration-500"
             style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
           />
         </div>
@@ -66,7 +66,7 @@ export function IntakeWizard() {
             onChange={(e) => setSituation(e.target.value)}
             rows={7}
             placeholder={'For example: "I got an RFE from USCIS, I am not sure what evidence they want, and the deadline is coming up…"'}
-            className="w-full rounded-xl border border-slate-300 p-4 text-base focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+            className="w-full rounded-xl border border-slate-300 p-4 text-base focus:border-lime-500 focus:outline-none focus:ring-2 focus:ring-lime-100"
           />
           <p className="mt-2 text-xs text-slate-400">
             {situation.trim().length < 20 ? `Keep going — a few sentences helps a lot (${situation.trim().length}/20 characters minimum)` : "Great, that's enough to work with. Add as much detail as you like."}
@@ -80,7 +80,7 @@ export function IntakeWizard() {
             onChange={(e) => setGoal(e.target.value)}
             rows={4}
             placeholder={'For example: "Understand the RFE, organize my evidence, and prepare next steps before the deadline."'}
-            className="w-full rounded-xl border border-slate-300 p-4 text-base focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+            className="w-full rounded-xl border border-slate-300 p-4 text-base focus:border-lime-500 focus:outline-none focus:ring-2 focus:ring-lime-100"
           />
           <div className="mt-3 flex flex-wrap gap-2">
             {["Understand a USCIS letter", "Prepare an RFE response", "Organize my case timeline", "Get ready for an interview", "Identify missing evidence"].map((g) => (
@@ -88,7 +88,7 @@ export function IntakeWizard() {
                 key={g}
                 type="button"
                 onClick={() => setGoal((prev) => (prev ? `${prev} ${g}.` : `${g}.`))}
-                className="rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:border-orange-400 hover:text-orange-600"
+                className="rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:border-lime-400 hover:text-lime-600"
               >
                 + {g}
               </button>
@@ -97,7 +97,7 @@ export function IntakeWizard() {
         </div>
 
         <div className={step === 2 ? "mt-6" : "hidden"}>
-          <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-10 text-center hover:border-orange-400">
+          <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-10 text-center hover:border-lime-400">
             <span className="text-base font-medium text-slate-700">
               {fileCount > 0 ? `${fileCount} file${fileCount > 1 ? "s" : ""} ready to upload` : "Tap to add photos or files"}
             </span>
@@ -129,7 +129,7 @@ export function IntakeWizard() {
               type="button"
               disabled={!canNext}
               onClick={() => setStep((s) => s + 1)}
-              className="rounded-xl bg-orange-600 px-8 py-3 text-base font-semibold text-white shadow-md transition hover:bg-orange-700 disabled:opacity-40"
+              className="rounded-xl bg-lime-600 px-8 py-3 text-base font-semibold text-white shadow-md transition hover:bg-lime-700 disabled:opacity-40"
             >
               Continue →
             </button>

@@ -39,7 +39,7 @@ export default async function NoticesPage() {
                       {n.taxYear ? ` · Case year ${n.taxYear}` : ""}
                     </h2>
                     <div className="flex gap-2">
-                      {n.amountCents !== null && <Badge color="amber"><Money cents={n.amountCents} /></Badge>}
+                      {n.amountCents !== null && <Badge color="lime"><Money cents={n.amountCents} /></Badge>}
                       {n.deadline && (
                         <Badge color="red">Respond by {n.deadline.toLocaleDateString("en-US")}</Badge>
                       )}
@@ -58,7 +58,7 @@ export default async function NoticesPage() {
                       <ol className="mt-2 space-y-2">
                         {steps.map((s, i) => (
                           <li key={i} className="flex gap-3 text-sm">
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-700">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-lime-100 text-xs font-bold text-lime-700">
                               {i + 1}
                             </span>
                             <div>

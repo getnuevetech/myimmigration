@@ -26,4 +26,4 @@ body {
 .prose-simple p { @apply my-3 leading-relaxed; }
 .prose-simple ul { @apply list-disc pl-6 my-3 space-y-1; }
 .prose-simple ol { @apply list-decimal pl-6 my-3 space-y-1; }
-.prose-simple a { @apply text-orange-600 underline; }
+.prose-simple a { @apply text-lime-600 underline; }

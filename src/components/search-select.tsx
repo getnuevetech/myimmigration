@@ -75,7 +75,7 @@ export function SearchSelect({
                   key={o.value}
                   type="button"
                   onClick={() => { setSelected(o); setOpen(false); }}
-                  className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-orange-50"
+                  className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-lime-50"
                 >
                   {o.label}
                 </button>
@@ -117,12 +117,12 @@ export function MultiSearchSelect({
       <input type="hidden" name={name} value={selected.map((s) => s.value).join(", ")} />
       <div className={`${inputClass} flex min-h-10 flex-wrap items-center gap-1.5`}>
         {selected.map((s) => (
-          <span key={s.value} className="flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800">
+          <span key={s.value} className="flex items-center gap-1 rounded-full bg-lime-100 px-2.5 py-0.5 text-xs font-medium text-lime-800">
             {s.label}
             <button
               type="button"
               onClick={() => setSelected(selected.filter((x) => x.value !== s.value))}
-              className="text-orange-400 hover:text-orange-700"
+              className="text-lime-400 hover:text-lime-700"
               aria-label={`Remove ${s.label}`}
             >
               ×
@@ -145,7 +145,7 @@ export function MultiSearchSelect({
               key={o.value}
               type="button"
               onClick={() => { setSelected([...selected, o]); setQuery(""); }}
-              className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-orange-50"
+              className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-lime-50"
             >
               {o.label}
             </button>

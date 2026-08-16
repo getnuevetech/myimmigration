@@ -75,7 +75,7 @@ export function FormTemplateForm({
       <div className="mt-3 flex items-center justify-between">
         <div className="flex items-center gap-5">
           <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" name="isPublished" defaultChecked={template?.isPublished ?? false} className="h-4 w-4 rounded border-slate-300 text-orange-600" />
+            <input type="checkbox" name="isPublished" defaultChecked={template?.isPublished ?? false} className="h-4 w-4 rounded border-slate-300 text-lime-600" />
             Published
           </label>
           <label className="flex items-center gap-2 text-sm text-slate-700">

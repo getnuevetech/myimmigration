@@ -22,14 +22,14 @@ export default async function AdminSettingsPage() {
         subtitle="Every variable the app uses — branding, URLs, OAuth keys, analysis parameters — lives here. Nothing is hardcoded."
       />
 
-      <Card className="mb-6 border-orange-200">
+      <Card className="mb-6 border-lime-200">
         <CardBody>
           <h2 className="text-sm font-semibold text-slate-900">
             Google sign-in setup {googleConfigured ? "· configured" : "· not configured"}
           </h2>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-slate-600">
             <li>
-              In <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="font-medium text-orange-600 underline">Google Cloud Console → APIs &amp; Services → Credentials</a>,
+              In <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="font-medium text-lime-600 underline">Google Cloud Console → APIs &amp; Services → Credentials</a>,
               create an <strong>OAuth client ID</strong> (type: Web application).
             </li>
             <li>
@@ -46,7 +46,7 @@ export default async function AdminSettingsPage() {
             </li>
           </ol>
           {appUrl.includes("localhost") && (
-            <p className="mt-2 text-xs text-amber-600">
+            <p className="mt-2 text-xs text-lime-600">
               Your App URL is currently {appUrl} — Google allows localhost origins for testing, but remember to add your real
               domain to Google and update the App URL setting when you deploy.
             </p>

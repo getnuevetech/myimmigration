@@ -52,8 +52,8 @@ export default async function AdminFormsPage() {
                 <summary className="flex cursor-pointer flex-wrap items-center gap-2">
                   <span className="font-semibold text-slate-900">Form {t.formNumber} — {t.title}</span>
                   <Badge color={t.isPublished ? "green" : "red"}>{t.isPublished ? "published" : "draft"}</Badge>
-                  {t.requiredFeature && <Badge color="amber">requires {t.requiredFeature}</Badge>}
-                  <Badge color={t.pdfPath ? "green" : t.pdfSourceUrl ? "amber" : "slate"}>
+                  {t.requiredFeature && <Badge color="lime">requires {t.requiredFeature}</Badge>}
+                  <Badge color={t.pdfPath ? "green" : t.pdfSourceUrl ? "lime" : "slate"}>
                     {t.pdfPath ? "official PDF ✓" : t.pdfSourceUrl ? "PDF not fetched yet" : "no official PDF"}
                   </Badge>
                 </summary>
@@ -91,7 +91,7 @@ export default async function AdminFormsPage() {
                     </div>
                     {pdfFields.length > 0 && (
                       <details className="mt-3">
-                        <summary className="cursor-pointer text-xs font-medium text-orange-600">
+                        <summary className="cursor-pointer text-xs font-medium text-lime-600">
                           Detected PDF fields ({pdfFields.length}) — use these names in the mapping
                         </summary>
                         <ul className="mt-2 max-h-64 space-y-0.5 overflow-y-auto rounded-lg bg-white p-3 font-mono text-[11px] text-slate-600 ring-1 ring-slate-100">

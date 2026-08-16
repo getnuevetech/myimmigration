@@ -50,10 +50,10 @@ export function UserSearchPicker({ name, placeholder }: { name: string; placehol
     <div ref={boxRef} className="relative">
       <input type="hidden" name={name} value={selected?.id ?? ""} />
       {selected ? (
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-orange-300 bg-orange-50 px-3 py-2">
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-lime-300 bg-lime-50 px-3 py-2">
           <div className="min-w-0 text-sm">
             <p className="truncate font-medium text-slate-900">
-              {selected.label} <span className="text-xs font-normal text-orange-600">({selected.role})</span>
+              {selected.label} <span className="text-xs font-normal text-lime-600">({selected.role})</span>
             </p>
             <p className="truncate text-xs text-slate-500">{selected.email}{selected.phone ? ` · ${selected.phone}` : ""}</p>
           </div>
@@ -82,10 +82,10 @@ export function UserSearchPicker({ name, placeholder }: { name: string; placehol
                   key={r.id}
                   type="button"
                   onClick={() => { setSelected(r); setOpen(false); }}
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-orange-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-lime-50"
                 >
                   <span className="font-medium text-slate-900">{r.label}</span>{" "}
-                  <span className="text-xs text-orange-600">({r.role})</span>
+                  <span className="text-xs text-lime-600">({r.role})</span>
                   <span className="block text-xs text-slate-500">{r.email}{r.phone ? ` · ${r.phone}` : ""}</span>
                 </button>
               ))}

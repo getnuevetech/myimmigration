@@ -29,7 +29,7 @@ export default async function AdminUsersPage() {
       <PeopleTabs active="admins" />
 
       {roles.length === 0 && (
-        <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="mb-6 rounded-xl border border-lime-300 bg-lime-50 px-4 py-3 text-sm text-lime-900">
           No roles exist yet. Create roles under{" "}
           <Link href="/admin/roles" className="font-semibold underline">Roles &amp; permissions</Link> before adding admin users.
         </div>
@@ -48,15 +48,15 @@ export default async function AdminUsersPage() {
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {a.role === "super_admin" ? (
-                        <Badge color="orange">Super admin — all areas</Badge>
+                        <Badge color="lime">Super admin — all areas</Badge>
                       ) : a.adminRole ? (
                         <>
-                          <Badge color="orange">{a.adminRole.name}</Badge>
+                          <Badge color="lime">{a.adminRole.name}</Badge>
                           {roleAreas.map((k) => <Badge key={k}>{areaName(k)}</Badge>)}
                         </>
                       ) : a.adminPermissions.length > 0 ? (
                         <>
-                          <Badge color="amber">Legacy permissions (assign a role)</Badge>
+                          <Badge color="lime">Legacy permissions (assign a role)</Badge>
                           {a.adminPermissions.map((p) => <Badge key={p.id}>{areaName(p.featureKey)}</Badge>)}
                         </>
                       ) : (

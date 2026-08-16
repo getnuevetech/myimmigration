@@ -23,7 +23,7 @@ export default async function AdminKnowledgePage() {
               <details>
                 <summary className="flex cursor-pointer flex-wrap items-center gap-2">
                   <span className="font-semibold text-slate-900">{s.title}</span>
-                  <Badge color="orange">{s.sourceType.replace(/_/g, " ")}</Badge>
+                  <Badge color="lime">{s.sourceType.replace(/_/g, " ")}</Badge>
                   {s.reference && <Badge>{s.reference}</Badge>}
                   {s.taxYear && <Badge>{s.taxYear}</Badge>}
                   <Badge color={s.isActive ? "green" : "red"}>{s.isActive ? "active" : "inactive"}</Badge>

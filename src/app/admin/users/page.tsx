@@ -48,13 +48,13 @@ export default async function AdminCustomersPage() {
             {users.map((u) => (
               <tr key={u.id}>
                 <td className="px-4 py-3">
-                  <Link href={`/admin/users/${u.id}`} className="font-medium text-orange-600 underline">
+                  <Link href={`/admin/users/${u.id}`} className="font-medium text-lime-600 underline">
                     {`${u.firstName} ${u.lastName}`.trim() || u.email}
                   </Link>
                   <p className="text-xs text-slate-500">{u.email}{u.phone ? ` · ${u.phone}` : ""}</p>
                 </td>
                 <td className="px-4 py-3">
-                  <Badge color={u.subscriptions[0] ? "orange" : "slate"}>{u.subscriptions[0]?.plan.name ?? "Free"}</Badge>
+                  <Badge color={u.subscriptions[0] ? "lime" : "slate"}>{u.subscriptions[0]?.plan.name ?? "Free"}</Badge>
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-500">
                   {u._count.cases} cases · {u._count.documents} docs
@@ -70,7 +70,7 @@ export default async function AdminCustomersPage() {
                   <div className="flex flex-wrap items-start justify-end gap-3 text-xs font-medium">
                     <ResetLinkButton userId={u.id} />
                     <form action={setUserStatusAction.bind(null, u.id, u.status === "active" ? "suspended" : "active")}>
-                      <button className="text-amber-600 hover:text-amber-800">
+                      <button className="text-lime-600 hover:text-lime-800">
                         {u.status === "active" ? "Suspend" : "Reactivate"}
                       </button>
                     </form>

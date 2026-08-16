@@ -30,7 +30,7 @@ export function ApprovalCriteriaForm({
           name="enabled"
           checked={isEnabled}
           onChange={(e) => setIsEnabled(e.target.checked)}
-          className="h-5 w-5 rounded border-slate-300 text-orange-600"
+          className="h-5 w-5 rounded border-slate-300 text-lime-600"
         />
         <span>
           <span className="block text-sm font-semibold text-slate-900">Enable automated approval</span>
@@ -42,13 +42,13 @@ export function ApprovalCriteriaForm({
 
       <div className={`mt-4 space-y-2 ${isEnabled ? "" : "pointer-events-none opacity-50"}`}>
         {criteria.map((c) => (
-          <label key={c.key} className="flex items-start gap-3 rounded-xl border border-slate-200 px-4 py-3 has-checked:border-orange-400 has-checked:bg-orange-50/50">
+          <label key={c.key} className="flex items-start gap-3 rounded-xl border border-slate-200 px-4 py-3 has-checked:border-lime-400 has-checked:bg-lime-50/50">
             <input
               type="checkbox"
               name="criteria"
               value={c.key}
               defaultChecked={required.includes(c.key)}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-orange-600"
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-lime-600"
             />
             <span className="flex-1">
               <span className="block text-sm font-medium text-slate-900">{c.name}</span>

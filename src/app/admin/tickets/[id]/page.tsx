@@ -54,16 +54,16 @@ export default async function AdminTicketDetailPage({
         </div>
       )}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Badge color={ticket.status === "resolved" ? "green" : ticket.status === "in_progress" ? "blue" : "amber"}>{ticket.status.replace(/_/g, " ")}</Badge>
-        <Badge color={ticket.category === "tech_support" ? "blue" : "orange"}>
+        <Badge color={ticket.status === "resolved" ? "green" : ticket.status === "in_progress" ? "blue" : "lime"}>{ticket.status.replace(/_/g, " ")}</Badge>
+        <Badge color={ticket.category === "tech_support" ? "blue" : "lime"}>
           {ticket.category === "tech_support" ? "Tech support" : "Customer service"}
         </Badge>
-        <Badge color={ticket.priority === "urgent" ? "red" : ticket.priority === "high" ? "amber" : "slate"}>{ticket.priority}</Badge>
+        <Badge color={ticket.priority === "urgent" ? "red" : ticket.priority === "high" ? "lime" : "slate"}>{ticket.priority}</Badge>
         {ticket.assignedTo && (
           <Badge color="blue">Agent: {`${ticket.assignedTo.firstName} ${ticket.assignedTo.lastName}`.trim() || ticket.assignedTo.email}</Badge>
         )}
         {ticket.csatRating && (
-          <Badge color={ticket.csatRating >= 4 ? "green" : ticket.csatRating >= 3 ? "amber" : "red"}>
+          <Badge color={ticket.csatRating >= 4 ? "green" : ticket.csatRating >= 3 ? "lime" : "red"}>
             CSAT {ticket.csatRating}/5{ticket.csatComment ? ` — “${ticket.csatComment.slice(0, 60)}”` : ""}
           </Badge>
         )}
@@ -85,7 +85,7 @@ export default async function AdminTicketDetailPage({
         )}
         {ticket.status !== "resolved" && actionButton("Mark resolved", setTicketStatusAction.bind(null, ticket.id, "resolved"), "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100")}
         {ticket.status !== "closed" && actionButton("Close", setTicketStatusAction.bind(null, ticket.id, "closed"), "border-slate-300 bg-white text-slate-600 hover:bg-slate-50")}
-        {(ticket.status === "resolved" || ticket.status === "closed") && actionButton("Reopen", setTicketStatusAction.bind(null, ticket.id, "open"), "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100")}
+        {(ticket.status === "resolved" || ticket.status === "closed") && actionButton("Reopen", setTicketStatusAction.bind(null, ticket.id, "open"), "border-lime-300 bg-lime-50 text-lime-700 hover:bg-lime-100")}
         {ticket.priority !== "urgent" && actionButton("Escalate to urgent", setTicketPriorityAction.bind(null, ticket.id, "urgent"), "border-red-200 bg-red-50 text-red-600 hover:bg-red-100")}
         {ticket.priority === "urgent" && actionButton("De-escalate", setTicketPriorityAction.bind(null, ticket.id, "normal"), "border-slate-300 bg-white text-slate-600 hover:bg-slate-50")}
       </div>
@@ -123,16 +123,16 @@ export default async function AdminTicketDetailPage({
                 <div
                   className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
                     m.internal
-                      ? "border border-amber-300 bg-amber-50 text-amber-900"
+                      ? "border border-lime-300 bg-lime-50 text-lime-900"
                       : m.fromStaff
-                        ? "bg-orange-600 text-white"
+                        ? "bg-lime-600 text-white"
                         : "bg-slate-100 text-slate-800"
                   }`}
                 >
-                  {m.internal && <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-amber-600">Internal note</p>}
+                  {m.internal && <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-lime-600">Internal note</p>}
                   <p className="whitespace-pre-wrap">{m.body}</p>
                   <AttachmentList attachments={m.attachments} light={m.fromStaff && !m.internal} />
-                  <p className={`mt-1 text-[10px] ${m.internal ? "text-amber-500" : m.fromStaff ? "text-orange-200" : "text-slate-400"}`}>
+                  <p className={`mt-1 text-[10px] ${m.internal ? "text-lime-500" : m.fromStaff ? "text-lime-200" : "text-slate-400"}`}>
                     {m.fromStaff ? "Support team" : "User"} · {m.createdAt.toLocaleString("en-US")}
                   </p>
                 </div>

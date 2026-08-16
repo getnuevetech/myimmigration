@@ -7,7 +7,7 @@ import { purgeSystemLogsAction } from "@/actions/admin";
 
 export const metadata = { title: "System logs" };
 
-const LEVEL_COLOR: Record<string, string> = { error: "red", warning: "amber", info: "slate" };
+const LEVEL_COLOR: Record<string, string> = { error: "red", warning: "lime", info: "slate" };
 
 export default async function AdminLogsPage({
   searchParams,
@@ -74,7 +74,7 @@ export default async function AdminLogsPage({
             name="q"
             defaultValue={f.q ?? ""}
             placeholder="Search message or detail…"
-            className="w-56 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none"
+            className="w-56 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:border-lime-500 focus:outline-none"
           />
           <button className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700">Search</button>
         </form>

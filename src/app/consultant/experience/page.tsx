@@ -49,7 +49,7 @@ export default async function ConsultantExperiencePage() {
                         {pc.title} {pc.year && <span className="font-normal text-slate-400">· {pc.year}</span>}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <Badge color="orange">{categoryName(pc.category)}</Badge>
+                        <Badge color="lime">{categoryName(pc.category)}</Badge>
                         {pc.outcome && <Badge color="green">{pc.outcome}</Badge>}
                       </div>
                       {pc.description && <p className="mt-1 text-xs text-slate-500">{pc.description}</p>}

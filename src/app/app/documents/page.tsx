@@ -49,7 +49,7 @@ export default async function DocumentsPage() {
               {docs.map((d) => (
                 <tr key={d.id}>
                   <td className="px-4 py-3">
-                    <Link href={`/api/files/${d.id}`} target="_blank" className="font-medium text-orange-600 underline">
+                    <Link href={`/api/files/${d.id}`} target="_blank" className="font-medium text-lime-600 underline">
                       {d.fileName}
                     </Link>
                     <p className="text-xs text-slate-400">{(d.sizeBytes / 1024).toFixed(0)} KB</p>

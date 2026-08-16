@@ -60,12 +60,12 @@ export default async function AdminAssignmentsPage({
       </Card>
 
       {flaggedCases.length > 0 && (
-        <Card className="mb-6 border-amber-300">
+        <Card className="mb-6 border-lime-300">
           <CardBody>
             <h2 className="mb-2 text-sm font-semibold text-slate-900">Cases flagged: consultant recommended</h2>
             <ul className="space-y-1 text-sm text-slate-600">
               {flaggedCases.map((c) => (
-                <li key={c.id} className={c.id === highlightCase ? "rounded bg-amber-50 px-2 py-1 font-medium" : ""}>
+                <li key={c.id} className={c.id === highlightCase ? "rounded bg-lime-50 px-2 py-1 font-medium" : ""}>
                   {c.user ? `${c.user.firstName} ${c.user.lastName} (${c.user.email})` : "Guest"} — &ldquo;{c.title}&rdquo;
                   <span className="text-slate-400"> · issues: {Array.from(new Set(c.issues.map((i) => i.issueType))).join(", ") || "n/a"}</span>
                 </li>
@@ -105,14 +105,14 @@ export default async function AdminAssignmentsPage({
                 {a.reasonSummary && <p className="mt-1 text-xs text-slate-600">{a.reasonSummary}</p>}
                 {a.reasonDetail && (
                   <details className="mt-0.5">
-                    <summary className="cursor-pointer text-xs font-medium text-orange-600">Detailed reasoning</summary>
+                    <summary className="cursor-pointer text-xs font-medium text-lime-600">Detailed reasoning</summary>
                     <p className="mt-1 whitespace-pre-line rounded-lg bg-slate-50 p-2 text-xs text-slate-600">{a.reasonDetail}</p>
                   </details>
                 )}
               </div>
               <div className="flex items-center gap-3">
                 {a.autoAssigned && <Badge color="blue">AI auto-assigned</Badge>}
-                <Badge color={a.status === "active" ? "green" : a.status === "declined" || a.status === "revoked" ? "red" : "amber"}>
+                <Badge color={a.status === "active" ? "green" : a.status === "declined" || a.status === "revoked" ? "red" : "lime"}>
                   {a.status.replace(/_/g, " ")}
                 </Badge>
                 {a.status !== "revoked" && (

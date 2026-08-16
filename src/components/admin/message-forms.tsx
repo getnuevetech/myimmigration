@@ -54,7 +54,7 @@ export function MessageTemplateForm({ template }: { template: Template }) {
       </div>
       <div className="mt-3 flex items-center justify-between">
         <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" name="enabled" defaultChecked={template?.enabled ?? true} className="h-4 w-4 rounded border-slate-300 text-orange-600" />
+          <input type="checkbox" name="enabled" defaultChecked={template?.enabled ?? true} className="h-4 w-4 rounded border-slate-300 text-lime-600" />
           Enabled
         </label>
         <SubmitButton>{template ? "Save message" : "Create message"}</SubmitButton>
