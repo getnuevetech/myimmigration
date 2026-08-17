@@ -4,6 +4,14 @@ import { ActionForm, SubmitButton } from "../action-form";
 import { saveSettingsAction, addSettingAction } from "@/actions/admin";
 import { inputClass } from "../ui";
 
+const FONT_OPTIONS = [
+  { label: "ImmigrationOnMe Sans (Plus Jakarta Sans)", value: "var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif" },
+  { label: "Editorial Serif (Playfair Display)", value: "var(--font-playfair), Georgia, 'Times New Roman', serif" },
+  { label: "System Sans", value: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },
+  { label: "Classic Serif", value: "Georgia, 'Times New Roman', Times, serif" },
+  { label: "Modern Mono (Geist Mono)", value: "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
+];
+
 export function SettingsForm({
   settings,
 }: {
@@ -20,6 +28,20 @@ export function SettingsForm({
                 <option value="true">Enabled</option>
                 <option value="false">Disabled</option>
               </select>
+            ) : s.type === "font" ? (
+              <>
+                <input
+                  name={`setting:${s.key}`}
+                  list={`font-options-${s.key}`}
+                  defaultValue={s.value}
+                  className={inputClass}
+                />
+                <datalist id={`font-options-${s.key}`}>
+                  {FONT_OPTIONS.map((option) => (
+                    <option key={option.label} value={option.value}>{option.label}</option>
+                  ))}
+                </datalist>
+              </>
             ) : s.value.length > 80 || s.type === "json" ? (
               <textarea name={`setting:${s.key}`} defaultValue={s.value} rows={3} className={inputClass} />
             ) : (
@@ -51,6 +73,7 @@ export function AddSettingForm() {
           <option value="text">Text</option>
           <option value="number">Number</option>
           <option value="boolean">Boolean</option>
+          <option value="font">Font</option>
           <option value="json">JSON</option>
           <option value="secret">Secret</option>
         </select>
