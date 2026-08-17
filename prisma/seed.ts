@@ -71,8 +71,8 @@ async function repairBrandName() {
 }
 
 async function seedAdmin() {
-  const email = process.env.SEED_ADMIN_EMAIL ?? "admin@immigrationonme.com";
-  const password = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe!2026";
+  const email = process.env.SEED_ADMIN_EMAIL || "admin@immigrationonme.com";
+  const password = process.env.SEED_ADMIN_PASSWORD || "ChangeMe!2026";
   await db.user.upsert({
     where: { email },
     update: {},

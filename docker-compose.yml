@@ -38,7 +38,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-myimmigration}
       AUTH_SECRET: ${AUTH_SECRET:-}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@immigrationonme.com}
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?set SEED_ADMIN_PASSWORD in .env.deploy}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     ports:
       - "${APP_PORT:-3000}:3000"
     volumes:
