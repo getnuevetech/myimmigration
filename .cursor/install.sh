@@ -27,14 +27,8 @@ if [ ! -s "$PGDATA/PG_VERSION" ]; then
   initdb -D "$PGDATA" -U postgres --auth=trust >/dev/null
 fi
 
-echo "==> Starting PostgreSQL (idempotent)"
-if ! pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
-  pg_ctl -D "$PGDATA" -o "-p $PGPORT -k /tmp" -l "$HOME/pg.log" -w start
-fi
-for _ in $(seq 1 30); do
-  pg_isready -h 127.0.0.1 -p "$PGPORT" -U postgres >/dev/null 2>&1 && break
-  sleep 1
-done
+echo "==> Starting PostgreSQL (idempotent, self-healing)"
+PGDATA="$PGDATA" PGPORT="$PGPORT" bash "$REPO_DIR/.cursor/start.sh"
 
 echo "==> Ensuring database role and database exist"
 psql -h 127.0.0.1 -p "$PGPORT" -U postgres -tc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1 \

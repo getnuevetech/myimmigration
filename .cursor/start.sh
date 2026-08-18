@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Per-boot reconciliation for ImmigrationOnMe: start the local PostgreSQL
-# cluster prepared by install.sh and wait until it accepts connections.
-# Idempotent: a no-op if PostgreSQL is already running.
+# Per-boot reconciliation for ImmigrationOnMe: ensure the local PostgreSQL
+# cluster prepared by install.sh is running and accepting connections.
+# Idempotent and self-healing: a no-op when already serving, and it clears
+# stale pid/socket state left behind when a previous postgres process (e.g. one
+# captured in a snapshot) is no longer alive.
 set -euo pipefail
 
 PGDATA="${PGDATA:-$HOME/pgdata}"
@@ -15,12 +17,29 @@ if [ ! -s "$PGDATA/PG_VERSION" ]; then
   exit 1
 fi
 
-if ! pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
-  pg_ctl -D "$PGDATA" -o "-p $PGPORT -k /tmp" -l "$HOME/pg.log" -w start
+pg_serving() { pg_isready -h 127.0.0.1 -p "$PGPORT" -U postgres >/dev/null 2>&1; }
+
+if pg_serving; then
+  echo "PostgreSQL already accepting connections on port $PGPORT"
+  exit 0
 fi
 
+# Nothing is accepting connections. Clear stale state so a fresh start succeeds.
+if [ -f "$PGDATA/postmaster.pid" ]; then
+  stale_pid="$(head -n 1 "$PGDATA/postmaster.pid" 2>/dev/null || true)"
+  if [ -n "$stale_pid" ] && kill -0 "$stale_pid" 2>/dev/null \
+     && grep -qi postgres "/proc/$stale_pid/comm" 2>/dev/null; then
+    # A real postgres process exists but is not accepting connections; stop it.
+    pg_ctl -D "$PGDATA" -m fast stop >/dev/null 2>&1 || true
+  fi
+  rm -f "$PGDATA/postmaster.pid"
+fi
+rm -f "/tmp/.s.PGSQL.${PGPORT}" "/tmp/.s.PGSQL.${PGPORT}.lock"
+
+pg_ctl -D "$PGDATA" -o "-p $PGPORT -k /tmp" -l "$HOME/pg.log" -w start
+
 for _ in $(seq 1 30); do
-  if pg_isready -h 127.0.0.1 -p "$PGPORT" -U postgres >/dev/null 2>&1; then
+  if pg_serving; then
     echo "PostgreSQL is ready on port $PGPORT"
     exit 0
   fi
