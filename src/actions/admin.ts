@@ -726,6 +726,17 @@ export async function runEvidenceBackfillAction(formData: FormData) {
   revalidatePath("/admin/evidence");
 }
 
+export async function reprocessEvidenceDocumentAction(formData: FormData) {
+  await requireAdminArea("admin.evidence");
+  const documentId = String(formData.get("documentId") ?? "");
+  if (!documentId) return;
+  const doc = await db.document.findUnique({ where: { id: documentId }, select: { caseId: true } });
+  const { processDocumentEvidence } = await import("@/lib/evidence/document-processing");
+  await processDocumentEvidence(documentId);
+  revalidatePath("/admin/evidence");
+  if (doc?.caseId) revalidatePath(`/admin/cases/${doc.caseId}`);
+}
+
 // ---------- Knowledge base ----------
 
 export async function saveKnowledgeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

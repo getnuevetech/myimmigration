@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { guardAdminPage } from "@/lib/admin-guard";
 import { PageHeader, Badge, Stat } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
-import { runEvidenceBackfillAction } from "@/actions/admin";
+import { reprocessEvidenceDocumentAction, runEvidenceBackfillAction } from "@/actions/admin";
 
 export const metadata = { title: "Evidence diagnostics" };
 
@@ -85,11 +85,12 @@ export default async function AdminEvidencePage() {
                   <th className="px-4 py-3">Document</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Case</th>
+                  <th className="px-4 py-3">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {failedOrReviewDocs.length === 0 && (
-                  <tr><td colSpan={3} className="px-4 py-6 text-center text-slate-400">No failed or review-needed documents.</td></tr>
+                  <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400">No failed or review-needed documents.</td></tr>
                 )}
                 {failedOrReviewDocs.map((doc) => (
                   <tr key={doc.id} className="hover:bg-slate-50">
@@ -105,6 +106,14 @@ export default async function AdminEvidencePage() {
                           {formatCaseNumber(doc.case.number)}
                         </Link>
                       ) : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <form action={reprocessEvidenceDocumentAction}>
+                        <input type="hidden" name="documentId" value={doc.id} />
+                        <button className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                          Reprocess
+                        </button>
+                      </form>
                     </td>
                   </tr>
                 ))}
