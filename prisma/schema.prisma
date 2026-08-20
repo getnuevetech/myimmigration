@@ -298,6 +298,9 @@ model Case {
   goal           String    @default("")
   status         String    @default("intake") // intake | analyzing | analyzed | needs_info | consultant_recommended | resolved | closed
   readinessScore Int       @default(0)
+  evidenceAvailableScore Int @default(0) // what the customer has provided
+  evidenceProcessedScore Int @default(0) // what the platform successfully read
+  actionReadinessScore Int   @default(0) // what the evidence supports acting on
   conflictsJson  String    @default("[]") // detected information conflicts [{topic, description, resolution}]
   closedAt       DateTime?
   closedReason   String    @default("") // completed | abandoned | manual

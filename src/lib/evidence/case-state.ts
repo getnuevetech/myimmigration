@@ -3,6 +3,8 @@ import { IMMIGRATION_EVENT_TYPES, type ImmigrationEventType } from "@/domain/eve
 import { isImmigrationFactKey, type ImmigrationFactKey } from "@/domain/facts";
 import type { ImmigrationDocumentType } from "@/domain/documents";
 import { db } from "@/lib/db";
+import { getNumberSetting } from "@/lib/settings";
+import { computeEvidenceReadinessSplit } from "./readiness";
 import { reconcileEvidenceStates } from "./reconcile";
 import type { CompiledCaseEvent, CompiledEvidenceFact, CompiledEvidenceState, EvidenceConfidence } from "./types";
 
@@ -26,7 +28,7 @@ function parseJson(value: string): unknown {
 }
 
 export async function rebuildCaseEvidenceState(caseId: string) {
-  const [facts, events] = await Promise.all([
+  const [facts, events, documents, documentsExpected] = await Promise.all([
     db.evidenceFact.findMany({
       where: { caseId },
       include: { document: { select: { id: true, fileName: true, documentType: true } } },
@@ -36,6 +38,11 @@ export async function rebuildCaseEvidenceState(caseId: string) {
       where: { caseId },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     }),
+    db.document.findMany({
+      where: { caseId, deletedAt: null, docKind: { not: "avatar" } },
+      select: { processingStatus: true },
+    }),
+    getNumberSetting("analysis.expected_documents", 3),
   ]);
 
   const compiledFacts: CompiledEvidenceFact[] = facts
@@ -87,6 +94,13 @@ export async function rebuildCaseEvidenceState(caseId: string) {
     },
   };
   const reconciled = reconcileEvidenceStates([state]);
+  const readiness = computeEvidenceReadinessSplit({
+    documentsCount: documents.length,
+    documentsExpected,
+    extractedDocumentsCount: documents.filter((doc) => doc.processingStatus === "extracted").length,
+    needsReviewDocumentsCount: documents.filter((doc) => doc.processingStatus === "needs_review").length,
+    reconciled,
+  });
 
   await db.$transaction(async (tx) => {
     await tx.caseUnknown.deleteMany({ where: { caseId } });
@@ -157,6 +171,15 @@ export async function rebuildCaseEvidenceState(caseId: string) {
         timelineJson: JSON.stringify(reconciled.reconstruction.timeline),
         pendingActionsJson: JSON.stringify(reconciled.reconstruction.pendingActions),
         confidence: reconciled.reconstruction.confidence,
+      },
+    });
+
+    await tx.case.update({
+      where: { id: caseId },
+      data: {
+        evidenceAvailableScore: readiness.evidenceAvailableScore,
+        evidenceProcessedScore: readiness.evidenceProcessedScore,
+        actionReadinessScore: readiness.actionReadinessScore,
       },
     });
   });

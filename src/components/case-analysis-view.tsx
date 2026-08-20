@@ -554,6 +554,16 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
             <p className="mt-2 text-xs text-slate-500">
               Computed from documents obtained, facts verified, USCIS source confirmation, and unresolved contradictions.
             </p>
+            {(c.evidenceAvailableScore > 0 || c.evidenceProcessedScore > 0 || c.actionReadinessScore > 0) && (
+              <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                <ProgressBar value={c.evidenceAvailableScore} label="Evidence provided" />
+                <ProgressBar value={c.evidenceProcessedScore} label="Evidence processed" />
+                <ProgressBar value={c.actionReadinessScore} label="Action readiness" />
+                <p className="text-[11px] leading-relaxed text-slate-500">
+                  Provided means records are uploaded. Processed means the platform read them. Action readiness means the compiled evidence is strong enough to support next steps.
+                </p>
+              </div>
+            )}
           </CardBody>
         </Card>
 
