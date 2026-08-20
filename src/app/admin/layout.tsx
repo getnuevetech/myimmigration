@@ -18,6 +18,7 @@ const NAV: { area: string; href: string; label: string; section: string }[] = [
   { area: "admin.ai", href: "/admin/ai-providers", label: "AI providers", section: "Intelligence" },
   { area: "admin.ai", href: "/admin/lab", label: "AI test lab", section: "Intelligence" },
   { area: "admin.pipelines", href: "/admin/pipelines", label: "AI pipelines", section: "Intelligence" },
+  { area: "admin.evidence", href: "/admin/evidence", label: "Evidence diagnostics", section: "Intelligence" },
   { area: "admin.knowledge", href: "/admin/knowledge", label: "USCIS knowledge base", section: "Intelligence" },
   { area: "admin.plans", href: "/admin/plans", label: "Plans & access", section: "Commerce" },
   { area: "admin.payments", href: "/admin/payments", label: "Payment gateways", section: "Commerce" },

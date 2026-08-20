@@ -23,6 +23,7 @@ export const ADMIN_AREAS = [
   { key: "admin.transactions", name: "Transactions" },
   { key: "admin.ai", name: "AI providers" },
   { key: "admin.pipelines", name: "AI pipelines" },
+  { key: "admin.evidence", name: "Evidence diagnostics" },
   { key: "admin.content", name: "Content & agreements" },
   { key: "admin.forms", name: "USCIS form templates" },
   { key: "admin.knowledge", name: "USCIS knowledge base" },
