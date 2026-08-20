@@ -22,6 +22,21 @@ const rfe = compileImmigrationEvidence({
   fileName: "rfe-notice.txt",
   text: fixture("rfe-notice.txt"),
 });
+const noid = compileImmigrationEvidence({
+  id: "fixture-noid",
+  fileName: "noid-notice.txt",
+  text: fixture("noid-notice.txt"),
+});
+const biometrics = compileImmigrationEvidence({
+  id: "fixture-biometrics",
+  fileName: "biometrics-notice.txt",
+  text: fixture("biometrics-notice.txt"),
+});
+const approval = compileImmigrationEvidence({
+  id: "fixture-approval",
+  fileName: "approval-notice.txt",
+  text: fixture("approval-notice.txt"),
+});
 
 const receiptFacts = receipt.facts.map((fact) => `${fact.key}:${fact.value}`);
 const rfeFacts = rfe.facts.map((fact) => `${fact.key}:${fact.value}`);
@@ -37,6 +52,14 @@ assert(rfeFacts.includes("notice_type:RFE"), "RFE fixture should extract notice 
 assert(rfe.facts.some((fact) => fact.key === "response_deadline" && /July 31, 2026/.test(fact.value)), "RFE fixture should extract response deadline");
 assert(rfe.facts.some((fact) => fact.key === "requested_evidence"), "RFE fixture should extract requested evidence");
 assert(rfe.relationships.some((rel) => rel.relationType === "deadline_for_notice"), "RFE deadline should relate to the notice");
+assert(noid.documentType === "noid", `expected NOID classification, got ${noid.documentType}`);
+assert(noid.facts.some((fact) => fact.key === "notice_type" && fact.value === "NOID"), "NOID fixture should extract notice type");
+assert(noid.facts.some((fact) => fact.key === "response_deadline" && /July 10, 2026/.test(fact.value)), "NOID fixture should extract response deadline");
+assert(biometrics.documentType === "biometrics_notice", `expected biometrics classification, got ${biometrics.documentType}`);
+assert(biometrics.facts.some((fact) => fact.key === "appointment_date" && /April 21, 2026/.test(fact.value)), "biometrics fixture should extract appointment date");
+assert(evaluateEvidenceAction("PREPARE_APPOINTMENT", buildEvidenceGateBriefFromReconciled(reconcileEvidenceStates([biometrics])))?.satisfied === true, "biometrics appointment should satisfy appointment preparation action");
+assert(approval.documentType === "approval_notice", `expected approval classification, got ${approval.documentType}`);
+assert(approval.facts.some((fact) => fact.key === "notice_type" && fact.value === "APPROVAL"), "approval fixture should extract approval notice type");
 
 const combined = JSON.stringify([receipt, rfe]).toLowerCase();
 const forbiddenTaxTerms = [/\birs\b/, /\btax transcript\b/, /\bform 9465\b/, /\brefund\b/, /\bbalance due\b/];
@@ -106,6 +129,7 @@ assert(!guardedLetter.text.includes("August 5, 2026"), "letter guard should remo
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
+console.log(`- ${noid.documentType}, ${biometrics.documentType}, ${approval.documentType}: extra notice fixtures passed`);
 console.log(`- reconciled: ${reconciled.facts.length} facts, ${reconciled.events.length} events, ${reconciled.crossDocumentRelationships.length} cross-document link(s)`);
 console.log(`- evidence gate: ${gate.status}, can analyze: ${gate.canAnalyze ? "yes" : "no"}`);
 console.log("- action intelligence: case record, notice, and deadline satisfied from evidence");

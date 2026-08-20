@@ -43,8 +43,11 @@ function normalizeANumber(value: string): string {
 
 function firstDateNear(text: string, words: RegExp): string | undefined {
   const sentences = text.split(/(?<=[.!?])\s+|\n+/);
+  const dateIn = (sentence: string) => sentence.match(DATE_RE)?.[0] ?? sentence.match(ISO_DATE_RE)?.[0];
+  const matchingWithDate = sentences.find((sentence) => words.test(sentence) && dateIn(sentence));
+  if (matchingWithDate) return dateIn(matchingWithDate);
   const matching = sentences.find((sentence) => words.test(sentence));
-  return matching?.match(DATE_RE)?.[0] ?? matching?.match(ISO_DATE_RE)?.[0];
+  return matching ? dateIn(matching) : undefined;
 }
 
 function inferConfidence(documentType: ImmigrationDocumentType, key: ImmigrationFactKey): EvidenceConfidence {
