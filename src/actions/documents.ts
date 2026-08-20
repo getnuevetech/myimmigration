@@ -117,8 +117,15 @@ export async function uploadNoticeAction(_prev: ActionState, formData: FormData)
   const user = await getCurrentUser();
   const file = formData.get("file");
   const pastedText = String(formData.get("pastedText") ?? "").trim();
+  let caseId = String(formData.get("caseId") ?? "") || null;
   if (!(file instanceof File && file.size > 0) && pastedText.length < 10) {
     return { error: "Upload a file or photo of your notice, or paste its text." };
+  }
+  if (user && caseId) {
+    const c = await db.case.findFirst({ where: { id: caseId, userId: user.id }, select: { id: true } });
+    caseId = c?.id ?? null;
+  } else {
+    caseId = null;
   }
 
   const guest = user ? null : await getOrCreateGuestSession();
@@ -133,6 +140,7 @@ export async function uploadNoticeAction(_prev: ActionState, formData: FormData)
       data: {
         userId: user?.id ?? null,
         guestSessionId: guest?.id ?? null,
+        caseId,
         fileName: file.name,
         filePath,
         mimeType: file.type || "application/octet-stream",
@@ -148,7 +156,7 @@ export async function uploadNoticeAction(_prev: ActionState, formData: FormData)
   }
 
   const notice = await db.notice.create({
-    data: { userId: user?.id ?? null, documentId, status: "analyzing" },
+    data: { userId: user?.id ?? null, caseId, documentId, status: "analyzing" },
   });
 
   if (documentId) {
@@ -182,6 +190,7 @@ export async function uploadNoticeAction(_prev: ActionState, formData: FormData)
       await db.deadline.create({
         data: {
           userId: user.id,
+          caseId,
           title: `Respond to USCIS notice ${String(result.notice_type ?? "")}`.trim(),
           dueDate: deadline,
           source: "notice",

@@ -1,26 +1,45 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { uploadNoticeAction } from "@/actions/documents";
 import { SubmitButton } from "./action-form";
 import { inputClass } from "./ui";
 
-export function NoticeUpload() {
+export function NoticeUpload({
+  cases = [],
+  defaultCaseId = "",
+}: {
+  cases?: { id: string; label: string }[];
+  defaultCaseId?: string;
+}) {
   const [state, formAction] = useActionState(uploadNoticeAction, null);
+  const [caseId, setCaseId] = useState(defaultCaseId);
   const router = useRouter();
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (state?.ok) {
       ref.current?.reset();
+      setCaseId(defaultCaseId);
       router.refresh();
     }
-  }, [state, router]);
+  }, [defaultCaseId, state, router]);
 
   return (
     <form ref={ref} action={formAction} className="space-y-3">
       {state?.error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">Notice received — see its explanation below.</p>}
+      {cases.length > 0 && (
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-slate-700">Related case (optional)</span>
+          <select name="caseId" value={caseId} onChange={(e) => setCaseId(e.target.value)} className={inputClass}>
+            <option value="">Not linked to a case</option>
+            {cases.map((c) => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+          </select>
+        </label>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center hover:border-lime-400">
           <span className="text-sm font-medium text-slate-700">Upload or photograph the notice</span>

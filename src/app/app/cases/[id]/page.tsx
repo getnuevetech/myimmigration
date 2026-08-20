@@ -36,6 +36,12 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
               Ask about this case
             </a>
             <a
+              href={`/app/notices?case=${c.id}`}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Upload notice
+            </a>
+            <a
               href={`/api/cases/${c.id}/report`}
               target="_blank"
               className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

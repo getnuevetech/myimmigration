@@ -5,12 +5,26 @@ import { NoticeUpload } from "@/components/notice-upload";
 
 export const metadata = { title: "USCIS notices" };
 
-export default async function NoticesPage() {
+export default async function NoticesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ case?: string }>;
+}) {
+  const { case: caseId } = await searchParams;
   const user = await requireUser();
-  const notices = await db.notice.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-  });
+  const [notices, cases] = await Promise.all([
+    db.notice.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.case.findMany({
+      where: { userId: user.id, status: { notIn: ["closed"] } },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true, number: true, title: true },
+      take: 50,
+    }),
+  ]);
+  const defaultCaseId = cases.some((c) => c.id === caseId) ? caseId ?? "" : "";
 
   return (
     <div>
@@ -20,7 +34,10 @@ export default async function NoticesPage() {
       />
       <Card className="mb-6">
         <CardBody>
-          <NoticeUpload />
+          <NoticeUpload
+            cases={cases.map((c) => ({ id: c.id, label: `IMM-${String(c.number).padStart(6, "0")} · ${c.title}` }))}
+            defaultCaseId={defaultCaseId}
+          />
         </CardBody>
       </Card>
 
@@ -70,7 +87,7 @@ export default async function NoticesPage() {
                     </div>
                   )}
                   <div className="mt-4 flex gap-2">
-                    <ButtonLink href={`/app/letters/new?notice=${n.id}`} variant="secondary" className="!px-3 !py-1.5 text-xs">
+                    <ButtonLink href={`/app/letters/new?notice=${n.id}${n.caseId ? `&case=${n.caseId}` : ""}`} variant="secondary" className="!px-3 !py-1.5 text-xs">
                       Draft a response letter
                     </ButtonLink>
                   </div>
