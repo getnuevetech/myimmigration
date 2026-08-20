@@ -83,7 +83,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       case "PREPARE_APPOINTMENT":
         return { label: "Upload appointment notice", href: "/app/documents" };
       case "DRAFT_LETTER":
-        return { label: "Draft my letter", href: "/app/letters/new" };
+        return { label: "Draft my letter", href: `/app/letters/new?case=${c.id}` };
       case "COMPLETE_FORM_I485":
       case "PREPARE_FORM":
         return { label: "Open USCIS forms", href: "/app/forms" };

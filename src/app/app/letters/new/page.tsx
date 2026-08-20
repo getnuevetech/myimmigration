@@ -8,9 +8,9 @@ export const metadata = { title: "Draft a response letter" };
 export default async function NewLetterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string }>;
+  searchParams: Promise<{ notice?: string; case?: string }>;
 }) {
-  const { notice: noticeId } = await searchParams;
+  const { notice: noticeId, case: caseId } = await searchParams;
   const user = await requireUser();
   const notices = await db.notice.findMany({
     where: { userId: user.id },
@@ -27,6 +27,7 @@ export default async function NewLetterPage({
       <NewLetterForm
         notices={notices.map((n) => ({ id: n.id, label: `${n.noticeType || "Notice"}${n.caseYear ? ` · ${n.caseYear}` : ""}` }))}
         defaultNoticeId={noticeId ?? ""}
+        defaultCaseId={caseId ?? ""}
       />
     </div>
   );

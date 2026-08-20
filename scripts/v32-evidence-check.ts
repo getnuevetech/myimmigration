@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_PROMPTS } from "../src/lib/ai/prompts";
-import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, reconcileEvidenceStates } from "../src/lib/evidence";
+import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -74,6 +74,26 @@ const readiness = computeEvidenceReadinessSplit({
 assert(readiness.evidenceAvailableScore === 67, `expected evidence available 67, got ${readiness.evidenceAvailableScore}`);
 assert(readiness.evidenceProcessedScore === 100, `expected evidence processed 100, got ${readiness.evidenceProcessedScore}`);
 assert(readiness.actionReadinessScore === 100, `expected action readiness 100, got ${readiness.actionReadinessScore}`);
+const letterBrief = {
+  status: gate.status,
+  currentPosition: gate.currentPosition,
+  summary: gate.summary,
+  facts: gate.facts,
+  events: gate.events,
+  unknowns: gate.unknowns,
+  pendingActions: gate.pendingActions,
+  text: gate.promptText,
+  supportedText: [gate.currentPosition, gate.summary, ...gate.pendingActions, ...gate.facts.flatMap((fact) => [fact.key, fact.value, fact.source]), ...gate.events.flatMap((event) => [event.eventType, event.title, event.dateText])].join("\n").toUpperCase(),
+};
+const guardedLetter = guardLetterDraftWithEvidence(
+  "USCIS should continue processing Form I-485 for receipt MSC2390123456 by July 31, 2026. Please also update WAC0000000000 by August 5, 2026.",
+  letterBrief,
+);
+assert(guardedLetter.changed === true, "letter guard should replace unsupported values");
+assert(guardedLetter.text.includes("MSC2390123456"), "letter guard should keep supported receipt number");
+assert(guardedLetter.text.includes("I-485"), "letter guard should keep supported form type");
+assert(!guardedLetter.text.includes("WAC0000000000"), "letter guard should remove unsupported receipt number");
+assert(!guardedLetter.text.includes("August 5, 2026"), "letter guard should remove unsupported date");
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
@@ -83,3 +103,4 @@ console.log(`- evidence gate: ${gate.status}, can analyze: ${gate.canAnalyze ? "
 console.log("- action intelligence: case record, notice, and deadline satisfied from evidence");
 console.log("- prompts: analyst, reviewer, and presenter are evidence-gate aware");
 console.log(`- readiness split: available ${readiness.evidenceAvailableScore}, processed ${readiness.evidenceProcessedScore}, action ${readiness.actionReadinessScore}`);
+console.log(`- letter guard: replaced ${guardedLetter.findings.length} unsupported value(s)`);

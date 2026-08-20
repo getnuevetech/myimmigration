@@ -113,6 +113,7 @@ export async function generateLetterAction(_prev: ActionState, formData: FormDat
   }
   const context = String(formData.get("context") ?? "").trim();
   const noticeId = String(formData.get("noticeId") ?? "") || null;
+  let caseId = String(formData.get("caseId") ?? "") || null;
   if (context.length < 20) return { error: "Describe what the letter should address (a few sentences)." };
 
   let noticeContext = "";
@@ -120,11 +121,16 @@ export async function generateLetterAction(_prev: ActionState, formData: FormDat
     const notice = await db.notice.findUnique({ where: { id: noticeId } });
     if (notice && notice.userId === user.id) {
       noticeContext = `Notice type: ${notice.noticeType}. Matter year: ${notice.caseYear ?? "unknown"}. Explanation: ${notice.explanation}`;
+      caseId = caseId ?? notice.caseId;
     }
   }
-  const body = await generateLetterDraft([noticeContext, context].filter(Boolean).join("\n\n"));
+  if (caseId) {
+    const c = await db.case.findFirst({ where: { id: caseId, userId: user.id }, select: { id: true } });
+    if (!c) caseId = null;
+  }
+  const body = await generateLetterDraft([noticeContext, context].filter(Boolean).join("\n\n"), { caseId });
   const letter = await db.responseLetter.create({
-    data: { userId: user.id, noticeId, title: `Response letter — ${new Date().toLocaleDateString("en-US")}`, body },
+    data: { userId: user.id, caseId, noticeId, title: `Response letter — ${new Date().toLocaleDateString("en-US")}`, body },
   });
   await verifyUserCasesProgress(user.id);
   redirect(`/app/letters/${letter.id}`);

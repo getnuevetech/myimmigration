@@ -8,6 +8,8 @@ import { getNumberSetting } from "../settings";
 import { readUpload } from "../uploads";
 import { verifyCaseProgress } from "../case-progress";
 import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
+import { getCaseEvidenceBrief } from "../evidence/brief";
+import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
 
 type Json = Record<string, unknown>;
 
@@ -562,21 +564,31 @@ export async function explainNoticeContent(content: string): Promise<Json | null
   };
 }
 
-export async function generateLetterDraft(context: string): Promise<string> {
+export async function generateLetterDraft(context: string, opts?: { caseId?: string | null }): Promise<string> {
   const steps = await getRunnableSteps(STAGE_KEYS.LETTER);
+  const evidenceBrief = opts?.caseId
+    ? await getCaseEvidenceBrief(opts.caseId).catch(async (err) => {
+        const { logSystem } = await import("../syslog");
+        await logSystem("warning", "evidence_brief", "Could not load case evidence brief for letter draft", String(err));
+        return null;
+      })
+    : null;
+  const guardedContext = evidenceBrief
+    ? `${context}\n\nCOMPILED CASE EVIDENCE BRIEF:\n${evidenceBrief.text}\n\nLetter grounding rule: do not include receipt numbers, form types, dates, deadlines, requested evidence, or case outcomes unless they appear in the compiled evidence brief. If needed, use placeholders for the user to verify.`
+    : context;
   // Try every configured model; log failures; fall back to the template letter.
   for (const step of steps) {
     try {
-      const prompt = fill(step.promptTemplate, { input: context });
+      const prompt = fill(step.promptTemplate, { input: guardedContext });
       const result = await callProvider(step.provider, [{ role: "user", content: prompt }]);
-      if (result.text.trim()) return result.text;
+      if (result.text.trim()) return guardLetterDraftWithEvidence(result.text.trim(), evidenceBrief).text;
     } catch (err) {
       const { logSystem } = await import("../syslog");
       await logSystem("error", "ai_call", `${step.provider.name} failed generating a response letter draft`, String(err));
     }
   }
   {
-    return `[DATE]
+    return guardLetterDraftWithEvidence(`[DATE]
 
 U.S. Citizenship and Immigration Services
 [USCIS ADDRESS FROM YOUR NOTICE]
@@ -599,6 +611,6 @@ Sincerely,
 [YOUR ADDRESS]
 [YOUR PHONE]
 
-Enclosures: [LIST YOUR DOCUMENTS]`;
+Enclosures: [LIST YOUR DOCUMENTS]`, evidenceBrief).text;
   }
 }
