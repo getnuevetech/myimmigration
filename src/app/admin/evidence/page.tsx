@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { guardAdminPage } from "@/lib/admin-guard";
 import { PageHeader, Badge, Stat } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
+import { runEvidenceBackfillAction } from "@/actions/admin";
 
 export const metadata = { title: "Evidence diagnostics" };
 
@@ -56,6 +57,14 @@ export default async function AdminEvidencePage() {
       <PageHeader
         title="Evidence diagnostics"
         subtitle="Operational view of document processing, evidence audits, and cases that need review or backfill."
+        actions={
+          <form action={runEvidenceBackfillAction} className="flex items-center gap-2">
+            <input type="hidden" name="limit" value="25" />
+            <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+              Run evidence backfill
+            </button>
+          </form>
+        }
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

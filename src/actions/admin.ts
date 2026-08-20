@@ -716,6 +716,16 @@ export async function purgeSystemLogsAction() {
   revalidatePath("/admin/logs");
 }
 
+// ---------- Evidence operations ----------
+
+export async function runEvidenceBackfillAction(formData: FormData) {
+  await requireAdminArea("admin.evidence");
+  const limit = Math.max(1, Math.min(100, Number(formData.get("limit") ?? 25) || 25));
+  const { backfillEvidenceCases } = await import("@/lib/evidence/backfill");
+  await backfillEvidenceCases(limit);
+  revalidatePath("/admin/evidence");
+}
+
 // ---------- Knowledge base ----------
 
 export async function saveKnowledgeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
