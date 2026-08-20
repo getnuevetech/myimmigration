@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
+import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, evaluateEvidenceAction, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -54,9 +54,14 @@ assert(gate.status === "pass", `evidence gate should pass, got ${gate.status}`);
 assert(gate.mustGroundClaims === true, "evidence gate should require grounded claims");
 assert(gate.promptText.includes("GROUNDING RULE"), "evidence gate prompt should include grounding rule");
 assert(gate.promptText.includes("RFE notice needs review"), "evidence gate prompt should include current position");
+assert(evaluateEvidenceAction("GET_CASE_RECORD", gate)?.satisfied === true, "receipt + form evidence should satisfy case-record action");
+assert(evaluateEvidenceAction("UPLOAD_NOTICE", gate)?.satisfied === true, "notice evidence should satisfy upload-notice action");
+assert(evaluateEvidenceAction("ADD_DEADLINE", gate)?.satisfied === true, "deadline evidence should satisfy deadline action");
+assert(evaluateEvidenceAction("DRAFT_LETTER", gate)?.satisfied === false, "letter action should still require a drafted letter");
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
 console.log(`- reconciled: ${reconciled.facts.length} facts, ${reconciled.events.length} events, ${reconciled.crossDocumentRelationships.length} cross-document link(s)`);
 console.log(`- evidence gate: ${gate.status}, can analyze: ${gate.canAnalyze ? "yes" : "no"}`);
+console.log("- action intelligence: case record, notice, and deadline satisfied from evidence");

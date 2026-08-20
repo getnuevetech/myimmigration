@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "./db";
+import { getEvidenceActionState } from "./evidence/case-action-state";
 
 // Evidence-based path-step verification. Steps with a recognized action key
 // are completed only when the system can actually observe the required
@@ -7,6 +8,7 @@ import { db } from "./db";
 
 export const VERIFIABLE_ACTIONS: Record<string, string> = {
   UPLOAD_DOCUMENTS: "Completes when your case has at least one document",
+  UPLOAD_NOTICE: "Completes when a USCIS notice is extracted into the evidence record",
   GET_CASE_RECORD: "Completes when a USCIS case record is uploaded to your case",
   GET_ACCOUNT_RECORD: "Completes when a USCIS online account record is uploaded to your case",
   REVIEW_ANALYSIS: "Completes when the analysis has been re-run after documents were added",
@@ -14,6 +16,7 @@ export const VERIFIABLE_ACTIONS: Record<string, string> = {
   DRAFT_LETTER: "Completes when a response letter has been drafted",
   COMPLETE_FORM_I485: "Completes when the Form I-485 wizard is finished",
   ADD_DEADLINE: "Completes when a deadline is tracked for this case",
+  PREPARE_APPOINTMENT: "Completes when an appointment or interview event is extracted into evidence",
 };
 
 export function isVerifiable(actionKey: string): boolean {
@@ -29,19 +32,23 @@ async function stepSatisfied(
   },
 ): Promise<boolean> {
   const key = actionKey.toUpperCase();
+  const evidenceState = await getEvidenceActionState(ctx.caseId, key).catch(() => null);
   switch (key) {
     case "UPLOAD_DOCUMENTS": {
       const count = await db.document.count({
         where: { caseId: ctx.caseId, deletedAt: null, docKind: { not: "avatar" } },
       });
-      return count > 0;
+      return count > 0 || evidenceState?.satisfied === true;
+    }
+    case "UPLOAD_NOTICE": {
+      return evidenceState?.satisfied === true;
     }
     case "GET_CASE_RECORD":
     case "GET_ACCOUNT_RECORD": {
       const where = ctx.userId
         ? { userId: ctx.userId, deletedAt: null, docKind: { in: ["case_record", "case record", "receipt"] } }
         : { caseId: ctx.caseId, deletedAt: null, docKind: { in: ["case_record", "case record", "receipt"] } };
-      return (await db.document.count({ where })) > 0;
+      return (await db.document.count({ where })) > 0 || evidenceState?.satisfied === true;
     }
     case "REVIEW_ANALYSIS":
     case "RERUN_ANALYSIS": {
@@ -74,11 +81,14 @@ async function stepSatisfied(
       return count > 0;
     }
     case "ADD_DEADLINE": {
-      if (!ctx.userId) return false;
+      if (!ctx.userId) return evidenceState?.satisfied === true;
       const count = await db.deadline.count({
         where: { userId: ctx.userId, OR: [{ caseId: ctx.caseId }, { createdAt: { gte: ctx.caseCreatedAt } }] },
       });
-      return count > 0;
+      return count > 0 || evidenceState?.satisfied === true;
+    }
+    case "PREPARE_APPOINTMENT": {
+      return evidenceState?.satisfied === true;
     }
     default:
       return false;
