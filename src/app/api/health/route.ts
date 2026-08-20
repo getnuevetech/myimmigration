@@ -25,12 +25,17 @@ export async function GET() {
       const { purgeExpiredDeletedAccounts } = await import("@/lib/deleted-accounts");
       const { purgeOldSystemLogs } = await import("@/lib/syslog");
       const { autoCloseCases } = await import("@/lib/case-closing");
+      const { backfillEvidenceCases } = await import("@/lib/evidence/backfill");
+      const evidenceBackfill = await backfillEvidenceCases(5);
       maintenance = {
         scheduledMessagesSent: await processScheduledMessages(),
         ticketsAutoClosed: await autoCloseInactiveTickets(),
         casesAutoClosed: await autoCloseCases(),
         accountsExpunged: await purgeExpiredDeletedAccounts(),
         oldLogsPurged: await purgeOldSystemLogs(30),
+        evidenceDocumentsProcessed: evidenceBackfill.documentsProcessed,
+        evidenceDocumentsFailed: evidenceBackfill.documentsFailed,
+        evidenceCasesVerified: evidenceBackfill.casesVerified,
       };
     } catch {
       // maintenance is best-effort
