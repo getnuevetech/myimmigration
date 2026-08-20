@@ -8,6 +8,7 @@ import { getOrCreateGuestSession } from "@/lib/guest";
 import { saveUpload, deleteUpload, validateUploadFile } from "@/lib/uploads";
 import { explainNoticeContent } from "@/lib/ai/orchestrator";
 import { verifyCaseProgress, verifyUserCasesProgress } from "@/lib/case-progress";
+import { processDocumentEvidence, processDocumentsEvidence } from "@/lib/evidence/document-processing";
 import type { ActionState } from "./auth";
 
 export async function uploadDocumentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -18,11 +19,12 @@ export async function uploadDocumentAction(_prev: ActionState, formData: FormDat
   if (files.length === 0) return { error: "Choose at least one file." };
 
   const guest = user ? null : await getOrCreateGuestSession();
+  const documentIds: string[] = [];
   for (const file of files.slice(0, 10)) {
     const validationError = validateUploadFile(file);
     if (validationError) return { error: validationError };
     const { filePath, sizeBytes } = await saveUpload(file);
-    await db.document.create({
+    const doc = await db.document.create({
       data: {
         userId: user?.id ?? null,
         guestSessionId: guest?.id ?? null,
@@ -34,6 +36,7 @@ export async function uploadDocumentAction(_prev: ActionState, formData: FormDat
         docKind,
       },
     });
+    documentIds.push(doc.id);
   }
   // New evidence changes the picture: re-run the case analysis automatically
   // so issues, facts, deadlines, and next steps reflect the uploaded documents. The
@@ -47,19 +50,41 @@ export async function uploadDocumentAction(_prev: ActionState, formData: FormDat
         // live-refreshes while status is "analyzing".
         await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
         after(async () => {
+          const { logSystem } = await import("@/lib/syslog");
+          try {
+            await processDocumentsEvidence(documentIds);
+          } catch (err) {
+            await logSystem("error", "evidence", "Background evidence processing after upload failed", String(err));
+          }
           try {
             const { runCaseAnalysis } = await import("@/lib/ai/orchestrator");
             await runCaseAnalysis(caseId);
           } catch (err) {
-            const { logSystem } = await import("@/lib/syslog");
             await logSystem("error", "analysis", "Background re-analysis after upload failed", String(err));
             await db.case.update({ where: { id: caseId }, data: { status: "analyzed" } }).catch(() => null);
           }
         });
       }
     } else {
-      await verifyUserCasesProgress(user.id);
+      after(async () => {
+        try {
+          await processDocumentsEvidence(documentIds);
+          await verifyUserCasesProgress(user.id);
+        } catch (err) {
+          const { logSystem } = await import("@/lib/syslog");
+          await logSystem("error", "evidence", "Background evidence processing after upload failed", String(err));
+        }
+      });
     }
+  } else {
+    after(async () => {
+      try {
+        await processDocumentsEvidence(documentIds);
+      } catch (err) {
+        const { logSystem } = await import("@/lib/syslog");
+        await logSystem("error", "evidence", "Background guest evidence processing after upload failed", String(err));
+      }
+    });
   }
   revalidatePath("/app/documents");
   if (caseId) revalidatePath(`/app/cases/${caseId}`);
@@ -70,8 +95,14 @@ export async function deleteDocumentAction(documentId: string) {
   const user = await requireUser();
   const doc = await db.document.findUnique({ where: { id: documentId } });
   if (!doc || doc.userId !== user.id) return;
-  // Delete the DB record first so a failed file deletion leaves no dangling reference.
-  await db.document.delete({ where: { id: documentId } });
+  // Delete evidence rows with the source document so stale facts do not remain
+  // after a customer removes the underlying record.
+  await db.$transaction([
+    db.evidenceRelationship.deleteMany({ where: { sourceDocumentId: documentId } }),
+    db.caseEvent.deleteMany({ where: { documentId } }),
+    db.evidenceFact.deleteMany({ where: { documentId } }),
+    db.document.delete({ where: { id: documentId } }),
+  ]);
   await deleteUpload(doc.filePath);
   // Removing evidence can un-complete verified steps.
   if (doc.caseId) await verifyCaseProgress(doc.caseId);
@@ -117,6 +148,17 @@ export async function uploadNoticeAction(_prev: ActionState, formData: FormData)
   const notice = await db.notice.create({
     data: { userId: user?.id ?? null, documentId, status: "analyzing" },
   });
+
+  if (documentId) {
+    after(async () => {
+      try {
+        await processDocumentEvidence(documentId);
+      } catch (err) {
+        const { logSystem } = await import("@/lib/syslog");
+        await logSystem("error", "evidence", "Background notice evidence processing failed", String(err));
+      }
+    });
+  }
 
   const result = await explainNoticeContent(content);
   if (result) {

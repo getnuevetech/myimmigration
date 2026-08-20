@@ -86,11 +86,17 @@ export async function addCaseCommentAction(_prev: ActionState, formData: FormDat
     const { after } = await import("next/server");
     await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
     after(async () => {
+      const { logSystem } = await import("@/lib/syslog");
+      try {
+        const { processDocumentsEvidence } = await import("@/lib/evidence/document-processing");
+        await processDocumentsEvidence(attachmentIds);
+      } catch (err) {
+        await logSystem("error", "evidence", "Background comment attachment evidence processing failed", String(err));
+      }
       try {
         const { runCaseAnalysis } = await import("@/lib/ai/orchestrator");
         await runCaseAnalysis(caseId);
       } catch (err) {
-        const { logSystem } = await import("@/lib/syslog");
         await logSystem("error", "analysis", "Background re-analysis after a comment attachment failed", String(err));
         await db.case.update({ where: { id: caseId }, data: { status: "analyzed" } }).catch(() => null);
       }

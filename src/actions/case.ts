@@ -9,6 +9,7 @@ import { getOrCreateGuestSession } from "@/lib/guest";
 import { runCaseAnalysis } from "@/lib/ai/orchestrator";
 import { verifyCaseProgress, isVerifiable } from "@/lib/case-progress";
 import { saveUpload, validateUploadFile } from "@/lib/uploads";
+import { processDocumentsEvidence } from "@/lib/evidence/document-processing";
 import type { ActionState } from "./auth";
 
 // Guest-friendly intake: situation + goal + documents, no account required.
@@ -43,9 +44,10 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
   }
 
   // Attach uploaded documents.
+  const documentIds: string[] = [];
   for (const file of files.slice(0, 10)) {
     const { filePath, sizeBytes } = await saveUpload(file);
-    await db.document.create({
+    const doc = await db.document.create({
       data: {
         userId: user?.id ?? null,
         guestSessionId: user ? null : guest!.id,
@@ -56,13 +58,23 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
         sizeBytes,
       },
     });
+    documentIds.push(doc.id);
   }
 
   await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
-  after(() => runCaseAnalysis(caseId).catch(async (err) => {
+  after(async () => {
     const { logSystem } = await import("@/lib/syslog");
-    await logSystem("error", "analysis", "Background intake analysis failed", String(err));
-  }));
+    try {
+      await processDocumentsEvidence(documentIds);
+    } catch (err) {
+      await logSystem("error", "evidence", "Background intake evidence processing failed", String(err));
+    }
+    try {
+      await runCaseAnalysis(caseId);
+    } catch (err) {
+      await logSystem("error", "analysis", "Background intake analysis failed", String(err));
+    }
+  });
   redirect(user ? `/app/cases/${caseId}` : `/start/result?case=${caseId}`);
 }
 
@@ -121,9 +133,10 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
   // Attached files go straight into the customer's vault as case documents,
   // where the re-analysis below picks them up as evidence.
   const attachedNames: string[] = [];
+  const documentIds: string[] = [];
   for (const file of files.slice(0, 10)) {
     const { filePath, sizeBytes } = await saveUpload(file);
-    await db.document.create({
+    const doc = await db.document.create({
       data: {
         userId: user.id,
         caseId,
@@ -135,6 +148,7 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
       },
     });
     attachedNames.push(file.name);
+    documentIds.push(doc.id);
   }
   const answerWithFiles = [answer, attachedNames.length ? `(attached: ${attachedNames.join(", ")})` : ""]
     .filter(Boolean)
@@ -157,10 +171,15 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
   // it. The answer is saved instantly; the analysis runs after the response
   // and the case page live-refreshes while status is "analyzing".
   after(async () => {
+    const { logSystem } = await import("@/lib/syslog");
+    try {
+      await processDocumentsEvidence(documentIds);
+    } catch (err) {
+      await logSystem("error", "evidence", "Background clarify evidence processing failed", String(err));
+    }
     try {
       await runCaseAnalysis(caseId);
     } catch (err) {
-      const { logSystem } = await import("@/lib/syslog");
       await logSystem("error", "analysis", "Background re-analysis after a clarify answer failed", String(err));
       await db.case.update({ where: { id: caseId }, data: { status: "analyzed" } }).catch(() => null);
     }
