@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "tsx scripts/v32-evidence-check.ts",
+    "test:evidence": "tsx scripts/v32-evidence-check.ts",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate deploy"
