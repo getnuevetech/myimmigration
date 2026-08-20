@@ -3,6 +3,7 @@ import { db } from "./db";
 import { readUpload } from "./uploads";
 import { getSetting } from "./settings";
 import { formatCaseNumber } from "./case-number";
+import { getCaseEvidenceBrief } from "./evidence/brief";
 
 // Generates the full case report: a self-contained, print-ready HTML document
 // (browser "Print → Save as PDF" produces the PDF) with every issue, step,
@@ -31,6 +32,7 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
   const ref = formatCaseNumber(c.number);
   const generatedAt = new Date().toLocaleString("en-US");
   const reviewLevel = c.runs[0]?.stepResults.length ? "Full analysis" : "Preliminary review";
+  const evidenceBrief = await getCaseEvidenceBrief(caseId).catch(() => null);
 
   // Merge document copies: images embedded inline, text embedded as content,
   // everything else referenced in the appendix inventory.
@@ -88,7 +90,8 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
   <p class="meta">
     <strong>Case reference:</strong> ${ref} &nbsp;·&nbsp; <strong>Generated:</strong> ${generatedAt}<br/>
     <strong>Applicant:</strong> ${esc(`${c.user?.firstName ?? ""} ${c.user?.lastName ?? ""}`.trim() || "—")} (${esc(c.user?.email ?? "—")}${c.user?.phone ? `, ${esc(c.user.phone)}` : ""})${c.user?.address ? `<br/><strong>Address:</strong> ${esc(c.user.address)}` : ""}<br/>
-    <strong>Case opened:</strong> ${c.createdAt.toLocaleDateString("en-US")} &nbsp;·&nbsp; <strong>Status:</strong> ${esc(c.status.replace(/_/g, " "))} &nbsp;·&nbsp; <strong>Readiness:</strong> ${c.readinessScore}% &nbsp;·&nbsp; <strong>Review level:</strong> ${reviewLevel}
+    <strong>Case opened:</strong> ${c.createdAt.toLocaleDateString("en-US")} &nbsp;·&nbsp; <strong>Status:</strong> ${esc(c.status.replace(/_/g, " "))} &nbsp;·&nbsp; <strong>Readiness:</strong> ${c.readinessScore}% &nbsp;·&nbsp; <strong>Review level:</strong> ${reviewLevel}<br/>
+    <strong>Evidence provided:</strong> ${c.evidenceAvailableScore}% &nbsp;·&nbsp; <strong>Evidence processed:</strong> ${c.evidenceProcessedScore}% &nbsp;·&nbsp; <strong>Action readiness:</strong> ${c.actionReadinessScore}%
   </p>
 </header>
 
@@ -97,7 +100,16 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
 <h2>2. Applicant's goal</h2>
 <p>${esc(c.goal || "—")}</p>
 
-<h2>3. Issues identified (${c.issues.length})</h2>
+${evidenceBrief ? `<h2>3. Compiled evidence record</h2>
+<p><span class="badge">Evidence gate: ${esc(evidenceBrief.status.replace(/_/g, " "))}</span></p>
+<p><strong>Current position:</strong> ${esc(evidenceBrief.currentPosition)}</p>
+<p>${esc(evidenceBrief.summary)}</p>
+${evidenceBrief.pendingActions.length ? `<p><strong>Evidence-derived pending actions:</strong></p><ul>${evidenceBrief.pendingActions.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
+${evidenceBrief.facts.length ? `<table><tr><th>Fact</th><th>Value</th><th>Source</th></tr>${evidenceBrief.facts.slice(0, 20).map((fact) => `<tr><td>${esc(fact.key.replace(/_/g, " "))}</td><td>${esc(fact.value)}</td><td>${esc(fact.source)}</td></tr>`).join("\n")}</table>` : ""}
+${evidenceBrief.events.length ? `<p><strong>Evidence timeline:</strong></p><ul>${evidenceBrief.events.slice(0, 12).map((event) => `<li>${esc([event.dateText, event.title].filter(Boolean).join(": "))} <span class="muted">${esc(event.eventType.replace(/_/g, " "))}</span></li>`).join("")}</ul>` : ""}
+${evidenceBrief.unknowns.length ? `<p><strong>Evidence still needs:</strong></p><ul>${evidenceBrief.unknowns.map((item) => `<li>${esc(item.question)}</li>`).join("")}</ul>` : ""}` : ""}
+
+<h2>${evidenceBrief ? "4" : "3"}. Issues identified (${c.issues.length})</h2>
 ${c.issues
   .map(
     (i, n) => {
@@ -105,7 +117,7 @@ ${c.issues
       try { const p = JSON.parse(i.unclearJson || "[]"); if (Array.isArray(p)) unclear = p.map(String).filter(Boolean); } catch { /* legacy */ }
       const statusLabel: Record<string, string> = { confirmed: "Confirmed", likely: "Likely", possible: "Possible", needs_verification: "Needs verification", not_supported: "Not supported" };
       const kindLabel: Record<string, string> = { finding: "Finding", issue: "Issue", opportunity: "Opportunity", risk: "Risk", missing_info: "Missing information" };
-      return `<h3>3.${n + 1} ${i.caseYear ? `${i.caseYear} · ` : ""}${esc(i.title)}</h3>
+      return `<h3>${evidenceBrief ? "4" : "3"}.${n + 1} ${i.caseYear ? `${i.caseYear} · ` : ""}${esc(i.title)}</h3>
 <p><span class="badge">${kindLabel[i.itemKind] ?? "Issue"}</span><span class="badge">${statusLabel[i.evidenceStatus] ?? "Needs verification"}</span><span class="badge">${stateLabel[i.state] ?? i.state}</span><span class="badge">Evidence: ${i.evidenceStrength}</span><span class="badge">Priority: ${i.priority}</span><span class="badge">Type: ${i.issueType.replace(/_/g, " ")}</span></p>
 <p>${esc(i.description)}</p>
 ${i.conclusion ? `<p><strong>Conclusion:</strong> ${esc(i.conclusion)}</p>` : ""}
@@ -116,25 +128,25 @@ ${i.nextAction ? `<p><strong>Recommended action:</strong> ${esc(i.nextAction.rep
   )
   .join("\n")}
 
-<h2>4. Resolution path</h2>
+<h2>${evidenceBrief ? "5" : "4"}. Resolution path</h2>
 <table><tr><th>#</th><th>Step</th><th>Status</th></tr>
 ${c.pathSteps.map((s, n) => `<tr><td>${n + 1}</td><td><strong>${esc(s.title)}</strong><br/><span class="muted">${esc(s.description)}</span></td><td>${s.status === "done" ? "✓ Completed" : s.status === "current" ? "▶ In progress" : "Pending"}</td></tr>`).join("\n")}
 </table>
 
-${c.deadlines.length ? `<h2>5. Deadlines</h2>
+${c.deadlines.length ? `<h2>${evidenceBrief ? "6" : "5"}. Deadlines</h2>
 <table><tr><th>Deadline</th><th>Due date</th><th>Status</th></tr>
 ${c.deadlines.map((d) => `<tr><td>${esc(d.title)}</td><td>${d.dueDate.toLocaleDateString("en-US")}</td><td>${d.status}</td></tr>`).join("\n")}
 </table>` : ""}
 
-${c.notices.length ? `<h2>6. USCIS notices on file</h2>
+${c.notices.length ? `<h2>${evidenceBrief ? "7" : "6"}. USCIS notices on file</h2>
 <table><tr><th>Notice</th><th>Year</th><th>Deadline</th></tr>
 ${c.notices.map((n) => `<tr><td>${esc(n.noticeType || "Unidentified")}</td><td>${n.caseYear ?? "—"}</td><td>${n.deadline?.toLocaleDateString("en-US") ?? "—"}</td></tr>`).join("\n")}
 </table>` : ""}
 
-${c.letters.length ? `<h2>7. Response letters drafted</h2>
+${c.letters.length ? `<h2>${evidenceBrief ? "8" : "7"}. Response letters drafted</h2>
 ${c.letters.map((l) => `<h3>${esc(l.title)} <span class="muted">(${l.status}, ${l.createdAt.toLocaleDateString("en-US")})</span></h3><pre class="letter">${esc(l.body.slice(0, 6000))}</pre>`).join("\n")}` : ""}
 
-<h2>8. Document inventory (${c.documents.length})</h2>
+<h2>${evidenceBrief ? "9" : "8"}. Document inventory (${c.documents.length})</h2>
 <table><tr><th>File</th><th>Type</th><th>Uploaded</th><th>Size</th></tr>
 ${c.documents.map((d) => `<tr><td>${esc(d.fileName)}</td><td>${d.docKind}</td><td>${d.uploadedAt.toLocaleDateString("en-US")}</td><td>${(d.sizeBytes / 1024).toFixed(0)} KB</td></tr>`).join("\n")}
 </table>

@@ -504,10 +504,17 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
 
 // ---------- Single-purpose AI helpers ----------
 
-export async function runQaChat(history: { role: string; content: string }[]): Promise<string> {
+export async function runQaChat(history: { role: string; content: string }[], opts?: { caseId?: string | null }): Promise<string> {
   const steps = await getRunnableSteps(STAGE_KEYS.QA);
   const convo = history.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
   const knowledge = await retrieveKnowledge(history.map((m) => m.content).join(" "));
+  const evidenceBrief = opts?.caseId
+    ? await getCaseEvidenceBrief(opts.caseId).catch(async (err) => {
+        const { logSystem } = await import("../syslog");
+        await logSystem("warning", "evidence_brief", "Could not load case evidence brief for Q&A", String(err));
+        return null;
+      })
+    : null;
   if (steps.length === 0) {
     return "The assistant isn't available just yet. You can still upload your USCIS notice, receipt, or case record to your vault, and the case page will use those documents when analysis is available.";
   }
@@ -520,7 +527,10 @@ export async function runQaChat(history: { role: string; content: string }[]): P
       const priorDrafts = drafts.length
         ? `\n\nPRIOR DRAFTS TO IMPROVE (do not mention them; correct any errors and produce one final answer):\n${drafts.map((draft, i) => `[Draft ${i + 1}]\n${draft}`).join("\n\n")}`
         : "";
-      const prompt = fill(step.promptTemplate, { input: `${convo}${priorDrafts}`, knowledge: knowledge || "(none)" });
+      const evidenceContext = evidenceBrief
+        ? `\n\nCOMPILED CASE EVIDENCE BRIEF:\n${evidenceBrief.text}\n\nGrounding rule: answer case-specific questions from the evidence brief, the conversation, and USCIS reference material. Treat unsupported details as unknowns.`
+        : "";
+      const prompt = fill(step.promptTemplate, { input: `${convo}${priorDrafts}${evidenceContext}`, knowledge: knowledge || "(none)" });
       const result = await callProvider(step.provider, [{ role: "user", content: prompt }]);
       if (result.text.trim()) drafts.push(result.text.trim());
     } catch (err) {
