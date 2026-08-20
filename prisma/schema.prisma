@@ -11,35 +11,35 @@ datasource db {
 // ---------- Platform configuration (everything admin-manageable) ----------
 
 model Setting {
-  key         String   @id
+  key         String  @id
   value       String
-  type        String   @default("text") // text | number | boolean | json | secret
-  group       String   @default("general")
-  label       String   @default("")
-  description String   @default("")
+  type        String  @default("text") // text | number | boolean | json | secret
+  group       String  @default("general")
+  label       String  @default("")
+  description String  @default("")
   updatedAt   DateTime @updatedAt
 }
 
 model FeatureDef {
-  key          String        @id
-  name         String
-  description  String        @default("")
-  category     String        @default("general")
-  sortOrder    Int           @default(0)
+  key         String        @id
+  name        String
+  description String        @default("")
+  category    String        @default("general")
+  sortOrder   Int           @default(0)
   planFeatures PlanFeature[]
 }
 
 model SubscriptionPlan {
-  id                String               @id @default(cuid())
-  key               String               @unique
+  id                String         @id @default(cuid())
+  key               String         @unique
   name              String
-  audience          String               @default("customer") // customer | consultant
-  description       String               @default("")
-  priceMonthlyCents Int                  @default(0)
-  priceYearlyCents  Int                  @default(0)
-  badge             String               @default("")
-  sortOrder         Int                  @default(0)
-  isActive          Boolean              @default(true)
+  audience          String         @default("customer") // customer | consultant
+  description       String         @default("")
+  priceMonthlyCents Int            @default(0)
+  priceYearlyCents  Int            @default(0)
+  badge             String         @default("")
+  sortOrder         Int            @default(0)
+  isActive          Boolean        @default(true)
   features          PlanFeature[]
   subscriptions     Subscription[]
   transactions      PaymentTransaction[]
@@ -50,17 +50,17 @@ model SubscriptionPlan {
 // price) or targeted at specific people by email. Time-bound and stackable
 // per plan (the best active discount wins).
 model PlanDiscount {
-  id             String           @id @default(cuid())
+  id             String    @id @default(cuid())
   planId         String
   name           String // shown to customers, e.g. "Launch sale"
-  percentOff     Int              @default(0) // 1–100; used when > 0
-  amountOffCents Int              @default(0) // fixed discount; used when percentOff = 0
-  audience       String           @default("all") // all | specific
-  emailsJson     String           @default("[]") // JSON array of emails when audience = specific
+  percentOff     Int       @default(0) // 1–100; used when > 0
+  amountOffCents Int       @default(0) // fixed discount; used when percentOff = 0
+  audience       String    @default("all") // all | specific
+  emailsJson     String    @default("[]") // JSON array of emails when audience = specific
   startsAt       DateTime?
   endsAt         DateTime?
-  isActive       Boolean          @default(true)
-  createdAt      DateTime         @default(now())
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
   plan           SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
 }
 
@@ -77,31 +77,31 @@ model PlanFeature {
 }
 
 model PaymentGatewayConfig {
-  id         String   @id @default(cuid())
-  name       String
-  kind       String // stripe | paypal | manual | custom
-  mode       String   @default("test") // test | live
-  isActive   Boolean  @default(false)
-  isDefault  Boolean  @default(false)
-  configJson String   @default("{}") // gateway-specific keys/secrets/urls
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  kind      String // stripe | paypal | manual | custom
+  mode      String   @default("test") // test | live
+  isActive  Boolean  @default(false)
+  isDefault Boolean  @default(false)
+  configJson String  @default("{}") // gateway-specific keys/secrets/urls
+  updatedAt DateTime @updatedAt
 }
 
 model AiProvider {
-  id             String               @id @default(cuid())
-  name           String
-  kind           String // openai_compatible | anthropic | google
-  baseUrl        String               @default("")
-  apiKey         String               @default("")
-  model          String
-  maxTokens      Int                  @default(4096)
-  temperature    Float                @default(0.2)
-  supportsVision Boolean              @default(false)
-  isEnabled      Boolean              @default(true)
-  notes          String               @default("")
-  createdAt      DateTime             @default(now())
-  steps          PipelineStep[]
-  stepResults    AnalysisStepResult[]
+  id            String         @id @default(cuid())
+  name          String
+  kind          String // openai_compatible | anthropic | google
+  baseUrl       String         @default("")
+  apiKey        String         @default("")
+  model         String
+  maxTokens     Int            @default(4096)
+  temperature   Float          @default(0.2)
+  supportsVision Boolean       @default(false)
+  isEnabled     Boolean        @default(true)
+  notes         String         @default("")
+  createdAt     DateTime       @default(now())
+  steps         PipelineStep[]
+  stepResults   AnalysisStepResult[]
 }
 
 model PipelineStage {
@@ -141,43 +141,43 @@ model KnowledgeSource {
 // ---------- Users, roles, agreements ----------
 
 model User {
-  id              String     @id @default(cuid())
-  email           String     @unique
-  phone           String     @default("")
+  id              String    @id @default(cuid())
+  email           String    @unique
+  phone           String    @default("")
   passwordHash    String?
-  googleId        String?    @unique
-  role            String     @default("user") // super_admin | admin | user | consultant
-  status          String     @default("active") // active | suspended | deleted
-  firstName       String     @default("")
-  lastName        String     @default("")
-  address         String     @default("")
-  idNumber        String     @default("") // optional, user-provided
-  bio             String     @default("")
-  avatarPath      String     @default("")
+  googleId        String?   @unique
+  role            String    @default("user") // super_admin | admin | user | consultant
+  status          String    @default("active") // active | suspended | deleted
+  firstName       String    @default("")
+  lastName        String    @default("")
+  address         String    @default("")
+  idNumber        String    @default("") // optional, user-provided
+  bio             String    @default("")
+  avatarPath      String    @default("")
   emailVerifiedAt DateTime?
-  createdAt       DateTime   @default(now())
+  createdAt       DateTime  @default(now())
   deletedAt       DateTime?
   adminRoleId     String?
   adminRole       AdminRole? @relation(fields: [adminRoleId], references: [id], onDelete: SetNull)
 
-  adminPermissions      AdminPermission[]
-  passwordResetTokens   PasswordResetToken[]
-  subscriptions         Subscription[]
-  transactions          PaymentTransaction[]
-  cases                 Case[]
-  documents             Document[]
-  deadlines             Deadline[]
-  letters               ResponseLetter[]
-  qaThreads             QaThread[]
-  formSubmissions       FormSubmission[]
-  notifications         Notification[]
-  agreementAcceptances  AgreementAcceptance[]
-  consultantProfile     ConsultantProfile?
-  clientAssignments     ConsultantAssignment[] @relation("assignmentClient")
+  adminPermissions    AdminPermission[]
+  passwordResetTokens PasswordResetToken[]
+  subscriptions       Subscription[]
+  transactions        PaymentTransaction[]
+  cases               Case[]
+  documents           Document[]
+  deadlines           Deadline[]
+  letters             ResponseLetter[]
+  qaThreads           QaThread[]
+  formSubmissions     FormSubmission[]
+  notifications       Notification[]
+  agreementAcceptances AgreementAcceptance[]
+  consultantProfile   ConsultantProfile?
+  clientAssignments   ConsultantAssignment[] @relation("assignmentClient")
   consultantAssignments ConsultantAssignment[] @relation("assignmentConsultant")
-  notices               Notice[]
-  tickets               Ticket[]
-  assignedTickets       Ticket[]               @relation("ticketAssignee")
+  notices             Notice[]
+  tickets             Ticket[]
+  assignedTickets     Ticket[] @relation("ticketAssignee")
 }
 
 model AdminPermission {
@@ -213,16 +213,16 @@ model PasswordResetToken {
 }
 
 model ContentPage {
-  id          String                @id @default(cuid())
-  slug        String                @unique
+  id          String   @id @default(cuid())
+  slug        String   @unique
   title       String
-  body        String                @default("")
-  kind        String                @default("page") // page | blog | terms | privacy | policy | legal | agreement_user | agreement_consultant | agreement_connection
-  audience    String                @default("all") // all | user | consultant | admin
-  version     Int                   @default(1)
-  isPublished Boolean               @default(false)
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  body        String   @default("")
+  kind        String   @default("page") // page | blog | terms | privacy | policy | legal | agreement_user | agreement_consultant | agreement_connection
+  audience    String   @default("all") // all | user | consultant | admin
+  version     Int      @default(1)
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   acceptances AgreementAcceptance[]
 }
 
@@ -272,15 +272,15 @@ model PaymentTransaction {
 // ---------- Guest intake ----------
 
 model GuestSession {
-  id              String     @id @default(cuid())
-  token           String     @unique
-  situation       String     @default("")
-  goal            String     @default("")
-  email           String     @default("")
-  teaserJson      String     @default("") // limited pre-registration result
+  id              String    @id @default(cuid())
+  token           String    @unique
+  situation       String    @default("")
+  goal            String    @default("")
+  email           String    @default("")
+  teaserJson      String    @default("") // limited pre-registration result
   claimedByUserId String?
   claimedAt       DateTime?
-  createdAt       DateTime   @default(now())
+  createdAt       DateTime  @default(now())
   documents       Document[]
   cases           Case[]
   qaThreads       QaThread[]
@@ -289,83 +289,83 @@ model GuestSession {
 // ---------- Cases & analysis ----------
 
 model Case {
-  id                    String                 @id @default(cuid())
-  number                Int                    @unique @default(autoincrement()) // shown as IMM-000123
-  userId                String?
-  guestSessionId        String?
-  title                 String
-  situation             String                 @default("")
-  goal                  String                 @default("")
-  status                String                 @default("intake") // intake | analyzing | analyzed | needs_info | consultant_recommended | resolved | closed
-  readinessScore        Int                    @default(0)
-  conflictsJson         String                 @default("[]") // detected information conflicts [{topic, description, resolution}]
-  closedAt              DateTime?
-  closedReason          String                 @default("") // completed | abandoned | manual
-  closingRemarks        String                 @default("") // final review & closing remarks (AI or deterministic)
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
-  user                  User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  guestSession          GuestSession?          @relation(fields: [guestSessionId], references: [id])
-  documents             Document[]
-  runs                  AnalysisRun[]
-  issues                Issue[]
-  pathSteps             PathStep[]
-  deadlines             Deadline[]
-  letters               ResponseLetter[]
-  notices               Notice[]
-  assignments           ConsultantAssignment[]
-  comments              CaseComment[]
-  clarifyMessages       CaseClarifyMessage[]
-  evidenceFacts         EvidenceFact[]
-  caseEvents            CaseEvent[]
+  id             String    @id @default(cuid())
+  number         Int       @unique @default(autoincrement()) // shown as IMM-000123
+  userId         String?
+  guestSessionId String?
+  title          String
+  situation      String    @default("")
+  goal           String    @default("")
+  status         String    @default("intake") // intake | analyzing | analyzed | needs_info | consultant_recommended | resolved | closed
+  readinessScore Int       @default(0)
+  conflictsJson  String    @default("[]") // detected information conflicts [{topic, description, resolution}]
+  closedAt       DateTime?
+  closedReason   String    @default("") // completed | abandoned | manual
+  closingRemarks String    @default("") // final review & closing remarks (AI or deterministic)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestSession   GuestSession? @relation(fields: [guestSessionId], references: [id])
+  documents      Document[]
+  runs           AnalysisRun[]
+  issues         Issue[]
+  pathSteps      PathStep[]
+  deadlines      Deadline[]
+  letters        ResponseLetter[]
+  notices        Notice[]
+  assignments    ConsultantAssignment[]
+  comments       CaseComment[]
+  clarifyMessages CaseClarifyMessage[]
+  evidenceFacts  EvidenceFact[]
+  caseEvents     CaseEvent[]
   evidenceRelationships EvidenceRelationship[]
-  evidenceAudits        EvidenceAudit[]
-  reconstruction        CaseReconstruction?
-  unknowns              CaseUnknown[]
-  suppressedQuestions   SuppressedQuestion[]
+  evidenceAudits EvidenceAudit[]
+  reconstruction CaseReconstruction?
+  unknowns       CaseUnknown[]
+  suppressedQuestions SuppressedQuestion[]
 }
 
 // The clarifying-questions conversation: when the analysis lacks specific
 // facts (forms, receipt numbers, dates, notice codes), the app interviews the customer and
 // feeds every answer back into the analysis automatically.
 model CaseClarifyMessage {
-  id          String   @id @default(cuid())
-  caseId      String
-  role        String // assistant | user
-  questionKey String   @default("") // which targeted question this belongs to
-  content     String
-  createdAt   DateTime @default(now())
-  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  caseId    String
+  role      String // assistant | user
+  questionKey String @default("") // which targeted question this belongs to
+  content   String
+  createdAt DateTime @default(now())
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
 }
 
 model Document {
-  id                      String                 @id @default(cuid())
-  userId                  String?
-  guestSessionId          String?
-  caseId                  String?
-  fileName                String
-  filePath                String
-  mimeType                String                 @default("application/octet-stream")
-  sizeBytes               Int                    @default(0)
-  docKind                 String                 @default("other") // receipt | approval | rfe | form | identity | evidence | notice | proof | avatar | other
-  status                  String                 @default("uploaded") // uploaded | analyzing | extracted | verification_required
-  extractedJson           String                 @default("")
-  documentType            String                 @default("") // immigration-native classifier, e.g. i797_notice | rfe | case_status_record
-  processingStatus        String                 @default("uploaded") // uploaded | queued | extracting | extracted | reconciled | failed | needs_review
-  contentHash             String                 @default("")
-  extractionSchemaVersion String                 @default("")
-  duplicateOfId           String?
-  uploadedAt              DateTime               @default(now())
-  deletedAt               DateTime?
-  user                    User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  guestSession            GuestSession?          @relation(fields: [guestSessionId], references: [id])
-  case                    Case?                  @relation(fields: [caseId], references: [id])
-  notices                 Notice[]
-  duplicateOf             Document?              @relation("DocumentDuplicates", fields: [duplicateOfId], references: [id])
-  duplicates              Document[]             @relation("DocumentDuplicates")
-  evidenceFacts           EvidenceFact[]
-  caseEvents              CaseEvent[]
-  evidenceRelationships   EvidenceRelationship[] @relation("RelationshipSourceDocument")
+  id             String    @id @default(cuid())
+  userId         String?
+  guestSessionId String?
+  caseId         String?
+  fileName       String
+  filePath       String
+  mimeType       String    @default("application/octet-stream")
+  sizeBytes      Int       @default(0)
+  docKind        String    @default("other") // receipt | approval | rfe | form | identity | evidence | notice | proof | avatar | other
+  status         String    @default("uploaded") // uploaded | analyzing | extracted | verification_required
+  extractedJson  String    @default("")
+  documentType   String    @default("") // immigration-native classifier, e.g. i797_notice | rfe | case_status_record
+  processingStatus String  @default("uploaded") // uploaded | queued | extracting | extracted | reconciled | failed | needs_review
+  contentHash    String    @default("")
+  extractionSchemaVersion String @default("")
+  duplicateOfId  String?
+  uploadedAt     DateTime  @default(now())
+  deletedAt      DateTime?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestSession   GuestSession? @relation(fields: [guestSessionId], references: [id])
+  case           Case?         @relation(fields: [caseId], references: [id])
+  notices        Notice[]
+  duplicateOf    Document?     @relation("DocumentDuplicates", fields: [duplicateOfId], references: [id])
+  duplicates     Document[]    @relation("DocumentDuplicates")
+  evidenceFacts  EvidenceFact[]
+  caseEvents     CaseEvent[]
+  evidenceRelationships EvidenceRelationship[] @relation("RelationshipSourceDocument")
 
   @@index([caseId, documentType])
   @@index([processingStatus])
@@ -373,126 +373,126 @@ model Document {
 }
 
 model EvidenceFact {
-  id         String    @id @default(cuid())
-  caseId     String
-  documentId String?
-  key        String
-  value      String
-  valueJson  String    @default("")
-  confidence String    @default("needs_verification") // confirmed | likely | possible | needs_verification | not_supported
-  sourceText String    @default("")
-  sourcePage Int?
-  observedAt DateTime?
-  createdAt  DateTime  @default(now())
-  case       Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  id          String   @id @default(cuid())
+  caseId      String
+  documentId  String?
+  key         String
+  value       String
+  valueJson   String   @default("")
+  confidence  String   @default("needs_verification") // confirmed | likely | possible | needs_verification | not_supported
+  sourceText  String   @default("")
+  sourcePage  Int?
+  observedAt  DateTime?
+  createdAt   DateTime @default(now())
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  document    Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
 
   @@index([caseId, key])
   @@index([documentId])
 }
 
 model CaseEvent {
-  id           String    @id @default(cuid())
-  caseId       String
-  documentId   String?
-  eventType    String
-  title        String
-  description  String    @default("")
-  dateText     String    @default("")
-  occurredAt   DateTime?
-  evidenceJson String    @default("[]")
-  sortOrder    Int       @default(0)
-  createdAt    DateTime  @default(now())
-  case         Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  document     Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  id          String   @id @default(cuid())
+  caseId      String
+  documentId  String?
+  eventType   String
+  title       String
+  description String   @default("")
+  dateText    String   @default("")
+  occurredAt  DateTime?
+  evidenceJson String  @default("[]")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  document    Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
 
   @@index([caseId, eventType])
   @@index([documentId])
 }
 
 model EvidenceRelationship {
-  id               String    @id @default(cuid())
-  caseId           String
+  id          String   @id @default(cuid())
+  caseId      String
   sourceDocumentId String?
-  relationType     String
-  fromFactKey      String
-  fromValue        String
-  toFactKey        String
-  toValue          String
-  confidence       String    @default("needs_verification")
-  rationale        String    @default("")
-  createdAt        DateTime  @default(now())
-  case             Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  sourceDocument   Document? @relation("RelationshipSourceDocument", fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  relationType String
+  fromFactKey String
+  fromValue   String
+  toFactKey   String
+  toValue     String
+  confidence  String   @default("needs_verification")
+  rationale   String   @default("")
+  createdAt   DateTime @default(now())
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  sourceDocument Document? @relation("RelationshipSourceDocument", fields: [sourceDocumentId], references: [id], onDelete: SetNull)
 
   @@index([caseId, relationType])
   @@index([sourceDocumentId])
 }
 
 model EvidenceAudit {
-  id                   String   @id @default(cuid())
-  caseId               String
-  status               String   @default("needs_more_evidence") // pass | needs_more_evidence | needs_review | blocked
-  summary              String   @default("")
-  blockingUnknownsJson String   @default("[]")
-  warningsJson         String   @default("[]")
-  createdAt            DateTime @default(now())
-  case                 Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  caseId      String
+  status      String   @default("needs_more_evidence") // pass | needs_more_evidence | needs_review | blocked
+  summary     String   @default("")
+  blockingUnknownsJson String @default("[]")
+  warningsJson String  @default("[]")
+  createdAt   DateTime @default(now())
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   @@index([caseId, createdAt])
 }
 
 model CaseReconstruction {
-  id                 String   @id @default(cuid())
-  caseId             String   @unique
-  summary            String   @default("")
-  currentPosition    String   @default("")
-  timelineJson       String   @default("[]")
-  pendingActionsJson String   @default("[]")
-  confidence         String   @default("needs_verification")
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  case               Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  caseId      String   @unique
+  summary     String   @default("")
+  currentPosition String @default("")
+  timelineJson String  @default("[]")
+  pendingActionsJson String @default("[]")
+  confidence  String   @default("needs_verification")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
 }
 
 model CaseUnknown {
-  id         String    @id @default(cuid())
-  caseId     String
-  key        String
-  question   String
-  reason     String    @default("")
-  status     String    @default("open") // open | resolved | suppressed
-  resolvedAt DateTime?
-  createdAt  DateTime  @default(now())
-  case       Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  caseId      String
+  key         String
+  question    String
+  reason      String   @default("")
+  status      String   @default("open") // open | resolved | suppressed
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   @@unique([caseId, key])
 }
 
 model SuppressedQuestion {
-  id             String   @id @default(cuid())
-  caseId         String
-  questionKey    String
-  question       String
-  reason         String
+  id          String   @id @default(cuid())
+  caseId      String
+  questionKey String
+  question    String
+  reason      String
   evidenceFactId String?
-  createdAt      DateTime @default(now())
-  case           Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   @@index([caseId, questionKey])
 }
 
 model AnalysisRun {
-  id          String               @id @default(cuid())
-  caseId      String
-  stageKey    String
-  status      String               @default("pending") // pending | running | complete | failed
-  error       String               @default("")
-  startedAt   DateTime             @default(now())
-  finishedAt  DateTime?
-  case        Case                 @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  caseId     String
+  stageKey   String
+  status     String    @default("pending") // pending | running | complete | failed
+  error      String    @default("")
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  case       Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
   stepResults AnalysisStepResult[]
-  consensus   ConsensusResult?
+  consensus  ConsensusResult?
 }
 
 model AnalysisStepResult {
@@ -518,45 +518,45 @@ model ConsensusResult {
 }
 
 model Issue {
-  id               String   @id @default(cuid())
-  caseId           String
-  issueType        String   @default("general") // uscis_notice_response | deadline_tracking | case_timeline | missing_evidence | status_question | case_update_discrepancy | fee_or_payment_issue | missing_filing | appointment_preparation | case_organization | professional_review | other
-  caseYear         Int?
-  title            String
-  description      String   @default("")
-  expectedCents    Int?
-  receivedCents    Int?
-  differenceCents  Int?
-  confidence       String   @default("medium") // high | medium | low
-  priority         String   @default("medium") // urgent | high | medium | low
-  state            String   @default("review") // resolved | review | action_needed | urgent | info_needed
-  nextAction       String   @default("")
-  uscisBasis       String   @default("")
-  evidenceJson     String   @default("[]")
+  id             String  @id @default(cuid())
+  caseId         String
+  issueType      String  @default("general") // uscis_notice_response | deadline_tracking | case_timeline | missing_evidence | status_question | case_update_discrepancy | fee_or_payment_issue | missing_filing | appointment_preparation | case_organization | professional_review | other
+  caseYear       Int?
+  title          String
+  description    String  @default("")
+  expectedCents  Int?
+  receivedCents  Int?
+  differenceCents Int?
+  confidence     String  @default("medium") // high | medium | low
+  priority       String  @default("medium") // urgent | high | medium | low
+  state          String  @default("review") // resolved | review | action_needed | urgent | info_needed
+  nextAction     String  @default("")
+  uscisBasis     String  @default("")
+  evidenceJson   String  @default("[]")
   // Evidence-based product taxonomy (never AI confidence percentages).
-  itemKind         String   @default("issue") // finding | issue | opportunity | risk | missing_info
-  evidenceStatus   String   @default("needs_verification") // confirmed | likely | possible | needs_verification | not_supported
-  evidenceStrength String   @default("limited") // strong | moderate | limited
-  conclusion       String   @default("") // "Our conclusion" — what the pieces indicate together
-  unclearJson      String   @default("[]") // specific unresolved questions (string[])
-  explanationsJson String   @default("[]") // most likely explanations [{title, detail, likelihood}]
-  altAction        String   @default("") // alternative to the recommended next step
-  createdAt        DateTime @default(now())
-  case             Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  itemKind         String @default("issue") // finding | issue | opportunity | risk | missing_info
+  evidenceStatus   String @default("needs_verification") // confirmed | likely | possible | needs_verification | not_supported
+  evidenceStrength String @default("limited") // strong | moderate | limited
+  conclusion       String @default("") // "Our conclusion" — what the pieces indicate together
+  unclearJson      String @default("[]") // specific unresolved questions (string[])
+  explanationsJson String @default("[]") // most likely explanations [{title, detail, likelihood}]
+  altAction        String @default("") // alternative to the recommended next step
+  createdAt      DateTime @default(now())
+  case           Case    @relation(fields: [caseId], references: [id], onDelete: Cascade)
 }
 
 // Case discussion: customers, consultants, and admins comment on a case with
 // visibility controls (which checkboxes are available is admin-configurable).
 model CaseComment {
-  id              String   @id @default(cuid())
-  caseId          String
-  authorId        String
-  authorRole      String // customer | consultant | admin
-  body            String
-  visibility      String   @default("all") // all | hidden_from_customer | private
-  attachmentsJson String   @default("[]") // Document ids attached to this comment
-  createdAt       DateTime @default(now())
-  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  caseId     String
+  authorId   String
+  authorRole String // customer | consultant | admin
+  body       String
+  visibility String   @default("all") // all | hidden_from_customer | private
+  attachmentsJson String @default("[]") // Document ids attached to this comment
+  createdAt  DateTime @default(now())
+  case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
 }
 
 model PathStep {
@@ -573,36 +573,36 @@ model PathStep {
 // ---------- Notices, deadlines, letters ----------
 
 model Notice {
-  id            String           @id @default(cuid())
+  id            String    @id @default(cuid())
   userId        String?
   caseId        String?
   documentId    String?
-  noticeType    String           @default("") // RFE, NOID, interview, biometrics, approval ...
+  noticeType    String    @default("") // RFE, NOID, interview, biometrics, approval ...
   caseYear      Int?
   amountCents   Int?
   deadline      DateTime?
-  explanation   String           @default("")
-  nextStepsJson String           @default("[]")
-  status        String           @default("uploaded") // uploaded | analyzing | explained | verification_required
-  createdAt     DateTime         @default(now())
-  user          User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  case          Case?            @relation(fields: [caseId], references: [id])
-  document      Document?        @relation(fields: [documentId], references: [id])
+  explanation   String    @default("")
+  nextStepsJson String    @default("[]")
+  status        String    @default("uploaded") // uploaded | analyzing | explained | verification_required
+  createdAt     DateTime  @default(now())
+  user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  case          Case?     @relation(fields: [caseId], references: [id])
+  document      Document? @relation(fields: [documentId], references: [id])
   letters       ResponseLetter[]
 }
 
 model Deadline {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   userId           String
   caseId           String?
   title            String
   dueDate          DateTime
-  source           String   @default("manual") // manual | notice | analysis
-  status           String   @default("open") // open | done | missed
-  remindDaysBefore Int      @default(7)
-  createdAt        DateTime @default(now())
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  case             Case?    @relation(fields: [caseId], references: [id])
+  source           String    @default("manual") // manual | notice | analysis
+  status           String    @default("open") // open | done | missed
+  remindDaysBefore Int       @default(7)
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  case             Case?     @relation(fields: [caseId], references: [id])
 }
 
 model ResponseLetter {
@@ -623,13 +623,13 @@ model ResponseLetter {
 // ---------- Q&A ----------
 
 model QaThread {
-  id             String        @id @default(cuid())
+  id             String       @id @default(cuid())
   userId         String?
   guestSessionId String?
-  title          String        @default("Immigration question")
-  kind           String        @default("qa") // qa | guide
-  createdAt      DateTime      @default(now())
-  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String       @default("Immigration question")
+  kind           String       @default("qa") // qa | guide
+  createdAt      DateTime     @default(now())
+  user           User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
   guestSession   GuestSession? @relation(fields: [guestSessionId], references: [id])
   messages       QaMessage[]
 }
@@ -646,135 +646,135 @@ model QaMessage {
 // ---------- USCIS forms (game-like wizard) ----------
 
 model UscisFormTemplate {
-  id              String           @id @default(cuid())
-  formNumber      String // "I-130", "I-485", "N-400"...
-  title           String
-  description     String           @default("")
-  category        String           @default("individual")
-  stepsJson       String           @default("[]") // wizard step/question definitions
-  outputTemplate  String           @default("") // text template regenerated into standard form layout
+  id             String           @id @default(cuid())
+  formNumber     String // "I-130", "I-485", "N-400"...
+  title          String
+  description    String           @default("")
+  category       String           @default("individual")
+  stepsJson      String           @default("[]") // wizard step/question definitions
+  outputTemplate String           @default("") // text template regenerated into standard form layout
   // Official USCIS PDF infusion: the app downloads the real USCIS PDF and fills
   // its AcroForm fields with the customer's wizard answers.
-  pdfSourceUrl    String           @default("") // e.g. https://www.uscis.gov/sites/default/files/document/forms/i-485.pdf
-  pdfPath         String           @default("") // cached copy in the uploads store
-  pdfMapJson      String           @default("[]") // [{field, source|expr|const, transform?, checkIf?}]
-  isPublished     Boolean          @default(false)
-  requiredFeature String           @default("") // feature key gating access, empty = free
-  sortOrder       Int              @default(0)
-  updatedAt       DateTime         @updatedAt
-  submissions     FormSubmission[]
+  pdfSourceUrl   String           @default("") // e.g. https://www.uscis.gov/sites/default/files/document/forms/i-485.pdf
+  pdfPath        String           @default("") // cached copy in the uploads store
+  pdfMapJson     String           @default("[]") // [{field, source|expr|const, transform?, checkIf?}]
+  isPublished    Boolean          @default(false)
+  requiredFeature String          @default("") // feature key gating access, empty = free
+  sortOrder      Int              @default(0)
+  updatedAt      DateTime         @updatedAt
+  submissions    FormSubmission[]
 }
 
 model FormSubmission {
-  id            String            @id @default(cuid())
+  id            String          @id @default(cuid())
   userId        String
   templateId    String
-  dataJson      String            @default("{}")
-  progressPct   Int               @default(0)
-  status        String            @default("in_progress") // in_progress | completed
-  generatedText String            @default("")
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataJson      String          @default("{}")
+  progressPct   Int             @default(0)
+  status        String          @default("in_progress") // in_progress | completed
+  generatedText String          @default("")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   template      UscisFormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 }
 
 // ---------- Consultants ----------
 
 model ConsultantProfile {
-  id                 String               @id @default(cuid())
-  userId             String               @unique
-  credentialType     String               @default("immigration_consultant") // attorney | accredited_representative | immigration_consultant
-  credentialNumber   String               @default("")
-  licenseState       String               @default("")
-  ptin               String               @default("")
-  efin               String               @default("")
-  proofDocumentPath  String               @default("")
-  photoIdPath        String               @default("")
-  insurancePath      String               @default("")
-  attestedCompliance Boolean              @default(false)
-  isBusiness         Boolean              @default(false)
-  businessName       String               @default("")
-  ein                String               @default("")
-  specialties        String               @default("[]") // JSON array of specialty keys
-  statesServed       String               @default("")
-  yearsExperience    Int                  @default(0)
-  status             String               @default("pending") // pending | approved | rejected | suspended
-  autoApproved       Boolean              @default(false)
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  credentialType     String    @default("immigration_consultant") // attorney | accredited_representative | immigration_consultant
+  credentialNumber   String    @default("")
+  licenseState       String    @default("")
+  ptin               String    @default("")
+  efin               String    @default("")
+  proofDocumentPath  String    @default("")
+  photoIdPath        String    @default("")
+  insurancePath      String    @default("")
+  attestedCompliance Boolean   @default(false)
+  isBusiness         Boolean   @default(false)
+  businessName       String    @default("")
+  ein                String    @default("")
+  specialties        String    @default("[]") // JSON array of specialty keys
+  statesServed       String    @default("")
+  yearsExperience    Int       @default(0)
+  status             String    @default("pending") // pending | approved | rejected | suspended
+  autoApproved       Boolean   @default(false)
   approvedById       String?
   approvedAt         DateTime?
-  rejectionReason    String               @default("")
-  experiences        String               @default("") // free-text list of experience areas, one per line
-  languages          String               @default("") // e.g. "English, Spanish"
-  website            String               @default("")
-  createdAt          DateTime             @default(now())
-  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rejectionReason    String    @default("")
+  experiences        String    @default("") // free-text list of experience areas, one per line
+  languages          String    @default("") // e.g. "English, Spanish"
+  website            String    @default("")
+  createdAt          DateTime  @default(now())
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   pastCases          ConsultantPastCase[]
 }
 
 // Past cases a consultant has handled — used by the AI matching engine when
 // auto-assigning consultants to customers.
 model ConsultantPastCase {
-  id          String            @id @default(cuid())
-  profileId   String
-  title       String
-  category    String            @default("other") // matches issue types / specialties
-  description String            @default("")
-  year        Int?
-  outcome     String            @default("")
-  createdAt   DateTime          @default(now())
-  profile     ConsultantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  id           String            @id @default(cuid())
+  profileId    String
+  title        String
+  category     String            @default("other") // matches issue types / specialties
+  description  String            @default("")
+  year         Int?
+  outcome      String            @default("")
+  createdAt    DateTime          @default(now())
+  profile      ConsultantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 }
 
 // ---------- Support tickets (standalone) ----------
 
 model Ticket {
-  id              String             @id @default(cuid())
-  number          Int                @unique @default(autoincrement()) // human-friendly ticket number (TKT-000001)
-  userId          String
-  subject         String
-  category        String             @default("customer_service") // customer_service | tech_support
-  status          String             @default("open") // open | in_progress | resolved | closed
-  priority        String             @default("normal") // low | normal | high | urgent
-  source          String             @default("manual") // manual | chatbot | admin | email
-  assignedToId    String? // staff agent handling this ticket
+  id           String   @id @default(cuid())
+  number       Int      @unique @default(autoincrement()) // human-friendly ticket number (TKT-000001)
+  userId       String
+  subject      String
+  category     String   @default("customer_service") // customer_service | tech_support
+  status       String   @default("open") // open | in_progress | resolved | closed
+  priority     String   @default("normal") // low | normal | high | urgent
+  source       String   @default("manual") // manual | chatbot | admin | email
+  assignedToId String? // staff agent handling this ticket
   firstResponseAt DateTime? // first public staff reply (SLA tracking)
-  resolvedAt      DateTime?
-  closedAt        DateTime?
-  csatRating      Int? // 1–5 customer satisfaction after resolution
-  csatComment     String             @default("")
-  csatAt          DateTime?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assignedTo      User?              @relation("ticketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  messages        TicketMessage[]
-  attachments     TicketAttachment[]
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  csatRating   Int? // 1–5 customer satisfaction after resolution
+  csatComment  String   @default("")
+  csatAt       DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedTo   User?    @relation("ticketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages     TicketMessage[]
+  attachments  TicketAttachment[]
 }
 
 model TicketMessage {
-  id          String             @id @default(cuid())
-  ticketId    String
-  authorId    String             @default("")
-  fromStaff   Boolean            @default(false)
-  internal    Boolean            @default(false) // staff-only note or system audit entry — never shown to the user
-  system      Boolean            @default(false) // automated audit entry (status/routing/assignment changes)
-  body        String
-  createdAt   DateTime           @default(now())
-  ticket      Ticket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String   @default("")
+  fromStaff Boolean  @default(false)
+  internal  Boolean  @default(false) // staff-only note or system audit entry — never shown to the user
+  system    Boolean  @default(false) // automated audit entry (status/routing/assignment changes)
+  body      String
+  createdAt DateTime @default(now())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   attachments TicketAttachment[]
 }
 
 model TicketAttachment {
-  id        String         @id @default(cuid())
+  id        String   @id @default(cuid())
   ticketId  String
   messageId String?
   fileName  String
   filePath  String
-  mimeType  String         @default("application/octet-stream")
-  sizeBytes Int            @default(0)
-  fromStaff Boolean        @default(false)
-  createdAt DateTime       @default(now())
+  mimeType  String   @default("application/octet-stream")
+  sizeBytes Int      @default(0)
+  fromStaff Boolean  @default(false)
+  createdAt DateTime @default(now())
   ticket    Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   message   TicketMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
 }
@@ -787,14 +787,14 @@ model TicketAttachment {
 // subscription expiration (offsetDays: -7, -3, 0, +7); custom templates are
 // pushed manually by admins.
 model MessageTemplate {
-  key        String       @id
+  key        String   @id
   name       String
   subject    String
-  bodyHtml   String       @default("")
-  kind       String       @default("event") // event | scheduled | custom
+  bodyHtml   String   @default("")
+  kind       String   @default("event") // event | scheduled | custom
   offsetDays Int? // for scheduled: days relative to subscription expiration (negative = before)
-  enabled    Boolean      @default(true)
-  updatedAt  DateTime     @updatedAt
+  enabled    Boolean  @default(true)
+  updatedAt  DateTime @updatedAt
   logs       MessageLog[]
 }
 
@@ -840,13 +840,13 @@ model ConsultantAssignment {
 // ---------- System log (failures & operational events) ----------
 
 model SystemLog {
-  id        String   @id @default(cuid())
-  level     String   @default("error") // error | warning | info
-  source    String   @default("system") // ai_call | analysis | email | payment | webhook | inbound_email | guide | matching | cron
-  message   String
-  detail    String   @default("")
-  userId    String   @default("")
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  level      String   @default("error") // error | warning | info
+  source     String   @default("system") // ai_call | analysis | email | payment | webhook | inbound_email | guide | matching | cron
+  message    String
+  detail     String   @default("")
+  userId     String   @default("")
+  createdAt  DateTime @default(now())
 
   @@index([level, createdAt])
   @@index([source, createdAt])
