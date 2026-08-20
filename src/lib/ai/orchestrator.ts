@@ -7,6 +7,7 @@ import { STAGE_KEYS } from "../constants";
 import { getNumberSetting } from "../settings";
 import { readUpload } from "../uploads";
 import { verifyCaseProgress } from "../case-progress";
+import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
 
 type Json = Record<string, unknown>;
 
@@ -306,6 +307,27 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   const fallback = usedAi ? null : await fallbackAnalyze(c.situation, c.goal, rawDocText, docInfos);
   const facts = usedAi ? summaryOut.merged : fallback!.facts;
   const goalFacts = usedAi ? goalOut.merged : { user_goal: c.goal };
+  let evidenceGate: Awaited<ReturnType<typeof getCaseEvidenceGateBrief>> | null = null;
+  try {
+    evidenceGate = await getCaseEvidenceGateBrief(caseId);
+  } catch (err) {
+    const { logSystem } = await import("../syslog");
+    await logSystem("warning", "evidence_gate", "Could not load compiled evidence gate brief", String(err));
+  }
+  const evidenceGateJson = evidenceGate
+    ? {
+        status: evidenceGate.status,
+        can_analyze: evidenceGate.canAnalyze,
+        must_ground_claims: evidenceGate.mustGroundClaims,
+        summary: evidenceGate.summary,
+        current_position: evidenceGate.currentPosition,
+        pending_actions: evidenceGate.pendingActions,
+        unknowns: evidenceGate.unknowns,
+        suppressed_questions: evidenceGate.suppressedQuestions,
+        facts: evidenceGate.facts,
+        events: evidenceGate.events,
+      }
+    : null;
 
   // Layer 4: situation analysis grounded in the USCIS knowledge base.
   const knowledge = await retrieveKnowledge(`${c.situation} ${c.goal} ${docText}`);
@@ -313,8 +335,12 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   let situationConflicts: Conflict[] = [];
   if (usedAi) {
     const situationOut = await stageRun(STAGE_KEYS.SITUATION, {
-      facts: JSON.stringify(facts),
-      documents: documentOut ? JSON.stringify(documentOut.merged) : "(no documents uploaded)",
+      facts: JSON.stringify({ extracted_facts: facts, evidence_gate: evidenceGateJson }),
+      documents: JSON.stringify({
+        model_document_extraction: documentOut?.merged ?? null,
+        compiled_evidence_gate: evidenceGateJson,
+        evidence_gate_instructions: evidenceGate?.promptText ?? "",
+      }),
       knowledge: knowledge || "(no matching reference material)",
       goal: JSON.stringify(goalFacts),
     });
@@ -327,7 +353,14 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   let presentation: Json | null = null;
   if (usedAi) {
     const presenterOut = await stageRun(STAGE_KEYS.PRESENTER, {
-      input: JSON.stringify({ facts, goal: goalFacts, documents: documentOut?.merged ?? null, analysis: situationMerged }),
+      input: JSON.stringify({
+        facts,
+        goal: goalFacts,
+        documents: documentOut?.merged ?? null,
+        evidence_gate: evidenceGateJson,
+        evidence_gate_instructions: evidenceGate?.promptText ?? "",
+        analysis: situationMerged,
+      }),
     });
     const p = presenterOut.stepOutputs.find((o) => o.data)?.data ?? null;
     presentation = p && Array.isArray((p as Json).issues) ? (p as Json) : null;

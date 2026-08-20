@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { compileImmigrationEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
+import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -49,8 +49,14 @@ assert(reconciled.crossDocumentRelationships.some((rel) => rel.relationType === 
 assert(reconciled.suppressedQuestions.some((item) => item.questionKey === "receipt_number"), "reconciled receipt question should be suppressed");
 assert(reconciled.reconstruction.currentPosition === "RFE notice needs review", `unexpected current position: ${reconciled.reconstruction.currentPosition}`);
 assert(reconciled.reconstruction.pendingActions.some((action) => /RFE response by July 31, 2026/.test(action)), "RFE deadline should become a pending action");
+const gate = buildEvidenceGateBriefFromReconciled(reconciled);
+assert(gate.status === "pass", `evidence gate should pass, got ${gate.status}`);
+assert(gate.mustGroundClaims === true, "evidence gate should require grounded claims");
+assert(gate.promptText.includes("GROUNDING RULE"), "evidence gate prompt should include grounding rule");
+assert(gate.promptText.includes("RFE notice needs review"), "evidence gate prompt should include current position");
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
 console.log(`- reconciled: ${reconciled.facts.length} facts, ${reconciled.events.length} events, ${reconciled.crossDocumentRelationships.length} cross-document link(s)`);
+console.log(`- evidence gate: ${gate.status}, can analyze: ${gate.canAnalyze ? "yes" : "no"}`);
