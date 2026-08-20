@@ -542,8 +542,18 @@ export async function runQaChat(history: { role: string; content: string }[], op
   return "Our assistant couldn't respond just now — the issue has been reported to our team. Please try again in a moment, or open a support ticket if it keeps happening.";
 }
 
-export async function explainNoticeContent(content: string): Promise<Json | null> {
-  const outcome = await runStage(STAGE_KEYS.NOTICE, { input: content });
+export async function explainNoticeContent(content: string, opts?: { caseId?: string | null }): Promise<Json | null> {
+  const evidenceBrief = opts?.caseId
+    ? await getCaseEvidenceBrief(opts.caseId).catch(async (err) => {
+        const { logSystem } = await import("../syslog");
+        await logSystem("warning", "evidence_brief", "Could not load case evidence brief for notice explanation", String(err));
+        return null;
+      })
+    : null;
+  const groundedInput = evidenceBrief
+    ? `${content}\n\nCOMPILED CASE EVIDENCE BRIEF:\n${evidenceBrief.text}\n\nNotice grounding rule: explain this notice against the compiled case record. Do not invent deadlines, receipt numbers, form types, outcomes, or requested evidence that are not in the notice text or evidence brief.`
+    : content;
+  const outcome = await runStage(STAGE_KEYS.NOTICE, { input: groundedInput });
   const parsed = outcome.stepOutputs.find((o) => o.data)?.data ?? null;
   if (parsed) return parsed;
   // Deterministic fallback: identify USCIS notice/form/receipt references and match the knowledge base.

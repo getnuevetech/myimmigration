@@ -65,6 +65,8 @@ for (const promptKey of ["analyst", "reviewer", "presenter"]) {
   assert(prompt.includes("suppressed"), `${promptKey} prompt should mention suppressed questions`);
   assert((PROMPT_SUPERSEDES[promptKey] ?? []).length > 0, `${promptKey} prompt should declare superseded hashes`);
 }
+assert(DEFAULT_PROMPTS.notice_explainer.includes("COMPILED CASE EVIDENCE BRIEF"), "notice explainer prompt should mention compiled evidence brief");
+assert((PROMPT_SUPERSEDES.notice_explainer ?? []).length > 0, "notice explainer prompt should declare superseded hashes");
 assert(PROMPT_VERSION.includes("v32"), "prompt version should identify v32 evidence prompts");
 const readiness = computeEvidenceReadinessSplit({
   documentsCount: 2,

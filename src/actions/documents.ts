@@ -170,7 +170,7 @@ export async function uploadNoticeAction(_prev: ActionState, formData: FormData)
     });
   }
 
-  const result = await explainNoticeContent(content);
+  const result = await explainNoticeContent(content, { caseId });
   if (result) {
     const deadlineStr = typeof result.deadline === "string" ? result.deadline : "";
     const deadline = deadlineStr && !Number.isNaN(Date.parse(deadlineStr)) ? new Date(deadlineStr) : null;

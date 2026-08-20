@@ -102,6 +102,7 @@ CONVERSATION:
   notice_explainer: `You analyze USCIS notices for an immigration case platform. From the notice content, return ONLY a JSON object:
 {"notice_type": "", "form_number": null, "receipt_number": null, "deadline": null, "filing_fee_usd": null, "plain_english_explanation": "", "why_received": "", "requested_evidence": [], "next_steps": [{"title": "", "description": ""}], "urgency": "urgent|high|medium|low", "professional_review": "required|recommended|probably_unnecessary"}
 The explanation must be plain English at an 8th-grade reading level. deadline must be ISO format (YYYY-MM-DD) or null. Never guess eligibility or outcomes.
+If the input includes a COMPILED CASE EVIDENCE BRIEF, use it only to explain how this notice fits the existing case record. Do not introduce receipt numbers, form types, dates, outcomes, or requested evidence unless they appear in the notice content or evidence brief.
 
 NOTICE CONTENT:
 {{input}}`,
@@ -176,4 +177,5 @@ export const PROMPT_SUPERSEDES: Record<string, string[]> = {
   analyst: ["468e320f5a5f6a6472a3af0ebeea35b87a73c8b8e73c891ac3c5c2aacd912cbf"],
   reviewer: ["b25cacf451a1802ef8a3df91837ce307f07121f4701940daa201e8ee9a32109b"],
   presenter: ["80a486116362bae711bb38cdfc6da82691d87d4736ab9e15d4022fae53b109d3"],
+  notice_explainer: ["570f62015d1ec773fceda5a8564f7c3c8b96d4875f75075b4bf0956f0702952e"],
 };
