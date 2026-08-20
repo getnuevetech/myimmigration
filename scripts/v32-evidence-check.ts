@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { DEFAULT_PROMPTS } from "../src/lib/ai/prompts";
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, evaluateEvidenceAction, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -58,6 +59,11 @@ assert(evaluateEvidenceAction("GET_CASE_RECORD", gate)?.satisfied === true, "rec
 assert(evaluateEvidenceAction("UPLOAD_NOTICE", gate)?.satisfied === true, "notice evidence should satisfy upload-notice action");
 assert(evaluateEvidenceAction("ADD_DEADLINE", gate)?.satisfied === true, "deadline evidence should satisfy deadline action");
 assert(evaluateEvidenceAction("DRAFT_LETTER", gate)?.satisfied === false, "letter action should still require a drafted letter");
+for (const promptKey of ["analyst", "reviewer", "presenter"]) {
+  const prompt = DEFAULT_PROMPTS[promptKey];
+  assert(prompt.includes("evidence_gate"), `${promptKey} prompt should mention evidence_gate`);
+  assert(prompt.includes("suppressed"), `${promptKey} prompt should mention suppressed questions`);
+}
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
@@ -65,3 +71,4 @@ console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.leng
 console.log(`- reconciled: ${reconciled.facts.length} facts, ${reconciled.events.length} events, ${reconciled.crossDocumentRelationships.length} cross-document link(s)`);
 console.log(`- evidence gate: ${gate.status}, can analyze: ${gate.canAnalyze ? "yes" : "no"}`);
 console.log("- action intelligence: case record, notice, and deadline satisfied from evidence");
+console.log("- prompts: analyst, reviewer, and presenter are evidence-gate aware");
