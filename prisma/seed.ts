@@ -1,8 +1,27 @@
 import { PrismaClient } from "@prisma/client";
+import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
-import { DEFAULT_PROMPTS } from "../src/lib/ai/prompts";
+import { DEFAULT_PROMPTS, PROMPT_SUPERSEDES } from "../src/lib/ai/prompts";
 
 const db = new PrismaClient();
+
+function promptHash(prompt: string): string {
+  return createHash("sha256").update(prompt).digest("hex");
+}
+
+function hasLegacyTaxonmePromptMarker(prompt: string): boolean {
+  return [
+    "TaxOnMe",
+    "expected_amount",
+    "tax_year",
+    "irs_basis",
+    "account_transcript",
+    "tax_period",
+    "AGI",
+    "W-2",
+    "1040",
+  ].some((marker) => prompt.includes(marker));
+}
 
 async function seedSettings() {
   const settings: [string, string, string, string, string][] = [
@@ -457,52 +476,39 @@ async function seedAiAndPipelines() {
       }
     }
   }
-  const promptRepairs: { stageKey: string; role: string; prompt: string }[] = [
-    { stageKey: "summary", role: "fact_extractor", prompt: DEFAULT_PROMPTS.fact_extractor },
-    { stageKey: "summary", role: "interpreter", prompt: DEFAULT_PROMPTS.interpreter },
-    { stageKey: "summary", role: "skeptic", prompt: DEFAULT_PROMPTS.skeptic },
-    { stageKey: "goal", role: "fact_extractor", prompt: DEFAULT_PROMPTS.fact_extractor },
-    { stageKey: "goal", role: "interpreter", prompt: DEFAULT_PROMPTS.interpreter },
-    { stageKey: "document", role: "extractor_a", prompt: DEFAULT_PROMPTS.extractor_a },
-    { stageKey: "document", role: "extractor_b", prompt: DEFAULT_PROMPTS.extractor_b },
-    { stageKey: "situation", role: "analyst", prompt: DEFAULT_PROMPTS.analyst },
-    { stageKey: "situation", role: "reviewer", prompt: DEFAULT_PROMPTS.reviewer },
-    { stageKey: "presenter", role: "presenter", prompt: DEFAULT_PROMPTS.presenter },
-    { stageKey: "qa", role: "assistant", prompt: DEFAULT_PROMPTS.assistant },
-    { stageKey: "notice", role: "analyst", prompt: DEFAULT_PROMPTS.notice_explainer },
-    { stageKey: "letter", role: "assistant", prompt: DEFAULT_PROMPTS.letter_writer },
-    { stageKey: "guide", role: "assistant", prompt: DEFAULT_PROMPTS.guide },
-    { stageKey: "match", role: "analyst", prompt: DEFAULT_PROMPTS.match_rank },
-    { stageKey: "match", role: "reviewer", prompt: DEFAULT_PROMPTS.match_rank },
-    { stageKey: "match_reason", role: "analyst", prompt: DEFAULT_PROMPTS.match_reason },
-    { stageKey: "match_reason", role: "reviewer", prompt: DEFAULT_PROMPTS.match_reason_review },
-    { stageKey: "closing", role: "presenter", prompt: DEFAULT_PROMPTS.closing },
+  const promptRepairs: { stageKey: string; role: string; promptKey: string; prompt: string }[] = [
+    { stageKey: "summary", role: "fact_extractor", promptKey: "fact_extractor", prompt: DEFAULT_PROMPTS.fact_extractor },
+    { stageKey: "summary", role: "interpreter", promptKey: "interpreter", prompt: DEFAULT_PROMPTS.interpreter },
+    { stageKey: "summary", role: "skeptic", promptKey: "skeptic", prompt: DEFAULT_PROMPTS.skeptic },
+    { stageKey: "goal", role: "fact_extractor", promptKey: "fact_extractor", prompt: DEFAULT_PROMPTS.fact_extractor },
+    { stageKey: "goal", role: "interpreter", promptKey: "interpreter", prompt: DEFAULT_PROMPTS.interpreter },
+    { stageKey: "document", role: "extractor_a", promptKey: "extractor_a", prompt: DEFAULT_PROMPTS.extractor_a },
+    { stageKey: "document", role: "extractor_b", promptKey: "extractor_b", prompt: DEFAULT_PROMPTS.extractor_b },
+    { stageKey: "situation", role: "analyst", promptKey: "analyst", prompt: DEFAULT_PROMPTS.analyst },
+    { stageKey: "situation", role: "reviewer", promptKey: "reviewer", prompt: DEFAULT_PROMPTS.reviewer },
+    { stageKey: "presenter", role: "presenter", promptKey: "presenter", prompt: DEFAULT_PROMPTS.presenter },
+    { stageKey: "qa", role: "assistant", promptKey: "assistant", prompt: DEFAULT_PROMPTS.assistant },
+    { stageKey: "notice", role: "analyst", promptKey: "notice_explainer", prompt: DEFAULT_PROMPTS.notice_explainer },
+    { stageKey: "letter", role: "assistant", promptKey: "letter_writer", prompt: DEFAULT_PROMPTS.letter_writer },
+    { stageKey: "guide", role: "assistant", promptKey: "guide", prompt: DEFAULT_PROMPTS.guide },
+    { stageKey: "match", role: "analyst", promptKey: "match_rank", prompt: DEFAULT_PROMPTS.match_rank },
+    { stageKey: "match", role: "reviewer", promptKey: "match_rank", prompt: DEFAULT_PROMPTS.match_rank },
+    { stageKey: "match_reason", role: "analyst", promptKey: "match_reason", prompt: DEFAULT_PROMPTS.match_reason },
+    { stageKey: "match_reason", role: "reviewer", promptKey: "match_reason_review", prompt: DEFAULT_PROMPTS.match_reason_review },
+    { stageKey: "closing", role: "presenter", promptKey: "closing", prompt: DEFAULT_PROMPTS.closing },
   ];
   for (const repair of promptRepairs) {
-    await db.pipelineStep.updateMany({
-      where: {
-        stageKey: repair.stageKey,
-        role: repair.role,
-        OR: [
-          { promptTemplate: { contains: "TaxOnMe" } },
-          { promptTemplate: { contains: "IRS" } },
-          { promptTemplate: { contains: "tax" } },
-          { promptTemplate: { contains: "refund" } },
-          { promptTemplate: { contains: "1040" } },
-          { promptTemplate: { contains: "transcript" } },
-          { promptTemplate: { contains: "AGI" } },
-          { promptTemplate: { contains: "W-2" } },
-          { promptTemplate: { contains: "expected_amount" } },
-          { promptTemplate: { contains: "balance" } },
-          { promptTemplate: { contains: "SSN" } },
-        ],
-      },
-      data: { promptTemplate: repair.prompt },
+    const stepsToCheck = await db.pipelineStep.findMany({
+      where: { stageKey: repair.stageKey, role: repair.role },
+      select: { id: true, promptTemplate: true },
     });
+    for (const step of stepsToCheck) {
+      const superseded = (PROMPT_SUPERSEDES[repair.promptKey] ?? []).includes(promptHash(step.promptTemplate));
+      if (superseded || hasLegacyTaxonmePromptMarker(step.promptTemplate)) {
+        await db.pipelineStep.update({ where: { id: step.id }, data: { promptTemplate: repair.prompt } });
+      }
+    }
   }
-  await db.pipelineStep.updateMany({ where: { stageKey: "qa", role: "assistant" }, data: { promptTemplate: DEFAULT_PROMPTS.assistant } });
-  await db.pipelineStep.updateMany({ where: { stageKey: "guide", role: "assistant" }, data: { promptTemplate: DEFAULT_PROMPTS.guide } });
-  await db.pipelineStep.updateMany({ where: { stageKey: "presenter", role: "presenter" }, data: { promptTemplate: DEFAULT_PROMPTS.presenter } });
 }
 
 async function seedContent() {

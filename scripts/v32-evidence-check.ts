@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEFAULT_PROMPTS } from "../src/lib/ai/prompts";
+import { DEFAULT_PROMPTS, PROMPT_SUPERSEDES, PROMPT_VERSION } from "../src/lib/ai/prompts";
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -63,7 +63,9 @@ for (const promptKey of ["analyst", "reviewer", "presenter"]) {
   const prompt = DEFAULT_PROMPTS[promptKey];
   assert(prompt.includes("evidence_gate"), `${promptKey} prompt should mention evidence_gate`);
   assert(prompt.includes("suppressed"), `${promptKey} prompt should mention suppressed questions`);
+  assert((PROMPT_SUPERSEDES[promptKey] ?? []).length > 0, `${promptKey} prompt should declare superseded hashes`);
 }
+assert(PROMPT_VERSION.includes("v32"), "prompt version should identify v32 evidence prompts");
 const readiness = computeEvidenceReadinessSplit({
   documentsCount: 2,
   documentsExpected: 3,

@@ -167,3 +167,13 @@ CASE DATA:
 CONTEXT:
 {{input}}`,
 };
+
+export const PROMPT_VERSION = "immigration-v32-evidence-2026-08-20";
+
+// SHA-256 hashes of known previous default prompts. Seed uses these to upgrade
+// exact old defaults while leaving admin-edited prompts untouched.
+export const PROMPT_SUPERSEDES: Record<string, string[]> = {
+  analyst: ["468e320f5a5f6a6472a3af0ebeea35b87a73c8b8e73c891ac3c5c2aacd912cbf"],
+  reviewer: ["b25cacf451a1802ef8a3df91837ce307f07121f4701940daa201e8ee9a32109b"],
+  presenter: ["80a486116362bae711bb38cdfc6da82691d87d4736ab9e15d4022fae53b109d3"],
+};
