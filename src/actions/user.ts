@@ -45,6 +45,7 @@ export async function askQuestionAction(_prev: ActionState, formData: FormData):
   const question = String(formData.get("question") ?? "").trim();
   if (!question) return { error: "Type a question first." };
   const threadId = String(formData.get("threadId") ?? "");
+  const requestedCaseId = String(formData.get("caseId") ?? "") || null;
   const user = await getCurrentUser();
 
   if (user && !(await hasFeature(user.id, FEATURE_KEYS.QA))) {
@@ -61,15 +62,20 @@ export async function askQuestionAction(_prev: ActionState, formData: FormData):
     }
   } else {
     const guest = user ? null : await getOrCreateGuestSession();
+    let caseId: string | null = null;
+    if (user && requestedCaseId) {
+      const c = await db.case.findFirst({ where: { id: requestedCaseId, userId: user.id }, select: { id: true } });
+      caseId = c?.id ?? null;
+    }
     thread = await db.qaThread.create({
-      data: { userId: user?.id ?? null, guestSessionId: guest?.id ?? null, title: question.slice(0, 60) },
+      data: { userId: user?.id ?? null, guestSessionId: guest?.id ?? null, caseId, title: question.slice(0, 60) },
       include: { messages: true },
     });
   }
 
   await db.qaMessage.create({ data: { threadId: thread.id, role: "user", content: question } });
   const history = [...thread.messages.map((m) => ({ role: m.role, content: m.content })), { role: "user", content: question }];
-  const answer = await runQaChat(history);
+  const answer = await runQaChat(history, { caseId: thread.caseId });
   await db.qaMessage.create({ data: { threadId: thread.id, role: "assistant", content: answer } });
 
   if (!threadId) redirect(user ? `/app/qa/${thread.id}` : `/start/qa?thread=${thread.id}`);

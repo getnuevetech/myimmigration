@@ -19,9 +19,11 @@ function Submit() {
 
 export function QaChat({
   threadId,
+  caseId = "",
   messages,
 }: {
   threadId: string;
+  caseId?: string;
   messages: { id: string; role: string; content: string }[];
 }) {
   const [state, formAction] = useActionState(askQuestionAction, null);
@@ -62,6 +64,7 @@ export function QaChat({
           <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
         )}
         <input type="hidden" name="threadId" value={threadId} />
+        <input type="hidden" name="caseId" value={caseId} />
         <div className="flex gap-2">
           <input
             name="question"

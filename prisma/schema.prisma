@@ -316,6 +316,7 @@ model Case {
   deadlines      Deadline[]
   letters        ResponseLetter[]
   notices        Notice[]
+  qaThreads      QaThread[]
   assignments    ConsultantAssignment[]
   comments       CaseComment[]
   clarifyMessages CaseClarifyMessage[]
@@ -629,12 +630,16 @@ model QaThread {
   id             String       @id @default(cuid())
   userId         String?
   guestSessionId String?
+  caseId         String?
   title          String       @default("Immigration question")
   kind           String       @default("qa") // qa | guide
   createdAt      DateTime     @default(now())
   user           User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
   guestSession   GuestSession? @relation(fields: [guestSessionId], references: [id])
+  case           Case?        @relation(fields: [caseId], references: [id])
   messages       QaMessage[]
+
+  @@index([caseId])
 }
 
 model QaMessage {

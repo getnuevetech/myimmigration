@@ -9,15 +9,16 @@ export default async function QaThreadPage({ params }: { params: Promise<{ id: s
   const user = await requireUser();
   const thread = await db.qaThread.findFirst({
     where: { id, userId: user.id },
-    include: { messages: { orderBy: { createdAt: "asc" } } },
+    include: { case: { select: { title: true } }, messages: { orderBy: { createdAt: "asc" } } },
   });
   if (!thread) notFound();
 
   return (
     <div className="max-w-3xl">
-      <PageHeader title={thread.title} />
+      <PageHeader title={thread.title} subtitle={thread.case ? `Grounded in case: ${thread.case.title}` : undefined} />
       <QaChat
         threadId={thread.id}
+        caseId={thread.caseId ?? ""}
         messages={thread.messages.map((m) => ({ id: m.id, role: m.role, content: m.content }))}
       />
     </div>
