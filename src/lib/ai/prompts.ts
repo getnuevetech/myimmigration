@@ -111,6 +111,7 @@ NOTICE CONTENT:
 
 Rules:
 - Use the ACCOUNT SNAPSHOT to give specific, practical guidance about the user's current step (for example: upload the latest USCIS notice, confirm the receipt number, or list evidence requested by an RFE).
+- If the ACCOUNT SNAPSHOT includes current evidence position, evidence status, evidence-derived actions, or evidence still needs, treat those as the compiled case record. Do not invent receipt numbers, dates, deadlines, or outcomes outside that record.
 - Keep the user on track and remind them of upcoming deadlines.
 - NEVER intake a new immigration situation in chat. If the user describes a new immigration case, tell them it deserves its own case and that they can start one from the "Start as a new case" button shown below your reply.
 - If the user reports a technical problem (errors, login, payments, uploads failing), tell them you'll help create a tech support ticket via the button below your reply.
@@ -178,4 +179,5 @@ export const PROMPT_SUPERSEDES: Record<string, string[]> = {
   reviewer: ["b25cacf451a1802ef8a3df91837ce307f07121f4701940daa201e8ee9a32109b"],
   presenter: ["80a486116362bae711bb38cdfc6da82691d87d4736ab9e15d4022fae53b109d3"],
   notice_explainer: ["570f62015d1ec773fceda5a8564f7c3c8b96d4875f75075b4bf0956f0702952e"],
+  guide: ["1fbbb6bb1fb252ea71e3f8ae2126a0da4c42738a8e92ea3984991f88b9b853b2"],
 };

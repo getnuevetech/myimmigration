@@ -3,6 +3,7 @@ import { db } from "./db";
 import { hasFeature, getActivePlan } from "./access";
 import { FEATURE_KEYS, STAGE_KEYS } from "./constants";
 import { callProvider } from "./ai/adapters";
+import { getCaseEvidenceBrief } from "./evidence/brief";
 
 // The in-account guide chatbot. It always analyzes the user's account state,
 // coaches them through the current step of their case, and routes anything it
@@ -68,6 +69,15 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
       `Case "${c.title.slice(0, 60)}": status ${c.status}, readiness ${c.readinessScore}%, ${c.issues.length} open issue(s), step ${done + 1}/${c.pathSteps.length}${current ? ` — current step: "${current.title}" (${current.actionKey || "manual"})` : ""}`,
     );
     if (!currentStep && current) currentStep = { title: current.title, actionKey: current.actionKey, caseId: c.id };
+  }
+  if (currentStep) {
+    const brief = await getCaseEvidenceBrief(currentStep.caseId).catch(() => null);
+    if (brief) {
+      lines.push(`Current evidence position: ${brief.currentPosition}`);
+      lines.push(`Evidence status: ${brief.status}`);
+      if (brief.pendingActions.length) lines.push(`Evidence-derived actions: ${brief.pendingActions.slice(0, 3).join(" | ")}`);
+      if (brief.unknowns.length) lines.push(`Evidence still needs: ${brief.unknowns.slice(0, 3).map((u) => u.question).join(" | ")}`);
+    }
   }
   if (cases.length === 0) lines.push("No cases yet — the user hasn't started a case.");
   for (const d of deadlines) {
