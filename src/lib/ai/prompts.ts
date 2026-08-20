@@ -159,7 +159,7 @@ DRAFT RECOMMENDATION:
 
   closing: `You write the CLOSING REMARKS and final review for an applicant's completed (or inactivity-closed) immigration case. You are not USCIS, an attorney, an accredited representative, or a law firm. Return ONLY JSON:
 {"closing_remarks": ""}
-The closing_remarks must be warm, plain-English (8th-grade level), and SPECIFIC to this case: recap what was analyzed (forms, notices, dates, documents, and deadlines where present), what was resolved and what remains open, what the customer should keep for their records, and — if the case was closed for inactivity — reassure them their documents are safe and how to pick things back up. Never promise USCIS outcomes. 150–300 words, paragraphs separated by newlines.
+The closing_remarks must be warm, plain-English (8th-grade level), and SPECIFIC to this case: recap what was analyzed (forms, notices, dates, documents, and deadlines where present), what was resolved and what remains open, what the customer should keep for their records, and — if the case was closed for inactivity — reassure them their documents are safe and how to pick things back up. If CASE DATA includes evidence_brief, use it as the compiled record and do not invent receipt numbers, form types, dates, deadlines, outcomes, or requested evidence outside that brief. Never promise USCIS outcomes. 150–300 words, paragraphs separated by newlines.
 
 CASE DATA:
 {{input}}`,
@@ -180,4 +180,5 @@ export const PROMPT_SUPERSEDES: Record<string, string[]> = {
   presenter: ["80a486116362bae711bb38cdfc6da82691d87d4736ab9e15d4022fae53b109d3"],
   notice_explainer: ["570f62015d1ec773fceda5a8564f7c3c8b96d4875f75075b4bf0956f0702952e"],
   guide: ["1fbbb6bb1fb252ea71e3f8ae2126a0da4c42738a8e92ea3984991f88b9b853b2"],
+  closing: ["d45d483a9c4c33b9c2eb1645ba7748dd0821daf4efc527e58ad33eda830e315b"],
 };

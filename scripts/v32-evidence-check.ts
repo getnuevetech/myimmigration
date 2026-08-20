@@ -69,6 +69,8 @@ assert(DEFAULT_PROMPTS.notice_explainer.includes("COMPILED CASE EVIDENCE BRIEF")
 assert((PROMPT_SUPERSEDES.notice_explainer ?? []).length > 0, "notice explainer prompt should declare superseded hashes");
 assert(DEFAULT_PROMPTS.guide.includes("current evidence position"), "guide prompt should mention current evidence position");
 assert((PROMPT_SUPERSEDES.guide ?? []).length > 0, "guide prompt should declare superseded hashes");
+assert(DEFAULT_PROMPTS.closing.includes("evidence_brief"), "closing prompt should mention evidence_brief");
+assert((PROMPT_SUPERSEDES.closing ?? []).length > 0, "closing prompt should declare superseded hashes");
 assert(PROMPT_VERSION.includes("v32"), "prompt version should identify v32 evidence prompts");
 const readiness = computeEvidenceReadinessSplit({
   documentsCount: 2,

@@ -5,6 +5,8 @@ import { STAGE_KEYS } from "./constants";
 import { getNumberSetting } from "./settings";
 import { formatCaseNumber } from "./case-number";
 import { logSystem } from "./syslog";
+import { getCaseEvidenceBrief } from "./evidence/brief";
+import { guardLetterDraftWithEvidence } from "./evidence/letter-guard";
 
 // Closing remarks & final review: a dedicated AI stage (admin-configurable
 // like every other pipeline stage) writes the case's closing summary; a
@@ -27,6 +29,7 @@ async function deterministicClosing(caseId: string, reason: "completed" | "aband
   const open = c.issues.length - resolved;
   const opened = c.createdAt.toLocaleDateString("en-US");
   const lastActivity = c.updatedAt.toLocaleDateString("en-US");
+  const evidenceBrief = await getCaseEvidenceBrief(caseId).catch(() => null);
 
   const lines: string[] = [];
   lines.push(
@@ -36,6 +39,10 @@ async function deterministicClosing(caseId: string, reason: "completed" | "aband
   );
   lines.push("");
   lines.push(`What was covered: ${c.issues.length} item${c.issues.length === 1 ? "" : "s"} were identified and analyzed${resolved ? `, ${resolved} resolved` : ""}${open ? `, ${open} still open` : ""}. You completed ${done} of ${c.pathSteps.length} path steps and provided ${c.documents.length} document${c.documents.length === 1 ? "" : "s"}. Case readiness reached ${c.readinessScore}%.`);
+  if (evidenceBrief) {
+    lines.push(`Compiled evidence position: ${evidenceBrief.currentPosition}. Evidence status: ${evidenceBrief.status.replace(/_/g, " ")}.`);
+    if (evidenceBrief.pendingActions.length) lines.push(`Evidence-derived actions to keep in mind: ${evidenceBrief.pendingActions.slice(0, 3).join("; ")}.`);
+  }
   for (const i of c.issues) {
     lines.push(`• ${i.caseYear ? `${i.caseYear} — ` : ""}${i.title}: ${i.state === "resolved" ? "resolved." : i.conclusion || "see the analysis for the remaining step."}`);
   }
@@ -50,7 +57,7 @@ async function deterministicClosing(caseId: string, reason: "completed" | "aband
       ? "Keep your documents and any USCIS confirmation letters safe — they're your proof of what was filed, decided, or requested. If a new notice arrives, start a new case and we'll pick up with everything we already know."
       : "Your documents remain in your vault. When you're ready to continue, re-run the analysis or start a fresh case — everything you've provided carries over.",
   );
-  return lines.join("\n");
+  return guardLetterDraftWithEvidence(lines.join("\n"), evidenceBrief).text;
 }
 
 /** Generate closing remarks (AI stage when configured, deterministic otherwise) and close the case. */
@@ -60,6 +67,7 @@ export async function closeCase(caseId: string, reason: "completed" | "abandoned
     include: { issues: true, pathSteps: true, documents: { where: { deletedAt: null } } },
   });
   if (!c || c.status === "closed") return;
+  const evidenceBrief = await getCaseEvidenceBrief(caseId).catch(() => null);
 
   let remarks = "";
   try {
@@ -73,6 +81,17 @@ export async function closeCase(caseId: string, reason: "completed" | "abandoned
         steps_done: c.pathSteps.filter((s) => s.status === "done").map((s) => s.title),
         steps_open: c.pathSteps.filter((s) => s.status !== "done").map((s) => s.title),
         documents: c.documents.map((d) => d.docKind),
+        evidence_brief: evidenceBrief
+          ? {
+              status: evidenceBrief.status,
+              current_position: evidenceBrief.currentPosition,
+              summary: evidenceBrief.summary,
+              facts: evidenceBrief.facts,
+              events: evidenceBrief.events,
+              unknowns: evidenceBrief.unknowns,
+              pending_actions: evidenceBrief.pendingActions,
+            }
+          : null,
       }),
     });
     const parsed = outcome.stepOutputs.find((o) => o.data)?.data as Record<string, unknown> | undefined;
@@ -85,6 +104,7 @@ export async function closeCase(caseId: string, reason: "completed" | "abandoned
     await logSystem("error", "ai_call", "Closing-remarks stage failed — using the deterministic summary", String(err));
   }
   if (!remarks.trim()) remarks = await deterministicClosing(caseId, reason);
+  else remarks = guardLetterDraftWithEvidence(remarks, evidenceBrief).text;
 
   await db.case.update({
     where: { id: caseId },
