@@ -26,7 +26,7 @@ const NOTICE_PATTERNS: { value: string; pattern: RegExp; eventType: ImmigrationE
   { value: "BIOMETRICS", pattern: /\bbiometrics?\b|\bfingerprint/i, eventType: "biometrics_scheduled" },
   { value: "INTERVIEW", pattern: /\binterview\b/i, eventType: "interview_scheduled" },
   { value: "APPROVAL", pattern: /\bapproval notice\b|\bapproved\b/i, eventType: "case_approved" },
-  { value: "DENIAL", pattern: /\bdenial notice\b|\bdenied\b/i, eventType: "case_denied" },
+  { value: "DENIAL", pattern: /\bdenial notice\b|\bnotice of denial\b/i, eventType: "case_denied" },
 ];
 
 function uniq(values: string[]): string[] {

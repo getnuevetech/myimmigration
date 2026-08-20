@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "crypto";
 import { db } from "@/lib/db";
 import { readUpload } from "@/lib/uploads";
+import { rebuildCaseEvidenceState } from "./case-state";
 import { compileImmigrationEvidence } from "./compiler";
 import type { ImmigrationDocumentType } from "@/domain/documents";
 import type { CompiledEvidenceState } from "./types";
@@ -155,11 +156,13 @@ export async function processDocumentEvidence(documentId: string): Promise<Proce
         },
       });
 
-      if (!doc.caseId || !text) return;
+      if (!doc.caseId) return;
 
       await tx.evidenceFact.deleteMany({ where: { documentId: doc.id } });
       await tx.caseEvent.deleteMany({ where: { documentId: doc.id } });
       await tx.evidenceRelationship.deleteMany({ where: { sourceDocumentId: doc.id } });
+
+      if (!text) return;
 
       if (compiled.facts.length > 0) {
         await tx.evidenceFact.createMany({
@@ -208,6 +211,8 @@ export async function processDocumentEvidence(documentId: string): Promise<Proce
         });
       }
     });
+
+    if (doc.caseId) await rebuildCaseEvidenceState(doc.caseId);
 
     return {
       documentId,

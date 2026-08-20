@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { compileImmigrationEvidence } from "../src/lib/evidence";
+import { compileImmigrationEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -11,11 +11,13 @@ function fixture(name: string): string {
 }
 
 const receipt = compileImmigrationEvidence({
+  id: "fixture-i797",
   fileName: "i797-receipt.txt",
   text: fixture("i797-receipt.txt"),
 });
 
 const rfe = compileImmigrationEvidence({
+  id: "fixture-rfe",
   fileName: "rfe-notice.txt",
   text: fixture("rfe-notice.txt"),
 });
@@ -41,6 +43,14 @@ for (const forbidden of forbiddenTaxTerms) {
   assert(!forbidden.test(combined), `evidence output leaked forbidden tax term: ${forbidden}`);
 }
 
+const reconciled = reconcileEvidenceStates([receipt, rfe]);
+assert(reconciled.audit.status === "pass", `reconciled audit should pass, got ${reconciled.audit.status}`);
+assert(reconciled.crossDocumentRelationships.some((rel) => rel.relationType === "same_receipt"), "I-797 and RFE should link by shared receipt number");
+assert(reconciled.suppressedQuestions.some((item) => item.questionKey === "receipt_number"), "reconciled receipt question should be suppressed");
+assert(reconciled.reconstruction.currentPosition === "RFE notice needs review", `unexpected current position: ${reconciled.reconstruction.currentPosition}`);
+assert(reconciled.reconstruction.pendingActions.some((action) => /RFE response by July 31, 2026/.test(action)), "RFE deadline should become a pending action");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
+console.log(`- reconciled: ${reconciled.facts.length} facts, ${reconciled.events.length} events, ${reconciled.crossDocumentRelationships.length} cross-document link(s)`);

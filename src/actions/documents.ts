@@ -9,6 +9,7 @@ import { saveUpload, deleteUpload, validateUploadFile } from "@/lib/uploads";
 import { explainNoticeContent } from "@/lib/ai/orchestrator";
 import { verifyCaseProgress, verifyUserCasesProgress } from "@/lib/case-progress";
 import { processDocumentEvidence, processDocumentsEvidence } from "@/lib/evidence/document-processing";
+import { rebuildCaseEvidenceState } from "@/lib/evidence/case-state";
 import type { ActionState } from "./auth";
 
 export async function uploadDocumentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -103,6 +104,7 @@ export async function deleteDocumentAction(documentId: string) {
     db.evidenceFact.deleteMany({ where: { documentId } }),
     db.document.delete({ where: { id: documentId } }),
   ]);
+  if (doc.caseId) await rebuildCaseEvidenceState(doc.caseId);
   await deleteUpload(doc.filePath);
   // Removing evidence can un-complete verified steps.
   if (doc.caseId) await verifyCaseProgress(doc.caseId);

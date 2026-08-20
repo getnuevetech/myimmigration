@@ -1,0 +1,165 @@
+import "server-only";
+import { IMMIGRATION_EVENT_TYPES, type ImmigrationEventType } from "@/domain/events";
+import { isImmigrationFactKey, type ImmigrationFactKey } from "@/domain/facts";
+import type { ImmigrationDocumentType } from "@/domain/documents";
+import { db } from "@/lib/db";
+import { reconcileEvidenceStates } from "./reconcile";
+import type { CompiledCaseEvent, CompiledEvidenceFact, CompiledEvidenceState, EvidenceConfidence } from "./types";
+
+const CONFIDENCE_VALUES: EvidenceConfidence[] = ["confirmed", "likely", "possible", "needs_verification", "not_supported"];
+
+function normalizeConfidence(value: string): EvidenceConfidence {
+  return CONFIDENCE_VALUES.includes(value as EvidenceConfidence) ? (value as EvidenceConfidence) : "needs_verification";
+}
+
+function normalizeEventType(value: string): ImmigrationEventType {
+  return (IMMIGRATION_EVENT_TYPES as readonly string[]).includes(value) ? (value as ImmigrationEventType) : "case_status_updated";
+}
+
+function parseJson(value: string): unknown {
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+export async function rebuildCaseEvidenceState(caseId: string) {
+  const [facts, events] = await Promise.all([
+    db.evidenceFact.findMany({
+      where: { caseId },
+      include: { document: { select: { id: true, fileName: true, documentType: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
+    db.caseEvent.findMany({
+      where: { caseId },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    }),
+  ]);
+
+  const compiledFacts: CompiledEvidenceFact[] = facts
+    .filter((fact) => isImmigrationFactKey(fact.key))
+    .map((fact) => ({
+      key: fact.key as ImmigrationFactKey,
+      value: fact.value,
+      valueJson: parseJson(fact.valueJson),
+      confidence: normalizeConfidence(fact.confidence),
+      source: {
+        kind: "document",
+        documentId: fact.documentId ?? undefined,
+        documentType: (fact.document?.documentType || "other") as ImmigrationDocumentType,
+        label: fact.document?.fileName,
+      },
+      sourceText: fact.sourceText || undefined,
+      observedAt: fact.observedAt?.toISOString(),
+    }));
+
+  const compiledEvents: CompiledCaseEvent[] = events.map((event, index) => ({
+    eventType: normalizeEventType(event.eventType),
+    title: event.title,
+    description: event.description || undefined,
+    dateText: event.dateText || undefined,
+    occurredAt: event.occurredAt?.toISOString(),
+    evidence: [],
+    sortOrder: index,
+  }));
+
+  const state: CompiledEvidenceState = {
+    documentType: "other",
+    facts: compiledFacts,
+    events: compiledEvents,
+    relationships: [],
+    unknowns: [],
+    suppressedQuestions: [],
+    audit: {
+      status: "needs_more_evidence",
+      summary: "",
+      blockingUnknowns: [],
+      warnings: [],
+    },
+    reconstruction: {
+      summary: "",
+      currentPosition: "",
+      timeline: [],
+      pendingActions: [],
+      confidence: "needs_verification",
+    },
+  };
+  const reconciled = reconcileEvidenceStates([state]);
+
+  await db.$transaction(async (tx) => {
+    await tx.caseUnknown.deleteMany({ where: { caseId } });
+    await tx.suppressedQuestion.deleteMany({ where: { caseId } });
+    await tx.evidenceRelationship.deleteMany({ where: { caseId, sourceDocumentId: null } });
+
+    if (reconciled.crossDocumentRelationships.length > 0) {
+      await tx.evidenceRelationship.createMany({
+        data: reconciled.crossDocumentRelationships.map((item) => ({
+          caseId,
+          sourceDocumentId: null,
+          relationType: item.relationType,
+          fromFactKey: item.fromFactKey,
+          fromValue: item.fromValue,
+          toFactKey: item.toFactKey,
+          toValue: item.toValue,
+          confidence: item.confidence,
+          rationale: item.rationale,
+        })),
+      });
+    }
+
+    if (reconciled.unknowns.length > 0) {
+      await tx.caseUnknown.createMany({
+        data: reconciled.unknowns.map((item) => ({
+          caseId,
+          key: item.key,
+          question: item.question,
+          reason: item.reason,
+        })),
+      });
+    }
+
+    if (reconciled.suppressedQuestions.length > 0) {
+      await tx.suppressedQuestion.createMany({
+        data: reconciled.suppressedQuestions.map((item) => ({
+          caseId,
+          questionKey: item.questionKey,
+          question: item.question,
+          reason: item.reason,
+        })),
+      });
+    }
+
+    await tx.evidenceAudit.create({
+      data: {
+        caseId,
+        status: reconciled.audit.status,
+        summary: reconciled.audit.summary,
+        blockingUnknownsJson: JSON.stringify(reconciled.audit.blockingUnknowns),
+        warningsJson: JSON.stringify(reconciled.audit.warnings),
+      },
+    });
+
+    await tx.caseReconstruction.upsert({
+      where: { caseId },
+      update: {
+        summary: reconciled.reconstruction.summary,
+        currentPosition: reconciled.reconstruction.currentPosition,
+        timelineJson: JSON.stringify(reconciled.reconstruction.timeline),
+        pendingActionsJson: JSON.stringify(reconciled.reconstruction.pendingActions),
+        confidence: reconciled.reconstruction.confidence,
+      },
+      create: {
+        caseId,
+        summary: reconciled.reconstruction.summary,
+        currentPosition: reconciled.reconstruction.currentPosition,
+        timelineJson: JSON.stringify(reconciled.reconstruction.timeline),
+        pendingActionsJson: JSON.stringify(reconciled.reconstruction.pendingActions),
+        confidence: reconciled.reconstruction.confidence,
+      },
+    });
+  });
+
+  return reconciled;
+}
