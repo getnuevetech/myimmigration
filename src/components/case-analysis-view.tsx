@@ -21,6 +21,9 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       pathSteps: { orderBy: { sortOrder: "asc" } },
       documents: { where: { deletedAt: null } },
       runs: { orderBy: { startedAt: "desc" }, include: { consensus: true }, take: 10 },
+      reconstruction: true,
+      evidenceAudits: { orderBy: { createdAt: "desc" }, take: 1 },
+      unknowns: { orderBy: { createdAt: "asc" }, take: 8 },
     },
   });
   if (!c) return null;
@@ -45,6 +48,25 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     where: { run: { caseId: c.id }, status: "complete" },
   });
   const isPreliminary = c.runs.length > 0 && aiStepCount === 0;
+  const latestEvidenceAudit = c.evidenceAudits[0] ?? null;
+  let evidenceTimeline: { eventType?: string; title?: string; dateText?: string }[] = [];
+  let pendingEvidenceActions: string[] = [];
+  try {
+    const parsed = JSON.parse(c.reconstruction?.timelineJson || "[]");
+    if (Array.isArray(parsed)) {
+      evidenceTimeline = parsed
+        .map((item) => ({
+          eventType: typeof item?.eventType === "string" ? item.eventType : "",
+          title: typeof item?.title === "string" ? item.title : "",
+          dateText: typeof item?.dateText === "string" ? item.dateText : "",
+        }))
+        .filter((item) => item.title);
+    }
+  } catch { /* no reconstruction timeline yet */ }
+  try {
+    const parsed = JSON.parse(c.reconstruction?.pendingActionsJson || "[]");
+    if (Array.isArray(parsed)) pendingEvidenceActions = parsed.map(String).filter(Boolean);
+  } catch { /* no pending evidence actions yet */ }
 
   const formI485 = interactive
     ? await db.uscisFormTemplate.findFirst({ where: { formNumber: "I-485", isPublished: true }, select: { id: true } })
@@ -179,6 +201,79 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
             {cf.resolution && <p className="mt-1 text-xs text-lime-700">{cf.resolution}</p>}
           </div>
         ))}
+
+        {(c.reconstruction || latestEvidenceAudit || c.unknowns.length > 0) && (
+          <section>
+            <h2 className="mb-3 text-base font-semibold text-slate-900">Current evidence position</h2>
+            <Card>
+              <CardBody>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Compiled from uploaded records</p>
+                    <h3 className="mt-1 text-lg font-semibold text-slate-900">
+                      {c.reconstruction?.currentPosition || "Case posture needs verification"}
+                    </h3>
+                  </div>
+                  {latestEvidenceAudit && (
+                    <Badge color={latestEvidenceAudit.status === "pass" ? "green" : latestEvidenceAudit.status === "needs_review" ? "lime" : "slate"}>
+                      Evidence gate: {latestEvidenceAudit.status.replace(/_/g, " ")}
+                    </Badge>
+                  )}
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                  {c.reconstruction?.summary || latestEvidenceAudit?.summary || "Upload USCIS records so the case timeline can be reconstructed from evidence."}
+                </p>
+
+                {pendingEvidenceActions.length > 0 && (
+                  <div className="mt-4 rounded-xl bg-lime-50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-lime-500">Evidence-derived next actions</p>
+                    <ul className="mt-2 space-y-1">
+                      {pendingEvidenceActions.slice(0, 4).map((action, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-lime-900">
+                          <span className="mt-0.5 font-bold text-lime-500">→</span>
+                          <span>{action}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {evidenceTimeline.length > 0 && (
+                  <div className="mt-4">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Evidence timeline</p>
+                    <ol className="space-y-2">
+                      {evidenceTimeline.slice(0, 6).map((event, i) => (
+                        <li key={`${event.title}-${i}`} className="flex gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-lime-500" />
+                          <div>
+                            <p className="text-sm font-medium text-slate-800">{event.title}</p>
+                            <p className="text-xs text-slate-500">
+                              {[event.dateText, event.eventType?.replace(/_/g, " ")].filter(Boolean).join(" · ") || "Date not extracted"}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                {c.unknowns.length > 0 && (
+                  <div className="mt-4">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">What the evidence still needs</p>
+                    <ul className="space-y-1">
+                      {c.unknowns.map((unknown) => (
+                        <li key={unknown.id} className="flex items-start gap-2 text-sm text-slate-600">
+                          <span className="mt-0.5 font-bold text-lime-500">?</span>
+                          <span>{unknown.question}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+          </section>
+        )}
 
         {latestBatch.length > 0 && (
           <section>
@@ -523,6 +618,12 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                         {d.fileName}
                       </a>{" "}
                       <Badge>{d.docKind}</Badge>
+                      {d.documentType && <Badge color="lime">{d.documentType.replace(/_/g, " ")}</Badge>}
+                      {d.processingStatus && d.processingStatus !== "uploaded" && (
+                        <Badge color={d.processingStatus === "extracted" ? "green" : d.processingStatus === "failed" ? "red" : "slate"}>
+                          {d.processingStatus.replace(/_/g, " ")}
+                        </Badge>
+                      )}
                       {!verified && <p className="text-[11px] text-lime-600">Verification needed — on file, details not yet confirmed</p>}
                     </div>
                   </li>
