@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
-import { hasFeature } from "@/lib/access";
-import { FEATURE_KEYS } from "@/lib/constants";
 import { buildCaseReportHtml } from "@/lib/case-report";
+import { getCaseReportQuota, recordCaseReportDownload } from "@/lib/case-report-downloads";
 
 function billingRedirect(request: Request, pathname: string, params: Record<string, string>) {
   const url = new URL(request.url);
@@ -29,10 +28,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!c) return new NextResponse("Not found", { status: 404 });
 
   let allowed = false;
+  let shouldRecordOwnerDownload = false;
   if (isAdmin(user)) allowed = true;
   else if (c.userId === user.id) {
-    allowed = await hasFeature(user.id, FEATURE_KEYS.CASE_REPORT);
+    const quota = await getCaseReportQuota(user.id);
+    allowed = quota.hasAccess;
     if (!allowed) return billingRedirect(request, "/app/billing", { upgrade: "report" });
+    if (quota.overLimit && quota.overageCents > 0) {
+      return billingRedirect(request, "/app/billing", {
+        reportOverage: "1",
+        feeCents: String(quota.overageCents),
+        used: String(quota.used),
+        limit: String(quota.limit ?? ""),
+      });
+    }
+    shouldRecordOwnerDownload = true;
   } else if (user.role === "consultant" && c.userId) {
     const assignment = await db.consultantAssignment.findFirst({
       where: { consultantId: user.id, userId: c.userId, status: "active" },
@@ -47,6 +57,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const report = await buildCaseReportHtml(id);
   if (!report) return new NextResponse("Not found", { status: 404 });
+  if (shouldRecordOwnerDownload && c.userId) await recordCaseReportDownload(c.userId, id);
 
   const download = new URL(request.url).searchParams.get("download") === "1";
   return new NextResponse(report.html, {

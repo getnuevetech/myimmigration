@@ -164,6 +164,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   subscriptions       Subscription[]
   transactions        PaymentTransaction[]
+  reportDownloads     CaseReportDownload[]
   cases               Case[]
   documents           Document[]
   deadlines           Deadline[]
@@ -267,6 +268,21 @@ model PaymentTransaction {
   createdAt   DateTime          @default(now())
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan        SubscriptionPlan? @relation(fields: [planId], references: [id])
+  reportDownloads CaseReportDownload[]
+}
+
+model CaseReportDownload {
+  id            String   @id @default(cuid())
+  userId        String
+  caseId        String
+  transactionId String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  case          Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  transaction   PaymentTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([caseId])
 }
 
 // ---------- Guest intake ----------
@@ -317,6 +333,7 @@ model Case {
   letters        ResponseLetter[]
   notices        Notice[]
   qaThreads      QaThread[]
+  reportDownloads CaseReportDownload[]
   assignments    ConsultantAssignment[]
   comments       CaseComment[]
   clarifyMessages CaseClarifyMessage[]

@@ -10,9 +10,9 @@ export const metadata = { title: "Plan & billing" };
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ subscribed?: string; canceled?: string; pending?: string }>;
+  searchParams: Promise<{ subscribed?: string; canceled?: string; pending?: string; reportOverage?: string; feeCents?: string; returnTo?: string }>;
 }) {
-  const { subscribed, pending } = await searchParams;
+  const { subscribed, pending, reportOverage, feeCents, returnTo } = await searchParams;
   const user = await requireUser();
   // Confirm any in-flight Stripe checkout directly with Stripe — no webhook required.
   const { reconcilePendingStripeTransactions } = await import("@/lib/payments");
@@ -47,6 +47,13 @@ export default async function BillingPage({
         <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
           Payment received — your plan activates as soon as the payment processor confirms it (usually within a
           minute). Refresh this page shortly.
+        </div>
+      )}
+      {reportOverage && (
+        <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
+          <span className="font-semibold">Case report download limit reached.</span>{" "}
+          Additional downloads cost <Money cents={Number(feeCents ?? 0) || 0} />. Choose a higher plan or contact support to purchase an additional report download.
+          {returnTo && <p className="mt-1 text-xs text-lime-700">After checkout, return to your case report from the case page.</p>}
         </div>
       )}
       {isTestGateway && (

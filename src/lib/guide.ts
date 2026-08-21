@@ -27,7 +27,7 @@ const STEP_TIPS: Record<string, string> = {
   UPLOAD_DOCUMENTS:
     "Add your USCIS notices, receipts, immigration forms, identity records, and supporting evidence. Photos from your phone work fine. The more you add, the more precisely we can verify dates, receipt numbers, and deadlines.",
   REVIEW_ANALYSIS:
-    "You've added documents — now hit 'Re-run analysis' on your case page so the findings are checked against the newest USCIS records.",
+    "You've added documents — the case page updates automatically as the evidence is processed. Check the current evidence position and path forward for the newest verified next step.",
   DRAFT_LETTER:
     "Use Response letters → New letter. Describe what you want to say in plain English; we draft a professional letter you can edit and print. Mail it before your deadline (certified mail with return receipt is safest).",
   COMPLETE_FORM_I485:

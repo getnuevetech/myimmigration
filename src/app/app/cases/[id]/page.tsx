@@ -4,7 +4,6 @@ import { requireUser } from "@/lib/auth";
 import { hasFeature } from "@/lib/access";
 import { FEATURE_KEYS } from "@/lib/constants";
 import { PageHeader } from "@/components/ui";
-import { reanalyzeCaseAction } from "@/actions/case";
 import { formatCaseNumber } from "@/lib/case-number";
 import { CaseAnalysisView } from "@/components/case-analysis-view";
 import { CaseComments } from "@/components/case-comments";
@@ -49,11 +48,6 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
             >
               {hasReportAccess ? "Case report ↗" : "Case report 🔒"}
             </a>
-            <form action={reanalyzeCaseAction.bind(null, c.id)}>
-              <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                Re-run analysis
-              </button>
-            </form>
           </div>
         }
       />

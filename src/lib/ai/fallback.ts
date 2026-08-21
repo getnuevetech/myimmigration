@@ -211,7 +211,7 @@ export async function fallbackAnalyze(
   const pathSteps: FallbackResult["pathSteps"] = [
     { title: "Upload the latest USCIS document", description: "Add the most recent notice, receipt, approval, RFE, denial, or interview letter so the case posture can be verified.", action_key: "UPLOAD_DOCUMENTS" },
     { title: "Upload or confirm the USCIS case record", description: "Add receipt notices, online case status records, filing dates, approvals, denials, and deadlines so the timeline can be verified.", action_key: "GET_CASE_RECORD" },
-    { title: "Re-run the case review after evidence is added", description: "Once records are uploaded, re-run the analysis so the next-step plan reflects the newest USCIS evidence.", action_key: "REVIEW_ANALYSIS" },
+    { title: "Check the updated case review", description: "Once records are uploaded, the case review updates as the evidence is processed so the next-step plan reflects the newest USCIS evidence.", action_key: "REVIEW_ANALYSIS" },
   ];
 
   return {

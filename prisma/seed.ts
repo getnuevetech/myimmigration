@@ -54,6 +54,7 @@ async function seedSettings() {
     ["cases.autoclose_abandoned_days", "60", "cases", "Case auto-close when abandoned (days)", "Cases with no activity for this many days are closed automatically with closing remarks. Documents stay in the customer's account. 0 disables."],
     ["billing.proration_enabled", "true", "billing", "Proration on plan changes", "Credit the unused value of the current plan when a subscriber upgrades (toggle on the Plans page)."],
     ["billing.proration_downgrade_enabled", "false", "billing", "Proration on downgrades", "Also apply the credit when subscribers downgrade (toggle on the Plans page)."],
+    ["billing.case_report_overage_cents", "500", "billing", "Additional case report download fee (cents)", "Charged when a customer exceeds their plan's case report download allowance."],
     ["forms.paid_downloads", "true", "forms", "Paid form downloads", "Whether downloading completed USCIS forms requires a plan with the forms.download feature (toggle on the USCIS form templates page)."],
     ["comments.customer_private_enabled", "true", "comments", "Customer private notes", "Allow customers to mark case comments as private (hidden from consultants AND admins)."],
     ["comments.consultant_hide_from_customer_enabled", "true", "comments", "Consultant hidden comments", "Allow consultants to hide case comments from the customer. Admins always see consultant comments."],
@@ -184,6 +185,7 @@ async function seedPlansAndFeatures() {
         "notice.explain": { enabled: true, limit: 2 },
         "documents.upload": { enabled: true, limit: 5 },
         "case.analysis": { enabled: true, limit: 1 },
+        "case.report": { enabled: true, limit: 1 },
         "qa.chat": { enabled: true, limit: 10 },
         "vault.storage": { enabled: true, limit: 5 },
         "deadlines.reminders": { enabled: true, limit: null },
@@ -210,6 +212,7 @@ async function seedPlansAndFeatures() {
         "vault.storage": { enabled: true, limit: null },
         "forms.wizard": { enabled: true, limit: null },
         "guide.chatbot": { enabled: true, limit: null },
+        "case.report": { enabled: true, limit: 3 },
         "forms.download": { enabled: true, limit: null },
       },
     },
@@ -235,7 +238,7 @@ async function seedPlansAndFeatures() {
         "forms.wizard": { enabled: true, limit: null },
         "consultant.referral": { enabled: true, limit: null },
         "guide.chatbot": { enabled: true, limit: null },
-        "case.report": { enabled: true, limit: null },
+        "case.report": { enabled: true, limit: 7 },
         "forms.download": { enabled: true, limit: null },
       },
     },
@@ -278,6 +281,9 @@ async function seedPlansAndFeatures() {
       });
     }
   }
+  await db.planFeature.updateMany({ where: { plan: { key: "free" }, featureKey: "case.report" }, data: { enabled: true, limitValue: 1 } });
+  await db.planFeature.updateMany({ where: { plan: { key: "plus" }, featureKey: "case.report" }, data: { enabled: true, limitValue: 3 } });
+  await db.planFeature.updateMany({ where: { plan: { key: "pro" }, featureKey: "case.report" }, data: { enabled: true, limitValue: 7 } });
 }
 
 async function seedGateway() {

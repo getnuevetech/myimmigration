@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { Card, CardBody, StateMark, ProgressBar, Badge, EvidenceStatusBadge, EvidenceStrengthLine, ItemKindBadge } from "@/components/ui";
 import { isVerifiable, VERIFIABLE_ACTIONS } from "@/lib/case-progress";
-import { reanalyzeCaseAction, completePathStepAction, checkCaseProgressAction } from "@/actions/case";
+import { completePathStepAction, checkCaseProgressAction } from "@/actions/case";
 import { startFormAction } from "@/actions/forms";
 import { InlineUpload } from "@/components/inline-upload";
 import { CaseUpload } from "@/components/case-upload";
@@ -504,13 +504,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                       )}
                       {interactive && step.status !== "done" && (
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {(step.actionKey.toUpperCase() === "REVIEW_ANALYSIS" || step.actionKey.toUpperCase() === "RERUN_ANALYSIS") ? (
-                            <form action={reanalyzeCaseAction.bind(null, c.id)}>
-                              <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
-                                Re-run the analysis now →
-                              </button>
-                            </form>
-                          ) : step.actionKey.toUpperCase() === "COMPLETE_FORM_I485" && formI485 ? (
+                          {step.actionKey.toUpperCase() === "COMPLETE_FORM_I485" && formI485 ? (
                             <form action={startFormAction.bind(null, formI485.id)}>
                               <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
                                 Start the USCIS form →
