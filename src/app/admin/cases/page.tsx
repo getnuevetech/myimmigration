@@ -11,7 +11,13 @@ export default async function AdminCasesPage() {
   const cases = await db.case.findMany({
     orderBy: { updatedAt: "desc" },
     take: 200,
-    include: {
+    select: {
+      id: true,
+      title: true,
+      number: true,
+      status: true,
+      readinessScore: true,
+      updatedAt: true,
       user: { select: { email: true, firstName: true, lastName: true } },
       issues: { select: { id: true } },
       documents: { where: { deletedAt: null }, select: { id: true } },
