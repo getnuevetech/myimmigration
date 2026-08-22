@@ -157,7 +157,8 @@ async function seedPlansAndFeatures() {
     ["consultant.referral", "immigration professional referral service", "consultants", 12],
     ["guide.chatbot", "Personal case guide chatbot", "assistant", 13],
     ["case.report", "Downloadable full case report (with document copies)", "analysis", 14],
-    ["forms.download", "Downloadable completed USCIS forms", "forms", 15],
+    ["uscis.updates_analysis", "USCIS update impact analysis", "analysis", 15],
+    ["forms.download", "Downloadable completed USCIS forms", "forms", 16],
   ];
   for (const [key, name, category, sortOrder] of features) {
     await db.featureDef.upsert({ where: { key }, update: {}, create: { key, name, category, sortOrder } });
@@ -213,6 +214,7 @@ async function seedPlansAndFeatures() {
         "forms.wizard": { enabled: true, limit: null },
         "guide.chatbot": { enabled: true, limit: null },
         "case.report": { enabled: true, limit: 3 },
+        "uscis.updates_analysis": { enabled: true, limit: null },
         "forms.download": { enabled: true, limit: null },
       },
     },
@@ -239,6 +241,7 @@ async function seedPlansAndFeatures() {
         "consultant.referral": { enabled: true, limit: null },
         "guide.chatbot": { enabled: true, limit: null },
         "case.report": { enabled: true, limit: 7 },
+        "uscis.updates_analysis": { enabled: true, limit: null },
         "forms.download": { enabled: true, limit: null },
       },
     },

@@ -6,6 +6,7 @@ import { HeroCarousel } from "@/components/hero-carousel";
 import { Accent, Kicker } from "@/components/accent";
 import { getSettingsMap } from "@/lib/settings";
 import { IconShield, IconSparkle, IconCheckCircle } from "@/components/icons";
+import { getUscisUpdates } from "@/lib/uscis-updates";
 
 function EditorialSection({
   number,
@@ -57,6 +58,7 @@ export default async function HomePage() {
     heroImages = [];
   }
   if (heroImages.length === 0) heroImages = ["/hero/hero-1.png", "/hero/hero-2.png", "/hero/hero-3.png"];
+  const updates = await getUscisUpdates(3);
 
   const steps = [
     { n: "01", title: "Build the timeline", body: "Start with what you know: status history, filings, receipt numbers, notices, travel, interviews, and deadlines." },
@@ -195,6 +197,37 @@ export default async function HomePage() {
                 <span className="text-lime-700">{item.icon}</span>
                 {item.text}
               </p>
+            ))}
+          </div>
+        </EditorialSection>
+
+        <EditorialSection number="04" label="USCIS updates" className="bg-white">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <Kicker>Latest from USCIS</Kicker>
+              <h2 className="mt-5 font-serif text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
+                <Accent text="Policy and form updates, watched for *your case*" />
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-600">
+                We pull public USCIS updates and help paid customers understand which changes may matter for their cases.
+              </p>
+            </div>
+            <ButtonLink href="/updates" variant="secondary" className="rounded-full">View all updates →</ButtonLink>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {updates.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500 md:col-span-3">
+                USCIS updates are temporarily unavailable. Check back soon.
+              </p>
+            )}
+            {updates.map((update) => (
+              <a key={update.url} href={update.url} target="_blank" rel="noreferrer" className="rounded-2xl border border-slate-200 bg-[#fbfaf7] p-5 transition hover:border-lime-300">
+                <p className="text-xs font-semibold uppercase tracking-wide text-lime-600">
+                  {update.publishedAt ? new Date(update.publishedAt).toLocaleDateString("en-US") : "USCIS update"}
+                </p>
+                <h3 className="mt-2 font-serif text-xl font-bold leading-snug text-slate-900">{update.title}</h3>
+                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-slate-600">{update.summary}</p>
+              </a>
             ))}
           </div>
         </EditorialSection>

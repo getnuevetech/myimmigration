@@ -50,6 +50,7 @@ export const FEATURE_KEYS = {
   CONSULTANT_REFERRAL: "consultant.referral",
   GUIDE_CHATBOT: "guide.chatbot",
   CASE_REPORT: "case.report",
+  USCIS_UPDATES_ANALYSIS: "uscis.updates_analysis",
   FORMS_DOWNLOAD: "forms.download",
 } as const;
 
