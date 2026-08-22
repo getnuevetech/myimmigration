@@ -212,7 +212,7 @@ export default async function HomePage() {
                 We pull public USCIS updates and help paid customers understand which changes may matter for their cases.
               </p>
             </div>
-            <ButtonLink href="/updates" variant="secondary" className="rounded-full">View all updates →</ButtonLink>
+            <ButtonLink href="/uscis-updates" variant="secondary" className="rounded-full">View all updates →</ButtonLink>
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             {updates.length === 0 && (
