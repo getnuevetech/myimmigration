@@ -31,10 +31,8 @@ function decodeEntities(value: string): string {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#39;/g, "'");
 }
 
 function absoluteUscisUrl(value: string): string {
@@ -57,12 +55,13 @@ function recentThreshold(): number {
 
 function textLinesFromHtml(html: string): string[] {
   const withLinks = html.replace(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_all, href, label) => {
-    const text = decodeEntities(label);
+    const text = decodeEntities(label).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
     return text ? `\n@@LINK|${href}|${text}\n` : "\n";
   });
   return decodeEntities(withLinks)
+    .replace(/<(br|p|h2|h3|li|div|article|section)\b[^>]*>/gi, "\n")
     .split(/\n+/)
-    .map((line) => line.trim())
+    .map((line) => line.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim())
     .filter(Boolean);
 }
 
