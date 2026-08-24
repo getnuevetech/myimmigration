@@ -15,13 +15,13 @@ export const ANALYSIS_TOOLS = {
 } as const;
 
 export const ANALYSIS_TASK_LABELS: Record<string, string> = {
-  PROCESS_DOCUMENTS: "Read the documents on file",
-  RECONSTRUCT_CASE: "Reconstructed the case from the records",
-  RETRIEVE_AUTHORITY: "Looked up matching USCIS rules",
-  PRIMARY_REASONING: "Analyzed the situation",
-  INDEPENDENT_REVIEW: "Ran a second independent review",
-  QUESTION_PLANNING: "Planned follow-up questions",
-  PRESENT_APPROVED_STATE: "Prepared the approved case presentation",
+  PROCESS_DOCUMENTS: "Document processing",
+  RECONSTRUCT_CASE: "Case reconstruction from the records",
+  RETRIEVE_AUTHORITY: "USCIS rule lookup",
+  PRIMARY_REASONING: "Situation analysis",
+  INDEPENDENT_REVIEW: "Second independent review",
+  QUESTION_PLANNING: "Follow-up questions",
+  PRESENT_APPROVED_STATE: "Approved case presentation",
 };
 
 export const ANALYSIS_COMPLEXITY_LABELS: Record<string, string> = {

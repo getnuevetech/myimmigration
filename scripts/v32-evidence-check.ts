@@ -348,7 +348,7 @@ const execution = buildPlanExecution(lowPlan, runtimeDecisions, { runtimeAdditio
 assert(execution.tasks_executed.includes(ANALYSIS_TASKS.INDEPENDENT_REVIEW), "execution record must include runtime independent review");
 assert(!execution.tasks_skipped.some((item) => item.task === ANALYSIS_TASKS.INDEPENDENT_REVIEW), "runtime independent review must not stay in the skipped list");
 const summary = analysisPlanSummary({ ...lowPlan, execution });
-assert(summary.executedLabels.includes("Ran a second independent review"), "analysis plan summary should use customer-facing task labels");
+assert(summary.executedLabels.includes("Second independent review"), "analysis plan summary should use customer-facing task labels");
 assert(summary.complexityLabel === "Straightforward", "low-complexity plans should use a customer-facing complexity label");
 
 console.log("v3.2 immigration evidence check passed");
