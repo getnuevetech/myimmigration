@@ -4,8 +4,8 @@ import { hasFeature, getActivePlan } from "./access";
 import { FEATURE_KEYS, STAGE_KEYS } from "./constants";
 import { callProvider } from "./ai/adapters";
 import { getCaseEvidenceBrief } from "./evidence/brief";
-import { loadPresentationsByCaseIds } from "./case-presentation";
-import { caseListActionLine, caseListEvidenceLine, caseListSummary } from "./case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "./case-presentation";
+import { caseListActionLine, caseListEvidenceLine, caseListSummaryFromView, caseListVersionLine } from "./case-presentation-list";
 
 // The in-account guide chatbot. It always analyzes the user's account state,
 // coaches them through the current step of their case, and routes anything it
@@ -61,18 +61,22 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
     getActivePlan(userId),
   ]);
 
-  const presentations = await loadPresentationsByCaseIds(cases.map((c) => c.id));
+  const views = await loadApprovedViewsByCaseIds(cases.map((c) => c.id));
   const lines: string[] = [`User first name: ${user?.firstName || "there"}`, `Plan: ${plan?.name ?? "Free"}`];
   let currentStep: Snapshot["currentStep"] = null;
   for (const c of cases) {
-    const presentation = presentations.get(c.id) ?? null;
-    const summary = caseListSummary({
-      status: c.status,
-      actionReadinessScore: c.actionReadinessScore,
-      presentation,
-    });
+    const view = views.get(c.id) ?? null;
+    const presentation = view?.presentation ?? null;
+    const summary = caseListSummaryFromView(
+      {
+        status: c.status,
+        actionReadinessScore: c.actionReadinessScore,
+      },
+      view,
+    );
+    const version = caseListVersionLine(summary);
     lines.push(
-      `Case "${c.title.slice(0, 60)}": approved posture ${summary.posture}; ${caseListActionLine(summary)}; ${caseListEvidenceLine(summary)}`,
+      `Case "${c.title.slice(0, 60)}": approved posture ${summary.posture}; ${caseListActionLine(summary)}; ${caseListEvidenceLine(summary)}${version ? `; ${version}` : ""}`,
     );
     const readyAction = presentation?.hero.next_best_action;
     if (!currentStep && readyAction) {
@@ -85,7 +89,7 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
   }
   if (currentStep) {
     const brief = await getCaseEvidenceBrief(currentStep.caseId).catch(() => null);
-    const currentPresentation = presentations.get(currentStep.caseId) ?? null;
+    const currentPresentation = views.get(currentStep.caseId)?.presentation ?? null;
     if (brief && !currentPresentation) {
       lines.push(`Current evidence position: ${brief.currentPosition}`);
       lines.push(`Evidence status: ${brief.status}`);

@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { assemblePresentationContract, parsePresentationRecord, type PresentationContract } from "./case-presentation-contract";
 import { buildPresentationBrief } from "./case-presentation-brief";
-import { parseCanonicalApprovedState } from "./canonical-case-state";
+import { parseCanonicalApprovedState, buildApprovedCaseView, type ApprovedCaseView } from "./canonical-case-state";
 
 const CASE_PRESENTATION_INCLUDE = {
   reconstruction: true,
@@ -108,12 +108,8 @@ export async function getLatestCasePresentation(caseId: string) {
 }
 
 export async function resolveCasePresentation(caseId: string) {
-  const row = await getLatestCasePresentation(caseId).catch(() => null);
-  if (row) return parsePresentationRecord(row);
-  const canonical = await db.canonicalCaseState.findUnique({ where: { caseId } }).catch(() => null);
-  const approved = parseCanonicalApprovedState(canonical?.approvedStateJson);
-  if (approved?.presentation) return approved.presentation;
-  return assembleLivePresentation(caseId);
+  const view = await loadApprovedViewsByCaseIds([caseId]);
+  return view.get(caseId)?.presentation ?? null;
 }
 
 export async function getCasePresentationBrief(caseId: string) {
@@ -122,35 +118,59 @@ export async function getCasePresentationBrief(caseId: string) {
   return { contract, ...buildPresentationBrief(contract) };
 }
 
-export async function loadPresentationsByCaseIds(caseIds: string[]) {
-  const map = new Map<string, PresentationContract>();
+export async function loadApprovedViewsByCaseIds(caseIds: string[]) {
+  const map = new Map<string, ApprovedCaseView>();
   const uniqueIds = [...new Set(caseIds.filter(Boolean))];
   if (uniqueIds.length === 0) return map;
-  const rows = await db.casePresentation.findMany({
-    where: { caseId: { in: uniqueIds } },
-    orderBy: { createdAt: "desc" },
-  }).catch(() => []);
-  for (const row of rows) {
-    if (!map.has(row.caseId)) map.set(row.caseId, parsePresentationRecord(row));
-  }
-  const missing = uniqueIds.filter((id) => !map.has(id));
-  if (missing.length === 0) return map;
-  const canonicalRows = await db.canonicalCaseState.findMany({
-    where: { caseId: { in: missing } },
-    select: { caseId: true, approvedStateJson: true },
-  }).catch(() => []);
+
+  const [canonicalRows, presentationRows] = await Promise.all([
+    db.canonicalCaseState.findMany({
+      where: { caseId: { in: uniqueIds } },
+      select: { caseId: true, approvedStateJson: true },
+    }).catch(() => []),
+    db.casePresentation.findMany({
+      where: { caseId: { in: uniqueIds } },
+      orderBy: { createdAt: "desc" },
+    }).catch(() => []),
+  ]);
+  const canonicalByCase = new Map<string, ReturnType<typeof parseCanonicalApprovedState>>();
   for (const row of canonicalRows) {
-    const approved = parseCanonicalApprovedState(row.approvedStateJson);
-    if (approved?.presentation) map.set(row.caseId, approved.presentation);
+    canonicalByCase.set(row.caseId, parseCanonicalApprovedState(row.approvedStateJson));
   }
-  const stillMissing = uniqueIds.filter((id) => !map.has(id));
-  if (stillMissing.length === 0) return map;
+  const storedByCase = new Map<string, ReturnType<typeof parsePresentationRecord>>();
+  for (const row of presentationRows) {
+    if (!storedByCase.has(row.caseId)) storedByCase.set(row.caseId, parsePresentationRecord(row));
+  }
+
+  const needsLive = uniqueIds.filter((id) => {
+    const selected = buildApprovedCaseView({
+      canonical: canonicalByCase.get(id),
+      stored: storedByCase.get(id),
+    });
+    map.set(id, selected);
+    return !selected.presentation;
+  });
+  if (needsLive.length === 0) return map;
+
   const cases = await db.case.findMany({
-    where: { id: { in: stillMissing } },
+    where: { id: { in: needsLive } },
     include: CASE_PRESENTATION_INCLUDE,
   }).catch(() => []);
   for (const c of cases) {
-    map.set(c.id, assembleFromLoadedCase(c));
+    map.set(c.id, buildApprovedCaseView({
+      canonical: canonicalByCase.get(c.id),
+      stored: storedByCase.get(c.id),
+      live: assembleFromLoadedCase(c),
+    }));
+  }
+  return map;
+}
+
+export async function loadPresentationsByCaseIds(caseIds: string[]) {
+  const views = await loadApprovedViewsByCaseIds(caseIds);
+  const map = new Map<string, PresentationContract>();
+  for (const [id, view] of views) {
+    if (view.presentation) map.set(id, view.presentation);
   }
   return map;
 }

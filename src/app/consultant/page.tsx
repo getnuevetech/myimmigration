@@ -5,8 +5,8 @@ import { PageHeader, Card, CardBody, Badge, EmptyState, ButtonLink, StateMark, P
 import { consultantRespondAssignmentAction } from "@/actions/consultant";
 import { formatCaseNumber } from "@/lib/case-number";
 import { caseRoutingReason } from "@/lib/matching";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CaseListSummaryDetails } from "@/components/case-list-card";
 
 export const metadata = { title: "Consultant dashboard" };
@@ -49,7 +49,7 @@ export default async function ConsultantDashboard({
       case: { include: caseInclude },
     },
   });
-  const presentations = await loadPresentationsByCaseIds(
+  const views = await loadApprovedViewsByCaseIds(
     assignments
       .map((a) => a.case?.id ?? a.user.cases[0]?.id)
       .filter((id): id is string => Boolean(id)),
@@ -135,13 +135,16 @@ export default async function ConsultantDashboard({
         <div className="space-y-4">
           {assignments.map((a) => {
             const kase = a.case ?? a.user.cases[0] ?? null;
-            const presentation = kase ? presentations.get(kase.id) ?? null : null;
+            const view = kase ? views.get(kase.id) : undefined;
+            const presentation = view?.presentation ?? null;
             const summary = kase
-              ? caseListSummary({
-                  status: kase.status,
-                  actionReadinessScore: kase.actionReadinessScore,
-                  presentation,
-                })
+              ? caseListSummaryFromView(
+                  {
+                    status: kase.status,
+                    actionReadinessScore: kase.actionReadinessScore,
+                  },
+                  view,
+                )
               : null;
             const routingReason = kase && kase.issues.length > 0
               ? caseRoutingReason(kase.issues.map((i) => i.issueType), mySpecialties)

@@ -7,7 +7,7 @@ import {
   withPresentationNoticeSteps,
 } from "../src/lib/case-presentation-brief";
 import { assemblePresentationContract, evidenceStrengthFromScores, parsePresentationRecord } from "../src/lib/case-presentation-contract";
-import { caseListActionLine, caseListEvidenceLine, caseListSummary } from "../src/lib/case-presentation-list";
+import { caseListActionLine, caseListEvidenceLine, caseListSummary, caseListSummaryFromView, caseListVersionLine } from "../src/lib/case-presentation-list";
 import { presentationReportSections } from "../src/lib/case-report-presentation";
 import { presentationActionStatus, presentationEvidenceGateLabel, presentationStepCta } from "../src/lib/case-presentation-ui";
 import {
@@ -22,8 +22,10 @@ import {
 } from "../src/lib/case-analysis-plan";
 import {
   buildCanonicalApprovedState,
+  buildApprovedCaseView,
   canonicalStateSummary,
   parseCanonicalApprovedState,
+  selectApprovedPresentation,
   versionReasonLabel,
 } from "../src/lib/canonical-case-state";
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, extractUniversalDocumentIntelligence, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
@@ -387,6 +389,26 @@ assert(versionReasonLabel("clarify") === "Answers added to the case", "clarify v
 assert(versionReasonLabel("reprocess") === "Evidence reprocessed", "reprocess versions should use a customer-facing reason label");
 assert(parseCanonicalApprovedState(JSON.stringify({ status: "analyzed", readinessScore: 10, issues: [], path_steps: [] })) === null, "legacy slim approved state is not a canonical versioned state");
 
+const staleStored = { ...presentation, hero: { ...presentation.hero, current_posture: "STALE stored presentation" } };
+const staleLive = { ...presentation, hero: { ...presentation.hero, current_posture: "STALE reconstruction posture" } };
+const selected = selectApprovedPresentation({ canonical: approvedState, stored: staleStored, live: staleLive });
+assert(selected?.source === "canonical", "approved presentation selector must prefer canonical state");
+assert(selected?.presentation.hero.current_posture === "RFE notice needs review", "canonical approved presentation must beat a stale stored presentation");
+assert(selectApprovedPresentation({ stored: staleStored, live: staleLive })?.source === "stored", "stored presentation is used when canonical is missing");
+assert(selectApprovedPresentation({ live: staleLive })?.source === "live", "live assembly is used only when no approved presentation exists");
+const approvedView = buildApprovedCaseView({ canonical: approvedState, stored: staleStored, live: staleLive });
+assert(approvedView.source === "canonical", "approved case view must record canonical as the source");
+assert(approvedView.version === 2, "approved case view must keep the canonical version number");
+const listFromCanonical = caseListSummaryFromView(
+  { status: "analyzed", reconstructionPosition: "STALE reconstruction posture" },
+  approvedView,
+);
+assert(listFromCanonical.posture === "RFE notice needs review", "case lists must use the canonical approved posture");
+assert(listFromCanonical.version === 2, "case lists must show the approved case record version");
+assert(caseListVersionLine(listFromCanonical) === "Version 2 · Full case review", "case lists must use a customer-facing version line");
+assert(!/STALE reconstruction/i.test(listFromCanonical.posture), "case lists must not show a stale reconstruction posture when canonical state exists");
+assert(!/STALE stored/i.test(listFromCanonical.posture), "case lists must not show a stale stored presentation when canonical state exists");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -405,3 +427,4 @@ console.log("- case report: presentation contract sections are used for the prin
 console.log("- v41 B5: letters, notices, and Q&A share approved presentation blocks");
 console.log(`- v4 A10: analysis pipeline follows the case plan (${lowPlan.case_complexity}, skip process=${!lowDecisions.processDocuments}, runtime review=${runtimeDecisions.independentReview})`);
 console.log(`- v4 A11: canonical approved state v${approvedState.version} stores ${approvedState.presentation?.hero.current_posture} and the analysis plan`);
+console.log(`- v4 A12: ${selected?.source} approved state wins over stale stored/live presentations (${listFromCanonical.posture}, ${caseListVersionLine(listFromCanonical)})`);

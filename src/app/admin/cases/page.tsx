@@ -3,8 +3,8 @@ import { db } from "@/lib/db";
 import { guardAdminPage } from "@/lib/admin-guard";
 import { PageHeader, Badge } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView, caseListVersionLine } from "@/lib/case-presentation-list";
 
 export const metadata = { title: "Cases" };
 
@@ -27,7 +27,7 @@ export default async function AdminCasesPage() {
       runs: { select: { id: true, stepResults: { select: { id: true }, take: 1 } } },
     },
   });
-  const presentations = await loadPresentationsByCaseIds(cases.map((item) => item.id));
+  const views = await loadApprovedViewsByCaseIds(cases.map((item) => item.id));
 
   const statusColor = (s: string) =>
     s === "analyzed" ? "green" : s === "consultant_recommended" ? "lime" : s === "analyzing" ? "blue" : "slate";
@@ -62,11 +62,13 @@ export default async function AdminCasesPage() {
             )}
             {cases.map((c) => {
               const usedAi = c.runs.some((r) => r.stepResults.length > 0);
-              const summary = caseListSummary({
-                status: c.status,
-                actionReadinessScore: c.actionReadinessScore,
-                presentation: presentations.get(c.id) ?? null,
-              });
+              const summary = caseListSummaryFromView(
+                {
+                  status: c.status,
+                  actionReadinessScore: c.actionReadinessScore,
+                },
+                views.get(c.id),
+              );
               return (
                 <tr key={c.id} className="hover:bg-slate-50">
                   <td className="max-w-xs px-4 py-3">
@@ -78,7 +80,10 @@ export default async function AdminCasesPage() {
                   <td className="px-4 py-3 text-slate-600">
                     {c.user ? `${c.user.firstName} ${c.user.lastName}`.trim() || c.user.email : <Badge>guest</Badge>}
                   </td>
-                  <td className="max-w-[14rem] px-4 py-3 text-slate-700">{summary.posture}</td>
+                  <td className="max-w-[14rem] px-4 py-3 text-slate-700">
+                    <p>{summary.posture}</p>
+                    {caseListVersionLine(summary) ? <p className="text-xs text-slate-400">{caseListVersionLine(summary)}</p> : null}
+                  </td>
                   <td className="max-w-[12rem] px-4 py-3 text-slate-700">{summary.nextActionTitle || "—"}</td>
                   <td className="px-4 py-3 text-slate-600">
                     {summary.deadlineTitle ? `${summary.deadlineTitle}${summary.deadlineDate ? ` (${summary.deadlineDate})` : ""}` : "—"}

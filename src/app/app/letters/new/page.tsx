@@ -2,8 +2,8 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PageHeader } from "@/components/ui";
 import { NewLetterForm } from "@/components/letter-forms";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
 import { formatCaseNumber } from "@/lib/case-number";
 
@@ -35,14 +35,16 @@ export default async function NewLetterPage({
     : cases.some((c) => c.id === linkedFromNotice)
       ? linkedFromNotice ?? ""
       : "";
-  const presentations = await loadPresentationsByCaseIds(defaultCaseId ? [defaultCaseId] : []);
+  const views = await loadApprovedViewsByCaseIds(defaultCaseId ? [defaultCaseId] : []);
   const selected = cases.find((c) => c.id === defaultCaseId) ?? null;
   const summary = selected
-    ? caseListSummary({
-        status: selected.status,
-        actionReadinessScore: selected.actionReadinessScore,
-        presentation: presentations.get(selected.id) ?? null,
-      })
+    ? caseListSummaryFromView(
+        {
+          status: selected.status,
+          actionReadinessScore: selected.actionReadinessScore,
+        },
+        views.get(selected.id),
+      )
     : null;
 
   return (

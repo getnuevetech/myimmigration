@@ -1,8 +1,8 @@
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PageHeader, ButtonLink, EmptyState } from "@/components/ui";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CaseListCard } from "@/components/case-list-card";
 
 export const metadata = { title: "My cases" };
@@ -14,7 +14,7 @@ export default async function CasesPage() {
     orderBy: { updatedAt: "desc" },
     include: { reconstruction: { select: { currentPosition: true } } },
   });
-  const presentations = await loadPresentationsByCaseIds(cases.map((item) => item.id));
+  const views = await loadApprovedViewsByCaseIds(cases.map((item) => item.id));
 
   return (
     <div>
@@ -39,12 +39,14 @@ export default async function CasesPage() {
               title={c.title}
               status={c.status}
               readinessScore={c.readinessScore}
-              summary={caseListSummary({
-                status: c.status,
-                actionReadinessScore: c.actionReadinessScore,
-                presentation: presentations.get(c.id) ?? null,
-                reconstructionPosition: c.reconstruction?.currentPosition,
-              })}
+              summary={caseListSummaryFromView(
+                {
+                  status: c.status,
+                  actionReadinessScore: c.actionReadinessScore,
+                  reconstructionPosition: c.reconstruction?.currentPosition,
+                },
+                views.get(c.id),
+              )}
             />
           ))}
         </div>

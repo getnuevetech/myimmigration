@@ -3,8 +3,8 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PageHeader, Card, CardBody } from "@/components/ui";
 import { QaChat } from "@/components/qa-chat";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
 import { formatCaseNumber } from "@/lib/case-number";
 
@@ -24,13 +24,15 @@ export default async function QaPage({
     take: 50,
   });
   const linkedCase = caseId ? cases.find((c) => c.id === caseId) ?? null : null;
-  const presentations = await loadPresentationsByCaseIds(linkedCase ? [linkedCase.id] : []);
+  const views = await loadApprovedViewsByCaseIds(linkedCase ? [linkedCase.id] : []);
   const summary = linkedCase
-    ? caseListSummary({
-        status: linkedCase.status,
-        actionReadinessScore: linkedCase.actionReadinessScore,
-        presentation: presentations.get(linkedCase.id) ?? null,
-      })
+    ? caseListSummaryFromView(
+        {
+          status: linkedCase.status,
+          actionReadinessScore: linkedCase.actionReadinessScore,
+        },
+        views.get(linkedCase.id),
+      )
     : null;
   const threads = await db.qaThread.findMany({
     where: { userId: user.id },

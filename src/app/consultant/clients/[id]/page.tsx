@@ -4,8 +4,8 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PageHeader, Card, CardBody, Badge, ProgressBar, EmptyState } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CaseListSummaryDetails } from "@/components/case-list-card";
 
 export default async function ClientWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,7 +27,7 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
   });
   if (!assignment) notFound();
   const client = assignment.user;
-  const presentations = await loadPresentationsByCaseIds(client.cases.map((item) => item.id));
+  const views = await loadApprovedViewsByCaseIds(client.cases.map((item) => item.id));
 
   return (
     <div>
@@ -47,12 +47,14 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
           ) : (
             <div className="space-y-4">
               {client.cases.map((c) => {
-                const summary = caseListSummary({
-                  status: c.status,
-                  actionReadinessScore: c.actionReadinessScore,
-                  presentation: presentations.get(c.id) ?? null,
-                  reconstructionPosition: c.reconstruction?.currentPosition,
-                });
+                const summary = caseListSummaryFromView(
+                  {
+                    status: c.status,
+                    actionReadinessScore: c.actionReadinessScore,
+                    reconstructionPosition: c.reconstruction?.currentPosition,
+                  },
+                  views.get(c.id),
+                );
                 return (
                 <Card key={c.id}>
                   <CardBody>

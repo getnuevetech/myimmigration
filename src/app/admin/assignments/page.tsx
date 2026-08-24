@@ -5,8 +5,8 @@ import { revokeAssignmentAction } from "@/actions/admin";
 import { AssignmentForm, AutoAssignToggle } from "@/components/admin/assignment-form";
 import { CONSULTANT_SPECIALTIES } from "@/lib/constants";
 import { getBoolSetting } from "@/lib/settings";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
 
 export const metadata = { title: "Assignments" };
 
@@ -39,11 +39,11 @@ export default async function AdminAssignmentsPage({
       orderBy: { updatedAt: "desc" },
     }),
   ]);
-  const assignmentPresentations = await loadPresentationsByCaseIds([
+  const assignmentViews = await loadApprovedViewsByCaseIds([
     ...flaggedCases.map((item) => item.id),
     ...assignments.map((item) => item.case?.id).filter((id): id is string => Boolean(id)),
   ]);
-  const flaggedPresentations = assignmentPresentations;
+  const flaggedViews = assignmentViews;
 
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
   const credentialName = (type: string | undefined) => {
@@ -77,11 +77,13 @@ export default async function AdminAssignmentsPage({
             <h2 className="mb-2 text-sm font-semibold text-slate-900">Cases flagged: consultant recommended</h2>
             <ul className="space-y-1 text-sm text-slate-600">
               {flaggedCases.map((c) => {
-                const summary = caseListSummary({
-                  status: c.status,
-                  actionReadinessScore: c.actionReadinessScore,
-                  presentation: flaggedPresentations.get(c.id) ?? null,
-                });
+                const summary = caseListSummaryFromView(
+                  {
+                    status: c.status,
+                    actionReadinessScore: c.actionReadinessScore,
+                  },
+                  flaggedViews.get(c.id),
+                );
                 return (
                 <li key={c.id} className={c.id === highlightCase ? "rounded bg-lime-50 px-2 py-1" : ""}>
                   <p className="font-medium text-slate-800">
@@ -115,11 +117,13 @@ export default async function AdminAssignmentsPage({
         {assignments.length === 0 && <p className="text-sm text-slate-400">No assignments yet.</p>}
         {assignments.map((a) => {
           const assignmentSummary = a.case
-            ? caseListSummary({
-                status: a.case.status,
-                actionReadinessScore: a.case.actionReadinessScore,
-                presentation: assignmentPresentations.get(a.case.id) ?? null,
-              })
+            ? caseListSummaryFromView(
+                {
+                  status: a.case.status,
+                  actionReadinessScore: a.case.actionReadinessScore,
+                },
+                assignmentViews.get(a.case.id),
+              )
             : null;
           return (
           <Card key={a.id}>

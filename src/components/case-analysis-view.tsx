@@ -6,9 +6,9 @@ import { startFormAction } from "@/actions/forms";
 import { InlineUpload } from "@/components/inline-upload";
 import { CaseUpload } from "@/components/case-upload";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { parsePresentationRecord } from "@/lib/case-presentation-contract";
 import { parseCanonicalApprovedState } from "@/lib/canonical-case-state";
 import { getLatestCaseVersion, listCaseVersions } from "@/lib/case-versioning";
+import { resolveCasePresentation } from "@/lib/case-presentation";
 import { CasePresentationView } from "@/components/case-presentation-view";
 import { CaseAnalysisPlanCard } from "@/components/case-analysis-plan-card";
 import { CaseVersionCard } from "@/components/case-version-card";
@@ -50,18 +50,12 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   });
   const isPreliminary = c.runs.length > 0 && aiStepCount === 0;
   const latestEvidenceAudit = c.evidenceAudits[0] ?? null;
-  const presentationRow = await db.casePresentation.findFirst({
-    where: { caseId },
-    orderBy: { createdAt: "desc" },
-  }).catch(() => null);
   const canonicalState = await db.canonicalCaseState.findUnique({
     where: { caseId },
     select: { approvedStateJson: true },
   }).catch(() => null);
   const approvedState = parseCanonicalApprovedState(canonicalState?.approvedStateJson);
-  const presentation = presentationRow
-    ? parsePresentationRecord(presentationRow)
-    : (approvedState?.presentation ?? null);
+  const presentation = await resolveCasePresentation(caseId).catch(() => null);
   const latestVersion = await getLatestCaseVersion(caseId).catch(() => null);
   const versionHistory = viewer.role === "admin" ? await listCaseVersions(caseId, 8).catch(() => []) : [];
   const versionCard = (
@@ -76,6 +70,9 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     orderBy: { createdAt: "desc" },
     select: { planJson: true },
   }).catch(() => null);
+  const analysisPlanJson = approvedState?.analysis_plan
+    ? JSON.stringify(approvedState.analysis_plan)
+    : analysisPlanRow?.planJson;
   let evidenceTimeline: { eventType?: string; title?: string; dateText?: string }[] = presentation?.timeline ?? [];
   let pendingEvidenceActions: string[] = presentation?.what_this_means.pending_actions ?? [];
   let conflicts: { topic: string; description: string; resolution?: string }[] =
@@ -187,7 +184,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           neededDocs={neededDocs}
           formI485Id={formI485?.id ?? null}
         />
-        {analysisPlanRow?.planJson ? <CaseAnalysisPlanCard planJson={analysisPlanRow.planJson} /> : null}
+        {analysisPlanJson ? <CaseAnalysisPlanCard planJson={analysisPlanJson} /> : null}
         {versionCard}
       </div>
     );
@@ -282,7 +279,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
             verified — your USCIS case record is usually the record that settles them.
           </div>
         )}
-        {analysisPlanRow?.planJson ? <CaseAnalysisPlanCard planJson={analysisPlanRow.planJson} /> : null}
+        {analysisPlanJson ? <CaseAnalysisPlanCard planJson={analysisPlanJson} /> : null}
         {versionCard}
         {professionalReviewRecommended && (
           <div className="rounded-xl border border-lime-300 bg-lime-50 px-4 py-3 text-sm text-lime-900">

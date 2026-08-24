@@ -3,8 +3,8 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PageHeader } from "@/components/ui";
 import { EditLetterForm } from "@/components/letter-forms";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
 
 export default async function LetterPage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,13 +15,15 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
     include: { case: { select: { id: true, status: true, actionReadinessScore: true } } },
   });
   if (!letter) notFound();
-  const presentations = letter.caseId ? await loadPresentationsByCaseIds([letter.caseId]) : new Map();
+  const views = letter.caseId ? await loadApprovedViewsByCaseIds([letter.caseId]) : new Map();
   const summary = letter.case
-    ? caseListSummary({
-        status: letter.case.status,
-        actionReadinessScore: letter.case.actionReadinessScore,
-        presentation: presentations.get(letter.case.id) ?? null,
-      })
+    ? caseListSummaryFromView(
+        {
+          status: letter.case.status,
+          actionReadinessScore: letter.case.actionReadinessScore,
+        },
+        views.get(letter.case.id),
+      )
     : null;
 
   return (

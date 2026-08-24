@@ -2,8 +2,8 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PageHeader, Card, CardBody, Badge, EmptyState, ButtonLink } from "@/components/ui";
 import { NoticeUpload } from "@/components/notice-upload";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
 import { formatCaseNumber } from "@/lib/case-number";
 
 export const metadata = { title: "USCIS notices" };
@@ -29,7 +29,7 @@ export default async function NoticesPage({
     }),
   ]);
   const defaultCaseId = cases.some((c) => c.id === caseId) ? caseId ?? "" : "";
-  const presentations = await loadPresentationsByCaseIds(
+  const views = await loadApprovedViewsByCaseIds(
     notices.map((n) => n.caseId).filter((id): id is string => Boolean(id)),
   );
 
@@ -55,11 +55,13 @@ export default async function NoticesPage({
           {notices.map((n) => {
             const steps: { title: string; description: string }[] = JSON.parse(n.nextStepsJson || "[]");
             const summary = n.case
-              ? caseListSummary({
-                  status: n.case.status,
-                  actionReadinessScore: n.case.actionReadinessScore,
-                  presentation: presentations.get(n.case.id) ?? null,
-                })
+              ? caseListSummaryFromView(
+                  {
+                    status: n.case.status,
+                    actionReadinessScore: n.case.actionReadinessScore,
+                  },
+                  views.get(n.case.id),
+                )
               : null;
             return (
               <Card key={n.id}>

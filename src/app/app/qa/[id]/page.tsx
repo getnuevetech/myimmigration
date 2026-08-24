@@ -3,8 +3,8 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PageHeader } from "@/components/ui";
 import { QaChat } from "@/components/qa-chat";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
 
 export default async function QaThreadPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,13 +18,15 @@ export default async function QaThreadPage({ params }: { params: Promise<{ id: s
     },
   });
   if (!thread) notFound();
-  const presentations = thread.caseId ? await loadPresentationsByCaseIds([thread.caseId]) : new Map();
+  const views = thread.caseId ? await loadApprovedViewsByCaseIds([thread.caseId]) : new Map();
   const summary = thread.case
-    ? caseListSummary({
-        status: thread.case.status,
-        actionReadinessScore: thread.case.actionReadinessScore,
-        presentation: presentations.get(thread.case.id) ?? null,
-      })
+    ? caseListSummaryFromView(
+        {
+          status: thread.case.status,
+          actionReadinessScore: thread.case.actionReadinessScore,
+        },
+        views.get(thread.case.id),
+      )
     : null;
 
   return (
