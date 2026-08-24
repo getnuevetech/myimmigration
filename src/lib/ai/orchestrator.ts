@@ -8,6 +8,7 @@ import { getNumberSetting } from "../settings";
 import { readUpload } from "../uploads";
 import { snapshotAuthorityForPlan } from "../authority-retrieval";
 import { buildPrimaryReasonerContext } from "../primary-reasoner-context";
+import { buildCaseActionGraph } from "../action-graph";
 import { verifyCaseProgress } from "../case-progress";
 import { ensureCaseVersion, finalizeCaseVersion } from "../case-versioning";
 import { createCaseAnalysisPlan } from "../case-orchestrator";
@@ -555,6 +556,10 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
 
   // Immediately verify path-step evidence (e.g. documents already uploaded at intake).
   await verifyCaseProgress(caseId);
+  await buildCaseActionGraph(caseId).catch(async (err) => {
+    const { logSystem } = await import("../syslog");
+    await logSystem("warning", "action_graph", "Could not build case action graph", String(err));
+  });
   if (caseVersionId) {
     await finalizeCaseVersion(caseVersionId, caseId, {
       status: needsConsultant ? "consultant_recommended" : "analyzed",
