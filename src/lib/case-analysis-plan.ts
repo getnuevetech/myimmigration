@@ -1,3 +1,5 @@
+import { authorityQueriesForInquiry, classifyImmigrationInquiry, INQUIRY_MODES } from "./immigration-inquiry";
+
 export const ANALYSIS_TASKS = {
   PROCESS_DOCUMENTS: "PROCESS_DOCUMENTS",
   RECONSTRUCT_CASE: "RECONSTRUCT_CASE",
@@ -16,7 +18,7 @@ export const ANALYSIS_TOOLS = {
 
 export const ANALYSIS_TASK_LABELS: Record<string, string> = {
   PROCESS_DOCUMENTS: "Document processing",
-  RECONSTRUCT_CASE: "Case reconstruction from the records",
+  RECONSTRUCT_CASE: "Situation reconstruction",
   RETRIEVE_AUTHORITY: "USCIS rule lookup",
   PRIMARY_REASONING: "Situation analysis",
   INDEPENDENT_REVIEW: "Second independent review",
@@ -64,6 +66,9 @@ export type AnalysisPlanInput = {
   unknowns: { key: string }[];
   evidenceAuditStatus?: string | null;
   evidenceFactKeys: string[];
+  situation?: string;
+  goal?: string;
+  inquiryMode?: "existing_case" | "open_options";
 };
 
 export type AnalysisIssueHint = {
@@ -122,16 +127,38 @@ export function buildAnalysisPlan(input: AnalysisPlanInput): AnalysisPlan {
   const docsToProcess = input.documents
     .filter((doc) => ["uploaded", "failed"].includes(doc.processingStatus))
     .map((doc) => doc.id);
+  const inquiry = input.inquiryMode
+    ? {
+        mode: input.inquiryMode,
+        themes: classifyImmigrationInquiry({
+          situation: input.situation,
+          goal: input.goal,
+          documentCount: input.documentCount,
+          factKeys: input.evidenceFactKeys,
+        }).themes,
+        hasUscisFileSignals: input.inquiryMode === INQUIRY_MODES.EXISTING_CASE,
+      }
+    : input.situation || input.goal
+      ? classifyImmigrationInquiry({
+          situation: input.situation,
+          goal: input.goal,
+          documentCount: input.documentCount,
+          factKeys: input.evidenceFactKeys,
+        })
+      : { mode: INQUIRY_MODES.EXISTING_CASE, themes: ["general" as const], hasUscisFileSignals: true };
+  const openOptions = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS;
   const highRiskIssue = input.issues.some((issue) =>
     issue.priority === "urgent" ||
     ["professional_review", "deadline_tracking", "uscis_notice_response"].includes(issue.issueType),
   );
-  const needsReview = input.evidenceAuditStatus === "needs_review" || input.evidenceAuditStatus === "blocked" || highRiskIssue;
-  const humanReview = input.evidenceAuditStatus === "blocked" || input.issues.some((issue) => issue.issueType === "professional_review");
+  const evidenceBlocked = input.evidenceAuditStatus === "blocked" && !openOptions;
+  const needsReview = input.evidenceAuditStatus === "needs_review" || evidenceBlocked || highRiskIssue;
+  const humanReview = evidenceBlocked || input.issues.some((issue) => issue.issueType === "professional_review");
   const complexity: AnalysisPlan["case_complexity"] =
-    humanReview ? "CRITICAL" : needsReview ? "HIGH" : input.unknowns.length > 0 || input.documentCount > 2 ? "MODERATE" : "LOW";
+    humanReview ? "CRITICAL" : needsReview ? "HIGH" : openOptions || input.unknowns.length > 0 || input.documentCount > 2 ? "MODERATE" : "LOW";
   const reasoningLevel: AnalysisPlan["reasoning_level"] =
-    humanReview ? "HIGH_RISK" : needsReview || input.unknowns.length > 0 ? "VERIFIED" : "DIRECT";
+    humanReview ? "HIGH_RISK" : needsReview || openOptions || input.unknowns.length > 0 ? "VERIFIED" : "DIRECT";
+  const questionsNeeded = input.unknowns.length > 0 || openOptions;
 
   return {
     case_complexity: complexity,
@@ -141,13 +168,13 @@ export function buildAnalysisPlan(input: AnalysisPlanInput): AnalysisPlan {
       ANALYSIS_TASKS.RETRIEVE_AUTHORITY,
       ANALYSIS_TASKS.PRIMARY_REASONING,
       needsReview ? ANALYSIS_TASKS.INDEPENDENT_REVIEW : "",
-      input.unknowns.length ? ANALYSIS_TASKS.QUESTION_PLANNING : "",
+      questionsNeeded ? ANALYSIS_TASKS.QUESTION_PLANNING : "",
       ANALYSIS_TASKS.PRESENT_APPROVED_STATE,
     ]),
     tasks_skipped: [
-      ...(docsToProcess.length ? [] : [{ task: ANALYSIS_TASKS.PROCESS_DOCUMENTS, reason: "No stale or failed documents require processing." }]),
+      ...(docsToProcess.length ? [] : [{ task: ANALYSIS_TASKS.PROCESS_DOCUMENTS, reason: openOptions ? "No USCIS documents were uploaded, so document processing is not required for an options review." : "No stale or failed documents require processing." }]),
       ...(needsReview ? [] : [{ task: ANALYSIS_TASKS.INDEPENDENT_REVIEW, reason: "No high-risk issue, audit block, or material conflict detected." }]),
-      ...(input.unknowns.length ? [] : [{ task: ANALYSIS_TASKS.QUESTION_PLANNING, reason: "No open unknowns need follow-up questions." }]),
+      ...(questionsNeeded ? [] : [{ task: ANALYSIS_TASKS.QUESTION_PLANNING, reason: "No open unknowns need follow-up questions." }]),
     ],
     documents_to_process: docsToProcess,
     deterministic_tools: uniq([
@@ -155,12 +182,15 @@ export function buildAnalysisPlan(input: AnalysisPlanInput): AnalysisPlan {
       ANALYSIS_TOOLS.READINESS_SPLIT,
       ANALYSIS_TOOLS.ACTION_GRAPH,
     ]),
-    authority_queries_needed: uniq(input.evidenceFactKeys.filter((key) => ["form_type", "notice_type", "response_deadline"].includes(key))),
+    authority_queries_needed: uniq([
+      ...input.evidenceFactKeys.filter((key) => ["form_type", "notice_type", "response_deadline"].includes(key)),
+      ...(openOptions ? authorityQueriesForInquiry(inquiry) : []),
+    ]),
     reasoning_level: reasoningLevel,
     review_required: needsReview,
     human_review_required: humanReview,
-    questions_may_be_needed: input.unknowns.length > 0,
-    blocking_conditions: input.evidenceAuditStatus === "blocked" ? ["Evidence audit is blocked."] : [],
+    questions_may_be_needed: questionsNeeded,
+    blocking_conditions: evidenceBlocked ? ["Evidence audit is blocked."] : [],
     stop_conditions: input.caseStatus === "closed" ? ["Case is closed."] : [],
   };
 }

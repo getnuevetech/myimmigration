@@ -36,7 +36,7 @@ export default async function GuestResultPage({
           <span className="mx-auto block h-4 w-4 animate-ping rounded-full bg-lime-500" />
           <h1 className="mt-6 text-2xl font-extrabold text-slate-900">Analyzing your situation…</h1>
           <p className="mt-2 text-slate-600">
-            We&apos;re reading your summary, goal, and documents. This page updates automatically — most analyses finish in
+            We&apos;re reading your summary and goal{c.documents.length ? ", and any documents you uploaded" : ""}. This page updates automatically — most analyses finish in
             under a minute.
           </p>
           <AutoRefresh />

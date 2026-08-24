@@ -83,7 +83,7 @@ export default async function DashboardPage() {
           {cases.length === 0 ? (
             <EmptyState
               title="No cases yet"
-              body="Tell us about your immigration situation and we'll break it into clear issues and next steps."
+              body="Tell us about your immigration situation — with a USCIS case, a letter, or with no filing yet — and we'll break it into clear options and next steps."
               action={<ButtonLink href="/app/cases/new">Start your first case</ButtonLink>}
             />
           ) : (

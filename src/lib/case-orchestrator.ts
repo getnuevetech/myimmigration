@@ -23,6 +23,8 @@ export async function createCaseAnalysisPlan(caseId: string, versionId?: string 
     unknowns: c.unknowns,
     evidenceAuditStatus: c.evidenceAudits[0]?.status ?? null,
     evidenceFactKeys: c.evidenceFacts.map((fact) => fact.key),
+    situation: c.situation,
+    goal: c.goal,
   });
 
   return db.caseAnalysisPlan.create({
