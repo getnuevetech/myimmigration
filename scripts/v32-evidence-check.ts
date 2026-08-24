@@ -10,6 +10,16 @@ import { assemblePresentationContract, evidenceStrengthFromScores, parsePresenta
 import { caseListActionLine, caseListEvidenceLine, caseListSummary } from "../src/lib/case-presentation-list";
 import { presentationReportSections } from "../src/lib/case-report-presentation";
 import { presentationActionStatus, presentationEvidenceGateLabel, presentationStepCta } from "../src/lib/case-presentation-ui";
+import {
+  ANALYSIS_TASKS,
+  analysisPlanSummary,
+  analysisRunDecisions,
+  buildAnalysisPlan,
+  buildPlanExecution,
+  issuesNeedIndependentReview,
+  runtimeQuestionAddition,
+  runtimeReviewAddition,
+} from "../src/lib/case-analysis-plan";
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, extractUniversalDocumentIntelligence, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -282,6 +292,65 @@ const dedupedSteps = withPresentationNoticeSteps(
 );
 assert(dedupedSteps.length === 1, "notice explanations must not duplicate the approved next action");
 
+const lowPlan = buildAnalysisPlan({
+  caseStatus: "analyzed",
+  documentCount: 1,
+  documents: [{ id: "doc-1", processingStatus: "extracted" }],
+  issues: [],
+  unknowns: [],
+  evidenceAuditStatus: "pass",
+  evidenceFactKeys: ["form_type"],
+});
+assert(!lowPlan.tasks_required.includes(ANALYSIS_TASKS.PROCESS_DOCUMENTS), "extracted documents should skip PROCESS_DOCUMENTS");
+assert(!lowPlan.tasks_required.includes(ANALYSIS_TASKS.INDEPENDENT_REVIEW), "low-risk cases should skip independent review");
+assert(!lowPlan.tasks_required.includes(ANALYSIS_TASKS.QUESTION_PLANNING), "cases without unknowns should skip question planning");
+assert(lowPlan.tasks_required.includes(ANALYSIS_TASKS.PRIMARY_REASONING), "analysis plan should still run primary reasoning");
+assert(lowPlan.deterministic_tools.includes("ACTION_GRAPH"), "analysis plan should include the action graph tool");
+const lowDecisions = analysisRunDecisions(lowPlan);
+assert(lowDecisions.processDocuments === false, "pipeline must not process already-extracted documents");
+assert(lowDecisions.independentReview === false, "pipeline must not run independent review when the plan skipped it");
+assert(lowDecisions.primaryReasoning === true, "pipeline must run primary reasoning when the plan requires it");
+
+const blockedPlan = buildAnalysisPlan({
+  caseStatus: "analyzed",
+  documentCount: 1,
+  documents: [{ id: "doc-1", processingStatus: "extracted" }],
+  issues: [],
+  unknowns: [],
+  evidenceAuditStatus: "blocked",
+  evidenceFactKeys: [],
+});
+assert(blockedPlan.blocking_conditions.length > 0, "blocked evidence should record a blocking condition");
+assert(analysisRunDecisions(blockedPlan).primaryReasoning === false, "blocked evidence must not invent a new analysis");
+assert(analysisRunDecisions(blockedPlan).reconstructCase === true, "blocked evidence should still reconstruct the case");
+
+const closedPlan = buildAnalysisPlan({
+  caseStatus: "closed",
+  documentCount: 0,
+  documents: [],
+  issues: [],
+  unknowns: [],
+  evidenceFactKeys: [],
+});
+assert(closedPlan.stop_conditions.length > 0, "closed cases should record a stop condition");
+assert(analysisRunDecisions(closedPlan).stop === true, "closed cases must stop the analysis pipeline");
+assert(analysisRunDecisions(closedPlan).presentApprovedState === false, "closed cases must not run presentation AI");
+
+assert(issuesNeedIndependentReview([{ professional_review: "required" }]) === true, "required professional review should trigger independent review");
+const reviewAdd = runtimeReviewAddition(lowPlan, [{ issue_type: "professional_review" }]);
+assert(reviewAdd?.task === ANALYSIS_TASKS.INDEPENDENT_REVIEW, "pipeline should add independent review when a finding requires it");
+const questionAdd = runtimeQuestionAddition(lowPlan, 2);
+assert(questionAdd?.task === ANALYSIS_TASKS.QUESTION_PLANNING, "pipeline should add question planning when unknowns remain");
+const runtimeDecisions = analysisRunDecisions(lowPlan, { issues: [{ professional_review: "required" }], openUnknownCount: 2 });
+assert(runtimeDecisions.independentReview === true, "runtime professional-review findings must enable independent review");
+assert(runtimeDecisions.questionPlanning === true, "runtime unknowns must enable question planning");
+const execution = buildPlanExecution(lowPlan, runtimeDecisions, { runtimeAdditions: [reviewAdd!, questionAdd!] });
+assert(execution.tasks_executed.includes(ANALYSIS_TASKS.INDEPENDENT_REVIEW), "execution record must include runtime independent review");
+assert(!execution.tasks_skipped.some((item) => item.task === ANALYSIS_TASKS.INDEPENDENT_REVIEW), "runtime independent review must not stay in the skipped list");
+const summary = analysisPlanSummary({ ...lowPlan, execution });
+assert(summary.executedLabels.includes("Ran a second independent review"), "analysis plan summary should use customer-facing task labels");
+assert(summary.complexityLabel === "Straightforward", "low-complexity plans should use a customer-facing complexity label");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -298,3 +367,4 @@ console.log("- presentation UX: action statuses and evidence-gate labels are cus
 console.log(`- case list: ${listFromContract.posture}, next ${listFromContract.nextActionTitle}`);
 console.log("- case report: presentation contract sections are used for the printable report");
 console.log("- v41 B5: letters, notices, and Q&A share approved presentation blocks");
+console.log(`- v4 A10: analysis pipeline follows the case plan (${lowPlan.case_complexity}, skip process=${!lowDecisions.processDocuments}, runtime review=${runtimeDecisions.independentReview})`);

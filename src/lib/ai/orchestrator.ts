@@ -12,7 +12,19 @@ import { buildCaseActionGraph } from "../action-graph";
 import { buildCasePresentation, getCasePresentationBrief } from "../case-presentation";
 import { verifyCaseProgress } from "../case-progress";
 import { ensureCaseVersion, finalizeCaseVersion } from "../case-versioning";
-import { createCaseAnalysisPlan } from "../case-orchestrator";
+import {
+  analysisRunDecisions,
+  buildPlanExecution,
+  parseAnalysisPlan,
+  runtimeQuestionAddition,
+  runtimeReviewAddition,
+  withPlanExecution,
+  type AnalysisIssueHint,
+  type AnalysisPlan,
+} from "../case-analysis-plan";
+import { createCaseAnalysisPlan, finishAnalysisPlan, markAnalysisPlanRunning } from "../case-orchestrator";
+import { planCaseQuestions } from "../question-planner";
+import { processDocumentsEvidence } from "../evidence/document-processing";
 import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
 import { getCaseEvidenceBrief } from "../evidence/brief";
 import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
@@ -105,6 +117,8 @@ export type StageOutcome = {
   conflicts: Conflict[];
   usedAi: boolean;
 };
+
+const EMPTY_STAGE: StageOutcome = { stepOutputs: [], merged: {}, conflicts: [], usedAi: false };
 
 /**
  * Run one pipeline stage: every enabled step (each an admin-selected provider
@@ -244,21 +258,34 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
   let caseVersionId: string | null = null;
   let analysisPlanId: string | null = null;
-  let analysisPlan: Awaited<ReturnType<typeof createCaseAnalysisPlan>> | null = null;
+  let parsedPlan: AnalysisPlan | null = null;
   try {
     caseVersionId = (await ensureCaseVersion(caseId, "analysis")).id;
-    analysisPlan = await createCaseAnalysisPlan(caseId, caseVersionId);
+    const analysisPlan = await createCaseAnalysisPlan(caseId, caseVersionId);
     analysisPlanId = analysisPlan?.id ?? null;
-    if (analysisPlan?.planJson) {
-      const parsedPlan = JSON.parse(analysisPlan.planJson) as { authority_queries_needed?: string[] };
-      if (Array.isArray(parsedPlan.authority_queries_needed) && parsedPlan.authority_queries_needed.length > 0) {
-        await snapshotAuthorityForPlan(caseId, parsedPlan.authority_queries_needed);
-      }
-    }
+    parsedPlan = parseAnalysisPlan(analysisPlan?.planJson);
+    if (analysisPlanId) await markAnalysisPlanRunning(analysisPlanId).catch(() => null);
   } catch (err) {
     const { logSystem } = await import("../syslog");
     await logSystem("warning", "case_versioning", "Could not create case version or analysis plan before analysis", String(err));
   }
+  let decisions = parsedPlan
+    ? analysisRunDecisions(parsedPlan)
+    : analysisRunDecisions({
+        case_complexity: "MODERATE",
+        tasks_required: ["RECONSTRUCT_CASE", "RETRIEVE_AUTHORITY", "PRIMARY_REASONING", "PRESENT_APPROVED_STATE"],
+        tasks_skipped: [],
+        documents_to_process: [],
+        deterministic_tools: ["EVIDENCE_RECONCILIATION", "READINESS_SPLIT", "ACTION_GRAPH"],
+        authority_queries_needed: [],
+        reasoning_level: "VERIFIED",
+        review_required: true,
+        human_review_required: false,
+        questions_may_be_needed: false,
+        blocking_conditions: [],
+        stop_conditions: [],
+      });
+  const runtimeAdditions: { task: string; reason: string }[] = [];
 
   // Clear previous results for a clean re-run.
   await db.issue.deleteMany({ where: { caseId } });
@@ -306,6 +333,19 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
     } catch { /* file missing — skip */ }
   }
 
+  if (decisions.processDocuments && parsedPlan?.documents_to_process.length) {
+    await processDocumentsEvidence(parsedPlan.documents_to_process).catch(async (err) => {
+      const { logSystem } = await import("../syslog");
+      await logSystem("warning", "case_orchestrator", "Plan-driven document processing failed", String(err));
+    });
+  }
+  if (decisions.retrieveAuthority && (parsedPlan?.authority_queries_needed.length ?? 0) > 0) {
+    await snapshotAuthorityForPlan(caseId, parsedPlan?.authority_queries_needed ?? []).catch(async (err) => {
+      const { logSystem } = await import("../syslog");
+      await logSystem("warning", "case_orchestrator", "Plan-driven authority retrieval failed", String(err));
+    });
+  }
+
   async function stageRun(stageKey: string, vars: Record<string, string>, sequentialContext = false, stageMedia?: MediaAttachment[], roles?: string[]) {
     const run = await db.analysisRun.create({ data: { caseId, stageKey, status: "running" } });
     const outcome = await runStage(stageKey, vars, { runId: run.id, sequentialContext, media: stageMedia, roles });
@@ -324,14 +364,17 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
     return outcome;
   }
 
-  // Layer 2/3: summary, goal, and document analysis (multi-model, admin-selected).
-  // These stages do not depend on each other, so run them together. Within each
-  // stage, only stages that request sequential context keep provider calls serial.
-  const [summaryOut, goalOut, documentOut] = await Promise.all([
-    stageRun(STAGE_KEYS.SUMMARY, { input: c.situation }, true),
-    stageRun(STAGE_KEYS.GOAL, { input: c.goal }, true),
-    c.documents.length ? stageRun(STAGE_KEYS.DOCUMENT, { input: docText }, false, media) : Promise.resolve(null),
-  ]);
+  // Layer 2/3: summary, goal, and document analysis follow the case analysis plan.
+  const skipAi = decisions.stop;
+  const [summaryOut, goalOut, documentOut] = skipAi
+    ? [EMPTY_STAGE, EMPTY_STAGE, null]
+    : await Promise.all([
+        decisions.reconstructCase ? stageRun(STAGE_KEYS.SUMMARY, { input: c.situation }, true) : Promise.resolve(EMPTY_STAGE),
+        decisions.reconstructCase ? stageRun(STAGE_KEYS.GOAL, { input: c.goal }, true) : Promise.resolve(EMPTY_STAGE),
+        decisions.processDocuments && c.documents.length
+          ? stageRun(STAGE_KEYS.DOCUMENT, { input: docText }, false, media)
+          : Promise.resolve(null),
+      ]);
 
   // Documents read by a vision model count as examined evidence.
   if (documentOut?.usedAi && media.length > 0) {
@@ -380,18 +423,22 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
         events: evidenceGate.events,
       }
     : null;
-  const primaryReasonerContext = await buildPrimaryReasonerContext(caseId).catch(async (err) => {
-    const { logSystem } = await import("../syslog");
-    await logSystem("warning", "primary_reasoner", "Could not build primary reasoner context", String(err));
-    return null;
-  });
+  const primaryReasonerContext = decisions.reconstructCase
+    ? await buildPrimaryReasonerContext(caseId).catch(async (err) => {
+        const { logSystem } = await import("../syslog");
+        await logSystem("warning", "primary_reasoner", "Could not build primary reasoner context", String(err));
+        return null;
+      })
+    : null;
 
   // Layer 4: situation analysis grounded in the USCIS knowledge base.
-  const knowledge = await retrieveKnowledge(`${c.situation} ${c.goal} ${docText}`);
+  const knowledge = decisions.retrieveAuthority
+    ? await retrieveKnowledge(`${c.situation} ${c.goal} ${docText}`)
+    : "";
   let situationMerged: Json = {};
   let situationConflicts: Conflict[] = [];
-  if (usedAi) {
-    const situationRoles = analysisPlan?.reviewRequired ? undefined : ["analyst"];
+  if (usedAi && decisions.primaryReasoning) {
+    const situationRoles = decisions.independentReview ? undefined : ["analyst"];
     const situationOut = await stageRun(STAGE_KEYS.SITUATION, {
       facts: JSON.stringify({ extracted_facts: facts, evidence_gate: evidenceGateJson }),
       documents: JSON.stringify({
@@ -405,12 +452,35 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
     }, false, undefined, situationRoles);
     situationMerged = situationOut.merged;
     situationConflicts = situationOut.conflicts;
+    const situationIssues = Array.isArray((situationMerged as Json).issues)
+      ? ((situationMerged as Json).issues as AnalysisIssueHint[])
+      : [];
+    const reviewAdd = parsedPlan ? runtimeReviewAddition(parsedPlan, situationIssues) : null;
+    if (reviewAdd && !decisions.independentReview) {
+      runtimeAdditions.push(reviewAdd);
+      const reviewerOut = await stageRun(STAGE_KEYS.SITUATION, {
+        facts: JSON.stringify({ extracted_facts: facts, evidence_gate: evidenceGateJson }),
+        documents: JSON.stringify({
+          model_document_extraction: documentOut?.merged ?? null,
+          compiled_evidence_gate: evidenceGateJson,
+          evidence_gate_instructions: evidenceGate?.promptText ?? "",
+          primary_reasoner_context: primaryReasonerContext,
+        }),
+        knowledge: knowledge || "(no matching reference material)",
+        goal: JSON.stringify(goalFacts),
+      }, false, undefined, ["reviewer"]);
+      if (reviewerOut.merged && Object.keys(reviewerOut.merged).length > 0) {
+        situationMerged = reviewerOut.merged;
+        situationConflicts = [...situationConflicts, ...reviewerOut.conflicts];
+      }
+      if (parsedPlan) decisions = analysisRunDecisions(parsedPlan, { issues: situationIssues });
+    }
   }
 
   // Layer 5 presentation: a single AI converts internal analysis to structured
   // data; the UI renders it deterministically. Falls back to rule-based output.
   let presentation: Json | null = null;
-  if (usedAi) {
+  if (usedAi && decisions.presentApprovedState) {
     const presenterOut = await stageRun(STAGE_KEYS.PRESENTER, {
       input: JSON.stringify({
         facts,
@@ -559,14 +629,30 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
 
   // Immediately verify path-step evidence (e.g. documents already uploaded at intake).
   await verifyCaseProgress(caseId);
-  await buildCaseActionGraph(caseId).catch(async (err) => {
-    const { logSystem } = await import("../syslog");
-    await logSystem("warning", "action_graph", "Could not build case action graph", String(err));
-  });
-  await buildCasePresentation(caseId, caseVersionId).catch(async (err) => {
-    const { logSystem } = await import("../syslog");
-    await logSystem("warning", "case_presentation", "Could not build case presentation contract", String(err));
-  });
+  if (decisions.actionGraph) {
+    await buildCaseActionGraph(caseId).catch(async (err) => {
+      const { logSystem } = await import("../syslog");
+      await logSystem("warning", "action_graph", "Could not build case action graph", String(err));
+    });
+  }
+  if (decisions.presentApprovedState) {
+    await buildCasePresentation(caseId, caseVersionId).catch(async (err) => {
+      const { logSystem } = await import("../syslog");
+      await logSystem("warning", "case_presentation", "Could not build case presentation contract", String(err));
+    });
+  }
+  const openUnknownCount = await db.caseUnknown.count({ where: { caseId, status: "open" } }).catch(() => 0);
+  const questionAdd = parsedPlan ? runtimeQuestionAddition(parsedPlan, openUnknownCount) : null;
+  if (questionAdd) {
+    runtimeAdditions.push(questionAdd);
+    if (parsedPlan) decisions = analysisRunDecisions(parsedPlan, { openUnknownCount });
+  }
+  if (decisions.questionPlanning) {
+    await planCaseQuestions(caseId).catch(async (err) => {
+      const { logSystem } = await import("../syslog");
+      await logSystem("warning", "question_planner", "Could not plan follow-up questions", String(err));
+    });
+  }
   if (caseVersionId) {
     await finalizeCaseVersion(caseVersionId, caseId, {
       status: needsConsultant ? "consultant_recommended" : "analyzed",
@@ -587,8 +673,11 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       await logSystem("warning", "case_versioning", "Could not finalize case version after analysis", String(err));
     });
   }
-  if (analysisPlanId) {
-    await db.caseAnalysisPlan.update({ where: { id: analysisPlanId }, data: { status: "complete" } }).catch(async (err) => {
+  if (analysisPlanId && parsedPlan) {
+    const execution = buildPlanExecution(parsedPlan, decisions, { runtimeAdditions });
+    const finished = withPlanExecution(parsedPlan, execution);
+    const status = decisions.stop ? "skipped" : decisions.blocked ? "blocked" : "complete";
+    await finishAnalysisPlan(analysisPlanId, finished, status).catch(async (err) => {
       const { logSystem } = await import("../syslog");
       await logSystem("warning", "case_orchestrator", "Could not mark analysis plan complete", String(err));
     });

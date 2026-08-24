@@ -1,24 +1,6 @@
 import "server-only";
 import { db } from "./db";
-
-type AnalysisPlan = {
-  case_complexity: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
-  tasks_required: string[];
-  tasks_skipped: { task: string; reason: string }[];
-  documents_to_process: string[];
-  deterministic_tools: string[];
-  authority_queries_needed: string[];
-  reasoning_level: "DIRECT" | "VERIFIED" | "HIGH_RISK";
-  review_required: boolean;
-  human_review_required: boolean;
-  questions_may_be_needed: boolean;
-  blocking_conditions: string[];
-  stop_conditions: string[];
-};
-
-function uniq(values: string[]): string[] {
-  return Array.from(new Set(values.filter(Boolean)));
-}
+import { buildAnalysisPlan, parseAnalysisPlan, type AnalysisPlan } from "./case-analysis-plan";
 
 export async function createCaseAnalysisPlan(caseId: string, versionId?: string | null) {
   const c = await db.case.findUnique({
@@ -33,57 +15,41 @@ export async function createCaseAnalysisPlan(caseId: string, versionId?: string 
   });
   if (!c) return null;
 
-  const latestAudit = c.evidenceAudits[0] ?? null;
-  const docsToProcess = c.documents
-    .filter((doc) => ["uploaded", "failed"].includes(doc.processingStatus))
-    .map((doc) => doc.id);
-  const highRiskIssue = c.issues.some((issue) =>
-    issue.priority === "urgent" ||
-    ["professional_review", "deadline_tracking", "uscis_notice_response"].includes(issue.issueType),
-  );
-  const needsReview = latestAudit?.status === "needs_review" || latestAudit?.status === "blocked" || highRiskIssue;
-  const humanReview = latestAudit?.status === "blocked" || c.issues.some((issue) => issue.issueType === "professional_review");
-  const complexity: AnalysisPlan["case_complexity"] =
-    humanReview ? "CRITICAL" : needsReview ? "HIGH" : c.unknowns.length > 0 || c.documents.length > 2 ? "MODERATE" : "LOW";
-  const reasoningLevel: AnalysisPlan["reasoning_level"] =
-    humanReview ? "HIGH_RISK" : needsReview || c.unknowns.length > 0 ? "VERIFIED" : "DIRECT";
-
-  const plan: AnalysisPlan = {
-    case_complexity: complexity,
-    tasks_required: uniq([
-      docsToProcess.length ? "PROCESS_DOCUMENTS" : "",
-      "RECONSTRUCT_CASE",
-      "RETRIEVE_AUTHORITY",
-      "PRIMARY_REASONING",
-      needsReview ? "INDEPENDENT_REVIEW" : "",
-      c.unknowns.length ? "QUESTION_PLANNING" : "",
-      "PRESENT_APPROVED_STATE",
-    ]),
-    tasks_skipped: [
-      ...(docsToProcess.length ? [] : [{ task: "PROCESS_DOCUMENTS", reason: "No stale or failed documents require processing." }]),
-      ...(needsReview ? [] : [{ task: "INDEPENDENT_REVIEW", reason: "No high-risk issue, audit block, or material conflict detected." }]),
-    ],
-    documents_to_process: docsToProcess,
-    deterministic_tools: uniq(["EVIDENCE_RECONCILIATION", "READINESS_SPLIT", c.issues.length ? "ACTION_GRAPH" : ""]),
-    authority_queries_needed: uniq(c.evidenceFacts.map((fact) => fact.key).filter((key) => ["form_type", "notice_type", "response_deadline"].includes(key))),
-    reasoning_level: reasoningLevel,
-    review_required: needsReview,
-    human_review_required: humanReview,
-    questions_may_be_needed: c.unknowns.length > 0,
-    blocking_conditions: latestAudit?.status === "blocked" ? ["Evidence audit is blocked."] : [],
-    stop_conditions: c.status === "closed" ? ["Case is closed."] : [],
-  };
+  const plan = buildAnalysisPlan({
+    caseStatus: c.status,
+    documentCount: c.documents.length,
+    documents: c.documents,
+    issues: c.issues,
+    unknowns: c.unknowns,
+    evidenceAuditStatus: c.evidenceAudits[0]?.status ?? null,
+    evidenceFactKeys: c.evidenceFacts.map((fact) => fact.key),
+  });
 
   return db.caseAnalysisPlan.create({
     data: {
       caseId,
       versionId: versionId ?? null,
-      complexity,
-      reasoningLevel,
-      reviewRequired: needsReview,
-      humanReviewRequired: humanReview,
+      complexity: plan.case_complexity,
+      reasoningLevel: plan.reasoning_level,
+      reviewRequired: plan.review_required,
+      humanReviewRequired: plan.human_review_required,
       planJson: JSON.stringify(plan),
       status: "planned",
     },
   });
+}
+
+export async function markAnalysisPlanRunning(planId: string) {
+  return db.caseAnalysisPlan.update({ where: { id: planId }, data: { status: "running" } });
+}
+
+export async function finishAnalysisPlan(planId: string, plan: AnalysisPlan, status: "complete" | "skipped" | "blocked") {
+  return db.caseAnalysisPlan.update({
+    where: { id: planId },
+    data: { status, planJson: JSON.stringify(plan) },
+  });
+}
+
+export function planFromRecord(planJson: string): AnalysisPlan | null {
+  return parseAnalysisPlan(planJson);
 }
