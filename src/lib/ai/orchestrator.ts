@@ -11,7 +11,9 @@ import { buildPrimaryReasonerContext } from "../primary-reasoner-context";
 import { buildCaseActionGraph } from "../action-graph";
 import { buildCasePresentation, getCasePresentationBrief } from "../case-presentation";
 import { verifyCaseProgress } from "../case-progress";
-import { ensureCaseVersion, finalizeCaseVersion } from "../case-versioning";
+import { ensureCaseVersion, failCaseVersion, finalizeCaseVersion } from "../case-versioning";
+import { buildCanonicalApprovedState } from "../canonical-case-state";
+import { parsePresentationRecord } from "../case-presentation-contract";
 import {
   analysisRunDecisions,
   buildPlanExecution,
@@ -255,12 +257,16 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
     include: { documents: { where: { deletedAt: null } } },
   });
   if (!c) return;
+  const previousStatus = c.status === "analyzing" ? "needs_info" : c.status;
   await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
   let caseVersionId: string | null = null;
+  let caseVersion: Awaited<ReturnType<typeof ensureCaseVersion>> | null = null;
+  try {
   let analysisPlanId: string | null = null;
   let parsedPlan: AnalysisPlan | null = null;
   try {
-    caseVersionId = (await ensureCaseVersion(caseId, "analysis")).id;
+    caseVersion = await ensureCaseVersion(caseId, "analysis");
+    caseVersionId = caseVersion.id;
     const analysisPlan = await createCaseAnalysisPlan(caseId, caseVersionId);
     analysisPlanId = analysisPlan?.id ?? null;
     parsedPlan = parseAnalysisPlan(analysisPlan?.planJson);
@@ -635,11 +641,14 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       await logSystem("warning", "action_graph", "Could not build case action graph", String(err));
     });
   }
+  let presentationContract: ReturnType<typeof parsePresentationRecord> | null = null;
   if (decisions.presentApprovedState) {
-    await buildCasePresentation(caseId, caseVersionId).catch(async (err) => {
+    const presentationRow = await buildCasePresentation(caseId, caseVersionId).catch(async (err) => {
       const { logSystem } = await import("../syslog");
       await logSystem("warning", "case_presentation", "Could not build case presentation contract", String(err));
+      return null;
     });
+    presentationContract = presentationRow ? parsePresentationRecord(presentationRow) : null;
   }
   const openUnknownCount = await db.caseUnknown.count({ where: { caseId, status: "open" } }).catch(() => 0);
   const questionAdd = parsedPlan ? runtimeQuestionAddition(parsedPlan, openUnknownCount) : null;
@@ -653,34 +662,47 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       await logSystem("warning", "question_planner", "Could not plan follow-up questions", String(err));
     });
   }
-  if (caseVersionId) {
-    await finalizeCaseVersion(caseVersionId, caseId, {
-      status: needsConsultant ? "consultant_recommended" : "analyzed",
-      readinessScore: readiness,
-      evidenceGate: evidenceGateJson,
-      issues: issues.map((issue) => ({
-        issue_type: issue.issue_type ?? "other",
-        title: issue.title ?? issue.issue_identified ?? "",
-        next_action: issue.next_action ?? "",
-        evidence_status: issue.evidence_status ?? "needs_verification",
-      })),
-      path_steps: pathSteps.map((step) => ({
-        title: step.title ?? "",
-        action_key: step.action_key ?? "",
-      })),
-    }).catch(async (err) => {
+  let finishedPlan = parsedPlan;
+  if (analysisPlanId && parsedPlan) {
+    const execution = buildPlanExecution(parsedPlan, decisions, { runtimeAdditions });
+    finishedPlan = withPlanExecution(parsedPlan, execution);
+    const status = decisions.stop ? "skipped" : decisions.blocked ? "blocked" : "complete";
+    await finishAnalysisPlan(analysisPlanId, finishedPlan, status).catch(async (err) => {
+      const { logSystem } = await import("../syslog");
+      await logSystem("warning", "case_orchestrator", "Could not mark analysis plan complete", String(err));
+    });
+  }
+  if (caseVersion) {
+    const scores = await db.case.findUnique({
+      where: { id: caseId },
+      select: { evidenceAvailableScore: true, evidenceProcessedScore: true, actionReadinessScore: true },
+    });
+    const canonical = await db.canonicalCaseState.findUnique({ where: { caseId }, select: { evidenceSnapshotHash: true } });
+    await finalizeCaseVersion(
+      caseVersion.id,
+      caseId,
+      buildCanonicalApprovedState({
+        version: caseVersion.version,
+        reason: caseVersion.reason,
+        pipelineConfigVersion: caseVersion.pipelineConfigVersion,
+        evidenceSnapshotHash: canonical?.evidenceSnapshotHash ?? "",
+        status: needsConsultant ? "consultant_recommended" : "analyzed",
+        readinessScore: readiness,
+        evidenceAvailableScore: scores?.evidenceAvailableScore,
+        evidenceProcessedScore: scores?.evidenceProcessedScore,
+        actionReadinessScore: scores?.actionReadinessScore,
+        presentation: presentationContract,
+        analysisPlan: finishedPlan,
+      }),
+    ).catch(async (err) => {
       const { logSystem } = await import("../syslog");
       await logSystem("warning", "case_versioning", "Could not finalize case version after analysis", String(err));
     });
   }
-  if (analysisPlanId && parsedPlan) {
-    const execution = buildPlanExecution(parsedPlan, decisions, { runtimeAdditions });
-    const finished = withPlanExecution(parsedPlan, execution);
-    const status = decisions.stop ? "skipped" : decisions.blocked ? "blocked" : "complete";
-    await finishAnalysisPlan(analysisPlanId, finished, status).catch(async (err) => {
-      const { logSystem } = await import("../syslog");
-      await logSystem("warning", "case_orchestrator", "Could not mark analysis plan complete", String(err));
-    });
+  } catch (err) {
+    if (caseVersionId) await failCaseVersion(caseVersionId);
+    await db.case.update({ where: { id: caseId }, data: { status: previousStatus } }).catch(() => null);
+    throw err;
   }
 }
 

@@ -20,6 +20,12 @@ import {
   runtimeQuestionAddition,
   runtimeReviewAddition,
 } from "../src/lib/case-analysis-plan";
+import {
+  buildCanonicalApprovedState,
+  canonicalStateSummary,
+  parseCanonicalApprovedState,
+  versionReasonLabel,
+} from "../src/lib/canonical-case-state";
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, extractUniversalDocumentIntelligence, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -351,6 +357,36 @@ const summary = analysisPlanSummary({ ...lowPlan, execution });
 assert(summary.executedLabels.includes("Second independent review"), "analysis plan summary should use customer-facing task labels");
 assert(summary.complexityLabel === "Straightforward", "low-complexity plans should use a customer-facing complexity label");
 
+const approvedState = buildCanonicalApprovedState({
+  version: 2,
+  reason: "analysis",
+  pipelineConfigVersion: "v4.1-a11",
+  evidenceSnapshotHash: "snapshot-hash-rfe",
+  status: "analyzed",
+  readinessScore: 72,
+  evidenceAvailableScore: 80,
+  evidenceProcessedScore: 70,
+  actionReadinessScore: 65,
+  presentation,
+  analysisPlan: { ...lowPlan, execution },
+});
+assert(approvedState.presentation?.hero.current_posture === "RFE notice needs review", "canonical approved state must store the approved posture");
+assert(!/STALE reconstruction/i.test(approvedState.presentation?.hero.current_posture ?? ""), "canonical approved state must not store a stale reconstruction posture");
+assert(approvedState.analysis_plan?.execution?.tasks_executed.includes(ANALYSIS_TASKS.INDEPENDENT_REVIEW), "canonical approved state must keep the executed analysis plan");
+assert(approvedState.analysis_plan?.execution?.tasks_skipped.some((item) => item.task === ANALYSIS_TASKS.PROCESS_DOCUMENTS), "canonical approved state must keep skipped plan tasks");
+const roundTrip = parseCanonicalApprovedState(JSON.stringify(approvedState));
+assert(roundTrip?.version === 2, "canonical approved state should round-trip the version number");
+assert(roundTrip?.presentation?.hero.next_best_action?.action_key === "UPLOAD_NOTICE", "canonical approved state should round-trip the presentation");
+assert(roundTrip?.analysis_plan?.execution?.blocked === false, "canonical approved state should round-trip plan execution");
+assert(canonicalStateSummary(approvedState).versionLabel === "Case record version 2", "canonical summary should include the version label");
+assert(canonicalStateSummary(approvedState).posture === "RFE notice needs review", "canonical summary should use the approved posture");
+assert(canonicalStateSummary(approvedState).nextAction === presentation.hero.next_best_action?.title, "canonical summary should include the next action");
+assert(versionReasonLabel("analysis") === "Full case review", "analysis versions should use a customer-facing reason label");
+assert(versionReasonLabel("document") === "New documents on file", "document versions should use a customer-facing reason label");
+assert(versionReasonLabel("clarify") === "Answers added to the case", "clarify versions should use a customer-facing reason label");
+assert(versionReasonLabel("reprocess") === "Evidence reprocessed", "reprocess versions should use a customer-facing reason label");
+assert(parseCanonicalApprovedState(JSON.stringify({ status: "analyzed", readinessScore: 10, issues: [], path_steps: [] })) === null, "legacy slim approved state is not a canonical versioned state");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -368,3 +404,4 @@ console.log(`- case list: ${listFromContract.posture}, next ${listFromContract.n
 console.log("- case report: presentation contract sections are used for the printable report");
 console.log("- v41 B5: letters, notices, and Q&A share approved presentation blocks");
 console.log(`- v4 A10: analysis pipeline follows the case plan (${lowPlan.case_complexity}, skip process=${!lowDecisions.processDocuments}, runtime review=${runtimeDecisions.independentReview})`);
+console.log(`- v4 A11: canonical approved state v${approvedState.version} stores ${approvedState.presentation?.hero.current_posture} and the analysis plan`);

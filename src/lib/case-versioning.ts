@@ -77,20 +77,22 @@ export async function createEvidenceSnapshot(caseId: string) {
 export async function ensureCaseVersion(caseId: string, reason = "analysis") {
   const snapshot = await createEvidenceSnapshot(caseId);
   const latest = await db.caseVersion.findFirst({ where: { caseId }, orderBy: { version: "desc" } });
-  if (latest?.evidenceSnapshotId === snapshot.id && latest.pipelineConfigVersion === PROMPT_VERSION) {
-    return latest;
-  }
-  const version = (latest?.version ?? 0) + 1;
-  const row = await db.caseVersion.create({
-    data: {
-      caseId,
-      version,
-      reason,
-      status: "analyzing",
-      pipelineConfigVersion: PROMPT_VERSION,
-      evidenceSnapshotId: snapshot.id,
-    },
-  });
+  const reuse = latest?.evidenceSnapshotId === snapshot.id && latest.pipelineConfigVersion === PROMPT_VERSION;
+  const row = reuse && latest
+    ? await db.caseVersion.update({
+        where: { id: latest.id },
+        data: { status: "analyzing", reason, completedAt: null },
+      })
+    : await db.caseVersion.create({
+        data: {
+          caseId,
+          version: (latest?.version ?? 0) + 1,
+          reason,
+          status: "analyzing",
+          pipelineConfigVersion: PROMPT_VERSION,
+          evidenceSnapshotId: snapshot.id,
+        },
+      });
   await db.canonicalCaseState.upsert({
     where: { caseId },
     update: { versionId: row.id, evidenceSnapshotHash: snapshot.hash },
@@ -122,4 +124,21 @@ export async function finalizeCaseVersion(caseVersionId: string, caseId: string,
 
 export async function failCaseVersion(caseVersionId: string) {
   await db.caseVersion.update({ where: { id: caseVersionId }, data: { status: "failed", completedAt: new Date() } }).catch(() => null);
+}
+
+export async function getLatestCaseVersion(caseId: string) {
+  return db.caseVersion.findFirst({
+    where: { caseId },
+    orderBy: { version: "desc" },
+    include: { evidenceSnapshot: { select: { hash: true } } },
+  });
+}
+
+export async function listCaseVersions(caseId: string, take = 8) {
+  return db.caseVersion.findMany({
+    where: { caseId },
+    orderBy: { version: "desc" },
+    take,
+    include: { evidenceSnapshot: { select: { hash: true } } },
+  });
 }

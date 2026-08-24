@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { assemblePresentationContract, parsePresentationRecord, type PresentationContract } from "./case-presentation-contract";
 import { buildPresentationBrief } from "./case-presentation-brief";
+import { parseCanonicalApprovedState } from "./canonical-case-state";
 
 const CASE_PRESENTATION_INCLUDE = {
   reconstruction: true,
@@ -109,6 +110,9 @@ export async function getLatestCasePresentation(caseId: string) {
 export async function resolveCasePresentation(caseId: string) {
   const row = await getLatestCasePresentation(caseId).catch(() => null);
   if (row) return parsePresentationRecord(row);
+  const canonical = await db.canonicalCaseState.findUnique({ where: { caseId } }).catch(() => null);
+  const approved = parseCanonicalApprovedState(canonical?.approvedStateJson);
+  if (approved?.presentation) return approved.presentation;
   return assembleLivePresentation(caseId);
 }
 
@@ -131,8 +135,18 @@ export async function loadPresentationsByCaseIds(caseIds: string[]) {
   }
   const missing = uniqueIds.filter((id) => !map.has(id));
   if (missing.length === 0) return map;
+  const canonicalRows = await db.canonicalCaseState.findMany({
+    where: { caseId: { in: missing } },
+    select: { caseId: true, approvedStateJson: true },
+  }).catch(() => []);
+  for (const row of canonicalRows) {
+    const approved = parseCanonicalApprovedState(row.approvedStateJson);
+    if (approved?.presentation) map.set(row.caseId, approved.presentation);
+  }
+  const stillMissing = uniqueIds.filter((id) => !map.has(id));
+  if (stillMissing.length === 0) return map;
   const cases = await db.case.findMany({
-    where: { id: { in: missing } },
+    where: { id: { in: stillMissing } },
     include: CASE_PRESENTATION_INCLUDE,
   }).catch(() => []);
   for (const c of cases) {
