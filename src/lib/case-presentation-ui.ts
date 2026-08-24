@@ -33,18 +33,18 @@ export function presentationStepCta(actionKey: string, caseId: string): { label:
     case "UPLOAD_NOTICE":
       return { label: "Upload USCIS records", href: "/app/documents" };
     case "ADD_CASE_DETAILS":
-      return { label: "Answer case questions", href: "#clarify" };
+      return { label: "Answer follow-up questions", href: "#clarify" };
     case "PREPARE_APPOINTMENT":
       return { label: "Upload appointment notice", href: "/app/documents" };
     case "DRAFT_LETTER":
       return { label: "Draft my letter", href: `/app/letters/new?case=${caseId}` };
     case "COMPLETE_FORM_I485":
     case "PREPARE_FORM":
-      return { label: "Open USCIS forms", href: "/app/forms" };
+      return { label: "See matching USCIS forms", href: "/app/forms" };
     case "ADD_DEADLINE":
       return { label: "Add the deadline", href: "/app/deadlines" };
     case "REVIEW_ANALYSIS":
-      return { label: "Ask about this case", href: `/app/qa?case=${caseId}` };
+      return { label: "Ask a follow-up question", href: `/app/qa?case=${caseId}` };
     default:
       return null;
   }

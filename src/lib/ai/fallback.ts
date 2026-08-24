@@ -1,5 +1,10 @@
 import "server-only";
 import { db } from "../db";
+import {
+  buildOpenOptionsAnalysis,
+  classifyImmigrationInquiry,
+  INQUIRY_MODES,
+} from "../immigration-inquiry";
 
 type Json = Record<string, unknown>;
 
@@ -38,18 +43,20 @@ function detectDeadlines(text: string): string[] {
   return uniq(out);
 }
 
-function evidenceLine(docs: DocInfo[], unreadableCount: number): string {
+function evidenceLine(docs: DocInfo[], unreadableCount: number, openOptions = false): string {
   if (docs.length === 0) {
-    return "No documents are on file yet. Upload notices, receipts, forms, and identity records so each finding can be checked against evidence.";
+    return openOptions
+      ? "No USCIS case file is on record. This review uses the situation you described, not a receipt or notice."
+      : "No documents are on file yet. Upload notices, receipts, forms, and identity records so each finding can be checked against evidence.";
   }
   const kinds = uniq(docs.map((doc) => doc.docKind));
   return `${docs.length} document${docs.length === 1 ? "" : "s"} uploaded (${kinds.join(", ") || "mixed documents"}).${unreadableCount ? ` ${unreadableCount} document${unreadableCount === 1 ? "" : "s"} still require manual review.` : ""}`;
 }
 
-async function knowledgeFor(text: string): Promise<{ reference: string; title: string; content: string } | null> {
+async function knowledgeFor(text: string, extraRefs: string[] = []): Promise<{ reference: string; title: string; content: string } | null> {
   const upper = text.toUpperCase();
-  const refs = ["RFE", "NOID", "I-485", "I-130", "I-765", "N-400", "I-589"];
-  const ref = refs.find((item) => upper.includes(item));
+  const refs = uniq(["RFE", "NOID", "I-485", "I-130", "I-765", "N-400", "I-589", ...extraRefs]);
+  const ref = refs.find((item) => upper.includes(item.toUpperCase()) || extraRefs.includes(item));
   if (!ref) return null;
   return db.knowledgeSource.findFirst({
     where: { OR: [{ reference: { contains: ref } }, { title: { contains: ref } }], isActive: true },
@@ -73,10 +80,38 @@ export async function fallbackAnalyze(
   const years = yearsFrom(text);
   const unreadableCount = docs.filter((doc) => !doc.readable).length;
   const hasDocs = docs.length > 0;
-  const knowledge = await knowledgeFor(text);
+  const inquiry = classifyImmigrationInquiry({
+    situation,
+    goal,
+    documentsText,
+    documentCount: docs.length,
+    receipts: receiptNumbers,
+  });
+  const options = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS ? buildOpenOptionsAnalysis({ situation, goal, documentsText }, inquiry) : null;
+  const knowledge = await knowledgeFor(text, options?.authorityQueries ?? []);
   const issues: Json[] = [];
   const conflicts: FallbackConflict[] = [];
-  const evidence = evidenceLine(docs, unreadableCount);
+  const evidence = evidenceLine(docs, unreadableCount, inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS);
+
+  if (options) {
+    return {
+      facts: {
+        user_goal: goal,
+        inquiry_mode: inquiry.mode,
+        inquiry_themes: inquiry.themes,
+        forms_detected: forms,
+        receipt_numbers: receiptNumbers,
+        notices_detected: notices,
+        years_detected: years,
+        deadlines_detected: deadlines,
+        documents_uploaded: docs.length,
+        unknowns: options.unknowns.map((item) => item.question),
+      },
+      issues: options.issues as unknown as Json[],
+      pathSteps: options.pathSteps,
+      conflicts,
+    };
+  }
 
   if (notices.some((notice) => ["RFE", "NOID", "NOIR", "NOIT"].includes(notice))) {
     const noticeType = notices.find((notice) => ["RFE", "NOID", "NOIR", "NOIT"].includes(notice)) ?? "RFE";
@@ -217,6 +252,8 @@ export async function fallbackAnalyze(
   return {
     facts: {
       user_goal: goal,
+      inquiry_mode: inquiry.mode,
+      inquiry_themes: inquiry.themes,
       forms_detected: forms,
       receipt_numbers: receiptNumbers,
       notices_detected: notices,

@@ -143,7 +143,7 @@ export async function guideRespond(
     const tip = snapshot.currentStep
       ? STEP_TIPS[snapshot.currentStep.actionKey.toUpperCase()] ??
         `Your next step is "${snapshot.currentStep.title}". Knock it out and you're one step closer — I'm here if you need help with it.`
-      : "You haven't started a case yet — tell us what's going on with your immigration case and we'll break it into simple steps.";
+      : "You haven't started a case yet — tell us what's going on, even if you have not filed anything with USCIS, and we'll map options and next steps.";
     return {
       message: `Here's where you stand:\n\n${snapshot.text
         .split("\n")

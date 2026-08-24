@@ -27,10 +27,12 @@ import {
 import { createCaseAnalysisPlan, finishAnalysisPlan, markAnalysisPlanRunning } from "../case-orchestrator";
 import { planCaseQuestions } from "../question-planner";
 import { processDocumentsEvidence } from "../evidence/document-processing";
+import { rebuildCaseEvidenceState } from "../evidence/case-state";
 import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
 import { getCaseEvidenceBrief } from "../evidence/brief";
 import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
 import { mergeSupportedText, presentationGroundingBlock, withPresentationNoticeSteps } from "../case-presentation-brief";
+import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry } from "../immigration-inquiry";
 
 type Json = Record<string, unknown>;
 
@@ -345,6 +347,10 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       await logSystem("warning", "case_orchestrator", "Plan-driven document processing failed", String(err));
     });
   }
+  await rebuildCaseEvidenceState(caseId).catch(async (err) => {
+    const { logSystem } = await import("../syslog");
+    await logSystem("warning", "evidence_state", "Could not rebuild case evidence state before analysis", String(err));
+  });
   if (decisions.retrieveAuthority && (parsedPlan?.authority_queries_needed.length ?? 0) > 0) {
     await snapshotAuthorityForPlan(caseId, parsedPlan?.authority_queries_needed ?? []).catch(async (err) => {
       const { logSystem } = await import("../syslog");
@@ -731,10 +737,26 @@ async function loadCaseGrounding(caseId?: string | null) {
 export async function runQaChat(history: { role: string; content: string }[], opts?: { caseId?: string | null }): Promise<string> {
   const steps = await getRunnableSteps(STAGE_KEYS.QA);
   const convo = history.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
-  const knowledge = await retrieveKnowledge(history.map((m) => m.content).join(" "));
+  const question = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+  const inquiry = classifyImmigrationInquiry({ situation: question, goal: question });
+  const knowledgeQuery = [
+    history.map((m) => m.content).join(" "),
+    inquiry.mode === "open_options" ? inquiry.themes.join(" ") : "",
+    inquiry.mode === "open_options" ? authorityQueriesForInquiry(inquiry).join(" ") : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const knowledge = await retrieveKnowledge(knowledgeQuery);
   const grounding = await loadCaseGrounding(opts?.caseId);
+  const fallbackAnswer = () =>
+    buildQaFallbackAnswer({
+      question,
+      knowledge,
+      inquiry,
+      hasLinkedCase: Boolean(opts?.caseId),
+    });
   if (steps.length === 0) {
-    return "The assistant isn't available just yet. You can still upload your USCIS notice, receipt, or case record to your vault, and the case page will use those documents when analysis is available.";
+    return fallbackAnswer();
   }
   // Run every configured model in order. Later models receive earlier drafts so
   // the final answer benefits from all available providers instead of stopping
@@ -747,7 +769,7 @@ export async function runQaChat(history: { role: string; content: string }[], op
         : "";
       const evidenceContext = grounding.block
         ? `\n\n${grounding.block}\n\nGrounding rule: answer case-specific questions from the approved presentation, the evidence brief, the conversation, and USCIS reference material. Treat unsupported details as unknowns. Do not contradict the approved posture, next action, or deadlines.`
-        : "";
+        : `\n\nNo USCIS case file is linked. Answer as an options question: explain possible paths with conditions. Never invent a receipt number, deadline, notice type, or filed-case posture. Do not require the user to upload a notice before you can help.`;
       const prompt = fill(step.promptTemplate, { input: `${convo}${priorDrafts}${evidenceContext}`, knowledge: knowledge || "(none)" });
       const result = await callProvider(step.provider, [{ role: "user", content: prompt }]);
       if (result.text.trim()) drafts.push(result.text.trim());
@@ -757,7 +779,7 @@ export async function runQaChat(history: { role: string; content: string }[], op
     }
   }
   if (drafts.length > 0) return drafts[drafts.length - 1];
-  return "Our assistant couldn't respond just now — the issue has been reported to our team. Please try again in a moment, or open a support ticket if it keeps happening.";
+  return fallbackAnswer();
 }
 
 export async function explainNoticeContent(content: string, opts?: { caseId?: string | null }): Promise<Json | null> {

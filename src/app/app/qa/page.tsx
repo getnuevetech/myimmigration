@@ -47,7 +47,7 @@ export default async function QaPage({
         subtitle={
           linkedCase
             ? "This conversation is grounded in the approved case presentation and compiled evidence."
-            : "Plain-English answers about your immigration case. Link a case to ground answers in the approved presentation."
+            : "Plain-English answers to any immigration question — including if you have no USCIS case yet. Link a case to ground answers in the approved presentation."
         }
       />
       {summary && <CasePresentationContextCard heading="Answers use this approved presentation" summary={summary} />}

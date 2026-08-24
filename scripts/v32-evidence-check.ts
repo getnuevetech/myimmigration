@@ -29,6 +29,14 @@ import {
   versionReasonLabel,
 } from "../src/lib/canonical-case-state";
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, extractUniversalDocumentIntelligence, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
+import {
+  applyInquiryToEvidenceState,
+  buildOpenOptionsAnalysis,
+  buildQaFallbackAnswer,
+  classifyImmigrationInquiry,
+  INQUIRY_MODES,
+  OPEN_OPTIONS_POSTURE,
+} from "../src/lib/immigration-inquiry";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -142,6 +150,9 @@ assert(DEFAULT_PROMPTS.closing.includes("evidence_brief"), "closing prompt shoul
 assert(DEFAULT_PROMPTS.closing.includes("approved_presentation"), "closing prompt should mention approved presentation");
 assert((PROMPT_SUPERSEDES.closing ?? []).length > 0, "closing prompt should declare superseded hashes");
 assert(PROMPT_VERSION.includes("v32"), "prompt version should identify v32 evidence prompts");
+assert(DEFAULT_PROMPTS.analyst.includes("options inquiry"), "analyst prompt should handle people with no USCIS case file");
+assert(DEFAULT_PROMPTS.assistant.includes("no USCIS file"), "assistant prompt should answer questions with no USCIS file");
+assert((PROMPT_SUPERSEDES.analyst ?? []).includes("ed754670a3175d8e9db512d2e839a29391c74448889024c80981c2d0db7ec9e7"), "analyst prompt should supersede the pre-open-options hash");
 const readiness = computeEvidenceReadinessSplit({
   documentsCount: 2,
   documentsExpected: 3,
@@ -344,6 +355,23 @@ assert(closedPlan.stop_conditions.length > 0, "closed cases should record a stop
 assert(analysisRunDecisions(closedPlan).stop === true, "closed cases must stop the analysis pipeline");
 assert(analysisRunDecisions(closedPlan).presentApprovedState === false, "closed cases must not run presentation AI");
 
+const optionsPlan = buildAnalysisPlan({
+  caseStatus: "analyzing",
+  documentCount: 0,
+  documents: [],
+  issues: [],
+  unknowns: [],
+  evidenceAuditStatus: "blocked",
+  evidenceFactKeys: [],
+  situation: "I want to marry a US citizen and get a green card. We have not filed anything yet.",
+  goal: "Show me what options I have",
+});
+assert(optionsPlan.blocking_conditions.length === 0, "open-options inquiries must not treat missing USCIS identifiers as a blocking condition");
+assert(analysisRunDecisions(optionsPlan).primaryReasoning === true, "open-options inquiries must still run primary reasoning");
+assert(analysisRunDecisions(optionsPlan).processDocuments === false, "open-options inquiries with no documents must skip document processing");
+assert(optionsPlan.tasks_required.includes(ANALYSIS_TASKS.QUESTION_PLANNING), "open-options inquiries should plan follow-up questions");
+assert(optionsPlan.authority_queries_needed.includes("I-130"), "open-options family inquiries should look up family petition rules");
+
 assert(issuesNeedIndependentReview([{ professional_review: "required" }]) === true, "required professional review should trigger independent review");
 const reviewAdd = runtimeReviewAddition(lowPlan, [{ issue_type: "professional_review" }]);
 assert(reviewAdd?.task === ANALYSIS_TASKS.INDEPENDENT_REVIEW, "pipeline should add independent review when a finding requires it");
@@ -409,6 +437,128 @@ assert(caseListVersionLine(listFromCanonical) === "Version 2 · Full case review
 assert(!/STALE reconstruction/i.test(listFromCanonical.posture), "case lists must not show a stale reconstruction posture when canonical state exists");
 assert(!/STALE stored/i.test(listFromCanonical.posture), "case lists must not show a stale stored presentation when canonical state exists");
 
+const rfeInquiry = classifyImmigrationInquiry({
+  situation: "I got an RFE from USCIS and the deadline is coming up.",
+  goal: "Prepare an RFE response",
+});
+assert(rfeInquiry.mode === INQUIRY_MODES.EXISTING_CASE, "RFE language should classify as an existing USCIS case");
+const marriageInquiry = classifyImmigrationInquiry({
+  situation: "I want to marry a US citizen and get a green card. We have not filed anything yet.",
+  goal: "Show me what options I have",
+  documentCount: 0,
+});
+assert(marriageInquiry.mode === INQUIRY_MODES.OPEN_OPTIONS, "a marriage goal with no filing should classify as open options");
+assert(marriageInquiry.themes.includes("family"), "a marriage green-card question should detect the family theme");
+const studentInquiry = classifyImmigrationInquiry({
+  situation: "I am on F-1 graduating next month. What can I do?",
+  goal: "Work or stay after graduation",
+});
+assert(studentInquiry.mode === INQUIRY_MODES.OPEN_OPTIONS, "an F-1 graduation question with no case file should classify as open options");
+assert(studentInquiry.themes.includes("student"), "an F-1 graduation question should detect the student theme");
+
+const marriageOptions = buildOpenOptionsAnalysis({
+  situation: "I want to marry a US citizen and get a green card. We have not filed anything yet.",
+  goal: "Show me what options I have",
+});
+assert(marriageOptions.reconstruction.currentPosition === OPEN_OPTIONS_POSTURE, "open-options reconstruction should use the exploring-options posture");
+assert(marriageOptions.issues.some((issue) => /family green card/i.test(issue.title) && issue.item_kind === "opportunity"), "marriage options should emit a family pathway opportunity");
+assert(marriageOptions.pathSteps[0]?.action_key === "ADD_CASE_DETAILS", "open-options next steps should start with clarifying facts, not uploading a notice");
+assert(!marriageOptions.pathSteps.some((step) => step.action_key === "UPLOAD_NOTICE" || step.action_key === "GET_CASE_RECORD"), "open-options next steps must not require a USCIS case record");
+assert(!marriageOptions.issues.some((issue) => /more immigration details are needed/i.test(issue.title)), "open-options analysis must not dead-end on missing case details");
+
+const studentOptions = buildOpenOptionsAnalysis({
+  situation: "I am on F-1 graduating next month. What can I do?",
+  goal: "See my work and stay options",
+});
+assert(studentOptions.issues.some((issue) => /student|graduation|opt/i.test(`${issue.title} ${issue.our_conclusion}`)), "F-1 options should describe student or after-graduation paths");
+
+const emptyReconcile = reconcileEvidenceStates([{
+  documentType: "other",
+  facts: [],
+  events: [],
+  relationships: [],
+  unknowns: [],
+  suppressedQuestions: [],
+  audit: { status: "needs_more_evidence", summary: "", blockingUnknowns: [], warnings: [] },
+  reconstruction: { summary: "", currentPosition: "", timeline: [], pendingActions: [], confidence: "needs_verification" },
+}]);
+assert(emptyReconcile.reconstruction.currentPosition === "Case posture needs verification", "empty evidence should still reconstruct as unverified before inquiry overlay");
+const overlaid = applyInquiryToEvidenceState(emptyReconcile, marriageInquiry, "Show me what options I have");
+assert(overlaid.reconstruction.currentPosition === OPEN_OPTIONS_POSTURE, "inquiry overlay should replace unverified case posture for open options");
+assert(!overlaid.unknowns.some((item) => item.key === "receipt_number"), "open-options overlay must not ask for a receipt number the person does not have");
+assert(overlaid.audit.status !== "blocked", "open-options overlay must not leave the evidence audit blocked");
+
+const optionsPresentation = assemblePresentationContract({
+  status: "analyzed",
+  actionReadinessScore: 20,
+  reconstruction: {
+    currentPosition: overlaid.reconstruction.currentPosition,
+    summary: overlaid.reconstruction.summary,
+    timeline: [],
+    pendingActions: overlaid.reconstruction.pendingActions,
+  },
+  issues: marriageOptions.issues.map((issue, index) => ({
+    id: `opt-${index}`,
+    title: issue.title,
+    itemKind: issue.item_kind,
+    state: issue.state,
+    evidenceStatus: issue.evidence_status,
+    evidenceStrength: issue.evidence_strength,
+    conclusion: issue.our_conclusion,
+    nextAction: issue.next_action,
+    issueType: issue.issue_type,
+    altAction: issue.alternative_action,
+  })),
+  deadlines: [],
+  actionNodes: marriageOptions.pathSteps.map((step, index) => ({
+    id: `path-${index}`,
+    title: step.title,
+    actionKey: step.action_key,
+    status: index === 0 ? "READY" : "BLOCKED",
+    priority: index + 1,
+  })),
+  documents: [],
+  unknowns: overlaid.unknowns.map((item) => ({ question: item.question })),
+  evidenceGateStatus: overlaid.audit.status,
+  conflicts: [],
+});
+assert(optionsPresentation.hero.current_posture === OPEN_OPTIONS_POSTURE, "open-options presentation must not fall back to raw status");
+assert(!/STALE reconstruction|Case posture needs verification|upload a (uscis )?notice/i.test(JSON.stringify(optionsPresentation)), "open-options presentation must not show unverified case posture or notice-only next steps");
+assert(optionsPresentation.findings.some((finding) => finding.group === "opportunity"), "open-options presentation should show pathway opportunities");
+assert(presentationStepCta("ADD_CASE_DETAILS", "case-1")?.label === "Answer follow-up questions", "options follow-up CTA should not require a case file");
+assert(presentationStepCta("REVIEW_ANALYSIS", "case-1")?.href === "/app/qa?case=case-1", "follow-up questions should still link to Q&A");
+
+const qaFallback = buildQaFallbackAnswer({
+  question: "I want to marry a US citizen. What can we do if we have not filed yet?",
+  knowledge: "",
+});
+assert(/do not need a USCIS case/i.test(qaFallback), "Q&A without a case should still answer options questions");
+assert(!/upload your USCIS notice/i.test(qaFallback), "Q&A fallback must not tell people with no file that they must upload a notice");
+const listFromOptions = caseListSummaryFromView(
+  { status: "analyzed", reconstructionPosition: "STALE reconstruction posture" },
+  buildApprovedCaseView({
+    canonical: buildCanonicalApprovedState({
+      version: 1,
+      reason: "analysis",
+      pipelineConfigVersion: "v4.2-c1",
+      evidenceSnapshotHash: "options-hash",
+      status: "analyzed",
+      readinessScore: 30,
+      presentation: optionsPresentation,
+    }),
+    live: assemblePresentationContract({
+      status: "analyzed",
+      actionReadinessScore: 0,
+      reconstruction: { currentPosition: "STALE reconstruction posture", summary: "stale", timeline: [], pendingActions: [] },
+      issues: [],
+      deadlines: [],
+      actionNodes: [],
+      documents: [],
+    }),
+  }),
+);
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "case lists must show the approved open-options posture, not a stale reconstruction");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -428,3 +578,4 @@ console.log("- v41 B5: letters, notices, and Q&A share approved presentation blo
 console.log(`- v4 A10: analysis pipeline follows the case plan (${lowPlan.case_complexity}, skip process=${!lowDecisions.processDocuments}, runtime review=${runtimeDecisions.independentReview})`);
 console.log(`- v4 A11: canonical approved state v${approvedState.version} stores ${approvedState.presentation?.hero.current_posture} and the analysis plan`);
 console.log(`- v4 A12: ${selected?.source} approved state wins over stale stored/live presentations (${listFromCanonical.posture}, ${caseListVersionLine(listFromCanonical)})`);
+console.log(`- v4 C1: open options ${marriageInquiry.mode}/${marriageOptions.reconstruction.currentPosition}, existing RFE ${rfeInquiry.mode}, F-1 ${studentInquiry.themes.join("+")}`);

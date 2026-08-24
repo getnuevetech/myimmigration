@@ -61,9 +61,9 @@ export default async function HomePage() {
   const updates = await getUscisUpdates(3);
 
   const steps = [
-    { n: "01", title: "Build the timeline", body: "Start with what you know: status history, filings, receipt numbers, notices, travel, interviews, and deadlines." },
-    { n: "02", title: "Map the evidence", body: "Upload USCIS notices, receipts, forms, visas, passports, RFEs, translations, and supporting records into one organized vault." },
-    { n: "03", title: "Leave with a case brief", body: "Get a structured summary, issue list, missing-document checklist, and professional-ready handoff packet." },
+    { n: "01", title: "Share the situation", body: "Start with what you know: a USCIS case, letter, or notice — or a life situation with no filing yet. Receipt numbers are helpful when you have them, not required." },
+    { n: "02", title: "Map the evidence", body: "Upload USCIS notices, receipts, forms, visas, passports, RFEs, translations, and supporting records when you have them. You can still get options without a case file." },
+    { n: "03", title: "Leave with a plan", body: "Get possible pathways with conditions, or a structured case summary, issue list, missing-document checklist, and professional-ready handoff packet." },
   ];
 
   const features = [

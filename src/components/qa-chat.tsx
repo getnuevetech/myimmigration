@@ -41,9 +41,9 @@ export function QaChat({
         {messages.length === 0 && (
           <div className="py-8 text-center text-sm text-slate-400">
             <p className="font-medium text-slate-500">Try one of these:</p>
-            <p className="mt-2">&ldquo;What does this RFE notice mean?&rdquo;</p>
-            <p>&ldquo;How should I respond to an RFE before the deadline?&rdquo;</p>
-            <p>&ldquo;What happens if I file my immigration matters late?&rdquo;</p>
+            <p className="mt-2">&ldquo;I want to marry a U.S. citizen and we have not filed yet. What can we do?&rdquo;</p>
+            <p>&ldquo;I am on F-1 and graduating. What are my options?&rdquo;</p>
+            <p>&ldquo;What does this RFE notice mean?&rdquo;</p>
           </div>
         )}
         {messages.map((m) => (
