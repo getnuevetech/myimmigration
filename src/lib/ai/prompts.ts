@@ -44,6 +44,7 @@ DOCUMENT CONTENT:
 {"issues": [{"issue_identified": "", "issue_type": "uscis_notice_response|deadline_tracking|case_timeline|missing_evidence|status_question|case_update_discrepancy|fee_or_payment_issue|missing_filing|appointment_preparation|case_organization|professional_review|other", "case_year": null, "evidence": "", "uscis_basis": "", "user_goal_alignment": "", "possible": true, "conditions": [], "missing_information": [], "recommended_steps": [], "confidence": "high|medium|low", "professional_review": "required|recommended|probably_unnecessary"}]}
 Evidence-first rules:
 - If facts/documents include evidence_gate or compiled_evidence_gate, treat that as the current record of what the platform has actually read.
+- If documents include primary_reasoner_context, use its case_reconstruction, evidence_ledger, material_unknowns, and authority_bundle as the main reasoning context.
 - Ground every receipt number, form type, notice type, deadline, appointment, and requested evidence item in evidence_gate.facts, evidence_gate.events, the applicant's explicit words, or USCIS reference material.
 - If the evidence gate says needs_review or blocked, focus on what must be verified before action. Do not turn unsupported assumptions into conclusions.
 - If a question appears in evidence_gate.suppressed_questions, do not ask it again; use the supporting evidence instead.
@@ -65,6 +66,7 @@ APPLICANT GOAL:
 {"issues": [{"issue_identified": "", "issue_type": "uscis_notice_response|deadline_tracking|case_timeline|missing_evidence|status_question|case_update_discrepancy|fee_or_payment_issue|missing_filing|appointment_preparation|case_organization|professional_review|other", "case_year": null, "evidence": "", "uscis_basis": "", "user_goal_alignment": "", "possible": true, "conditions": [], "missing_information": [], "recommended_steps": [], "confidence": "high|medium|low", "professional_review": "required|recommended|probably_unnecessary"}]}
 Evidence-first review rules:
 - Challenge any issue, deadline, or next step that is not supported by evidence_gate.facts, evidence_gate.events, the applicant's explicit words, or USCIS reference material.
+- If primary_reasoner_context is present, review against its case_reconstruction, evidence_ledger, material_unknowns, and authority_bundle.
 - If the first analysis conflicts with the compiled evidence gate, follow the compiled evidence and list the conflict as missing_information.
 - Do not ask suppressed questions again.
 - Never fill gaps with general immigration knowledge.
@@ -175,8 +177,14 @@ export const PROMPT_VERSION = "immigration-v32-evidence-2026-08-20";
 // SHA-256 hashes of known previous default prompts. Seed uses these to upgrade
 // exact old defaults while leaving admin-edited prompts untouched.
 export const PROMPT_SUPERSEDES: Record<string, string[]> = {
-  analyst: ["468e320f5a5f6a6472a3af0ebeea35b87a73c8b8e73c891ac3c5c2aacd912cbf"],
-  reviewer: ["b25cacf451a1802ef8a3df91837ce307f07121f4701940daa201e8ee9a32109b"],
+  analyst: [
+    "468e320f5a5f6a6472a3af0ebeea35b87a73c8b8e73c891ac3c5c2aacd912cbf",
+    "3ea5ff9b62147998d018930260eb1839b9a249f2a5cec4a10e766edc84a4ffb8",
+  ],
+  reviewer: [
+    "b25cacf451a1802ef8a3df91837ce307f07121f4701940daa201e8ee9a32109b",
+    "153d2702a793c3c19e1a411de7d2f10b5cc540bbe43d7e74115deaf125865848",
+  ],
   presenter: ["80a486116362bae711bb38cdfc6da82691d87d4736ab9e15d4022fae53b109d3"],
   notice_explainer: ["570f62015d1ec773fceda5a8564f7c3c8b96d4875f75075b4bf0956f0702952e"],
   guide: ["1fbbb6bb1fb252ea71e3f8ae2126a0da4c42738a8e92ea3984991f88b9b853b2"],

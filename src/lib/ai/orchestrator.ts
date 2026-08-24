@@ -7,6 +7,7 @@ import { STAGE_KEYS } from "../constants";
 import { getNumberSetting } from "../settings";
 import { readUpload } from "../uploads";
 import { snapshotAuthorityForPlan } from "../authority-retrieval";
+import { buildPrimaryReasonerContext } from "../primary-reasoner-context";
 import { verifyCaseProgress } from "../case-progress";
 import { ensureCaseVersion, finalizeCaseVersion } from "../case-versioning";
 import { createCaseAnalysisPlan } from "../case-orchestrator";
@@ -374,6 +375,11 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
         events: evidenceGate.events,
       }
     : null;
+  const primaryReasonerContext = await buildPrimaryReasonerContext(caseId).catch(async (err) => {
+    const { logSystem } = await import("../syslog");
+    await logSystem("warning", "primary_reasoner", "Could not build primary reasoner context", String(err));
+    return null;
+  });
 
   // Layer 4: situation analysis grounded in the USCIS knowledge base.
   const knowledge = await retrieveKnowledge(`${c.situation} ${c.goal} ${docText}`);
@@ -386,6 +392,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
         model_document_extraction: documentOut?.merged ?? null,
         compiled_evidence_gate: evidenceGateJson,
         evidence_gate_instructions: evidenceGate?.promptText ?? "",
+        primary_reasoner_context: primaryReasonerContext,
       }),
       knowledge: knowledge || "(no matching reference material)",
       goal: JSON.stringify(goalFacts),
@@ -404,6 +411,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
         goal: goalFacts,
         documents: documentOut?.merged ?? null,
         evidence_gate: evidenceGateJson,
+        primary_reasoner_context: primaryReasonerContext,
         evidence_gate_instructions: evidenceGate?.promptText ?? "",
         analysis: situationMerged,
       }),

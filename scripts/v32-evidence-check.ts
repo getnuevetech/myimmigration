@@ -97,6 +97,8 @@ for (const promptKey of ["analyst", "reviewer", "presenter"]) {
   assert(prompt.includes("suppressed"), `${promptKey} prompt should mention suppressed questions`);
   assert((PROMPT_SUPERSEDES[promptKey] ?? []).length > 0, `${promptKey} prompt should declare superseded hashes`);
 }
+assert(DEFAULT_PROMPTS.analyst.includes("primary_reasoner_context"), "analyst prompt should mention primary_reasoner_context");
+assert(DEFAULT_PROMPTS.reviewer.includes("primary_reasoner_context"), "reviewer prompt should mention primary_reasoner_context");
 assert(DEFAULT_PROMPTS.notice_explainer.includes("COMPILED CASE EVIDENCE BRIEF"), "notice explainer prompt should mention compiled evidence brief");
 assert((PROMPT_SUPERSEDES.notice_explainer ?? []).length > 0, "notice explainer prompt should declare superseded hashes");
 assert(DEFAULT_PROMPTS.guide.includes("current evidence position"), "guide prompt should mention current evidence position");
