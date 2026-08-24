@@ -9,8 +9,8 @@ import { setUserStatusAction, adminDeleteUserAction, setConsultantAccountStatusA
 import { formatCaseNumber } from "@/lib/case-number";
 import { formatTicketNumber, formatTransactionNumber } from "@/lib/ticket-number";
 import { CONSULTANT_SPECIALTIES } from "@/lib/constants";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
 
 // Full detail page for any customer or consultant account.
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -39,7 +39,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const requiredArea = isConsultant ? "admin.consultants" : "admin.users";
   if (!hasAdminArea(admin, requiredArea)) redirect("/admin");
 
-  const presentations = await loadPresentationsByCaseIds(user.cases.map((item) => item.id));
+  const views = await loadApprovedViewsByCaseIds(user.cases.map((item) => item.id));
   const activeSub = user.subscriptions.find((s) => ["active", "trialing"].includes(s.status));
   const p = user.consultantProfile;
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
@@ -178,11 +178,13 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </h2>
                 <div className="space-y-2">
                   {user.cases.map((c) => {
-                    const summary = caseListSummary({
-                      status: c.status,
-                      actionReadinessScore: c.actionReadinessScore,
-                      presentation: presentations.get(c.id) ?? null,
-                    });
+                    const summary = caseListSummaryFromView(
+                      {
+                        status: c.status,
+                        actionReadinessScore: c.actionReadinessScore,
+                      },
+                      views.get(c.id),
+                    );
                     return (
                     <Link key={c.id} href={`/admin/cases/${c.id}`} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm hover:border-lime-300">
                       <span className="min-w-0">
@@ -191,6 +193,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                           {c.title.slice(0, 60)}
                         </span>
                         <span className="mt-0.5 block text-xs font-medium text-slate-700">{summary.posture}</span>
+                        {summary.version ? <span className="mt-0.5 block text-xs text-slate-500">Version {summary.version}{summary.reasonLabel ? ` · ${summary.reasonLabel}` : ""}</span> : null}
                         <span className="mt-0.5 block text-xs text-slate-500">{caseListActionLine(summary)}</span>
                         <span className="mt-0.5 block text-xs text-slate-400">{caseListEvidenceLine(summary)}</span>
                       </span>

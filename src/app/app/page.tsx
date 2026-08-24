@@ -5,8 +5,8 @@ import { getActivePlan } from "@/lib/access";
 import { PageHeader, Card, CardBody, Stat, ButtonLink, StateMark, ProgressBar, EmptyState } from "@/components/ui";
 import { markNotificationReadAction } from "@/actions/user";
 import { CaseListCard } from "@/components/case-list-card";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -22,7 +22,7 @@ export default async function DashboardPage() {
     db.notification.findMany({ where: { userId: user.id, readAt: null }, orderBy: { createdAt: "desc" }, take: 5 }),
     getActivePlan(user.id),
   ]);
-  const presentations = await loadPresentationsByCaseIds(cases.map((item) => item.id));
+  const views = await loadApprovedViewsByCaseIds(cases.map((item) => item.id));
 
   const soon = new Date();
   soon.setDate(soon.getDate() + 30);
@@ -97,12 +97,14 @@ export default async function DashboardPage() {
                   status={c.status}
                   readinessScore={c.readinessScore}
                   compact
-                  summary={caseListSummary({
-                    status: c.status,
-                    actionReadinessScore: c.actionReadinessScore,
-                    presentation: presentations.get(c.id) ?? null,
-                    reconstructionPosition: c.reconstruction?.currentPosition,
-                  })}
+                  summary={caseListSummaryFromView(
+                    {
+                      status: c.status,
+                      actionReadinessScore: c.actionReadinessScore,
+                      reconstructionPosition: c.reconstruction?.currentPosition,
+                    },
+                    views.get(c.id),
+                  )}
                 />
               ))}
             </div>

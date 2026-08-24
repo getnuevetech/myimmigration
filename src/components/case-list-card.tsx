@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card, CardBody, Badge, ProgressBar } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
-import { caseListActionLine, caseListEvidenceLine, type CaseListSummary } from "@/lib/case-presentation-list";
+import { caseListActionLine, caseListEvidenceLine, caseListVersionLine, type CaseListSummary } from "@/lib/case-presentation-list";
 
 export function CasePresentationContextCard({
   heading = "Approved case presentation",
@@ -30,6 +30,9 @@ export function CaseListSummaryDetails({
   return (
     <>
       <p className="mt-1 text-sm font-medium text-slate-800">{summary.posture}</p>
+      {caseListVersionLine(summary) ? (
+        <p className="mt-1 text-xs font-medium text-slate-500">{caseListVersionLine(summary)}</p>
+      ) : null}
       <p className="mt-1 text-sm text-slate-600">{caseListActionLine(summary)}</p>
       <p className="mt-1 text-xs text-slate-500">{caseListEvidenceLine(summary)}</p>
       {showMeaning && summary.meaning && (

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PageHeader, Card, CardBody, Badge, EmptyState, ButtonLink } from "@/components/ui";
-import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
-import { caseListSummary, caseListActionLine } from "@/lib/case-presentation-list";
+import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummaryFromView, caseListActionLine } from "@/lib/case-presentation-list";
 
 export const metadata = { title: "Response letters" };
 
@@ -14,7 +14,7 @@ export default async function LettersPage() {
     orderBy: { updatedAt: "desc" },
     include: { case: { select: { id: true, status: true, actionReadinessScore: true, title: true } } },
   });
-  const presentations = await loadPresentationsByCaseIds(letters.map((letter) => letter.caseId).filter((id): id is string => Boolean(id)));
+  const views = await loadApprovedViewsByCaseIds(letters.map((letter) => letter.caseId).filter((id): id is string => Boolean(id)));
 
   return (
     <div>
@@ -33,11 +33,13 @@ export default async function LettersPage() {
         <div className="space-y-3">
           {letters.map((l) => {
             const summary = l.case
-              ? caseListSummary({
-                  status: l.case.status,
-                  actionReadinessScore: l.case.actionReadinessScore,
-                  presentation: presentations.get(l.case.id) ?? null,
-                })
+              ? caseListSummaryFromView(
+                  {
+                    status: l.case.status,
+                    actionReadinessScore: l.case.actionReadinessScore,
+                  },
+                  views.get(l.case.id),
+                )
               : null;
             return (
             <Link key={l.id} href={`/app/letters/${l.id}`} className="block">

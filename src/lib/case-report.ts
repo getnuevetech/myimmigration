@@ -4,6 +4,7 @@ import { readUpload } from "./uploads";
 import { getSetting, getSettingsMap } from "./settings";
 import { formatCaseNumber } from "./case-number";
 import { resolveCasePresentation } from "./case-presentation";
+import { parseCanonicalApprovedState, canonicalStateSummary } from "./canonical-case-state";
 import { presentationReportSections } from "./case-report-presentation";
 
 const esc = (s: string) =>
@@ -23,6 +24,10 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
   if (!c) return null;
   const presentation = await resolveCasePresentation(caseId);
   if (!presentation) return null;
+  const approved = parseCanonicalApprovedState(
+    (await db.canonicalCaseState.findUnique({ where: { caseId }, select: { approvedStateJson: true } }).catch(() => null))?.approvedStateJson,
+  );
+  const approvedSummary = approved ? canonicalStateSummary(approved) : null;
 
   const appName = await getSetting("app.name", "ImmigrationOnMe");
   const fonts = await getSettingsMap(["font.body", "font.heading", "font.mono"]);
@@ -85,6 +90,7 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
     <strong>Applicant:</strong> ${esc(`${c.user?.firstName ?? ""} ${c.user?.lastName ?? ""}`.trim() || "—")} (${esc(c.user?.email ?? "—")}${c.user?.phone ? `, ${esc(c.user.phone)}` : ""})${c.user?.address ? `<br/><strong>Address:</strong> ${esc(c.user.address)}` : ""}<br/>
     <strong>Case opened:</strong> ${c.createdAt.toLocaleDateString("en-US")} &nbsp;·&nbsp; <strong>Status:</strong> ${esc(c.status.replace(/_/g, " "))} &nbsp;·&nbsp; <strong>Readiness:</strong> ${c.readinessScore}% &nbsp;·&nbsp; <strong>Review level:</strong> ${reviewLevel}<br/>
     <strong>Evidence provided:</strong> ${c.evidenceAvailableScore}% &nbsp;·&nbsp; <strong>Evidence processed:</strong> ${c.evidenceProcessedScore}% &nbsp;·&nbsp; <strong>Action readiness:</strong> ${c.actionReadinessScore}%
+    ${approvedSummary ? `<br/><strong>Case record:</strong> ${esc(approvedSummary.versionLabel)} · ${esc(approvedSummary.reasonLabel)}` : ""}
   </p>
 </header>
 

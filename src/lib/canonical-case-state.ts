@@ -85,3 +85,39 @@ export function canonicalStateSummary(state: CanonicalApprovedState): {
     complexityLabel: planSummary?.complexityLabel ?? null,
   };
 }
+
+export type ApprovedPresentationSource = "canonical" | "stored" | "live";
+
+export type ApprovedCaseView = {
+  presentation: PresentationContract | null;
+  version: number | null;
+  reason: string | null;
+  source: ApprovedPresentationSource | null;
+};
+
+export function selectApprovedPresentation(input: {
+  canonical?: CanonicalApprovedState | null;
+  stored?: PresentationContract | null;
+  live?: PresentationContract | null;
+}): { presentation: PresentationContract; source: ApprovedPresentationSource } | null {
+  if (input.canonical?.presentation) {
+    return { presentation: input.canonical.presentation, source: "canonical" };
+  }
+  if (input.stored) return { presentation: input.stored, source: "stored" };
+  if (input.live) return { presentation: input.live, source: "live" };
+  return null;
+}
+
+export function buildApprovedCaseView(input: {
+  canonical?: CanonicalApprovedState | null;
+  stored?: PresentationContract | null;
+  live?: PresentationContract | null;
+}): ApprovedCaseView {
+  const selected = selectApprovedPresentation(input);
+  return {
+    presentation: selected?.presentation ?? null,
+    version: input.canonical?.version ?? null,
+    reason: input.canonical?.reason ?? null,
+    source: selected?.source ?? null,
+  };
+}
