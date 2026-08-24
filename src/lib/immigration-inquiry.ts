@@ -286,7 +286,9 @@ function issueFromSource(
     next_action: highStakes ? "REVIEW_ANALYSIS" : gaps.length ? "ADD_CASE_DETAILS" : "REVIEW_ANALYSIS",
     alternative_action: highStakes
       ? `Talk with a licensed immigration attorney or accredited representative. ${referral.reason}`
-      : "Talk with a licensed professional before filing anything.",
+      : referral.level === "recommended"
+        ? `A licensed professional is recommended before you file. ${referral.reason}`
+        : "Ask a follow-up about this official material before you file anything.",
     uscis_basis: source.reference || source.title,
     professional_review: referral.level,
     analysis_outline: [

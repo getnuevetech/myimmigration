@@ -147,7 +147,7 @@ export async function fallbackAnalyze(
       priority: noticeType === "RFE" ? "high" : "urgent",
       state: noticeType === "RFE" ? "action_needed" : "urgent",
       next_action: "UPLOAD_NOTICE",
-      alternative_action: "Have an immigration professional review the notice and response packet.",
+      alternative_action: "A licensed professional is recommended before you respond.",
       uscis_basis: knowledge?.reference ?? noticeType,
       professional_review: referral.level,
       analysis_outline: [
