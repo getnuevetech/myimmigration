@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_PROMPTS, PROMPT_SUPERSEDES, PROMPT_VERSION } from "../src/lib/ai/prompts";
-import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
+import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, extractUniversalDocumentIntelligence, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -37,6 +37,11 @@ const approval = compileImmigrationEvidence({
   fileName: "approval-notice.txt",
   text: fixture("approval-notice.txt"),
 });
+const universalRfe = extractUniversalDocumentIntelligence({
+  fileName: "rfe-notice.txt",
+  documentType: "rfe",
+  text: fixture("rfe-notice.txt"),
+});
 
 const receiptFacts = receipt.facts.map((fact) => `${fact.key}:${fact.value}`);
 const rfeFacts = rfe.facts.map((fact) => `${fact.key}:${fact.value}`);
@@ -60,6 +65,10 @@ assert(biometrics.facts.some((fact) => fact.key === "appointment_date" && /April
 assert(evaluateEvidenceAction("PREPARE_APPOINTMENT", buildEvidenceGateBriefFromReconciled(reconcileEvidenceStates([biometrics])))?.satisfied === true, "biometrics appointment should satisfy appointment preparation action");
 assert(approval.documentType === "approval_notice", `expected approval classification, got ${approval.documentType}`);
 assert(approval.facts.some((fact) => fact.key === "notice_type" && fact.value === "APPROVAL"), "approval fixture should extract approval notice type");
+assert(universalRfe.pages.length === 1 && universalRfe.pages[0].text.includes("Request for Evidence"), "universal extraction should preserve page text");
+assert(universalRfe.facts.some((fact) => fact.original_label === "Receipt Number" && fact.source_anchor.field === "Receipt Number"), "universal extraction should preserve labels and source anchors");
+assert(universalRfe.instructions_and_conditions.some((item) => /Submit evidence/i.test(item)), "universal extraction should preserve instructions");
+assert(universalRfe.unclassified_content.length > 0, "universal extraction should preserve unclassified content");
 
 const combined = JSON.stringify([receipt, rfe]).toLowerCase();
 const forbiddenTaxTerms = [/\birs\b/, /\btax transcript\b/, /\bform 9465\b/, /\brefund\b/, /\bbalance due\b/];
@@ -130,6 +139,7 @@ console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
 console.log(`- ${noid.documentType}, ${biometrics.documentType}, ${approval.documentType}: extra notice fixtures passed`);
+console.log(`- universal extraction: ${universalRfe.facts.length} labeled facts, ${universalRfe.instructions_and_conditions.length} instructions`);
 console.log(`- reconciled: ${reconciled.facts.length} facts, ${reconciled.events.length} events, ${reconciled.crossDocumentRelationships.length} cross-document link(s)`);
 console.log(`- evidence gate: ${gate.status}, can analyze: ${gate.canAnalyze ? "yes" : "no"}`);
 console.log("- action intelligence: case record, notice, and deadline satisfied from evidence");

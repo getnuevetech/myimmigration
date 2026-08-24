@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { readUpload } from "@/lib/uploads";
 import { rebuildCaseEvidenceState } from "./case-state";
 import { compileImmigrationEvidence } from "./compiler";
+import { extractUniversalDocumentIntelligence } from "./universal-extraction";
 import type { ImmigrationDocumentType } from "@/domain/documents";
 import type { CompiledEvidenceState } from "./types";
 
@@ -91,10 +92,16 @@ async function findDuplicateDocument(doc: DocumentForProcessing, contentHash: st
   return duplicate?.id ?? null;
 }
 
-function extractedPayload(text: string, compiled: CompiledEvidenceState): string {
+function extractedPayload(text: string, compiled: CompiledEvidenceState, fileName: string): string {
+  const universalExtraction = extractUniversalDocumentIntelligence({
+    fileName,
+    documentType: compiled.documentType,
+    text,
+  });
   return JSON.stringify({
     schema_version: EVIDENCE_EXTRACTION_SCHEMA_VERSION,
     raw_text: text.slice(0, 4000),
+    universal_extraction: universalExtraction,
     document_type: compiled.documentType,
     facts: compiled.facts,
     events: compiled.events,
@@ -148,9 +155,10 @@ export async function processDocumentEvidence(documentId: string): Promise<Proce
           contentHash,
           extractionSchemaVersion: EVIDENCE_EXTRACTION_SCHEMA_VERSION,
           duplicateOfId,
-          extractedJson: text ? extractedPayload(text, compiled) : JSON.stringify({
+          extractedJson: text ? extractedPayload(text, compiled, doc.fileName) : JSON.stringify({
             schema_version: EVIDENCE_EXTRACTION_SCHEMA_VERSION,
             document_type: compiled.documentType,
+            universal_extraction: extractUniversalDocumentIntelligence({ fileName: doc.fileName, documentType: compiled.documentType, text }),
             needs_review_reason: "No machine-readable text was available for evidence extraction.",
           }),
         },
