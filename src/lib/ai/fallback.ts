@@ -1,10 +1,13 @@
 import "server-only";
 import { db } from "../db";
 import {
+  authorityQueriesForInquiry,
   buildOpenOptionsAnalysis,
   classifyImmigrationInquiry,
+  evaluateConsultantReferral,
   INQUIRY_MODES,
 } from "../immigration-inquiry";
+import { rankKnowledgeSources, toKnowledgeRecord, type KnowledgeRecord } from "../knowledge-retrieval";
 
 type Json = Record<string, unknown>;
 
@@ -53,15 +56,18 @@ function evidenceLine(docs: DocInfo[], unreadableCount: number, openOptions = fa
   return `${docs.length} document${docs.length === 1 ? "" : "s"} uploaded (${kinds.join(", ") || "mixed documents"}).${unreadableCount ? ` ${unreadableCount} document${unreadableCount === 1 ? "" : "s"} still require manual review.` : ""}`;
 }
 
-async function knowledgeFor(text: string, extraRefs: string[] = []): Promise<{ reference: string; title: string; content: string } | null> {
-  const upper = text.toUpperCase();
-  const refs = uniq(["RFE", "NOID", "I-485", "I-130", "I-765", "N-400", "I-589", ...extraRefs]);
-  const ref = refs.find((item) => upper.includes(item.toUpperCase()) || extraRefs.includes(item));
-  if (!ref) return null;
-  return db.knowledgeSource.findFirst({
-    where: { OR: [{ reference: { contains: ref } }, { title: { contains: ref } }], isActive: true },
-    select: { reference: true, title: true, content: true },
-  });
+async function loadRankedKnowledge(query: string, inquiry: ReturnType<typeof classifyImmigrationInquiry>): Promise<KnowledgeRecord[]> {
+  const sources = await db.knowledgeSource.findMany({ where: { isActive: true } });
+  return rankKnowledgeSources(
+    sources.map(toKnowledgeRecord),
+    {
+      query,
+      inquiryMode: inquiry.mode,
+      themes: inquiry.themes,
+      authorityQueries: authorityQueriesForInquiry(inquiry),
+    },
+    8,
+  );
 }
 
 export async function fallbackAnalyze(
@@ -87,8 +93,12 @@ export async function fallbackAnalyze(
     documentCount: docs.length,
     receipts: receiptNumbers,
   });
-  const options = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS ? buildOpenOptionsAnalysis({ situation, goal, documentsText }, inquiry) : null;
-  const knowledge = await knowledgeFor(text, options?.authorityQueries ?? []);
+  const ranked = await loadRankedKnowledge(`${situation} ${goal} ${documentsText}`, inquiry);
+  const options = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS
+    ? buildOpenOptionsAnalysis({ situation, goal, documentsText }, inquiry, ranked)
+    : null;
+  const knowledge = ranked[0] ?? null;
+  const referral = evaluateConsultantReferral({ text, inquiry, notices });
   const issues: Json[] = [];
   const conflicts: FallbackConflict[] = [];
   const evidence = evidenceLine(docs, unreadableCount, inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS);
@@ -139,6 +149,7 @@ export async function fallbackAnalyze(
       next_action: "UPLOAD_NOTICE",
       alternative_action: "Have an immigration professional review the notice and response packet.",
       uscis_basis: knowledge?.reference ?? noticeType,
+      professional_review: referral.level,
       analysis_outline: [
         { heading: "Your situation", detail: `Your case references a ${noticeType}.` },
         { heading: "USCIS context", detail: knowledge?.content ?? "USCIS notice responses should be complete, timely, and organized around each requested item.", source: knowledge?.reference ?? noticeType },
@@ -164,6 +175,7 @@ export async function fallbackAnalyze(
       state: "action_needed",
       next_action: "ADD_DEADLINE",
       alternative_action: "Upload the notice or receipt that contains the deadline.",
+      professional_review: referral.level,
       analysis_outline: [
         { heading: "Your situation", detail: "Your case includes at least one deadline reference." },
         { heading: "USCIS context", detail: "The document that creates the deadline should be treated as authoritative." },
@@ -190,6 +202,7 @@ export async function fallbackAnalyze(
       next_action: "GET_CASE_RECORD",
       alternative_action: "Upload all USCIS receipts, approvals, RFEs, denials, and interview notices.",
       uscis_basis: forms[0] ?? "USCIS case records",
+      professional_review: referral.level,
       analysis_outline: [
         { heading: "Your situation", detail: "Your case includes identifiable immigration forms or receipt numbers." },
         { heading: "USCIS context", detail: "Receipts and notices establish filing dates, case type, office, and current posture." },
@@ -215,6 +228,7 @@ export async function fallbackAnalyze(
       state: "review",
       next_action: "UPLOAD_NOTICE",
       alternative_action: "Upload the appointment notice for a document checklist.",
+      professional_review: referral.level,
     });
   }
 
@@ -233,6 +247,7 @@ export async function fallbackAnalyze(
       state: "info_needed",
       next_action: "ADD_CASE_DETAILS",
       alternative_action: "Upload the most recent USCIS notice or receipt.",
+      professional_review: referral.level,
       analysis_outline: [
         { heading: "Your situation", detail: "The case needs more structured facts before a reliable assessment can be made." },
         { heading: "USCIS context", detail: "Immigration analysis depends heavily on form type, filing date, current status, and notices received." },

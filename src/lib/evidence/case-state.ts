@@ -4,7 +4,8 @@ import { isImmigrationFactKey, type ImmigrationFactKey } from "@/domain/facts";
 import type { ImmigrationDocumentType } from "@/domain/documents";
 import { db } from "@/lib/db";
 import { getNumberSetting } from "@/lib/settings";
-import { classifyImmigrationInquiry, applyInquiryToEvidenceState } from "@/lib/immigration-inquiry";
+import { classifyImmigrationInquiry, applyInquiryToEvidenceState, INQUIRY_MODES } from "@/lib/immigration-inquiry";
+import { toKnowledgeRecord, type KnowledgeRecord } from "@/lib/knowledge-retrieval";
 import { computeEvidenceReadinessSplit } from "./readiness";
 import { reconcileEvidenceStates } from "./reconcile";
 import type { CompiledCaseEvent, CompiledEvidenceFact, CompiledEvidenceState, EvidenceConfidence } from "./types";
@@ -95,15 +96,22 @@ export async function rebuildCaseEvidenceState(caseId: string) {
       confidence: "needs_verification",
     },
   };
+  const inquiry = classifyImmigrationInquiry({
+    situation: caseRow?.situation,
+    goal: caseRow?.goal,
+    documentCount: documents.length,
+    factKeys: compiledFacts.map((fact) => fact.key),
+  });
+  let knowledgeSources: KnowledgeRecord[] = [];
+  if (inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS) {
+    const rows = await db.knowledgeSource.findMany({ where: { isActive: true } });
+    knowledgeSources = rows.map(toKnowledgeRecord);
+  }
   const reconciled = applyInquiryToEvidenceState(
     reconcileEvidenceStates([state]),
-    classifyImmigrationInquiry({
-      situation: caseRow?.situation,
-      goal: caseRow?.goal,
-      documentCount: documents.length,
-      factKeys: compiledFacts.map((fact) => fact.key),
-    }),
-    caseRow?.goal ?? caseRow?.situation ?? "",
+    inquiry,
+    [caseRow?.situation, caseRow?.goal].filter(Boolean).join("\n"),
+    knowledgeSources,
   );
   const readiness = computeEvidenceReadinessSplit({
     documentsCount: documents.length,
