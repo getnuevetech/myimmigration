@@ -369,6 +369,7 @@ model Case {
   notices        Notice[]
   versions       CaseVersion[]
   analysisPlans  CaseAnalysisPlan[]
+  presentations  CasePresentation[]
   authoritySnapshots AuthoritySnapshot[]
   evidenceSnapshots EvidenceSnapshot[]
   canonicalState CanonicalCaseState?
@@ -435,6 +436,7 @@ model CaseVersion {
   evidenceSnapshot EvidenceSnapshot? @relation(fields: [evidenceSnapshotId], references: [id], onDelete: SetNull)
   canonicalState CanonicalCaseState?
   analysisPlans CaseAnalysisPlan[]
+  presentations CasePresentation[]
 
   @@unique([caseId, version])
   @@index([caseId, createdAt])
@@ -739,6 +741,26 @@ model CaseActionNode {
 
   @@index([caseId, status, priority])
   @@index([caseId, actionKey])
+}
+
+model CasePresentation {
+  id          String   @id @default(cuid())
+  caseId      String
+  versionId   String?
+  heroJson    String   @default("{}")
+  whatThisMeansJson String @default("{}")
+  timelineJson String  @default("[]")
+  findingsJson String  @default("[]")
+  deadlinesJson String @default("[]")
+  actionsJson  String  @default("[]")
+  evidenceJson String  @default("[]")
+  professionalReviewJson String @default("null")
+  createdAt   DateTime @default(now())
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  version     CaseVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+
+  @@index([caseId, createdAt])
+  @@index([versionId])
 }
 
 // ---------- Notices, deadlines, letters ----------
