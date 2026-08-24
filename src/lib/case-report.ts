@@ -36,7 +36,7 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
   const monoFont = fonts["font.mono"] || "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
   const ref = formatCaseNumber(c.number);
   const generatedAt = new Date().toLocaleString("en-US");
-  const reviewLevel = c.runs[0]?.stepResults.length ? "Full analysis" : "Preliminary review";
+  const reviewLevel = "Case analysis";
 
   const docSections: string[] = [];
   for (const [i, d] of c.documents.entries()) {

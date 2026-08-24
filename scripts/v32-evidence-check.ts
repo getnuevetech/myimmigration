@@ -39,6 +39,14 @@ import {
   evaluateConsultantReferral,
 } from "../src/lib/immigration-inquiry";
 import { rankKnowledgeSources, type KnowledgeRecord } from "../src/lib/knowledge-retrieval";
+import {
+  authorityQueryKeys,
+  findAuthorityForKnowledge,
+  historicalMatchBoost,
+  matchBoostsFromStats,
+  knowledgeFromSnapshot,
+  overlappingOfficialUpdate,
+} from "../src/lib/authority-match";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -374,6 +382,8 @@ assert(analysisRunDecisions(optionsPlan).primaryReasoning === true, "open-option
 assert(analysisRunDecisions(optionsPlan).processDocuments === false, "open-options inquiries with no documents must skip document processing");
 assert(optionsPlan.tasks_required.includes(ANALYSIS_TASKS.QUESTION_PLANNING), "open-options inquiries should plan follow-up questions");
 assert(optionsPlan.authority_queries_needed.includes("I-130"), "open-options family inquiries should look up family petition rules");
+assert(!optionsPlan.tasks_skipped.some((item) => /No USCIS documents were uploaded/i.test(item.reason)), "the analysis plan must not tell the customer that analysis is weaker because no documents were uploaded");
+assert(optionsPlan.tasks_skipped.some((item) => item.task === ANALYSIS_TASKS.PROCESS_DOCUMENTS && /options review/i.test(item.reason)), "open-options plans may skip document processing without a missing-upload disclaimer");
 
 assert(issuesNeedIndependentReview([{ professional_review: "required" }]) === true, "required professional review should trigger independent review");
 const reviewAdd = runtimeReviewAddition(lowPlan, [{ issue_type: "professional_review" }]);
@@ -557,6 +567,8 @@ assert(!marriageOptions.issues.some((issue) => /family green card path may be po
 assert(marriageOptions.pathSteps[0]?.action_key === "ADD_CASE_DETAILS", "open-options next steps should start with clarifying facts, not uploading a notice");
 assert(!marriageOptions.pathSteps.some((step) => step.action_key === "UPLOAD_NOTICE" || step.action_key === "GET_CASE_RECORD"), "open-options next steps must not require a USCIS case record");
 assert(marriageOptions.issues.every((issue) => issue.professional_review === "probably_unnecessary"), "a simple marriage-options story should not require a consultant");
+assert(!/Preliminary review|No USCIS case file is on record|no USCIS documents were uploaded/i.test(JSON.stringify(marriageOptions)), "customer-facing options analysis must not be framed as preliminary or missing a case file");
+assert(/Matching official USCIS\/DOJ material/i.test(marriageOptions.reconstruction.summary), "options reconstruction should cite matching official material for this goal");
 
 const studentOptions = buildOpenOptionsAnalysis({
   situation: "I am on F-1 graduating next month. What can I do?",
@@ -590,6 +602,7 @@ const overlaid = applyInquiryToEvidenceState(emptyReconcile, marriageInquiry, "S
 assert(overlaid.reconstruction.currentPosition === OPEN_OPTIONS_POSTURE, "inquiry overlay should replace unverified case posture for open options");
 assert(!overlaid.unknowns.some((item) => item.key === "receipt_number"), "open-options overlay must not ask for a receipt number the person does not have");
 assert(overlaid.audit.status !== "blocked", "open-options overlay must not leave the evidence audit blocked");
+assert(!/Preliminary review|No USCIS case file is required|No USCIS case file is on record/i.test(overlaid.audit.summary), "open-options overlay must not present analysis as preliminary because a file is missing");
 assert(/identity documents|relationship documents|bona fide marriage|current immigration status/i.test(JSON.stringify(overlaid.unknowns)), "open-options overlay questions should come from official material or missing status");
 
 const optionsPresentation = assemblePresentationContract({
@@ -641,6 +654,40 @@ assert(/do not need a USCIS case/i.test(qaFallback), "Q&A without a case should 
 assert(/Family petition overview/i.test(qaFallback), "Q&A fallback should cite the matching official source");
 assert(!/upload your USCIS notice/i.test(qaFallback), "Q&A fallback must not tell people with no file that they must upload a notice");
 assert(!/I-797C|Request for Evidence/i.test(qaFallback), "Q&A fallback must not dump unrelated notice articles into a marriage question");
+
+const i130Authority = {
+  id: "auth-i130",
+  key: "uscis_i130",
+  title: "Form I-130, Petition for Alien Relative",
+  url: "https://www.uscis.gov/i-130",
+  sourceType: "form_instruction",
+  publisher: "USCIS",
+  authorityRank: "high",
+  jurisdictionOrScope: "Family-based immigrant petition",
+};
+assert(findAuthorityForKnowledge(knowledgeCatalog[2], [i130Authority])?.key === "uscis_i130", "knowledge excerpts must link to the authority registry by official URL");
+assert(authorityQueryKeys(["family"], ["I-130"]).includes("family|I-130"), "match stats should key historical hits by theme and plan query");
+assert(historicalMatchBoost(7) > historicalMatchBoost(1), "sources that historically matched similar goals should rank higher over time");
+const boostedMarriage = rankKnowledgeSources(knowledgeCatalog, {
+  query: "I want to marry a US citizen and get a green card. We have not filed anything yet. Show me what options I have",
+  inquiryMode: "open_options",
+  themes: marriageInquiry.themes,
+  authorityQueries: ["I-130", "I-485"],
+  matchBoosts: matchBoostsFromStats(
+    [{ url: "https://www.uscis.gov/i-130", queryKey: "family|I-130", hitCount: 12 }],
+    ["family|I-130"],
+  ),
+});
+assert(boostedMarriage[0]?.title === "Family petition overview", "historical match boosts must not displace the matching I-130 source");
+assert((matchBoostsFromStats([{ url: "https://www.uscis.gov/i-130", queryKey: "family|I-130", hitCount: 12 }], ["family|I-130"])["https://www.uscis.gov/i-130"] ?? 0) > 0, "match stats should produce a URL boost for the same goal/query");
+assert(overlappingOfficialUpdate({ title: "USCIS Updates Form I-130 Instructions", summary: "New edition of Form I-130." }, ["I-130"], "marry a US citizen for a green card") === true, "live USCIS updates should attach when they share a plan form query");
+assert(overlappingOfficialUpdate({ title: "Chinese Alien Charged with Voter Fraud in Massachusetts", summary: "A charging decision unrelated to this customer's goal." }, ["I-130", "I-485"], "I want to marry a US citizen and get a green card. We have not filed anything with USCIS yet.") === false, "live USCIS news must not attach on generic words such as with");
+assert(knowledgeFromSnapshot({
+  title: "Family petition overview",
+  url: "https://www.uscis.gov/i-130",
+  excerpt: "Form I-130 is used by a U.S. citizen or lawful permanent resident petitioner.",
+  applicabilityJson: JSON.stringify([{ reference: "Form I-130", tags: "i-130, family", sourceType: "form_instruction" }]),
+}).reference === "Form I-130", "snapshots must restore the official reference so later ranking still sees I-130");
 
 const qaStudent = buildQaFallbackAnswer({
   question: "I am on F-1 graduating next month. What can I do after graduation?",
@@ -694,3 +741,4 @@ console.log(`- v4 A10: analysis pipeline follows the case plan (${lowPlan.case_c
 console.log(`- v4 A11: canonical approved state v${approvedState.version} stores ${approvedState.presentation?.hero.current_posture} and the analysis plan`);
 console.log(`- v4 A12: ${selected?.source} approved state wins over stale stored/live presentations (${listFromCanonical.posture}, ${caseListVersionLine(listFromCanonical)})`);
 console.log(`- v4 C2: grounded options ${marriageOptions.issues[0]?.title}, F-1 ${rankedStudent[0]?.reference}, RFE ${rfeInquiry.mode}/${rankedRfe[0]?.reference}`);
+console.log(`- v4 C3: unified authority ${findAuthorityForKnowledge(knowledgeCatalog[2], [i130Authority])?.key}, reconstruction cites official material, no preliminary/no-docs customer framing`);

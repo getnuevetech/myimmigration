@@ -294,7 +294,7 @@ function issueFromSource(
     analysis_outline: [
       { heading: "Your situation", detail: known },
       { heading: "Immigration rules", detail: source.content.slice(0, 500), source: source.reference || source.title },
-      { heading: "Your evidence", detail: "This options review is based on what you wrote and the official material above, not on a USCIS receipt or notice." },
+      { heading: "Your evidence", detail: "This options review uses the facts you shared and the official material above." },
       { heading: "Our conclusion", detail: "This material may apply. Confirm the missing facts before treating it as your path." },
       { heading: "Your next move", detail: gaps[0]?.question ?? "Ask a follow-up about this official material." },
     ],
@@ -305,10 +305,10 @@ export function openOptionsReconstruction(inquiry: ImmigrationInquiry, goal = ""
   const goalText = goal.trim().replace(/[.]+$/, "");
   const sourceNames = sources.map((source) => source.reference || source.title).filter(Boolean).slice(0, 3).join(", ");
   const summary = goalText
-    ? `You asked about ${goalText}. No USCIS case file is on record, so this is an options review grounded in matching official material${sourceNames ? ` (${sourceNames})` : ""} — possible paths and conditions, not a reconstructed filing.`
+    ? `You asked about ${goalText}. Matching official USCIS/DOJ material${sourceNames ? ` (${sourceNames})` : ""} outlines possible paths and conditions for this goal — not a decision, approval, or reconstructed filing.`
     : sourceNames
-      ? `Matching official material includes ${sourceNames}. No USCIS case file is on record yet.`
-      : "You can explore immigration options without a USCIS case, letter, or notice on file.";
+      ? `Matching official material for this goal includes ${sourceNames}.`
+      : "Matching official USCIS and DOJ material can outline possible paths once we have your goal and current status.";
   return {
     summary,
     currentPosition: "Exploring immigration options",
@@ -364,7 +364,7 @@ export function buildOpenOptionsAnalysis(
 ): OpenOptionsAnalysis {
   const situation = (input.situation ?? "").trim();
   const goal = (input.goal ?? "").trim();
-  const known = [situation, goal].filter(Boolean).join(" ").trim() || "You described an immigration goal without a USCIS case file.";
+  const known = [situation, goal].filter(Boolean).join(" ").trim() || "You described an immigration goal.";
   const ranked = sources.length
     ? rankKnowledgeSources(sources, {
         query: known,
@@ -431,7 +431,7 @@ export function buildOpenOptionsAnalysis(
       analysis_outline: [
         { heading: "Your situation", detail: known },
         { heading: "Immigration rules", detail: "No matching USCIS or DOJ excerpt was retrieved for this wording yet." },
-        { heading: "Your evidence", detail: "No USCIS case file is on record." },
+        { heading: "Your evidence", detail: "Share the facts that change which official rule applies." },
         { heading: "Our conclusion", detail: "More of your facts are needed before naming a form or path." },
         { heading: "Your next move", detail: gaps[0]?.question ?? "Add your current status and the outcome you want." },
       ],
@@ -444,7 +444,7 @@ export function buildOpenOptionsAnalysis(
       evidence_strength: "limited",
       title: "A few facts from the official material will narrow this",
       what_we_know: known,
-      our_conclusion: "These follow-ups come from the matching USCIS or DOJ material, not from a generic checklist, and not from a receipt you do not have.",
+      our_conclusion: "These follow-ups come from the matching USCIS or DOJ material, not from a generic checklist.",
       still_unclear: gaps.map((item) => item.question),
       explanations: ranked[0]
         ? [{ title: ranked[0].title, detail: `Missing items were read from ${ranked[0].reference || ranked[0].title}.`, likelihood: "Possible" }]
@@ -459,7 +459,7 @@ export function buildOpenOptionsAnalysis(
       analysis_outline: [
         { heading: "Your situation", detail: known },
         { heading: "Immigration rules", detail: ranked[0] ? firstSentences(ranked[0].content) : "Matching official material still needs a few facts from you." },
-        { heading: "Your evidence", detail: "No USCIS case file is required for this kind of review." },
+        { heading: "Your evidence", detail: "The follow-ups below come from the matching official material." },
         { heading: "Our conclusion", detail: "Answer the gaps listed by the official material before treating a path as yours." },
         { heading: "Your next move", detail: gaps[0].question },
       ],
@@ -505,7 +505,7 @@ export function applyInquiryToEvidenceState<
     audit: {
       ...state.audit,
       status: auditStatus,
-      summary: "No USCIS case file is required for an options review. Possible pathways come from matching official USCIS or DOJ material and the described situation.",
+      summary: "Possible pathways come from matching official USCIS or DOJ material for this goal and the facts you shared.",
       blockingUnknowns: unknowns.map((item) => item.key),
       warnings: state.audit.warnings.filter((warning) => !/receipt number|form type|notice type/i.test(warning)),
     },

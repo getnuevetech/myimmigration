@@ -1,5 +1,4 @@
 import "server-only";
-import { db } from "../db";
 import {
   authorityQueriesForInquiry,
   buildOpenOptionsAnalysis,
@@ -7,7 +6,8 @@ import {
   evaluateConsultantReferral,
   INQUIRY_MODES,
 } from "../immigration-inquiry";
-import { rankKnowledgeSources, toKnowledgeRecord, type KnowledgeRecord } from "../knowledge-retrieval";
+import { retrieveUnifiedAuthority } from "../authority-retrieval";
+import type { KnowledgeRecord } from "../knowledge-retrieval";
 
 type Json = Record<string, unknown>;
 
@@ -49,25 +49,24 @@ function detectDeadlines(text: string): string[] {
 function evidenceLine(docs: DocInfo[], unreadableCount: number, openOptions = false): string {
   if (docs.length === 0) {
     return openOptions
-      ? "No USCIS case file is on record. This review uses the situation you described, not a receipt or notice."
+      ? "This review uses the situation you described and matching official USCIS or DOJ material."
       : "No documents are on file yet. Upload notices, receipts, forms, and identity records so each finding can be checked against evidence.";
   }
   const kinds = uniq(docs.map((doc) => doc.docKind));
   return `${docs.length} document${docs.length === 1 ? "" : "s"} uploaded (${kinds.join(", ") || "mixed documents"}).${unreadableCount ? ` ${unreadableCount} document${unreadableCount === 1 ? "" : "s"} still require manual review.` : ""}`;
 }
 
-async function loadRankedKnowledge(query: string, inquiry: ReturnType<typeof classifyImmigrationInquiry>): Promise<KnowledgeRecord[]> {
-  const sources = await db.knowledgeSource.findMany({ where: { isActive: true } });
-  return rankKnowledgeSources(
-    sources.map(toKnowledgeRecord),
-    {
-      query,
-      inquiryMode: inquiry.mode,
-      themes: inquiry.themes,
-      authorityQueries: authorityQueriesForInquiry(inquiry),
-    },
-    8,
-  );
+async function loadRankedKnowledge(query: string, inquiry: ReturnType<typeof classifyImmigrationInquiry>, caseId?: string): Promise<KnowledgeRecord[]> {
+  return retrieveUnifiedAuthority({
+    query,
+    queries: authorityQueriesForInquiry(inquiry),
+    inquiryMode: inquiry.mode,
+    themes: inquiry.themes,
+    caseId,
+    limit: 8,
+    persistHits: true,
+    preferSnapshots: Boolean(caseId),
+  });
 }
 
 export async function fallbackAnalyze(
@@ -75,6 +74,7 @@ export async function fallbackAnalyze(
   goal: string,
   documentsText: string,
   docs: DocInfo[] = [],
+  caseId?: string,
 ): Promise<FallbackResult> {
   const narrative = `${situation}\n${goal}`;
   const text = `${narrative}\n${documentsText}`;
@@ -93,7 +93,7 @@ export async function fallbackAnalyze(
     documentCount: docs.length,
     receipts: receiptNumbers,
   });
-  const ranked = await loadRankedKnowledge(`${situation} ${goal} ${documentsText}`, inquiry);
+  const ranked = await loadRankedKnowledge(`${situation} ${goal} ${documentsText}`, inquiry, caseId);
   const options = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS
     ? buildOpenOptionsAnalysis({ situation, goal, documentsText }, inquiry, ranked)
     : null;
