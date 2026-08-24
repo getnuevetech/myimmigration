@@ -111,9 +111,10 @@ export type StageOutcome = {
 export async function runStage(
   stageKey: string,
   vars: Record<string, string>,
-  opts?: { runId?: string; sequentialContext?: boolean; media?: MediaAttachment[] },
+  opts?: { runId?: string; sequentialContext?: boolean; media?: MediaAttachment[]; roles?: string[] },
 ): Promise<StageOutcome> {
-  const steps = await getRunnableSteps(stageKey);
+  const allowedRoles = opts?.roles ? new Set(opts.roles) : null;
+  const steps = (await getRunnableSteps(stageKey)).filter((step) => !allowedRoles || allowedRoles.has(step.role));
   const stepOutputs: StageOutcome["stepOutputs"] = [];
   let prior = "";
 
@@ -240,9 +241,10 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
   let caseVersionId: string | null = null;
   let analysisPlanId: string | null = null;
+  let analysisPlan: Awaited<ReturnType<typeof createCaseAnalysisPlan>> | null = null;
   try {
     caseVersionId = (await ensureCaseVersion(caseId, "analysis")).id;
-    const analysisPlan = await createCaseAnalysisPlan(caseId, caseVersionId);
+    analysisPlan = await createCaseAnalysisPlan(caseId, caseVersionId);
     analysisPlanId = analysisPlan?.id ?? null;
     if (analysisPlan?.planJson) {
       const parsedPlan = JSON.parse(analysisPlan.planJson) as { authority_queries_needed?: string[] };
@@ -301,9 +303,9 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
     } catch { /* file missing — skip */ }
   }
 
-  async function stageRun(stageKey: string, vars: Record<string, string>, sequentialContext = false, stageMedia?: MediaAttachment[]) {
+  async function stageRun(stageKey: string, vars: Record<string, string>, sequentialContext = false, stageMedia?: MediaAttachment[], roles?: string[]) {
     const run = await db.analysisRun.create({ data: { caseId, stageKey, status: "running" } });
-    const outcome = await runStage(stageKey, vars, { runId: run.id, sequentialContext, media: stageMedia });
+    const outcome = await runStage(stageKey, vars, { runId: run.id, sequentialContext, media: stageMedia, roles });
     await db.analysisRun.update({
       where: { id: run.id },
       data: { status: "complete", finishedAt: new Date() },
@@ -386,6 +388,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   let situationMerged: Json = {};
   let situationConflicts: Conflict[] = [];
   if (usedAi) {
+    const situationRoles = analysisPlan?.reviewRequired ? undefined : ["analyst"];
     const situationOut = await stageRun(STAGE_KEYS.SITUATION, {
       facts: JSON.stringify({ extracted_facts: facts, evidence_gate: evidenceGateJson }),
       documents: JSON.stringify({
@@ -396,7 +399,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       }),
       knowledge: knowledge || "(no matching reference material)",
       goal: JSON.stringify(goalFacts),
-    });
+    }, false, undefined, situationRoles);
     situationMerged = situationOut.merged;
     situationConflicts = situationOut.conflicts;
   }
