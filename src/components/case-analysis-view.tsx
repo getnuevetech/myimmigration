@@ -8,6 +8,7 @@ import { CaseUpload } from "@/components/case-upload";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { parsePresentationRecord } from "@/lib/case-presentation-contract";
 import { CasePresentationView } from "@/components/case-presentation-view";
+import { CaseAnalysisPlanCard } from "@/components/case-analysis-plan-card";
 import Link from "next/link";
 
 export type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
@@ -51,6 +52,11 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     orderBy: { createdAt: "desc" },
   }).catch(() => null);
   const presentation = presentationRow ? parsePresentationRecord(presentationRow) : null;
+  const analysisPlanRow = await db.caseAnalysisPlan.findFirst({
+    where: { caseId },
+    orderBy: { createdAt: "desc" },
+    select: { planJson: true },
+  }).catch(() => null);
   let evidenceTimeline: { eventType?: string; title?: string; dateText?: string }[] = presentation?.timeline ?? [];
   let pendingEvidenceActions: string[] = presentation?.what_this_means.pending_actions ?? [];
   let conflicts: { topic: string; description: string; resolution?: string }[] =
@@ -162,6 +168,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           neededDocs={neededDocs}
           formI485Id={formI485?.id ?? null}
         />
+        {analysisPlanRow?.planJson ? <CaseAnalysisPlanCard planJson={analysisPlanRow.planJson} /> : null}
       </div>
     );
   }
@@ -255,6 +262,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
             verified — your USCIS case record is usually the record that settles them.
           </div>
         )}
+        {analysisPlanRow?.planJson ? <CaseAnalysisPlanCard planJson={analysisPlanRow.planJson} /> : null}
         {professionalReviewRecommended && (
           <div className="rounded-xl border border-lime-300 bg-lime-50 px-4 py-3 text-sm text-lime-900">
             <span className="font-semibold">▲ Professional review recommended.</span> Based on the analysis, this case would benefit
