@@ -6,6 +6,7 @@ import { fallbackAnalyze } from "./fallback";
 import { STAGE_KEYS } from "../constants";
 import { getNumberSetting } from "../settings";
 import { readUpload } from "../uploads";
+import { snapshotAuthorityForPlan } from "../authority-retrieval";
 import { verifyCaseProgress } from "../case-progress";
 import { ensureCaseVersion, finalizeCaseVersion } from "../case-versioning";
 import { createCaseAnalysisPlan } from "../case-orchestrator";
@@ -240,7 +241,14 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   let analysisPlanId: string | null = null;
   try {
     caseVersionId = (await ensureCaseVersion(caseId, "analysis")).id;
-    analysisPlanId = (await createCaseAnalysisPlan(caseId, caseVersionId))?.id ?? null;
+    const analysisPlan = await createCaseAnalysisPlan(caseId, caseVersionId);
+    analysisPlanId = analysisPlan?.id ?? null;
+    if (analysisPlan?.planJson) {
+      const parsedPlan = JSON.parse(analysisPlan.planJson) as { authority_queries_needed?: string[] };
+      if (Array.isArray(parsedPlan.authority_queries_needed) && parsedPlan.authority_queries_needed.length > 0) {
+        await snapshotAuthorityForPlan(caseId, parsedPlan.authority_queries_needed);
+      }
+    }
   } catch (err) {
     const { logSystem } = await import("../syslog");
     await logSystem("warning", "case_versioning", "Could not create case version or analysis plan before analysis", String(err));

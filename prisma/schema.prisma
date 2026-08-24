@@ -138,6 +138,40 @@ model KnowledgeSource {
   updatedAt  DateTime @updatedAt
 }
 
+model AuthoritySource {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  sourceType  String   @default("official") // policy_manual | form_instruction | alert | statute | regulation | agency_manual
+  publisher   String   @default("USCIS")
+  title       String
+  url         String
+  authorityRank String @default("high") // highest | high | medium | discovery
+  jurisdictionOrScope String @default("")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  snapshots   AuthoritySnapshot[]
+}
+
+model AuthoritySnapshot {
+  id          String   @id @default(cuid())
+  sourceId    String
+  caseId      String?
+  title       String
+  url         String
+  retrievedAt DateTime @default(now())
+  effectiveOrUpdateDate String @default("")
+  contentHash String @default("")
+  excerpt     String @default("")
+  applicabilityJson String @default("[]")
+  source      AuthoritySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  case        Case?    @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  @@index([sourceId, retrievedAt])
+  @@index([caseId, retrievedAt])
+  @@index([contentHash])
+}
+
 // ---------- Users, roles, agreements ----------
 
 model User {
@@ -334,6 +368,7 @@ model Case {
   notices        Notice[]
   versions       CaseVersion[]
   analysisPlans  CaseAnalysisPlan[]
+  authoritySnapshots AuthoritySnapshot[]
   evidenceSnapshots EvidenceSnapshot[]
   canonicalState CanonicalCaseState?
   qaThreads      QaThread[]

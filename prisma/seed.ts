@@ -689,6 +689,63 @@ async function seedKnowledge() {
   }
 }
 
+async function seedAuthoritySources() {
+  const sources = [
+    {
+      key: "uscis_policy_manual",
+      sourceType: "policy_manual",
+      publisher: "USCIS",
+      title: "USCIS Policy Manual",
+      url: "https://www.uscis.gov/policy-manual",
+      authorityRank: "high",
+      jurisdictionOrScope: "USCIS adjudicative policy and guidance",
+    },
+    {
+      key: "uscis_forms",
+      sourceType: "form_instruction",
+      publisher: "USCIS",
+      title: "USCIS Forms and Instructions",
+      url: "https://www.uscis.gov/forms/all-forms",
+      authorityRank: "high",
+      jurisdictionOrScope: "Current USCIS form editions and filing instructions",
+    },
+    {
+      key: "uscis_alerts",
+      sourceType: "alert",
+      publisher: "USCIS",
+      title: "USCIS Alerts",
+      url: "https://www.uscis.gov/newsroom/alerts",
+      authorityRank: "high",
+      jurisdictionOrScope: "Current USCIS alerts and operational updates",
+    },
+    {
+      key: "ecfr_title_8",
+      sourceType: "regulation",
+      publisher: "eCFR",
+      title: "8 CFR Aliens and Nationality",
+      url: "https://www.ecfr.gov/current/title-8",
+      authorityRank: "highest",
+      jurisdictionOrScope: "Federal immigration regulations",
+    },
+    {
+      key: "ina",
+      sourceType: "statute",
+      publisher: "USCIS",
+      title: "Immigration and Nationality Act",
+      url: "https://www.uscis.gov/laws-and-policy/legislation/immigration-and-nationality-act",
+      authorityRank: "highest",
+      jurisdictionOrScope: "Primary immigration statute",
+    },
+  ];
+  for (const source of sources) {
+    await db.authoritySource.upsert({
+      where: { key: source.key },
+      update: { ...source, isActive: true },
+      create: source,
+    });
+  }
+}
+
 async function seedFormTemplates() {
   const templates = [
     {
@@ -914,6 +971,7 @@ async function main() {
   await seedAiAndPipelines();
   await seedContent();
   await seedKnowledge();
+  await seedAuthoritySources();
   await seedFormTemplates();
   await seedCannedResponses();
   await seedMessageTemplates();
