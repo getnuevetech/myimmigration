@@ -172,7 +172,7 @@ export function buildAnalysisPlan(input: AnalysisPlanInput): AnalysisPlan {
       ANALYSIS_TASKS.PRESENT_APPROVED_STATE,
     ]),
     tasks_skipped: [
-      ...(docsToProcess.length ? [] : [{ task: ANALYSIS_TASKS.PROCESS_DOCUMENTS, reason: openOptions ? "No USCIS documents were uploaded, so document processing is not required for an options review." : "No stale or failed documents require processing." }]),
+      ...(docsToProcess.length ? [] : [{ task: ANALYSIS_TASKS.PROCESS_DOCUMENTS, reason: openOptions ? "Document processing is not needed for this options review." : "No stale or failed documents require processing." }]),
       ...(needsReview ? [] : [{ task: ANALYSIS_TASKS.INDEPENDENT_REVIEW, reason: "No high-risk issue, audit block, or material conflict detected." }]),
       ...(questionsNeeded ? [] : [{ task: ANALYSIS_TASKS.QUESTION_PLANNING, reason: "No open unknowns need follow-up questions." }]),
     ],

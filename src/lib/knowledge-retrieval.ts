@@ -33,6 +33,7 @@ export type KnowledgeRetrievalHint = {
   inquiryMode?: "existing_case" | "open_options";
   themes?: string[];
   authorityQueries?: string[];
+  matchBoosts?: Record<string, number>;
 };
 
 const USCIS_REFERENCE_RE = /\b(?:RFE|NOID|NOIR|NOIT|I-797C?|I-485|I-130|I-765|I-864|I-589|N-400|G-28|AR-11|I-20|F-1|OPT|EOIR|NTA|[A-Z]{3}\d{10})\b/gi;
@@ -98,6 +99,8 @@ export function scoreKnowledgeSource(source: KnowledgeRecord, hint: KnowledgeRet
       if (item.pattern.test(exclusiveHay) && !themes.includes(item.theme)) score -= 15;
     }
   }
+  const urlKey = (source.url ?? "").trim().toLowerCase().replace(/\/+$/, "");
+  if (hint.matchBoosts && urlKey && hint.matchBoosts[urlKey]) score += hint.matchBoosts[urlKey];
   return score;
 }
 

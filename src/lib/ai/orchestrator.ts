@@ -6,7 +6,7 @@ import { fallbackAnalyze } from "./fallback";
 import { STAGE_KEYS } from "../constants";
 import { getNumberSetting } from "../settings";
 import { readUpload } from "../uploads";
-import { snapshotAuthorityForPlan } from "../authority-retrieval";
+import { retrieveUnifiedAuthority, snapshotAuthorityForPlan } from "../authority-retrieval";
 import { buildPrimaryReasonerContext } from "../primary-reasoner-context";
 import { buildCaseActionGraph } from "../action-graph";
 import { buildCasePresentation, getCasePresentationBrief } from "../case-presentation";
@@ -32,7 +32,7 @@ import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
 import { getCaseEvidenceBrief } from "../evidence/brief";
 import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
 import { mergeSupportedText, presentationGroundingBlock, withPresentationNoticeSteps } from "../case-presentation-brief";
-import { formatKnowledgeBlock, rankKnowledgeSources, toKnowledgeRecord, type KnowledgeRecord } from "../knowledge-retrieval";
+import { formatKnowledgeBlock, type KnowledgeRecord } from "../knowledge-retrieval";
 import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry } from "../immigration-inquiry";
 
 type Json = Record<string, unknown>;
@@ -84,20 +84,19 @@ async function getRunnableSteps(stageKey: string) {
   return stage.steps.filter((s) => s.provider.isEnabled && s.provider.apiKey.length > 0);
 }
 
-// Ranked retrieval over the admin-curated USCIS/DOJ knowledge base.
-export async function retrieveKnowledgeRecords(query: string, limit = 5): Promise<KnowledgeRecord[]> {
+// Ranked retrieval over the unified authority path (registry + knowledge + match stats).
+export async function retrieveKnowledgeRecords(query: string, limit = 5, caseId?: string | null): Promise<KnowledgeRecord[]> {
   const inquiry = classifyImmigrationInquiry({ situation: query, goal: query });
-  const sources = await db.knowledgeSource.findMany({ where: { isActive: true } });
-  return rankKnowledgeSources(
-    sources.map(toKnowledgeRecord),
-    {
-      query,
-      inquiryMode: inquiry.mode,
-      themes: inquiry.themes,
-      authorityQueries: authorityQueriesForInquiry(inquiry),
-    },
+  return retrieveUnifiedAuthority({
+    query,
+    queries: authorityQueriesForInquiry(inquiry),
+    inquiryMode: inquiry.mode,
+    themes: inquiry.themes,
+    caseId,
     limit,
-  );
+    persistHits: true,
+    preferSnapshots: Boolean(caseId),
+  });
 }
 
 export async function retrieveKnowledge(query: string, limit = 5): Promise<string> {
@@ -336,16 +335,19 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       await logSystem("warning", "case_orchestrator", "Plan-driven document processing failed", String(err));
     });
   }
-  await rebuildCaseEvidenceState(caseId).catch(async (err) => {
-    const { logSystem } = await import("../syslog");
-    await logSystem("warning", "evidence_state", "Could not rebuild case evidence state before analysis", String(err));
-  });
-  if (decisions.retrieveAuthority && (parsedPlan?.authority_queries_needed.length ?? 0) > 0) {
-    await snapshotAuthorityForPlan(caseId, parsedPlan?.authority_queries_needed ?? []).catch(async (err) => {
+  if (decisions.retrieveAuthority) {
+    await snapshotAuthorityForPlan(caseId, parsedPlan?.authority_queries_needed ?? [], {
+      situation: c.situation,
+      goal: c.goal,
+    }).catch(async (err) => {
       const { logSystem } = await import("../syslog");
       await logSystem("warning", "case_orchestrator", "Plan-driven authority retrieval failed", String(err));
     });
   }
+  await rebuildCaseEvidenceState(caseId).catch(async (err) => {
+    const { logSystem } = await import("../syslog");
+    await logSystem("warning", "evidence_state", "Could not rebuild case evidence state before analysis", String(err));
+  });
 
   async function stageRun(stageKey: string, vars: Record<string, string>, sequentialContext = false, stageMedia?: MediaAttachment[], roles?: string[]) {
     const run = await db.analysisRun.create({ data: { caseId, stageKey, status: "running" } });
@@ -400,7 +402,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       /\.(txt|csv|md|log)$/i.test(d.fileName) ||
       d.extractedJson.length > 0,
   }));
-  const fallback = usedAi ? null : await fallbackAnalyze(c.situation, c.goal, rawDocText, docInfos);
+  const fallback = usedAi ? null : await fallbackAnalyze(c.situation, c.goal, rawDocText, docInfos, caseId);
   const facts = usedAi ? summaryOut.merged : fallback!.facts;
   const goalFacts = usedAi ? goalOut.merged : { user_goal: c.goal };
   let evidenceGate: Awaited<ReturnType<typeof getCaseEvidenceGateBrief>> | null = null;
@@ -434,7 +436,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
 
   // Layer 4: situation analysis grounded in the USCIS knowledge base.
   const knowledge = decisions.retrieveAuthority
-    ? await retrieveKnowledge(`${c.situation} ${c.goal} ${docText}`)
+    ? formatKnowledgeBlock(await retrieveKnowledgeRecords(`${c.situation} ${c.goal} ${docText}`, 5, caseId))
     : "";
   let situationMerged: Json = {};
   let situationConflicts: Conflict[] = [];
@@ -499,7 +501,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   }
   const issues: Json[] = presentation
     ? ((presentation.issues as Json[]) ?? [])
-    : (fallback ?? (await fallbackAnalyze(c.situation, c.goal, rawDocText, docInfos))).issues;
+    : (fallback ?? (await fallbackAnalyze(c.situation, c.goal, rawDocText, docInfos, caseId))).issues;
 
   // Persist issues.
   for (const [i, issue] of issues.entries()) {
@@ -544,7 +546,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   // Path forward steps (each carries an action key for evidence verification).
   const pathSteps: Json[] = presentation?.path_steps
     ? ((presentation.path_steps as Json[]) ?? [])
-    : ((fallback ?? (await fallbackAnalyze(c.situation, c.goal, rawDocText, docInfos))).pathSteps as unknown as Json[]);
+    : ((fallback ?? (await fallbackAnalyze(c.situation, c.goal, rawDocText, docInfos, caseId))).pathSteps as unknown as Json[]);
   for (const [i, step] of pathSteps.entries()) {
     await db.pathStep.create({
       data: {
@@ -735,7 +737,7 @@ export async function runQaChat(history: { role: string; content: string }[], op
   ]
     .filter(Boolean)
     .join(" ");
-  const knowledgeSources = await retrieveKnowledgeRecords(knowledgeQuery);
+  const knowledgeSources = await retrieveKnowledgeRecords(knowledgeQuery, 5, opts?.caseId);
   const knowledge = formatKnowledgeBlock(knowledgeSources);
   const grounding = await loadCaseGrounding(opts?.caseId);
   const fallbackAnswer = () =>
@@ -760,7 +762,7 @@ export async function runQaChat(history: { role: string; content: string }[], op
         : "";
       const evidenceContext = grounding.block
         ? `\n\n${grounding.block}\n\nGrounding rule: answer case-specific questions from the approved presentation, the evidence brief, the conversation, and USCIS reference material. Treat unsupported details as unknowns. Do not contradict the approved posture, next action, or deadlines.`
-        : `\n\nNo USCIS case file is linked. Answer as an options question: explain possible paths with conditions. Never invent a receipt number, deadline, notice type, or filed-case posture. Do not require the user to upload a notice before you can help.`;
+        : `\n\nAnswer as an options question: explain possible paths with conditions from matching official material. Never invent a receipt number, deadline, notice type, or filed-case posture. Do not require the user to upload a notice before you can help.`;
       const prompt = fill(step.promptTemplate, { input: `${convo}${priorDrafts}${evidenceContext}`, knowledge: knowledge || "(none)" });
       const result = await callProvider(step.provider, [{ role: "user", content: prompt }]);
       if (result.text.trim()) drafts.push(result.text.trim());

@@ -5,7 +5,8 @@ import type { ImmigrationDocumentType } from "@/domain/documents";
 import { db } from "@/lib/db";
 import { getNumberSetting } from "@/lib/settings";
 import { classifyImmigrationInquiry, applyInquiryToEvidenceState, INQUIRY_MODES } from "@/lib/immigration-inquiry";
-import { toKnowledgeRecord, type KnowledgeRecord } from "@/lib/knowledge-retrieval";
+import { retrieveUnifiedAuthority } from "@/lib/authority-retrieval";
+import type { KnowledgeRecord } from "@/lib/knowledge-retrieval";
 import { computeEvidenceReadinessSplit } from "./readiness";
 import { reconcileEvidenceStates } from "./reconcile";
 import type { CompiledCaseEvent, CompiledEvidenceFact, CompiledEvidenceState, EvidenceConfidence } from "./types";
@@ -104,8 +105,13 @@ export async function rebuildCaseEvidenceState(caseId: string) {
   });
   let knowledgeSources: KnowledgeRecord[] = [];
   if (inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS) {
-    const rows = await db.knowledgeSource.findMany({ where: { isActive: true } });
-    knowledgeSources = rows.map(toKnowledgeRecord);
+    knowledgeSources = await retrieveUnifiedAuthority({
+      query: [caseRow?.situation, caseRow?.goal].filter(Boolean).join(" "),
+      caseId,
+      limit: 6,
+      persistHits: false,
+      preferSnapshots: true,
+    });
   }
   const reconciled = applyInquiryToEvidenceState(
     reconcileEvidenceStates([state]),

@@ -151,6 +151,7 @@ model AuthoritySource {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   snapshots   AuthoritySnapshot[]
+  matchStats  AuthorityMatchStat[]
 }
 
 model AuthoritySnapshot {
@@ -170,6 +171,20 @@ model AuthoritySnapshot {
   @@index([sourceId, retrievedAt])
   @@index([caseId, retrievedAt])
   @@index([contentHash])
+}
+
+// Retrieval feedback: which official sources historically matched which
+// customer goals / plan queries. Used to boost ranking over time — not LLM training.
+model AuthorityMatchStat {
+  id        String   @id @default(cuid())
+  sourceId  String
+  queryKey  String
+  hitCount  Int      @default(0)
+  lastHitAt DateTime @default(now())
+  source    AuthoritySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, queryKey])
+  @@index([queryKey, hitCount])
 }
 
 // ---------- Users, roles, agreements ----------

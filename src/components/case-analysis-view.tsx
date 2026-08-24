@@ -45,10 +45,6 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const fullAccess = viewer.role !== "customer" ? true : (viewer.fullResults ?? true);
   const visibleIssues = fullAccess ? c.issues : c.issues.slice(0, 1);
   const verificationFlags = c.runs.filter((r) => r.consensus?.verificationRequired).length;
-  const aiStepCount = await db.analysisStepResult.count({
-    where: { run: { caseId: c.id }, status: "complete" },
-  });
-  const isPreliminary = c.runs.length > 0 && aiStepCount === 0;
   const latestEvidenceAudit = c.evidenceAudits[0] ?? null;
   const canonicalState = await db.canonicalCaseState.findUnique({
     where: { caseId },
@@ -160,13 +156,6 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
             <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-200">{c.closingRemarks || "This case has been closed."}</p>
           </div>
         )}
-        {isPreliminary && (
-          <div className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-700">
-            <span className="font-semibold">? Preliminary review.</span> These results are based on the information and
-            readable documents provided so far. Items marked &quot;needs verification&quot; firm up as your documents are
-            verified — your USCIS case record is usually the record that settles them.
-          </div>
-        )}
         <CasePresentationView
           caseId={c.id}
           viewer={viewer}
@@ -272,13 +261,6 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
             </p>
             <h2 className="mt-1 text-lg font-semibold text-white">Final review & closing remarks</h2>
             <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-200">{c.closingRemarks || "This case has been closed."}</p>
-          </div>
-        )}
-        {isPreliminary && (
-          <div className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-700">
-                  <span className="font-semibold">? Preliminary review.</span> These results are based on the information and
-            readable documents provided so far. Items marked &quot;needs verification&quot; firm up as your documents are
-            verified — your USCIS case record is usually the record that settles them.
           </div>
         )}
         {analysisPlanJson ? <CaseAnalysisPlanCard planJson={analysisPlanJson} /> : null}
