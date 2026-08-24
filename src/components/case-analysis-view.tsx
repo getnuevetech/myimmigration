@@ -241,12 +241,12 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                   <div className="flex flex-wrap gap-2">
                     {presentation?.hero.evidence_strength && (
                       <Badge color={presentation.hero.evidence_strength === "Strong" ? "green" : presentation.hero.evidence_strength === "Moderate" ? "lime" : "slate"}>
-                        Evidence {presentation.hero.evidence_strength.toLowerCase()}
+                        {`Evidence ${presentation.hero.evidence_strength.toLowerCase()}`}
                       </Badge>
                     )}
                     {evidenceGateStatus && (
                       <Badge color={evidenceGateStatus === "pass" ? "green" : evidenceGateStatus === "needs_review" ? "lime" : "slate"}>
-                        Evidence gate: {evidenceGateStatus.replace(/_/g, " ")}
+                        {`Evidence gate: ${evidenceGateStatus.replace(/_/g, " ")}`}
                       </Badge>
                     )}
                   </div>
