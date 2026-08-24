@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { hasFeature } from "@/lib/access";
-import { getBoolSetting, getSetting } from "@/lib/settings";
+import { getBoolSetting, getSetting, getSettingsMap } from "@/lib/settings";
 import { FEATURE_KEYS } from "@/lib/constants";
 
 const esc = (s: string) =>
@@ -57,6 +57,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   const appName = await getSetting("app.name", "ImmigrationOnMe");
+  const fonts = await getSettingsMap(["font.body", "font.mono"]);
+  const bodyFont = fonts["font.body"] || "var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif";
+  const monoFont = fonts["font.mono"] || "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
   const generatedAt = new Date().toLocaleString("en-US");
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -64,12 +67,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 <meta charset="utf-8" />
 <title>Form ${esc(submission.template.formNumber)} — ${esc(submission.template.title)}</title>
 <style>
-  body { font-family: 'Courier New', monospace; color: #111827; max-width: 800px; margin: 0 auto; padding: 40px 24px; }
-  header { font-family: Arial, sans-serif; border-bottom: 3px solid #111827; padding-bottom: 12px; margin-bottom: 24px; }
+  body { font-family: ${esc(monoFont)}; color: #111827; max-width: 800px; margin: 0 auto; padding: 40px 24px; }
+  header { font-family: ${esc(bodyFont)}; border-bottom: 3px solid #111827; padding-bottom: 12px; margin-bottom: 24px; }
   h1 { font-size: 20px; margin: 0; }
   .meta { font-size: 12px; color: #4b5563; margin-top: 4px; }
   pre { white-space: pre-wrap; font-size: 13px; line-height: 1.5; }
-  footer { font-family: Arial, sans-serif; margin-top: 32px; border-top: 1px solid #d1d5db; padding-top: 10px; font-size: 10px; color: #9ca3af; }
+  footer { font-family: ${esc(bodyFont)}; margin-top: 32px; border-top: 1px solid #d1d5db; padding-top: 10px; font-size: 10px; color: #9ca3af; }
   @media print { body { padding: 0; } }
 </style>
 </head>

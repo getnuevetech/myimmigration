@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "./db";
 import { readUpload } from "./uploads";
-import { getSetting } from "./settings";
+import { getSetting, getSettingsMap } from "./settings";
 import { formatCaseNumber } from "./case-number";
 import { resolveCasePresentation } from "./case-presentation";
 import { presentationReportSections } from "./case-report-presentation";
@@ -25,6 +25,10 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
   if (!presentation) return null;
 
   const appName = await getSetting("app.name", "ImmigrationOnMe");
+  const fonts = await getSettingsMap(["font.body", "font.heading", "font.mono"]);
+  const bodyFont = fonts["font.body"] || "var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif";
+  const headingFont = fonts["font.heading"] || "var(--font-playfair), Georgia, 'Times New Roman', serif";
+  const monoFont = fonts["font.mono"] || "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
   const ref = formatCaseNumber(c.number);
   const generatedAt = new Date().toLocaleString("en-US");
   const reviewLevel = c.runs[0]?.stepResults.length ? "Full analysis" : "Preliminary review";
@@ -55,11 +59,11 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
 <meta charset="utf-8" />
 <title>${esc(appName)} Case Report ${ref}</title>
 <style>
-  body { font-family: Georgia, 'Times New Roman', serif; color: #1e293b; max-width: 800px; margin: 0 auto; padding: 40px 24px; line-height: 1.55; }
+  body { font-family: ${esc(bodyFont)}; color: #1e293b; max-width: 800px; margin: 0 auto; padding: 40px 24px; line-height: 1.55; }
   header { border-bottom: 3px solid #3f6212; padding-bottom: 16px; margin-bottom: 28px; }
-  h1 { font-size: 26px; margin: 0; color: #1e1b4b; }
-  h2 { font-size: 18px; color: #3f6212; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-top: 32px; }
-  h3 { font-size: 15px; margin-bottom: 4px; }
+  h1 { font-family: ${esc(headingFont)}; font-size: 26px; margin: 0; color: #1e1b4b; }
+  h2 { font-family: ${esc(headingFont)}; font-size: 18px; color: #3f6212; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-top: 32px; }
+  h3 { font-family: ${esc(headingFont)}; font-size: 15px; margin-bottom: 4px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0; }
   th, td { border: 1px solid #e2e8f0; padding: 6px 10px; text-align: left; vertical-align: top; }
   th { background: #f8fafc; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; }
@@ -67,8 +71,8 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
   .meta { font-size: 13px; color: #475569; margin-top: 6px; }
   .badge { display: inline-block; border: 1px solid #cbd5e1; border-radius: 999px; padding: 1px 10px; font-size: 11px; margin-right: 6px; }
   img.doc { max-width: 100%; border: 1px solid #e2e8f0; margin: 8px 0; }
-  pre.doc-text { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; font-size: 11px; white-space: pre-wrap; font-family: 'Courier New', monospace; }
-  pre.letter { background: #fff; border: 1px solid #e2e8f0; padding: 16px; font-size: 12px; white-space: pre-wrap; font-family: 'Courier New', monospace; }
+  pre.doc-text { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; font-size: 11px; white-space: pre-wrap; font-family: ${esc(monoFont)}; }
+  pre.letter { background: #fff; border: 1px solid #e2e8f0; padding: 16px; font-size: 12px; white-space: pre-wrap; font-family: ${esc(monoFont)}; }
   footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 11px; color: #94a3b8; }
   @media print { body { padding: 0; } h2 { page-break-after: avoid; } .appendix { page-break-before: always; } }
 </style>

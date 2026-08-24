@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-serif: var(--font-playfair);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-body);
+  --font-serif: var(--font-heading);
+  --font-mono: var(--font-code);
 }
 
 /* Giant outlined wordmark used in the dark footer */
@@ -14,6 +14,9 @@
 
 :root {
   color-scheme: light;
+  --font-body: var(--font-geist-sans);
+  --font-heading: var(--font-playfair);
+  --font-code: var(--font-geist-mono);
 }
 
 body {
