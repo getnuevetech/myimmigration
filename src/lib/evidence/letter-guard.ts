@@ -1,5 +1,3 @@
-import type { SharedEvidenceBrief } from "./brief";
-
 export type LetterGuardFinding = {
   kind: "receipt_number" | "form_type" | "date";
   value: string;
@@ -29,7 +27,7 @@ function placeholder(kind: LetterGuardFinding["kind"]): string {
   return "[VERIFY DATE FROM RECORD]";
 }
 
-export function guardLetterDraftWithEvidence(draft: string, brief: SharedEvidenceBrief | null): LetterGuardResult {
+export function guardLetterDraftWithEvidence(draft: string, brief: { supportedText: string } | null): LetterGuardResult {
   if (!brief) return { text: draft, findings: [], changed: false };
 
   const findings = [

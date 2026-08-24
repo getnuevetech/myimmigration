@@ -3,6 +3,23 @@ import { Card, CardBody, Badge, ProgressBar } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
 import { caseListActionLine, caseListEvidenceLine, type CaseListSummary } from "@/lib/case-presentation-list";
 
+export function CasePresentationContextCard({
+  heading = "Approved case presentation",
+  summary,
+}: {
+  heading?: string;
+  summary: CaseListSummary;
+}) {
+  return (
+    <Card className="mb-6">
+      <CardBody>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{heading}</p>
+        <CaseListSummaryDetails summary={summary} />
+      </CardBody>
+    </Card>
+  );
+}
+
 export function CaseListSummaryDetails({
   summary,
   showMeaning = true,
