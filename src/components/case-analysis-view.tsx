@@ -7,6 +7,7 @@ import { InlineUpload } from "@/components/inline-upload";
 import { CaseUpload } from "@/components/case-upload";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { parsePresentationRecord } from "@/lib/case-presentation-contract";
+import { CasePresentationView } from "@/components/case-presentation-view";
 import Link from "next/link";
 
 export type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
@@ -92,9 +93,78 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const nextBestAction = presentation?.hero.next_best_action ?? null;
   const nearestDeadline = presentation?.hero.nearest_deadline ?? null;
 
+  const haveKinds = new Set(c.documents.map((d) => d.docKind));
+  const yearHint = c.issues.find((i) => i.caseYear)?.caseYear;
+  const neededDocs: { kind: string; label: string; hint: string }[] = [];
+  const wantDoc = (kind: string, label: string, hint: string) => {
+    if (!neededDocs.some((d) => d.kind === kind)) neededDocs.push({ kind, label, hint });
+  };
+  for (const issue of c.issues) {
+    if (["uscis_notice_response", "deadline_tracking", "case_timeline", "missing_evidence", "case_update_discrepancy", "status_question"].includes(issue.issueType)) {
+      wantDoc("case_record", `USCIS case record or receipt${yearHint ? ` (${yearHint})` : ""}`, "Shows receipt number, form type, filing date, and current case status.");
+      wantDoc("form", `Immigration filing packet${yearHint ? ` for ${yearHint}` : ""}`, "Shows what was filed, for comparison against USCIS records.");
+    }
+    if (issue.issueType === "uscis_notice_response") {
+      wantDoc("notice", "The USCIS notice or letter itself", "A phone photo is fine — the receipt number, notice type, and deadline are printed on it.");
+    }
+    if (issue.issueType === "missing_evidence") {
+      wantDoc("evidence", "Missing evidence documents", "Needed to complete the filing or response packet.");
+    }
+  }
+
   const formI485 = interactive
     ? await db.uscisFormTemplate.findFirst({ where: { formNumber: "I-485", isPublished: true }, select: { id: true } })
     : null;
+
+  if (presentation) {
+    return (
+      <div className="space-y-6">
+        {c.status === "analyzing" && (
+          <div className="flex items-center gap-3 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
+            <span className="h-3 w-3 shrink-0 animate-ping rounded-full bg-lime-500" />
+            <span>
+              <span className="font-semibold">Analysis in progress…</span> Your findings update on this page automatically —
+              a detailed review can take a couple of minutes.
+            </span>
+            <AutoRefresh />
+          </div>
+        )}
+        {c.status === "closed" && (
+          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-100">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Case closed {c.closedAt ? c.closedAt.toLocaleDateString("en-US") : ""} · {c.closedReason === "abandoned" ? "closed for inactivity" : c.closedReason === "completed" ? "completed" : "closed"}
+            </p>
+            <h2 className="mt-1 text-lg font-semibold text-white">Final review & closing remarks</h2>
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-200">{c.closingRemarks || "This case has been closed."}</p>
+          </div>
+        )}
+        {isPreliminary && (
+          <div className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-700">
+            <span className="font-semibold">? Preliminary review.</span> These results are based on the information and
+            readable documents provided so far. Items marked &quot;needs verification&quot; firm up as your documents are
+            verified — your USCIS case record is usually the record that settles them.
+          </div>
+        )}
+        <CasePresentationView
+          caseId={c.id}
+          viewer={viewer}
+          interactive={interactive}
+          fullAccess={fullAccess}
+          presentation={presentation}
+          goal={c.goal}
+          readinessScore={c.readinessScore}
+          evidenceAvailableScore={c.evidenceAvailableScore}
+          evidenceProcessedScore={c.evidenceProcessedScore}
+          actionReadinessScore={c.actionReadinessScore}
+          issues={c.issues}
+          pathSteps={c.pathSteps}
+          documents={c.documents}
+          neededDocs={neededDocs}
+          formI485Id={formI485?.id ?? null}
+        />
+      </div>
+    );
+  }
 
   const stepCta = (actionKey: string): { label: string; href: string } | null => {
     switch (actionKey.toUpperCase()) {
@@ -117,26 +187,6 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
         return null;
     }
   };
-
-  // Evidence checklist derived from the findings.
-  const haveKinds = new Set(c.documents.map((d) => d.docKind));
-  const yearHint = c.issues.find((i) => i.caseYear)?.caseYear;
-  const neededDocs: { kind: string; label: string; hint: string }[] = [];
-  const wantDoc = (kind: string, label: string, hint: string) => {
-    if (!neededDocs.some((d) => d.kind === kind)) neededDocs.push({ kind, label, hint });
-  };
-  for (const issue of c.issues) {
-    if (["uscis_notice_response", "deadline_tracking", "case_timeline", "missing_evidence", "case_update_discrepancy", "status_question"].includes(issue.issueType)) {
-      wantDoc("case_record", `USCIS case record or receipt${yearHint ? ` (${yearHint})` : ""}`, "Shows receipt number, form type, filing date, and current case status.");
-      wantDoc("form", `Immigration filing packet${yearHint ? ` for ${yearHint}` : ""}`, "Shows what was filed, for comparison against USCIS records.");
-    }
-    if (issue.issueType === "uscis_notice_response") {
-      wantDoc("notice", "The USCIS notice or letter itself", "A phone photo is fine — the receipt number, notice type, and deadline are printed on it.");
-    }
-    if (issue.issueType === "missing_evidence") {
-      wantDoc("evidence", "Missing evidence documents", "Needed to complete the filing or response packet.");
-    }
-  }
 
   // Plain-English walkthrough of the latest analysis batch.
   const chronological = [...c.runs].reverse();
@@ -226,7 +276,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           </div>
         ))}
 
-        {(presentation || c.reconstruction || latestEvidenceAudit || unknownQuestions.length > 0) && (
+        {(c.reconstruction || latestEvidenceAudit || unknownQuestions.length > 0) && (
           <section>
             <h2 className="mb-3 text-base font-semibold text-slate-900">Current evidence position</h2>
             <Card>
@@ -238,18 +288,11 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                       {currentPosition}
                     </h3>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {presentation?.hero.evidence_strength && (
-                      <Badge color={presentation.hero.evidence_strength === "Strong" ? "green" : presentation.hero.evidence_strength === "Moderate" ? "lime" : "slate"}>
-                        {`Evidence ${presentation.hero.evidence_strength.toLowerCase()}`}
-                      </Badge>
-                    )}
-                    {evidenceGateStatus && (
-                      <Badge color={evidenceGateStatus === "pass" ? "green" : evidenceGateStatus === "needs_review" ? "lime" : "slate"}>
-                        {`Evidence gate: ${evidenceGateStatus.replace(/_/g, " ")}`}
-                      </Badge>
-                    )}
-                  </div>
+                  {evidenceGateStatus && (
+                    <Badge color={evidenceGateStatus === "pass" ? "green" : evidenceGateStatus === "needs_review" ? "lime" : "slate"}>
+                      {`Evidence gate: ${evidenceGateStatus.replace(/_/g, " ")}`}
+                    </Badge>
+                  )}
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-slate-600">
                   {evidenceSummary}
