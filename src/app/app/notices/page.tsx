@@ -2,6 +2,9 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PageHeader, Card, CardBody, Badge, EmptyState, ButtonLink } from "@/components/ui";
 import { NoticeUpload } from "@/components/notice-upload";
+import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummary, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
+import { formatCaseNumber } from "@/lib/case-number";
 
 export const metadata = { title: "USCIS notices" };
 
@@ -16,6 +19,7 @@ export default async function NoticesPage({
     db.notice.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
+      include: { case: { select: { id: true, title: true, status: true, actionReadinessScore: true } } },
     }),
     db.case.findMany({
       where: { userId: user.id, status: { notIn: ["closed"] } },
@@ -25,17 +29,20 @@ export default async function NoticesPage({
     }),
   ]);
   const defaultCaseId = cases.some((c) => c.id === caseId) ? caseId ?? "" : "";
+  const presentations = await loadPresentationsByCaseIds(
+    notices.map((n) => n.caseId).filter((id): id is string => Boolean(id)),
+  );
 
   return (
     <div>
       <PageHeader
         title="USCIS notices"
-        subtitle="Upload or photograph any USCIS letter. We identify it, extract the key facts, and explain it in plain English."
+        subtitle="Upload or photograph any USCIS letter. We identify it, extract the key facts, and explain it against the approved case presentation."
       />
       <Card className="mb-6">
         <CardBody>
           <NoticeUpload
-            cases={cases.map((c) => ({ id: c.id, label: `IMM-${String(c.number).padStart(6, "0")} · ${c.title}` }))}
+            cases={cases.map((c) => ({ id: c.id, label: `${formatCaseNumber(c.number)} · ${c.title}` }))}
             defaultCaseId={defaultCaseId}
           />
         </CardBody>
@@ -47,6 +54,13 @@ export default async function NoticesPage({
         <div className="space-y-4">
           {notices.map((n) => {
             const steps: { title: string; description: string }[] = JSON.parse(n.nextStepsJson || "[]");
+            const summary = n.case
+              ? caseListSummary({
+                  status: n.case.status,
+                  actionReadinessScore: n.case.actionReadinessScore,
+                  presentation: presentations.get(n.case.id) ?? null,
+                })
+              : null;
             return (
               <Card key={n.id}>
                 <CardBody>
@@ -62,6 +76,14 @@ export default async function NoticesPage({
                       <Badge color={n.status === "explained" ? "green" : "slate"}>{n.status.replace(/_/g, " ")}</Badge>
                     </div>
                   </div>
+                  {summary && (
+                    <div className="mt-3 rounded-xl border border-lime-200 bg-lime-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-lime-700">How this fits your case</p>
+                      <p className="mt-1 text-sm font-medium text-lime-950">{n.case?.title}: {summary.posture}</p>
+                      <p className="mt-0.5 text-sm text-lime-900">{caseListActionLine(summary)}</p>
+                      <p className="mt-0.5 text-xs text-lime-800">{caseListEvidenceLine(summary)}</p>
+                    </div>
+                  )}
                   {n.explanation && (
                     <div className="mt-3 rounded-xl bg-slate-50 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">What this means</p>

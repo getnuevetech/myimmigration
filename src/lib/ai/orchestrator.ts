@@ -9,13 +9,14 @@ import { readUpload } from "../uploads";
 import { snapshotAuthorityForPlan } from "../authority-retrieval";
 import { buildPrimaryReasonerContext } from "../primary-reasoner-context";
 import { buildCaseActionGraph } from "../action-graph";
-import { buildCasePresentation } from "../case-presentation";
+import { buildCasePresentation, getCasePresentationBrief } from "../case-presentation";
 import { verifyCaseProgress } from "../case-progress";
 import { ensureCaseVersion, finalizeCaseVersion } from "../case-versioning";
 import { createCaseAnalysisPlan } from "../case-orchestrator";
 import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
 import { getCaseEvidenceBrief } from "../evidence/brief";
 import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
+import { mergeSupportedText, presentationGroundingBlock, withPresentationNoticeSteps } from "../case-presentation-brief";
 
 type Json = Record<string, unknown>;
 
@@ -594,19 +595,33 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   }
 }
 
+async function loadCaseGrounding(caseId?: string | null) {
+  if (!caseId) return { presentation: null as Awaited<ReturnType<typeof getCasePresentationBrief>>, evidenceBrief: null as Awaited<ReturnType<typeof getCaseEvidenceBrief>> | null, block: "", supportedText: "" };
+  const presentation = await getCasePresentationBrief(caseId).catch(async (err) => {
+    const { logSystem } = await import("../syslog");
+    await logSystem("warning", "case_presentation", "Could not load approved presentation for grounding", String(err));
+    return null;
+  });
+  const evidenceBrief = await getCaseEvidenceBrief(caseId).catch(async (err) => {
+    const { logSystem } = await import("../syslog");
+    await logSystem("warning", "evidence_brief", "Could not load case evidence brief", String(err));
+    return null;
+  });
+  return {
+    presentation,
+    evidenceBrief,
+    block: presentationGroundingBlock(presentation, evidenceBrief?.text ?? null),
+    supportedText: mergeSupportedText(presentation?.supportedText, evidenceBrief?.supportedText),
+  };
+}
+
 // ---------- Single-purpose AI helpers ----------
 
 export async function runQaChat(history: { role: string; content: string }[], opts?: { caseId?: string | null }): Promise<string> {
   const steps = await getRunnableSteps(STAGE_KEYS.QA);
   const convo = history.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
   const knowledge = await retrieveKnowledge(history.map((m) => m.content).join(" "));
-  const evidenceBrief = opts?.caseId
-    ? await getCaseEvidenceBrief(opts.caseId).catch(async (err) => {
-        const { logSystem } = await import("../syslog");
-        await logSystem("warning", "evidence_brief", "Could not load case evidence brief for Q&A", String(err));
-        return null;
-      })
-    : null;
+  const grounding = await loadCaseGrounding(opts?.caseId);
   if (steps.length === 0) {
     return "The assistant isn't available just yet. You can still upload your USCIS notice, receipt, or case record to your vault, and the case page will use those documents when analysis is available.";
   }
@@ -619,8 +634,8 @@ export async function runQaChat(history: { role: string; content: string }[], op
       const priorDrafts = drafts.length
         ? `\n\nPRIOR DRAFTS TO IMPROVE (do not mention them; correct any errors and produce one final answer):\n${drafts.map((draft, i) => `[Draft ${i + 1}]\n${draft}`).join("\n\n")}`
         : "";
-      const evidenceContext = evidenceBrief
-        ? `\n\nCOMPILED CASE EVIDENCE BRIEF:\n${evidenceBrief.text}\n\nGrounding rule: answer case-specific questions from the evidence brief, the conversation, and USCIS reference material. Treat unsupported details as unknowns.`
+      const evidenceContext = grounding.block
+        ? `\n\n${grounding.block}\n\nGrounding rule: answer case-specific questions from the approved presentation, the evidence brief, the conversation, and USCIS reference material. Treat unsupported details as unknowns. Do not contradict the approved posture, next action, or deadlines.`
         : "";
       const prompt = fill(step.promptTemplate, { input: `${convo}${priorDrafts}${evidenceContext}`, knowledge: knowledge || "(none)" });
       const result = await callProvider(step.provider, [{ role: "user", content: prompt }]);
@@ -635,19 +650,28 @@ export async function runQaChat(history: { role: string; content: string }[], op
 }
 
 export async function explainNoticeContent(content: string, opts?: { caseId?: string | null }): Promise<Json | null> {
-  const evidenceBrief = opts?.caseId
-    ? await getCaseEvidenceBrief(opts.caseId).catch(async (err) => {
-        const { logSystem } = await import("../syslog");
-        await logSystem("warning", "evidence_brief", "Could not load case evidence brief for notice explanation", String(err));
-        return null;
-      })
-    : null;
-  const groundedInput = evidenceBrief
-    ? `${content}\n\nCOMPILED CASE EVIDENCE BRIEF:\n${evidenceBrief.text}\n\nNotice grounding rule: explain this notice against the compiled case record. Do not invent deadlines, receipt numbers, form types, outcomes, or requested evidence that are not in the notice text or evidence brief.`
+  const grounding = await loadCaseGrounding(opts?.caseId);
+  const groundedInput = grounding.block
+    ? `${content}\n\n${grounding.block}\n\nNotice grounding rule: explain this notice against the approved case presentation and compiled case record. Do not invent deadlines, receipt numbers, form types, outcomes, or requested evidence that are not in the notice text, approved presentation, or evidence brief. Do not replace the approved next action with a different plan.`
     : content;
   const outcome = await runStage(STAGE_KEYS.NOTICE, { input: groundedInput });
   const parsed = outcome.stepOutputs.find((o) => o.data)?.data ?? null;
-  if (parsed) return parsed;
+  const fallbackSteps = [
+    { title: "Keep the notice safe", description: "It's stored in your document vault." },
+    { title: "Check the deadline", description: "USCIS notices usually show a response date, appointment date, or filing deadline. Add it to your deadlines." },
+  ];
+  if (parsed) {
+    const nextSteps = Array.isArray(parsed.next_steps)
+      ? parsed.next_steps.filter((step): step is { title: string; description: string } => Boolean(step) && typeof step === "object")
+      : [];
+    return {
+      ...parsed,
+      next_steps: withPresentationNoticeSteps(
+        nextSteps.map((step) => ({ title: String((step as Json).title ?? ""), description: String((step as Json).description ?? "") })),
+        grounding.presentation?.contract ?? null,
+      ),
+    };
+  }
   // Deterministic fallback: identify USCIS notice/form/receipt references and match the knowledge base.
   const code = (content.toUpperCase().match(USCIS_REFERENCE_RE) ?? [])[0]?.replace(/\s|-/g, "") ?? "";
   const kb = code
@@ -662,15 +686,15 @@ export async function explainNoticeContent(content: string, opts?: { caseId?: st
         },
       })
     : null;
+  const posture = grounding.presentation?.contract.hero.current_posture;
   return {
     notice_type: code || null,
     plain_english_explanation: kb
       ? kb.content.slice(0, 1200)
-      : "We stored your notice safely. Our reference library doesn't cover this USCIS notice type yet. A qualified immigration professional can review it, and it will be re-examined automatically on your next analysis.",
-    next_steps: [
-      { title: "Keep the notice safe", description: "It's stored in your document vault." },
-      { title: "Check the deadline", description: "USCIS notices usually show a response date, appointment date, or filing deadline. Add it to your deadlines." },
-    ],
+      : posture
+        ? `We stored your notice safely. It will be read against the approved case posture: ${posture}. Our reference library doesn't cover this USCIS notice type yet. A qualified immigration professional can review it, and it will be re-examined automatically on your next analysis.`
+        : "We stored your notice safely. Our reference library doesn't cover this USCIS notice type yet. A qualified immigration professional can review it, and it will be re-examined automatically on your next analysis.",
+    next_steps: withPresentationNoticeSteps(fallbackSteps, grounding.presentation?.contract ?? null),
     urgency: "medium",
     fallback: true,
   };
@@ -678,22 +702,17 @@ export async function explainNoticeContent(content: string, opts?: { caseId?: st
 
 export async function generateLetterDraft(context: string, opts?: { caseId?: string | null }): Promise<string> {
   const steps = await getRunnableSteps(STAGE_KEYS.LETTER);
-  const evidenceBrief = opts?.caseId
-    ? await getCaseEvidenceBrief(opts.caseId).catch(async (err) => {
-        const { logSystem } = await import("../syslog");
-        await logSystem("warning", "evidence_brief", "Could not load case evidence brief for letter draft", String(err));
-        return null;
-      })
-    : null;
-  const guardedContext = evidenceBrief
-    ? `${context}\n\nCOMPILED CASE EVIDENCE BRIEF:\n${evidenceBrief.text}\n\nLetter grounding rule: do not include receipt numbers, form types, dates, deadlines, requested evidence, or case outcomes unless they appear in the compiled evidence brief. If needed, use placeholders for the user to verify.`
+  const grounding = await loadCaseGrounding(opts?.caseId);
+  const guardedContext = grounding.block
+    ? `${context}\n\n${grounding.block}\n\nLetter grounding rule: write to the approved presentation. Do not include receipt numbers, form types, dates, deadlines, requested evidence, or case outcomes unless they appear in the approved presentation or compiled evidence brief. If needed, use placeholders for the user to verify.`
     : context;
+  const guardBrief = grounding.supportedText ? { supportedText: grounding.supportedText } : null;
   // Try every configured model; log failures; fall back to the template letter.
   for (const step of steps) {
     try {
       const prompt = fill(step.promptTemplate, { input: guardedContext });
       const result = await callProvider(step.provider, [{ role: "user", content: prompt }]);
-      if (result.text.trim()) return guardLetterDraftWithEvidence(result.text.trim(), evidenceBrief).text;
+      if (result.text.trim()) return guardLetterDraftWithEvidence(result.text.trim(), guardBrief).text;
     } catch (err) {
       const { logSystem } = await import("../syslog");
       await logSystem("error", "ai_call", `${step.provider.name} failed generating a response letter draft`, String(err));
@@ -723,6 +742,6 @@ Sincerely,
 [YOUR ADDRESS]
 [YOUR PHONE]
 
-Enclosures: [LIST YOUR DOCUMENTS]`, evidenceBrief).text;
+Enclosures: [LIST YOUR DOCUMENTS]`, guardBrief).text;
   }
 }

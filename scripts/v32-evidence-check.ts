@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_PROMPTS, PROMPT_SUPERSEDES, PROMPT_VERSION } from "../src/lib/ai/prompts";
+import {
+  buildPresentationBrief,
+  presentationGroundingBlock,
+  withPresentationNoticeSteps,
+} from "../src/lib/case-presentation-brief";
 import { assemblePresentationContract, evidenceStrengthFromScores, parsePresentationRecord } from "../src/lib/case-presentation-contract";
 import { caseListActionLine, caseListEvidenceLine, caseListSummary } from "../src/lib/case-presentation-list";
 import { presentationReportSections } from "../src/lib/case-report-presentation";
@@ -106,10 +111,17 @@ assert((PROMPT_SUPERSEDES.presenter ?? []).includes("1293dbaff7ad239de591aeed73d
 assert(DEFAULT_PROMPTS.analyst.includes("primary_reasoner_context"), "analyst prompt should mention primary_reasoner_context");
 assert(DEFAULT_PROMPTS.reviewer.includes("primary_reasoner_context"), "reviewer prompt should mention primary_reasoner_context");
 assert(DEFAULT_PROMPTS.notice_explainer.includes("COMPILED CASE EVIDENCE BRIEF"), "notice explainer prompt should mention compiled evidence brief");
+assert(DEFAULT_PROMPTS.notice_explainer.includes("APPROVED CASE PRESENTATION"), "notice explainer prompt should mention approved case presentation");
 assert((PROMPT_SUPERSEDES.notice_explainer ?? []).length > 0, "notice explainer prompt should declare superseded hashes");
+assert(DEFAULT_PROMPTS.assistant.includes("APPROVED CASE PRESENTATION"), "assistant prompt should mention approved case presentation");
+assert((PROMPT_SUPERSEDES.assistant ?? []).length > 0, "assistant prompt should declare superseded hashes");
+assert(DEFAULT_PROMPTS.letter_writer.includes("APPROVED CASE PRESENTATION"), "letter writer prompt should mention approved case presentation");
+assert((PROMPT_SUPERSEDES.letter_writer ?? []).length > 0, "letter writer prompt should declare superseded hashes");
 assert(DEFAULT_PROMPTS.guide.includes("current evidence position"), "guide prompt should mention current evidence position");
+assert(DEFAULT_PROMPTS.guide.includes("approved posture"), "guide prompt should mention approved posture");
 assert((PROMPT_SUPERSEDES.guide ?? []).length > 0, "guide prompt should declare superseded hashes");
 assert(DEFAULT_PROMPTS.closing.includes("evidence_brief"), "closing prompt should mention evidence_brief");
+assert(DEFAULT_PROMPTS.closing.includes("approved_presentation"), "closing prompt should mention approved presentation");
 assert((PROMPT_SUPERSEDES.closing ?? []).length > 0, "closing prompt should declare superseded hashes");
 assert(PROMPT_VERSION.includes("v32"), "prompt version should identify v32 evidence prompts");
 const readiness = computeEvidenceReadinessSplit({
@@ -250,6 +262,26 @@ const xssReport = presentationReportSections({
 assert(xssReport.includes("&lt;script&gt;alert(1)&lt;/script&gt;"), "case report should escape HTML in presentation fields");
 assert(!xssReport.includes("<script>alert(1)</script>"), "case report must not emit raw HTML from presentation fields");
 
+const brief = buildPresentationBrief(presentation);
+assert(brief.text.includes("RFE notice needs review"), "presentation brief must use the approved posture");
+assert(brief.text.includes("Respond to the RFE"), "presentation brief must use the approved next action");
+assert(!brief.text.includes("STALE reconstruction posture"), "presentation brief must not use reconstruction posture");
+const grounded = presentationGroundingBlock(brief, "- passport is on file");
+assert(grounded.includes("APPROVED CASE PRESENTATION"), "letters, notices, and Q&A must receive the approved presentation block");
+assert(grounded.includes("COMPILED CASE EVIDENCE BRIEF"), "presentation grounding must still include compiled evidence");
+assert(grounded.includes("RFE notice needs review"), "presentation grounding must include the approved posture");
+const noticeSteps = withPresentationNoticeSteps(
+  [{ title: "Keep copies of everything", description: "Store the notice." }],
+  presentation,
+);
+assert(noticeSteps[0]?.title === "Respond to the RFE", "notice explanations must surface the approved next action first");
+assert(noticeSteps[1]?.title === "Keep copies of everything", "notice explanations must keep the notice-specific steps");
+const dedupedSteps = withPresentationNoticeSteps(
+  [{ title: "Respond to the RFE", description: "Already listed." }],
+  presentation,
+);
+assert(dedupedSteps.length === 1, "notice explanations must not duplicate the approved next action");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -265,3 +297,4 @@ console.log(`- presentation contract: ${presentation.hero.current_posture}, next
 console.log("- presentation UX: action statuses and evidence-gate labels are customer-facing");
 console.log(`- case list: ${listFromContract.posture}, next ${listFromContract.nextActionTitle}`);
 console.log("- case report: presentation contract sections are used for the printable report");
+console.log("- v41 B5: letters, notices, and Q&A share approved presentation blocks");

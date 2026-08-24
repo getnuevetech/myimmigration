@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "./db";
 import { assemblePresentationContract, parsePresentationRecord, type PresentationContract } from "./case-presentation-contract";
+import { buildPresentationBrief } from "./case-presentation-brief";
 
 const CASE_PRESENTATION_INCLUDE = {
   reconstruction: true,
@@ -109,6 +110,12 @@ export async function resolveCasePresentation(caseId: string) {
   const row = await getLatestCasePresentation(caseId).catch(() => null);
   if (row) return parsePresentationRecord(row);
   return assembleLivePresentation(caseId);
+}
+
+export async function getCasePresentationBrief(caseId: string) {
+  const contract = await resolveCasePresentation(caseId);
+  if (!contract) return null;
+  return { contract, ...buildPresentationBrief(contract) };
 }
 
 export async function loadPresentationsByCaseIds(caseIds: string[]) {

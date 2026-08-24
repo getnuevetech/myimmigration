@@ -15,8 +15,8 @@ export function NewLetterForm({
 }) {
   return (
     <ActionForm action={generateLetterAction}>
-      <input type="hidden" name="caseId" value={defaultCaseId} />
       <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <input type="hidden" name="caseId" value={defaultCaseId} />
         {notices.length > 0 && (
           <Field label="Related USCIS notice (optional)">
             <select name="noticeId" defaultValue={defaultNoticeId} className={inputClass}>
