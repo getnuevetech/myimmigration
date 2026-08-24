@@ -44,6 +44,8 @@ import {
   findAuthorityForKnowledge,
   historicalMatchBoost,
   matchBoostsFromStats,
+  knowledgeFromSnapshot,
+  overlappingOfficialUpdate,
 } from "../src/lib/authority-match";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -678,6 +680,14 @@ const boostedMarriage = rankKnowledgeSources(knowledgeCatalog, {
 });
 assert(boostedMarriage[0]?.title === "Family petition overview", "historical match boosts must not displace the matching I-130 source");
 assert((matchBoostsFromStats([{ url: "https://www.uscis.gov/i-130", queryKey: "family|I-130", hitCount: 12 }], ["family|I-130"])["https://www.uscis.gov/i-130"] ?? 0) > 0, "match stats should produce a URL boost for the same goal/query");
+assert(overlappingOfficialUpdate({ title: "USCIS Updates Form I-130 Instructions", summary: "New edition of Form I-130." }, ["I-130"], "marry a US citizen for a green card") === true, "live USCIS updates should attach when they share a plan form query");
+assert(overlappingOfficialUpdate({ title: "Chinese Alien Charged with Voter Fraud in Massachusetts", summary: "A charging decision unrelated to this customer's goal." }, ["I-130", "I-485"], "I want to marry a US citizen and get a green card. We have not filed anything with USCIS yet.") === false, "live USCIS news must not attach on generic words such as with");
+assert(knowledgeFromSnapshot({
+  title: "Family petition overview",
+  url: "https://www.uscis.gov/i-130",
+  excerpt: "Form I-130 is used by a U.S. citizen or lawful permanent resident petitioner.",
+  applicabilityJson: JSON.stringify([{ reference: "Form I-130", tags: "i-130, family", sourceType: "form_instruction" }]),
+}).reference === "Form I-130", "snapshots must restore the official reference so later ranking still sees I-130");
 
 const qaStudent = buildQaFallbackAnswer({
   question: "I am on F-1 graduating next month. What can I do after graduation?",

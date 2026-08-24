@@ -28,7 +28,7 @@ export async function buildPrimaryReasonerContext(caseId: string) {
     }),
     db.authoritySnapshot.findMany({
       where: { caseId },
-      orderBy: { retrievedAt: "desc" },
+      orderBy: { retrievedAt: "asc" },
       take: 20,
       select: {
         title: true,

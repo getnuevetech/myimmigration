@@ -74,14 +74,23 @@ export function knowledgeFromSnapshot(snapshot: {
   title: string;
   url: string;
   excerpt: string;
+  applicabilityJson?: string | null;
   source?: { publisher?: string | null; sourceType?: string | null } | null;
 }): KnowledgeRecord {
+  let meta: { reference?: string; tags?: string; sourceType?: string } = {};
+  try {
+    const parsed = JSON.parse(snapshot.applicabilityJson || "[]");
+    if (Array.isArray(parsed) && parsed[0] && typeof parsed[0] === "object") meta = parsed[0];
+  } catch {
+    meta = {};
+  }
   return {
     title: snapshot.title,
-    reference: snapshot.title,
+    reference: meta.reference || snapshot.title,
     url: snapshot.url,
     content: snapshot.excerpt,
-    sourceType: snapshot.source?.sourceType,
+    sourceType: meta.sourceType || snapshot.source?.sourceType,
+    tags: meta.tags,
     publisher: snapshot.source?.publisher,
   };
 }
@@ -92,9 +101,14 @@ export function overlappingOfficialUpdate(
   query: string,
 ): boolean {
   const hay = `${update.title} ${update.summary}`.toLowerCase();
-  const needles = [
-    ...queries,
-    ...query.split(/[^a-z0-9]+/i).filter((word) => word.length > 3),
-  ].map((item) => item.toLowerCase());
-  return needles.some((needle) => needle.length >= 3 && hay.includes(needle));
+  const compactHay = hay.replace(/[^a-z0-9]+/g, "");
+  for (const item of queries) {
+    const needle = item.trim().toLowerCase().replace(/_/g, " ");
+    if (needle.length < 3) continue;
+    if (hay.includes(needle)) return true;
+    const compactNeedle = needle.replace(/[^a-z0-9]+/g, "");
+    if (compactNeedle.length >= 4 && compactHay.includes(compactNeedle)) return true;
+  }
+  const strong = query.match(/\b(?:i-?\d{2,4}[a-z]?|n-?\d{3}|opt|asylum|naturalization|rfe|noid|marriage|spouse|green card|f-?1|h-?1b|ead)\b/gi) ?? [];
+  return strong.some((token) => hay.includes(token.toLowerCase()) || compactHay.includes(token.toLowerCase().replace(/[^a-z0-9]+/g, "")));
 }

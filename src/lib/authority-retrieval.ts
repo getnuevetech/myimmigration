@@ -108,7 +108,7 @@ export async function retrieveUnifiedAuthority(hint: UnifiedAuthorityHint): Prom
   if (preferSnapshots && hint.caseId) {
     const snapshots = await db.authoritySnapshot.findMany({
       where: { caseId: hint.caseId },
-      orderBy: { retrievedAt: "desc" },
+      orderBy: { retrievedAt: "asc" },
       take: hint.limit ?? 8,
       include: { source: { select: { publisher: true, sourceType: true } } },
     }).catch(() => []);
@@ -141,7 +141,6 @@ export async function snapshotAuthorityForPlan(
   });
   const liveUpdates = await getUscisUpdates(12).catch(() => []);
   const matchingUpdates = liveUpdates.filter((update) => overlappingOfficialUpdate(update, queries, query));
-  const alertsSource = ranked.authorities.find((item) => item.key === "uscis_alerts");
 
   await db.authoritySnapshot.deleteMany({ where: { caseId } }).catch(() => null);
 
@@ -158,6 +157,9 @@ export async function snapshotAuthorityForPlan(
         reason: `Ranked against this customer's goal and plan queries (${[...themes, ...queries].filter(Boolean).join(", ") || "situation"}).`,
         goal: hint.goal || "",
         themes,
+        reference: record.reference,
+        tags: record.tags,
+        sourceType: record.sourceType,
       },
       ...matchingUpdates.slice(0, 2).map((update) => ({
         query: update.title,
@@ -201,26 +203,6 @@ export async function snapshotAuthorityForPlan(
         },
       }));
     }
-  }
-
-  if (matchingUpdates.length && alertsSource && !seen.has(alertsSource.id)) {
-    const excerpt = matchingUpdates.map((update) => `${update.title} (${update.publishedAt}): ${update.summary}`).join("\n").slice(0, 1500);
-    snapshots.push(await db.authoritySnapshot.create({
-      data: {
-        sourceId: alertsSource.id,
-        caseId,
-        title: matchingUpdates[0].title,
-        url: matchingUpdates[0].url,
-        effectiveOrUpdateDate: matchingUpdates[0].publishedAt,
-        contentHash: hash(excerpt),
-        excerpt,
-        applicabilityJson: JSON.stringify(matchingUpdates.map((update) => ({
-          query: update.title,
-          reason: `Live USCIS ${update.source} overlapping this customer's plan queries.`,
-          url: update.url,
-        }))),
-      },
-    }));
   }
 
   await recordAuthorityHits(ranked.records, ranked.authorities, ranked.queryKeys);
