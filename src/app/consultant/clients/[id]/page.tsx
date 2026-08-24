@@ -2,8 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { PageHeader, Card, CardBody, Badge, StateMark, ProgressBar, EmptyState } from "@/components/ui";
+import { PageHeader, Card, CardBody, Badge, ProgressBar, EmptyState } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
+import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummary } from "@/lib/case-presentation-list";
+import { CaseListSummaryDetails } from "@/components/case-list-card";
 
 export default async function ClientWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,7 +16,10 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
     include: {
       user: {
         include: {
-          cases: { include: { issues: true, pathSteps: { orderBy: { sortOrder: "asc" } } }, orderBy: { updatedAt: "desc" } },
+          cases: {
+            include: { reconstruction: { select: { currentPosition: true } } },
+            orderBy: { updatedAt: "desc" },
+          },
           documents: { where: { deletedAt: null, docKind: { not: "avatar" } }, orderBy: { uploadedAt: "desc" } },
         },
       },
@@ -21,6 +27,7 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
   });
   if (!assignment) notFound();
   const client = assignment.user;
+  const presentations = await loadPresentationsByCaseIds(client.cases.map((item) => item.id));
 
   return (
     <div>
@@ -39,7 +46,14 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
             <EmptyState title="No cases" />
           ) : (
             <div className="space-y-4">
-              {client.cases.map((c) => (
+              {client.cases.map((c) => {
+                const summary = caseListSummary({
+                  status: c.status,
+                  actionReadinessScore: c.actionReadinessScore,
+                  presentation: presentations.get(c.id) ?? null,
+                  reconstructionPosition: c.reconstruction?.currentPosition,
+                });
+                return (
                 <Card key={c.id}>
                   <CardBody>
                     <div className="flex items-center justify-between gap-2">
@@ -49,16 +63,8 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
                       </p>
                       <Badge>{c.status.replace(/_/g, " ")}</Badge>
                     </div>
-                    <p className="mt-1 text-sm text-slate-500">Goal: {c.goal || "—"}</p>
+                    <CaseListSummaryDetails summary={summary} />
                     <div className="mt-3"><ProgressBar value={c.readinessScore} label="Readiness" /></div>
-                    <div className="mt-3 space-y-2">
-                      {c.issues.map((i) => (
-                        <div key={i.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                          <span className="text-slate-700">{i.caseYear ? `${i.caseYear} · ` : ""}{i.title}</span>
-                          <StateMark state={i.state} />
-                        </div>
-                      ))}
-                    </div>
                     <div className="mt-4 flex gap-2">
                       <Link
                         href={`/consultant/clients/${assignment.id}/cases/${c.id}`}
@@ -72,7 +78,8 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
                     </div>
                   </CardBody>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

@@ -5,6 +5,8 @@ import { revokeAssignmentAction } from "@/actions/admin";
 import { AssignmentForm, AutoAssignToggle } from "@/components/admin/assignment-form";
 import { CONSULTANT_SPECIALTIES } from "@/lib/constants";
 import { getBoolSetting } from "@/lib/settings";
+import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummary, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
 
 export const metadata = { title: "Assignments" };
 
@@ -23,7 +25,7 @@ export default async function AdminAssignmentsPage({
       include: {
         user: { select: { firstName: true, lastName: true, email: true } },
         consultant: { select: { firstName: true, lastName: true, email: true } },
-        case: { select: { title: true } },
+        case: { select: { id: true, title: true, status: true, actionReadinessScore: true } },
       },
     }),
     db.user.findMany({ where: { role: "user", status: "active" }, orderBy: { createdAt: "desc" }, select: { id: true, firstName: true, lastName: true, email: true } }),
@@ -33,10 +35,15 @@ export default async function AdminAssignmentsPage({
     }),
     db.case.findMany({
       where: { status: "consultant_recommended" },
-      include: { user: { select: { id: true, firstName: true, lastName: true, email: true } }, issues: { select: { issueType: true } } },
+      include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
       orderBy: { updatedAt: "desc" },
     }),
   ]);
+  const assignmentPresentations = await loadPresentationsByCaseIds([
+    ...flaggedCases.map((item) => item.id),
+    ...assignments.map((item) => item.case?.id).filter((id): id is string => Boolean(id)),
+  ]);
+  const flaggedPresentations = assignmentPresentations;
 
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
   const credentialName = (type: string | undefined) => {
@@ -69,12 +76,22 @@ export default async function AdminAssignmentsPage({
           <CardBody>
             <h2 className="mb-2 text-sm font-semibold text-slate-900">Cases flagged: consultant recommended</h2>
             <ul className="space-y-1 text-sm text-slate-600">
-              {flaggedCases.map((c) => (
-                <li key={c.id} className={c.id === highlightCase ? "rounded bg-lime-50 px-2 py-1 font-medium" : ""}>
-                  {c.user ? `${c.user.firstName} ${c.user.lastName} (${c.user.email})` : "Guest"} — &ldquo;{c.title}&rdquo;
-                  <span className="text-slate-400"> · issues: {Array.from(new Set(c.issues.map((i) => i.issueType))).join(", ") || "n/a"}</span>
+              {flaggedCases.map((c) => {
+                const summary = caseListSummary({
+                  status: c.status,
+                  actionReadinessScore: c.actionReadinessScore,
+                  presentation: flaggedPresentations.get(c.id) ?? null,
+                });
+                return (
+                <li key={c.id} className={c.id === highlightCase ? "rounded bg-lime-50 px-2 py-1" : ""}>
+                  <p className="font-medium text-slate-800">
+                    {c.user ? `${c.user.firstName} ${c.user.lastName} (${c.user.email})` : "Guest"} — &ldquo;{c.title}&rdquo;
+                  </p>
+                  <p className="text-xs text-slate-500">{summary.posture} · {caseListActionLine(summary)}</p>
+                  <p className="text-xs text-slate-400">{caseListEvidenceLine(summary)}</p>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </CardBody>
         </Card>
@@ -96,7 +113,15 @@ export default async function AdminAssignmentsPage({
       <h2 className="mb-3 text-base font-semibold text-slate-900">All assignments</h2>
       <div className="space-y-3">
         {assignments.length === 0 && <p className="text-sm text-slate-400">No assignments yet.</p>}
-        {assignments.map((a) => (
+        {assignments.map((a) => {
+          const assignmentSummary = a.case
+            ? caseListSummary({
+                status: a.case.status,
+                actionReadinessScore: a.case.actionReadinessScore,
+                presentation: assignmentPresentations.get(a.case.id) ?? null,
+              })
+            : null;
+          return (
           <Card key={a.id}>
             <CardBody className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
@@ -107,6 +132,11 @@ export default async function AdminAssignmentsPage({
                   {a.case?.title ? `Case: ${a.case.title} · ` : ""}
                   user consent: {a.userAgreedAt ? "✓" : "pending"} · consultant consent: {a.consultantAgreedAt ? "✓" : "pending"}
                 </p>
+                {assignmentSummary && (
+                  <p className="mt-1 text-xs text-slate-600">
+                    {assignmentSummary.posture} · {caseListActionLine(assignmentSummary)} · {caseListEvidenceLine(assignmentSummary)}
+                  </p>
+                )}
                 {a.reasonSummary && <p className="mt-1 text-xs text-slate-600">{a.reasonSummary}</p>}
                 {a.reasonDetail && (
                   <details className="mt-0.5">
@@ -128,7 +158,8 @@ export default async function AdminAssignmentsPage({
               </div>
             </CardBody>
           </Card>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

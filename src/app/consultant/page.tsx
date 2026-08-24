@@ -5,6 +5,9 @@ import { PageHeader, Card, CardBody, Badge, EmptyState, ButtonLink, StateMark, P
 import { consultantRespondAssignmentAction } from "@/actions/consultant";
 import { formatCaseNumber } from "@/lib/case-number";
 import { caseRoutingReason } from "@/lib/matching";
+import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummary } from "@/lib/case-presentation-list";
+import { CaseListSummaryDetails } from "@/components/case-list-card";
 
 export const metadata = { title: "Consultant dashboard" };
 
@@ -29,7 +32,6 @@ export default async function ConsultantDashboard({
   const completeness = consultantCompleteness(user, profile);
   const caseInclude = {
     issues: { orderBy: { createdAt: "asc" as const } },
-    pathSteps: { orderBy: { sortOrder: "asc" as const } },
     _count: { select: { documents: true } },
   };
   const assignments = await db.consultantAssignment.findMany({
@@ -47,6 +49,11 @@ export default async function ConsultantDashboard({
       case: { include: caseInclude },
     },
   });
+  const presentations = await loadPresentationsByCaseIds(
+    assignments
+      .map((a) => a.case?.id ?? a.user.cases[0]?.id)
+      .filter((id): id is string => Boolean(id)),
+  );
   const agreement = await db.contentPage.findFirst({
     where: { kind: "agreement_connection", isPublished: true },
     select: { slug: true, title: true },
@@ -128,9 +135,14 @@ export default async function ConsultantDashboard({
         <div className="space-y-4">
           {assignments.map((a) => {
             const kase = a.case ?? a.user.cases[0] ?? null;
-            const openIssues = kase ? kase.issues.filter((i) => i.state !== "resolved") : [];
-            const doneSteps = kase ? kase.pathSteps.filter((s) => s.status === "done").length : 0;
-            const nextStep = kase ? kase.pathSteps.find((s) => s.status !== "done") : null;
+            const presentation = kase ? presentations.get(kase.id) ?? null : null;
+            const summary = kase
+              ? caseListSummary({
+                  status: kase.status,
+                  actionReadinessScore: kase.actionReadinessScore,
+                  presentation,
+                })
+              : null;
             const routingReason = kase && kase.issues.length > 0
               ? caseRoutingReason(kase.issues.map((i) => i.issueType), mySpecialties)
               : null;
@@ -189,18 +201,18 @@ export default async function ConsultantDashboard({
                         </p>
                       )}
 
-                      {kase.issues.length > 0 ? (
+                      {summary && <CaseListSummaryDetails summary={summary} />}
+
+                      {presentation && presentation.findings.length > 0 ? (
                         <div className="mt-3">
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            What our analysis found ({kase.issues.length} issue{kase.issues.length === 1 ? "" : "s"})
+                            Approved findings ({presentation.findings.length})
                           </p>
                           <div className="mt-2 space-y-1.5">
-                            {kase.issues.map((i) => (
-                              <div key={i.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-100">
-                                <span className="text-slate-700">
-                                  {i.caseYear ? `${i.caseYear} · ` : ""}{i.title}
-                                </span>
-                                <StateMark state={i.state} />
+                            {presentation.findings.map((finding) => (
+                              <div key={finding.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-100">
+                                <span className="text-slate-700">{finding.title}</span>
+                                <StateMark state={finding.state} />
                               </div>
                             ))}
                           </div>
@@ -213,21 +225,13 @@ export default async function ConsultantDashboard({
                         <ProgressBar value={kase.readinessScore} label="Case readiness" />
                         <div className="text-sm text-slate-600">
                           <p>
-                            <span className="font-medium text-slate-700">{doneSteps}/{kase.pathSteps.length}</span> path steps done
-                            <span className="mx-1.5 text-slate-300">·</span>
                             <span className="font-medium text-slate-700">{kase._count.documents}</span> document{kase._count.documents === 1 ? "" : "s"} shared
                           </p>
-                          {openIssues.length > 0 && (
-                            <p className="mt-0.5 text-xs text-slate-500">{openIssues.length} finding{openIssues.length === 1 ? "" : "s"} awaiting professional review</p>
+                          {summary && summary.unresolvedCount > 0 && (
+                            <p className="mt-0.5 text-xs text-slate-500">{summary.unresolvedCount} finding{summary.unresolvedCount === 1 ? "" : "s"} awaiting professional review</p>
                           )}
                         </div>
                       </div>
-                      {nextStep && (
-                        <p className="mt-2 text-sm text-slate-600">
-                          <span className="font-medium text-slate-700">Where the case stands: </span>
-                          {nextStep.title}
-                        </p>
-                      )}
                     </div>
                   </details>
                 ) : (

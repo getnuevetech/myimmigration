@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_PROMPTS, PROMPT_SUPERSEDES, PROMPT_VERSION } from "../src/lib/ai/prompts";
 import { assemblePresentationContract, evidenceStrengthFromScores, parsePresentationRecord } from "../src/lib/case-presentation-contract";
+import { caseListActionLine, caseListEvidenceLine, caseListSummary } from "../src/lib/case-presentation-list";
+import { presentationReportSections } from "../src/lib/case-report-presentation";
 import { presentationActionStatus, presentationEvidenceGateLabel, presentationStepCta } from "../src/lib/case-presentation-ui";
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, extractUniversalDocumentIntelligence, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 
@@ -213,6 +215,41 @@ assert(presentationEvidenceGateLabel("pass") === "Records checked", "pass eviden
 assert(presentationStepCta("UPLOAD_NOTICE", "case-1")?.href === "/app/documents", "notice upload should link to documents");
 assert(presentationStepCta("DRAFT_LETTER", "case-1")?.href === "/app/letters/new?case=case-1", "letter action should keep the case id");
 
+const listFromContract = caseListSummary({
+  status: "analyzed",
+  reconstructionPosition: "STALE reconstruction posture",
+  presentation,
+});
+assert(listFromContract.posture === "RFE notice needs review", "case list should prefer the approved presentation posture");
+assert(listFromContract.nextActionTitle === "Respond to the RFE", "case list should show the approved next action");
+assert(listFromContract.deadlineTitle === "RFE response", "case list should show the approved nearest deadline");
+assert(listFromContract.evidenceStrength === "Strong", "case list should show presentation evidence strength");
+assert(caseListActionLine(listFromContract).includes("Next: Respond to the RFE"), "case list action line should include the next action");
+assert(caseListEvidenceLine(listFromContract).includes("Evidence strong"), "case list evidence line should include evidence strength");
+const listWithoutContract = caseListSummary({
+  status: "draft",
+  actionReadinessScore: 10,
+  reconstructionPosition: "Waiting for records",
+});
+assert(listWithoutContract.posture === "Waiting for records", "case list without a contract should fall back to reconstruction");
+assert(listWithoutContract.nextActionTitle === null, "case list without a contract should not invent a next action");
+
+const reportHtml = presentationReportSections(presentation);
+assert(reportHtml.includes("<h2>Where you stand</h2>"), "case report should include Where you stand");
+assert(reportHtml.includes("<h2>What this means</h2>"), "case report should include What this means");
+assert(reportHtml.includes("<h2>Timeline</h2>"), "case report should include Timeline");
+assert(reportHtml.includes("<h2>Findings (2)</h2>"), "case report should include Findings");
+assert(reportHtml.includes("<h2>Your next steps</h2>"), "case report should include Your next steps");
+assert(reportHtml.includes("RFE notice needs review"), "case report should use the approved posture");
+assert(reportHtml.includes("Respond to the RFE"), "case report should use the approved next action");
+assert(!reportHtml.includes("STALE reconstruction posture"), "case report must not invent a stale reconstruction posture");
+const xssReport = presentationReportSections({
+  ...presentation,
+  hero: { ...presentation.hero, current_posture: "<script>alert(1)</script>" },
+});
+assert(xssReport.includes("&lt;script&gt;alert(1)&lt;/script&gt;"), "case report should escape HTML in presentation fields");
+assert(!xssReport.includes("<script>alert(1)</script>"), "case report must not emit raw HTML from presentation fields");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -226,3 +263,5 @@ console.log(`- readiness split: available ${readiness.evidenceAvailableScore}, p
 console.log(`- letter guard: replaced ${guardedLetter.findings.length} unsupported value(s)`);
 console.log(`- presentation contract: ${presentation.hero.current_posture}, next ${presentation.hero.next_best_action?.action_key}, ${presentation.findings.length} findings`);
 console.log("- presentation UX: action statuses and evidence-gate labels are customer-facing");
+console.log(`- case list: ${listFromContract.posture}, next ${listFromContract.nextActionTitle}`);
+console.log("- case report: presentation contract sections are used for the printable report");

@@ -33,6 +33,15 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
       <PageHeader
         title={c.title}
         subtitle={`Case ${formatCaseNumber(c.number)} · ${c.user ? `${c.user.firstName} ${c.user.lastName} · ${c.user.email}` : "Guest intake (unclaimed)"} · created ${c.createdAt.toLocaleString("en-US")} — you are seeing the same analysis as the customer`}
+        actions={
+          <a
+            href={`/api/cases/${c.id}/report`}
+            target="_blank"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Case report ↗
+          </a>
+        }
       />
 
       <div className="mb-6 flex flex-wrap items-center gap-2">

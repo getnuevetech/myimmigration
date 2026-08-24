@@ -2,19 +2,27 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getActivePlan } from "@/lib/access";
-import { PageHeader, Card, CardBody, Stat, ButtonLink, StateMark, ProgressBar, EmptyState, Badge } from "@/components/ui";
+import { PageHeader, Card, CardBody, Stat, ButtonLink, StateMark, ProgressBar, EmptyState } from "@/components/ui";
 import { markNotificationReadAction } from "@/actions/user";
-import { formatCaseNumber } from "@/lib/case-number";
+import { CaseListCard } from "@/components/case-list-card";
+import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummary } from "@/lib/case-presentation-list";
 
 export default async function DashboardPage() {
   const user = await requireUser();
   const [cases, issues, deadlines, notifications, plan] = await Promise.all([
-    db.case.findMany({ where: { userId: user.id }, orderBy: { updatedAt: "desc" }, take: 5, include: { issues: true } }),
+    db.case.findMany({
+      where: { userId: user.id },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      include: { reconstruction: { select: { currentPosition: true } } },
+    }),
     db.issue.findMany({ where: { case: { userId: user.id }, state: { not: "resolved" } } }),
     db.deadline.findMany({ where: { userId: user.id, status: "open", dueDate: { gte: new Date() } }, orderBy: { dueDate: "asc" }, take: 5 }),
     db.notification.findMany({ where: { userId: user.id, readAt: null }, orderBy: { createdAt: "desc" }, take: 5 }),
     getActivePlan(user.id),
   ]);
+  const presentations = await loadPresentationsByCaseIds(cases.map((item) => item.id));
 
   const soon = new Date();
   soon.setDate(soon.getDate() + 30);
@@ -81,21 +89,21 @@ export default async function DashboardPage() {
           ) : (
             <div className="space-y-3">
               {cases.map((c) => (
-                <Link key={c.id} href={`/app/cases/${c.id}`} className="block">
-                  <Card className="transition hover:border-lime-300">
-                    <CardBody className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-slate-900">{c.title}</p>
-                        <p className="text-xs text-slate-500">
-                          {formatCaseNumber(c.number)} · {c.issues.length} issue{c.issues.length === 1 ? "" : "s"} · readiness {c.readinessScore}%
-                        </p>
-                      </div>
-                      <Badge color={c.status === "analyzed" ? "green" : c.status === "consultant_recommended" ? "lime" : "slate"}>
-                        {c.status.replace(/_/g, " ")}
-                      </Badge>
-                    </CardBody>
-                  </Card>
-                </Link>
+                <CaseListCard
+                  key={c.id}
+                  href={`/app/cases/${c.id}`}
+                  number={c.number}
+                  title={c.title}
+                  status={c.status}
+                  readinessScore={c.readinessScore}
+                  compact
+                  summary={caseListSummary({
+                    status: c.status,
+                    actionReadinessScore: c.actionReadinessScore,
+                    presentation: presentations.get(c.id) ?? null,
+                    reconstructionPosition: c.reconstruction?.currentPosition,
+                  })}
+                />
               ))}
             </div>
           )}
