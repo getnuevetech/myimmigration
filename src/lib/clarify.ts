@@ -13,6 +13,7 @@ export type ClarifyQuestion = { key: string; text: string };
 // matters: it gives the extraction engine the USCIS context words it needs.
 export function situationLine(key: string, questionText: string, answer: string): string {
   const a = answer.trim();
+  if (key.startsWith("evidence:")) return `[Clarified evidence] ${questionText}: ${a}.`;
   switch (key) {
     case "case_year":
       return `[Clarified] Immigration matter year(s): ${a}.`;
@@ -44,12 +45,19 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
       issues: true,
       documents: { where: { deletedAt: null } },
       clarifyMessages: { where: { role: "user" } },
+      unknowns: { where: { status: "open" }, orderBy: { createdAt: "asc" } },
+      suppressedQuestions: true,
     },
   });
   if (!c || c.status === "closed") return null;
 
   const answered = new Set(c.clarifyMessages.map((m) => m.questionKey));
-  const hasCaseRecord = c.documents.some((d) => ["case_record", "case record", "receipt"].includes(d.docKind));
+  const suppressedEvidenceKeys = new Set(c.suppressedQuestions.map((q) => q.evidenceFactId || q.questionKey));
+  const hasCaseRecord =
+    c.documents.some((d) => ["case_record", "case record", "receipt"].includes(d.docKind)) ||
+    (suppressedEvidenceKeys.has("receipt_number") && suppressedEvidenceKeys.has("form_type"));
+  const evidenceUnknown = c.unknowns.find((u) => !answered.has(`evidence:${u.key}`) && !suppressedEvidenceKeys.has(u.key));
+  if (evidenceUnknown) return { key: `evidence:${evidenceUnknown.key}`, text: evidenceUnknown.question };
   const caseUpdateIssue = c.issues.find((i) => i.issueType === "case_update_discrepancy");
   const feeIssue = c.issues.find((i) => i.issueType === "fee_or_payment_issue");
   const noticeIssue = c.issues.find((i) => i.issueType === "uscis_notice_response");
