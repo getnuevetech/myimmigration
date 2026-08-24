@@ -684,6 +684,38 @@ async function seedKnowledge() {
       tags: "n-400, naturalization, citizenship, continuous residence",
       content: "Form N-400 is used to apply for naturalization. A review should consider lawful permanent resident period, continuous residence, physical presence, good moral character, selective service if applicable, support obligations, trips outside the United States, and interview/civics requirements. Complex issues should be reviewed by a qualified professional.",
     },
+    {
+      title: "Optional Practical Training for F-1 students",
+      sourceType: "form_instruction",
+      reference: "F-1 OPT",
+      url: "https://www.uscis.gov/working-in-the-united-states/students-and-exchange-visitors/optional-practical-training-opt-for-f-1-students",
+      tags: "student, f-1, opt, graduation, i-20, work, i-765",
+      content: "F-1 students may apply for Optional Practical Training (OPT) to work in a field related to their major after or during studies. Evidence usually includes a valid Form I-20 with an OPT recommendation, passport identity page, Form I-94, and transcripts or enrollment records. OPT is requested on Form I-765. Timing, unemployment limits, and STEM extensions depend on the student's facts. A receipt notice is not required to explain these options, and OPT is not an automatic grant of status after graduation.",
+    },
+    {
+      title: "Employment authorization overview",
+      sourceType: "form_instruction",
+      reference: "Form I-765",
+      url: "https://www.uscis.gov/i-765",
+      tags: "i-765, ead, employment, student, opt, work",
+      content: "Form I-765 is used to apply for an Employment Authorization Document. Eligibility categories include F-1 OPT, pending adjustment of status, asylum-related categories, and others listed on the form instructions. Evidence usually includes identity documents, proof of the qualifying status or pending application, prior EADs if any, and category-specific records such as an I-20 for OPT. Filing the form does not by itself authorize employment until USCIS approves the category.",
+    },
+    {
+      title: "Asylum and withholding overview",
+      sourceType: "form_instruction",
+      reference: "Form I-589",
+      url: "https://www.uscis.gov/i-589",
+      tags: "asylum, i-589, refugee, persecution, humanitarian",
+      content: "Form I-589 is used to apply for asylum and for withholding of removal. Evidence usually includes a personal declaration, country-conditions material, identity documents, and any prior immigration records. Deadlines, bars, and credibility are fact-specific under INA and 8 CFR standards. These claims are high-stakes and should be reviewed by a licensed immigration attorney or accredited representative.",
+    },
+    {
+      title: "Immigration court and removal proceedings",
+      sourceType: "rule",
+      reference: "EOIR",
+      url: "https://www.justice.gov/eoir/find-immigration-court-and-access-eoir-information",
+      tags: "eoir, immigration court, removal, nta, doj",
+      content: "The Executive Office for Immigration Review (EOIR) in the Department of Justice conducts removal proceedings in immigration court. Cases usually include a Notice to Appear, hearing notices, and any applications filed with the court. Court deadlines, relief forms, and appeals are separate from USCIS benefit filings. A person in removal proceedings should get licensed professional help before filing or missing a hearing.",
+    },
   ];
 
   for (const source of sources) {
@@ -738,6 +770,24 @@ async function seedAuthoritySources() {
       url: "https://www.uscis.gov/laws-and-policy/legislation/immigration-and-nationality-act",
       authorityRank: "highest",
       jurisdictionOrScope: "Primary immigration statute",
+    },
+    {
+      key: "eoir_immigration_courts",
+      sourceType: "agency_manual",
+      publisher: "EOIR",
+      title: "EOIR Immigration Court information",
+      url: "https://www.justice.gov/eoir/find-immigration-court-and-access-eoir-information",
+      authorityRank: "high",
+      jurisdictionOrScope: "DOJ immigration court locations, case information, and practice resources",
+    },
+    {
+      key: "uscis_opt_f1",
+      sourceType: "form_instruction",
+      publisher: "USCIS",
+      title: "Optional Practical Training (OPT) for F-1 Students",
+      url: "https://www.uscis.gov/working-in-the-united-states/students-and-exchange-visitors/optional-practical-training-opt-for-f-1-students",
+      authorityRank: "high",
+      jurisdictionOrScope: "F-1 Optional Practical Training eligibility and filing",
     },
   ];
   for (const source of sources) {

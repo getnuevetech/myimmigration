@@ -32,6 +32,7 @@ import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
 import { getCaseEvidenceBrief } from "../evidence/brief";
 import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
 import { mergeSupportedText, presentationGroundingBlock, withPresentationNoticeSteps } from "../case-presentation-brief";
+import { formatKnowledgeBlock, rankKnowledgeSources, toKnowledgeRecord, type KnowledgeRecord } from "../knowledge-retrieval";
 import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry } from "../immigration-inquiry";
 
 type Json = Record<string, unknown>;
@@ -83,36 +84,24 @@ async function getRunnableSteps(stageKey: string) {
   return stage.steps.filter((s) => s.provider.isEnabled && s.provider.apiKey.length > 0);
 }
 
-// Naive keyword retrieval over the admin-curated USCIS knowledge base.
-export async function retrieveKnowledge(query: string, limit = 5): Promise<string> {
+// Ranked retrieval over the admin-curated USCIS/DOJ knowledge base.
+export async function retrieveKnowledgeRecords(query: string, limit = 5): Promise<KnowledgeRecord[]> {
+  const inquiry = classifyImmigrationInquiry({ situation: query, goal: query });
   const sources = await db.knowledgeSource.findMany({ where: { isActive: true } });
-  const terms = Array.from(
-    new Set(
-      query
-        .toLowerCase()
-        .split(/[^a-z0-9]+/)
-        .filter((t) => t.length > 3),
-    ),
+  return rankKnowledgeSources(
+    sources.map(toKnowledgeRecord),
+    {
+      query,
+      inquiryMode: inquiry.mode,
+      themes: inquiry.themes,
+      authorityQueries: authorityQueriesForInquiry(inquiry),
+    },
+    limit,
   );
-  const scored = sources
-    .map((s) => {
-      const hay = `${s.title} ${s.reference} ${s.tags} ${s.content}`.toLowerCase();
-      let score = 0;
-      for (const t of terms) if (hay.includes(t)) score++;
-      // USCIS forms, notice types, and receipt numbers are strong signals.
-      const codes = query.toUpperCase().match(USCIS_REFERENCE_RE) ?? [];
-      for (const c of codes) {
-        const compact = c.replace(/\s|-/g, "");
-        if (hay.toUpperCase().replace(/\s|-/g, "").includes(compact)) score += 10;
-      }
-      return { s, score };
-    })
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-  return scored
-    .map(({ s }) => `[${s.reference || s.sourceType}] ${s.title}\n${s.content.slice(0, 2500)}`)
-    .join("\n\n---\n\n");
+}
+
+export async function retrieveKnowledge(query: string, limit = 5): Promise<string> {
+  return formatKnowledgeBlock(await retrieveKnowledgeRecords(query, limit));
 }
 
 export type StageOutcome = {
@@ -746,12 +735,14 @@ export async function runQaChat(history: { role: string; content: string }[], op
   ]
     .filter(Boolean)
     .join(" ");
-  const knowledge = await retrieveKnowledge(knowledgeQuery);
+  const knowledgeSources = await retrieveKnowledgeRecords(knowledgeQuery);
+  const knowledge = formatKnowledgeBlock(knowledgeSources);
   const grounding = await loadCaseGrounding(opts?.caseId);
   const fallbackAnswer = () =>
     buildQaFallbackAnswer({
       question,
       knowledge,
+      sources: knowledgeSources,
       inquiry,
       hasLinkedCase: Boolean(opts?.caseId),
     });

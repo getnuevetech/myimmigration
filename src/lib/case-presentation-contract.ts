@@ -43,7 +43,8 @@ export function evidenceStrengthFromScores(actionReadinessScore: number): Presen
 }
 
 function isProfessionalReviewIssue(issue: { issueType: string; altAction: string }) {
-  return issue.issueType === "professional_review" || /professional/i.test(issue.altAction);
+  if (issue.issueType === "professional_review") return true;
+  return /\b(professional review is (?:required|strongly recommended)|licensed professional (?:should|is recommended))/i.test(issue.altAction);
 }
 
 export function assemblePresentationContract(input: {

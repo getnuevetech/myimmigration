@@ -36,7 +36,9 @@ import {
   classifyImmigrationInquiry,
   INQUIRY_MODES,
   OPEN_OPTIONS_POSTURE,
+  evaluateConsultantReferral,
 } from "../src/lib/immigration-inquiry";
+import { rankKnowledgeSources, type KnowledgeRecord } from "../src/lib/knowledge-retrieval";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -150,9 +152,10 @@ assert(DEFAULT_PROMPTS.closing.includes("evidence_brief"), "closing prompt shoul
 assert(DEFAULT_PROMPTS.closing.includes("approved_presentation"), "closing prompt should mention approved presentation");
 assert((PROMPT_SUPERSEDES.closing ?? []).length > 0, "closing prompt should declare superseded hashes");
 assert(PROMPT_VERSION.includes("v32"), "prompt version should identify v32 evidence prompts");
-assert(DEFAULT_PROMPTS.analyst.includes("options inquiry"), "analyst prompt should handle people with no USCIS case file");
-assert(DEFAULT_PROMPTS.assistant.includes("no USCIS file"), "assistant prompt should answer questions with no USCIS file");
+assert(DEFAULT_PROMPTS.analyst.includes("retrieved official material"), "analyst prompt should ground options in retrieved official material");
+assert(DEFAULT_PROMPTS.assistant.includes("matching official material"), "assistant prompt should answer from matching official material");
 assert((PROMPT_SUPERSEDES.analyst ?? []).includes("ed754670a3175d8e9db512d2e839a29391c74448889024c80981c2d0db7ec9e7"), "analyst prompt should supersede the pre-open-options hash");
+assert((PROMPT_SUPERSEDES.analyst ?? []).includes("4c79d64b1ef2068dbf9000be50aa51450fee81cb4908ba054ba8b31a1b36b44f"), "analyst prompt should supersede the C1 open-options hash");
 const readiness = computeEvidenceReadinessSplit({
   documentsCount: 2,
   documentsExpected: 3,
@@ -449,6 +452,7 @@ const marriageInquiry = classifyImmigrationInquiry({
 });
 assert(marriageInquiry.mode === INQUIRY_MODES.OPEN_OPTIONS, "a marriage goal with no filing should classify as open options");
 assert(marriageInquiry.themes.includes("family"), "a marriage green-card question should detect the family theme");
+assert(!marriageInquiry.themes.includes("naturalization"), "mentioning a US citizen spouse must not classify the question as naturalization");
 const studentInquiry = classifyImmigrationInquiry({
   situation: "I am on F-1 graduating next month. What can I do?",
   goal: "Work or stay after graduation",
@@ -456,21 +460,120 @@ const studentInquiry = classifyImmigrationInquiry({
 assert(studentInquiry.mode === INQUIRY_MODES.OPEN_OPTIONS, "an F-1 graduation question with no case file should classify as open options");
 assert(studentInquiry.themes.includes("student"), "an F-1 graduation question should detect the student theme");
 
+const knowledgeCatalog: KnowledgeRecord[] = [
+  {
+    title: "USCIS receipt notices",
+    reference: "I-797C",
+    sourceType: "notice_guide",
+    tags: "receipt, i-797, case status",
+    url: "https://www.uscis.gov/forms/filing-guidance/form-i-797-types-and-functions",
+    content: "A USCIS receipt notice confirms that USCIS accepted a filing for processing. It usually includes a receipt number, received date, notice date, form type, applicant or petitioner information, and the service center or field office.",
+  },
+  {
+    title: "Requests for Evidence (RFE)",
+    reference: "RFE",
+    sourceType: "notice_guide",
+    tags: "rfe, evidence, deadline, response",
+    url: "https://www.uscis.gov/forms/filing-guidance/requests-for-evidence-and-notices-of-intent-to-deny",
+    content: "A Request for Evidence means USCIS needs additional documents or clarification before deciding a case. The notice identifies the missing evidence, the response deadline, where to send the response, and whether copies or originals are required.",
+  },
+  {
+    title: "Family petition overview",
+    reference: "Form I-130",
+    sourceType: "form_instruction",
+    tags: "i-130, family, petitioner, beneficiary, relationship evidence",
+    url: "https://www.uscis.gov/i-130",
+    content: "Form I-130 is used by a U.S. citizen or lawful permanent resident petitioner to establish a qualifying family relationship with a beneficiary. Evidence usually includes identity documents, proof of status, relationship documents, and bona fide marriage evidence when based on marriage. Approval of I-130 alone does not grant status.",
+  },
+  {
+    title: "Naturalization overview",
+    reference: "Form N-400",
+    sourceType: "form_instruction",
+    tags: "n-400, naturalization, citizenship, continuous residence",
+    url: "https://www.uscis.gov/n-400",
+    content: "Form N-400 is used to apply for naturalization. A review should consider lawful permanent resident period, continuous residence, physical presence, good moral character, selective service if applicable, support obligations, trips outside the United States, and interview/civics requirements.",
+  },
+  {
+    title: "Optional Practical Training for F-1 students",
+    reference: "F-1 OPT",
+    sourceType: "form_instruction",
+    tags: "student, f-1, opt, graduation, i-20, work, i-765",
+    url: "https://www.uscis.gov/working-in-the-united-states/students-and-exchange-visitors/optional-practical-training-opt-for-f-1-students",
+    content: "F-1 students may apply for Optional Practical Training (OPT) to work in a field related to their major after or during studies. Evidence usually includes a valid Form I-20 with an OPT recommendation, passport identity page, Form I-94, and transcripts or enrollment records. OPT is requested on Form I-765.",
+  },
+  {
+    title: "Employment authorization overview",
+    reference: "Form I-765",
+    sourceType: "form_instruction",
+    tags: "i-765, ead, employment, student, opt, work",
+    url: "https://www.uscis.gov/i-765",
+    content: "Form I-765 is used to apply for an Employment Authorization Document. Eligibility categories include F-1 OPT, pending adjustment of status, and others listed on the form instructions. Evidence usually includes identity documents, proof of the qualifying status, and category-specific records such as an I-20 for OPT.",
+  },
+  {
+    title: "Asylum and withholding overview",
+    reference: "Form I-589",
+    sourceType: "form_instruction",
+    tags: "asylum, i-589, refugee, persecution, humanitarian",
+    url: "https://www.uscis.gov/i-589",
+    content: "Form I-589 is used to apply for asylum and for withholding of removal. Evidence usually includes a personal declaration, country-conditions material, identity documents, and any prior immigration records. These claims are high-stakes and should be reviewed by a licensed immigration attorney or accredited representative.",
+  },
+];
+
+const rankedMarriage = rankKnowledgeSources(knowledgeCatalog, {
+  query: "I want to marry a US citizen and get a green card. We have not filed anything yet. Show me what options I have",
+  inquiryMode: "open_options",
+  themes: marriageInquiry.themes,
+  authorityQueries: ["I-130", "I-485"],
+});
+assert(rankedMarriage[0]?.title === "Family petition overview", `marriage options should rank the I-130 source first, got ${rankedMarriage[0]?.title}`);
+assert(!rankedMarriage.some((source) => source.reference === "I-797C" || source.reference === "RFE" || source.reference === "F-1 OPT" || source.reference === "Form N-400"), "open-options marriage ranking must drop unrelated notice, student, and naturalization sources");
+
+const rankedStudent = rankKnowledgeSources(knowledgeCatalog, {
+  query: "I am on F-1 graduating next month. What can I do? Work or stay after graduation",
+  inquiryMode: "open_options",
+  themes: studentInquiry.themes,
+  authorityQueries: ["I-765", "F-1"],
+});
+assert(/opt|i-765/i.test(`${rankedStudent[0]?.title} ${rankedStudent[0]?.reference}`), `F-1 ranking should prefer OPT or I-765, got ${rankedStudent[0]?.title}`);
+assert(!rankedStudent.some((source) => source.reference === "I-797C" || source.reference === "RFE"), "open-options F-1 ranking must drop unrelated notice sources");
+
+const rankedRfe = rankKnowledgeSources(knowledgeCatalog, {
+  query: "I got an RFE from USCIS and the deadline is coming up.",
+  inquiryMode: "existing_case",
+  themes: ["adjustment"],
+});
+assert(rankedRfe[0]?.reference === "RFE", `existing-case RFE ranking should prefer the RFE source, got ${rankedRfe[0]?.reference}`);
+
 const marriageOptions = buildOpenOptionsAnalysis({
   situation: "I want to marry a US citizen and get a green card. We have not filed anything yet.",
   goal: "Show me what options I have",
-});
+}, marriageInquiry, knowledgeCatalog);
 assert(marriageOptions.reconstruction.currentPosition === OPEN_OPTIONS_POSTURE, "open-options reconstruction should use the exploring-options posture");
-assert(marriageOptions.issues.some((issue) => /family green card/i.test(issue.title) && issue.item_kind === "opportunity"), "marriage options should emit a family pathway opportunity");
+assert(marriageOptions.issues.some((issue) => issue.title === "Family petition overview" && issue.item_kind === "opportunity"), "marriage options should be titled from the matching official source, not a canned essay");
+assert(/Approval of I-130 alone does not grant status/i.test(JSON.stringify(marriageOptions.issues)), "marriage options must quote the matching I-130 rule");
+assert(/identity documents|relationship documents|bona fide marriage/i.test(JSON.stringify(marriageOptions.unknowns)), "follow-up questions must come from the I-130 evidence list");
+assert(!marriageOptions.unknowns.some((item) => item.key === "receipt_number"), "open-options analysis must not ask for a receipt number");
+assert(!marriageOptions.issues.some((issue) => /family green card path may be possible/i.test(issue.title)), "open-options analysis must not emit the canned family-green-card essay title");
 assert(marriageOptions.pathSteps[0]?.action_key === "ADD_CASE_DETAILS", "open-options next steps should start with clarifying facts, not uploading a notice");
 assert(!marriageOptions.pathSteps.some((step) => step.action_key === "UPLOAD_NOTICE" || step.action_key === "GET_CASE_RECORD"), "open-options next steps must not require a USCIS case record");
-assert(!marriageOptions.issues.some((issue) => /more immigration details are needed/i.test(issue.title)), "open-options analysis must not dead-end on missing case details");
+assert(marriageOptions.issues.every((issue) => issue.professional_review === "probably_unnecessary"), "a simple marriage-options story should not require a consultant");
 
 const studentOptions = buildOpenOptionsAnalysis({
   situation: "I am on F-1 graduating next month. What can I do?",
   goal: "See my work and stay options",
-});
-assert(studentOptions.issues.some((issue) => /student|graduation|opt/i.test(`${issue.title} ${issue.our_conclusion}`)), "F-1 options should describe student or after-graduation paths");
+}, studentInquiry, knowledgeCatalog);
+assert(studentOptions.issues.some((issue) => /opt|i-765|employment authorization/i.test(`${issue.title} ${issue.our_conclusion}`)), "F-1 options should describe OPT or I-765 from official material");
+assert(!/I-797C|Request for Evidence|receipt notice/i.test(JSON.stringify(studentOptions.issues)), "F-1 options must not dump unrelated notice articles");
+assert(studentOptions.issues.every((issue) => issue.professional_review !== "required"), "an F-1 graduation question should not require a consultant");
+
+const asylumOptions = buildOpenOptionsAnalysis({
+  situation: "I am afraid to return home because of persecution and want to apply for asylum.",
+  goal: "Find out if I can stay",
+}, undefined, knowledgeCatalog);
+assert(asylumOptions.issues.some((issue) => issue.professional_review === "required" || issue.issue_type === "professional_review"), "asylum facts should flag licensed professional review");
+assert(evaluateConsultantReferral({ text: "I received a Notice of Intent to Deny on my I-485." }).level === "required", "a NOID should require professional review");
+assert(evaluateConsultantReferral({ text: "I am on F-1 graduating next month." }).level === "probably_unnecessary", "a simple F-1 question should not require a consultant");
+assert(evaluateConsultantReferral({ text: "USCIS sent an RFE and I must respond within 87 days." }).level === "recommended", "an RFE with a deadline should recommend professional review");
 
 const emptyReconcile = reconcileEvidenceStates([{
   documentType: "other",
@@ -483,10 +586,11 @@ const emptyReconcile = reconcileEvidenceStates([{
   reconstruction: { summary: "", currentPosition: "", timeline: [], pendingActions: [], confidence: "needs_verification" },
 }]);
 assert(emptyReconcile.reconstruction.currentPosition === "Case posture needs verification", "empty evidence should still reconstruct as unverified before inquiry overlay");
-const overlaid = applyInquiryToEvidenceState(emptyReconcile, marriageInquiry, "Show me what options I have");
+const overlaid = applyInquiryToEvidenceState(emptyReconcile, marriageInquiry, "Show me what options I have", knowledgeCatalog);
 assert(overlaid.reconstruction.currentPosition === OPEN_OPTIONS_POSTURE, "inquiry overlay should replace unverified case posture for open options");
 assert(!overlaid.unknowns.some((item) => item.key === "receipt_number"), "open-options overlay must not ask for a receipt number the person does not have");
 assert(overlaid.audit.status !== "blocked", "open-options overlay must not leave the evidence audit blocked");
+assert(/identity documents|relationship documents|bona fide marriage|current immigration status/i.test(JSON.stringify(overlaid.unknowns)), "open-options overlay questions should come from official material or missing status");
 
 const optionsPresentation = assemblePresentationContract({
   status: "analyzed",
@@ -523,6 +627,7 @@ const optionsPresentation = assemblePresentationContract({
   conflicts: [],
 });
 assert(optionsPresentation.hero.current_posture === OPEN_OPTIONS_POSTURE, "open-options presentation must not fall back to raw status");
+assert(optionsPresentation.hero.professional_review_recommended === false, "a simple marriage-options story must not flag consultant review on the hero");
 assert(!/STALE reconstruction|Case posture needs verification|upload a (uscis )?notice/i.test(JSON.stringify(optionsPresentation)), "open-options presentation must not show unverified case posture or notice-only next steps");
 assert(optionsPresentation.findings.some((finding) => finding.group === "opportunity"), "open-options presentation should show pathway opportunities");
 assert(presentationStepCta("ADD_CASE_DETAILS", "case-1")?.label === "Answer follow-up questions", "options follow-up CTA should not require a case file");
@@ -530,10 +635,20 @@ assert(presentationStepCta("REVIEW_ANALYSIS", "case-1")?.href === "/app/qa?case=
 
 const qaFallback = buildQaFallbackAnswer({
   question: "I want to marry a US citizen. What can we do if we have not filed yet?",
-  knowledge: "",
+  sources: knowledgeCatalog,
 });
 assert(/do not need a USCIS case/i.test(qaFallback), "Q&A without a case should still answer options questions");
+assert(/Family petition overview/i.test(qaFallback), "Q&A fallback should cite the matching official source");
 assert(!/upload your USCIS notice/i.test(qaFallback), "Q&A fallback must not tell people with no file that they must upload a notice");
+assert(!/I-797C|Request for Evidence/i.test(qaFallback), "Q&A fallback must not dump unrelated notice articles into a marriage question");
+
+const qaStudent = buildQaFallbackAnswer({
+  question: "I am on F-1 graduating next month. What can I do after graduation?",
+  sources: knowledgeCatalog,
+});
+assert(/OPT|I-765|Employment authorization/i.test(qaStudent), "F-1 Q&A should answer from OPT or I-765 material");
+assert(!/I-797C|Request for Evidence|receipt notice/i.test(qaStudent), "F-1 Q&A must not dump unrelated RFE or receipt-notice articles");
+assert(!/licensed professional should be involved/i.test(qaStudent), "F-1 Q&A should not require a consultant");
 const listFromOptions = caseListSummaryFromView(
   { status: "analyzed", reconstructionPosition: "STALE reconstruction posture" },
   buildApprovedCaseView({
@@ -578,4 +693,4 @@ console.log("- v41 B5: letters, notices, and Q&A share approved presentation blo
 console.log(`- v4 A10: analysis pipeline follows the case plan (${lowPlan.case_complexity}, skip process=${!lowDecisions.processDocuments}, runtime review=${runtimeDecisions.independentReview})`);
 console.log(`- v4 A11: canonical approved state v${approvedState.version} stores ${approvedState.presentation?.hero.current_posture} and the analysis plan`);
 console.log(`- v4 A12: ${selected?.source} approved state wins over stale stored/live presentations (${listFromCanonical.posture}, ${caseListVersionLine(listFromCanonical)})`);
-console.log(`- v4 C1: open options ${marriageInquiry.mode}/${marriageOptions.reconstruction.currentPosition}, existing RFE ${rfeInquiry.mode}, F-1 ${studentInquiry.themes.join("+")}`);
+console.log(`- v4 C2: grounded options ${marriageOptions.issues[0]?.title}, F-1 ${rankedStudent[0]?.reference}, RFE ${rfeInquiry.mode}/${rankedRfe[0]?.reference}`);

@@ -19,7 +19,7 @@ export const ANALYSIS_TOOLS = {
 export const ANALYSIS_TASK_LABELS: Record<string, string> = {
   PROCESS_DOCUMENTS: "Document processing",
   RECONSTRUCT_CASE: "Situation reconstruction",
-  RETRIEVE_AUTHORITY: "USCIS rule lookup",
+  RETRIEVE_AUTHORITY: "USCIS and DOJ rule lookup",
   PRIMARY_REASONING: "Situation analysis",
   INDEPENDENT_REVIEW: "Second independent review",
   QUESTION_PLANNING: "Follow-up questions",
