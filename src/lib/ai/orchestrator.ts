@@ -419,6 +419,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
         primary_reasoner_context: primaryReasonerContext,
         evidence_gate_instructions: evidenceGate?.promptText ?? "",
         analysis: situationMerged,
+        presentation_lock: true,
       }),
     });
     const p = presenterOut.stepOutputs.find((o) => o.data)?.data ?? null;

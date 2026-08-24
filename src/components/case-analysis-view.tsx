@@ -6,6 +6,7 @@ import { startFormAction } from "@/actions/forms";
 import { InlineUpload } from "@/components/inline-upload";
 import { CaseUpload } from "@/components/case-upload";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { parsePresentationRecord } from "@/lib/case-presentation-contract";
 import Link from "next/link";
 
 export type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
@@ -38,35 +39,58 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const interactive = viewer.role === "customer";
   const fullAccess = viewer.role !== "customer" ? true : (viewer.fullResults ?? true);
   const visibleIssues = fullAccess ? c.issues : c.issues.slice(0, 1);
-  let conflicts: { topic: string; description: string; resolution?: string }[] = [];
-  try {
-    const parsed = JSON.parse(c.conflictsJson || "[]");
-    if (Array.isArray(parsed)) conflicts = parsed.filter((x) => x?.topic && x?.description);
-  } catch { /* legacy cases */ }
   const verificationFlags = c.runs.filter((r) => r.consensus?.verificationRequired).length;
   const aiStepCount = await db.analysisStepResult.count({
     where: { run: { caseId: c.id }, status: "complete" },
   });
   const isPreliminary = c.runs.length > 0 && aiStepCount === 0;
   const latestEvidenceAudit = c.evidenceAudits[0] ?? null;
-  let evidenceTimeline: { eventType?: string; title?: string; dateText?: string }[] = [];
-  let pendingEvidenceActions: string[] = [];
-  try {
-    const parsed = JSON.parse(c.reconstruction?.timelineJson || "[]");
-    if (Array.isArray(parsed)) {
-      evidenceTimeline = parsed
-        .map((item) => ({
-          eventType: typeof item?.eventType === "string" ? item.eventType : "",
-          title: typeof item?.title === "string" ? item.title : "",
-          dateText: typeof item?.dateText === "string" ? item.dateText : "",
-        }))
-        .filter((item) => item.title);
-    }
-  } catch { /* no reconstruction timeline yet */ }
-  try {
-    const parsed = JSON.parse(c.reconstruction?.pendingActionsJson || "[]");
-    if (Array.isArray(parsed)) pendingEvidenceActions = parsed.map(String).filter(Boolean);
-  } catch { /* no pending evidence actions yet */ }
+  const presentationRow = await db.casePresentation.findFirst({
+    where: { caseId },
+    orderBy: { createdAt: "desc" },
+  }).catch(() => null);
+  const presentation = presentationRow ? parsePresentationRecord(presentationRow) : null;
+  let evidenceTimeline: { eventType?: string; title?: string; dateText?: string }[] = presentation?.timeline ?? [];
+  let pendingEvidenceActions: string[] = presentation?.what_this_means.pending_actions ?? [];
+  let conflicts: { topic: string; description: string; resolution?: string }[] =
+    presentation?.what_this_means.conflicts ?? [];
+  if (!presentation) {
+    try {
+      const parsed = JSON.parse(c.conflictsJson || "[]");
+      if (Array.isArray(parsed)) conflicts = parsed.filter((x) => x?.topic && x?.description);
+    } catch { /* legacy cases */ }
+    try {
+      const parsed = JSON.parse(c.reconstruction?.timelineJson || "[]");
+      if (Array.isArray(parsed)) {
+        evidenceTimeline = parsed
+          .map((item) => ({
+            eventType: typeof item?.eventType === "string" ? item.eventType : "",
+            title: typeof item?.title === "string" ? item.title : "",
+            dateText: typeof item?.dateText === "string" ? item.dateText : "",
+          }))
+          .filter((item) => item.title);
+      }
+    } catch { /* no reconstruction timeline yet */ }
+    try {
+      const parsed = JSON.parse(c.reconstruction?.pendingActionsJson || "[]");
+      if (Array.isArray(parsed)) pendingEvidenceActions = parsed.map(String).filter(Boolean);
+    } catch { /* no pending evidence actions yet */ }
+  }
+  const currentPosition =
+    presentation?.hero.current_posture || c.reconstruction?.currentPosition || "Case posture needs verification";
+  const evidenceSummary =
+    presentation?.what_this_means.summary ||
+    c.reconstruction?.summary ||
+    latestEvidenceAudit?.summary ||
+    "Upload USCIS records so the case timeline can be reconstructed from evidence.";
+  const evidenceGateStatus = presentation?.what_this_means.evidence_gate_status || latestEvidenceAudit?.status || null;
+  const unknownQuestions = presentation?.what_this_means.unknowns.length
+    ? presentation.what_this_means.unknowns
+    : c.unknowns.map((unknown) => unknown.question);
+  const professionalReviewRecommended =
+    presentation?.hero.professional_review_recommended || c.status === "consultant_recommended";
+  const nextBestAction = presentation?.hero.next_best_action ?? null;
+  const nearestDeadline = presentation?.hero.nearest_deadline ?? null;
 
   const formI485 = interactive
     ? await db.uscisFormTemplate.findFirst({ where: { formNumber: "I-485", isPublished: true }, select: { id: true } })
@@ -181,7 +205,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
             verified — your USCIS case record is usually the record that settles them.
           </div>
         )}
-        {c.status === "consultant_recommended" && (
+        {professionalReviewRecommended && (
           <div className="rounded-xl border border-lime-300 bg-lime-50 px-4 py-3 text-sm text-lime-900">
             <span className="font-semibold">▲ Professional review recommended.</span> Based on the analysis, this case would benefit
             from a licensed professional.
@@ -202,7 +226,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           </div>
         ))}
 
-        {(c.reconstruction || latestEvidenceAudit || c.unknowns.length > 0) && (
+        {(presentation || c.reconstruction || latestEvidenceAudit || unknownQuestions.length > 0) && (
           <section>
             <h2 className="mb-3 text-base font-semibold text-slate-900">Current evidence position</h2>
             <Card>
@@ -211,18 +235,43 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Compiled from uploaded records</p>
                     <h3 className="mt-1 text-lg font-semibold text-slate-900">
-                      {c.reconstruction?.currentPosition || "Case posture needs verification"}
+                      {currentPosition}
                     </h3>
                   </div>
-                  {latestEvidenceAudit && (
-                    <Badge color={latestEvidenceAudit.status === "pass" ? "green" : latestEvidenceAudit.status === "needs_review" ? "lime" : "slate"}>
-                      Evidence gate: {latestEvidenceAudit.status.replace(/_/g, " ")}
-                    </Badge>
-                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {presentation?.hero.evidence_strength && (
+                      <Badge color={presentation.hero.evidence_strength === "Strong" ? "green" : presentation.hero.evidence_strength === "Moderate" ? "lime" : "slate"}>
+                        Evidence {presentation.hero.evidence_strength.toLowerCase()}
+                      </Badge>
+                    )}
+                    {evidenceGateStatus && (
+                      <Badge color={evidenceGateStatus === "pass" ? "green" : evidenceGateStatus === "needs_review" ? "lime" : "slate"}>
+                        Evidence gate: {evidenceGateStatus.replace(/_/g, " ")}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                  {c.reconstruction?.summary || latestEvidenceAudit?.summary || "Upload USCIS records so the case timeline can be reconstructed from evidence."}
+                  {evidenceSummary}
                 </p>
+
+                {(nextBestAction || nearestDeadline) && (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {nextBestAction && (
+                      <div className="rounded-xl bg-lime-50 p-3">
+                        <p className="text-xs font-bold uppercase tracking-wide text-lime-500">Next best action</p>
+                        <p className="mt-1 text-sm font-medium text-lime-900">{nextBestAction.title}</p>
+                      </div>
+                    )}
+                    {nearestDeadline && (
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Nearest deadline</p>
+                        <p className="mt-1 text-sm font-medium text-slate-800">{nearestDeadline.title}</p>
+                        <p className="text-xs text-slate-500">{new Date(nearestDeadline.due_date).toLocaleDateString("en-US")}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {pendingEvidenceActions.length > 0 && (
                   <div className="mt-4 rounded-xl bg-lime-50 p-3">
@@ -257,14 +306,14 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                   </div>
                 )}
 
-                {c.unknowns.length > 0 && (
+                {unknownQuestions.length > 0 && (
                   <div className="mt-4">
                     <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">What the evidence still needs</p>
                     <ul className="space-y-1">
-                      {c.unknowns.map((unknown) => (
-                        <li key={unknown.id} className="flex items-start gap-2 text-sm text-slate-600">
+                      {unknownQuestions.map((question, index) => (
+                        <li key={`${question}-${index}`} className="flex items-start gap-2 text-sm text-slate-600">
                           <span className="mt-0.5 font-bold text-lime-500">?</span>
-                          <span>{unknown.question}</span>
+                          <span>{question}</span>
                         </li>
                       ))}
                     </ul>
@@ -484,10 +533,13 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
             <CardBody className="space-y-1">
               {c.pathSteps.map((step, i) => {
                 const verifiable = isVerifiable(step.actionKey);
+                const isCurrent = nextBestAction?.action_key
+                  ? step.actionKey.toUpperCase() === nextBestAction.action_key.toUpperCase() && step.status !== "done"
+                  : step.status === "current";
                 return (
-                  <div key={step.id} className={`flex items-start gap-3 rounded-xl p-3 ${step.status === "current" ? "bg-lime-50" : ""}`}>
+                  <div key={step.id} className={`flex items-start gap-3 rounded-xl p-3 ${isCurrent ? "bg-lime-50" : ""}`}>
                     <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                      step.status === "done" ? "bg-emerald-100 text-emerald-700" : step.status === "current" ? "bg-lime-600 text-white" : "bg-slate-100 text-slate-400"
+                      step.status === "done" ? "bg-emerald-100 text-emerald-700" : isCurrent ? "bg-lime-600 text-white" : "bg-slate-100 text-slate-400"
                     }`}>
                       {step.status === "done" ? "✓" : i + 1}
                     </span>
@@ -525,7 +577,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                         </div>
                       )}
                     </div>
-                    {interactive && !verifiable && step.status === "current" && (
+                    {interactive && !verifiable && isCurrent && (
                       <form action={completePathStepAction.bind(null, step.id)}>
                         <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
                           I&apos;ve done this ✓
