@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { PageHeader, Card, CardBody, ButtonLink, Badge, EmptyState, ProgressBar } from "@/components/ui";
-import { formatCaseNumber } from "@/lib/case-number";
+import { PageHeader, ButtonLink, EmptyState } from "@/components/ui";
+import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummary } from "@/lib/case-presentation-list";
+import { CaseListCard } from "@/components/case-list-card";
 
 export const metadata = { title: "My cases" };
 
@@ -11,46 +12,40 @@ export default async function CasesPage() {
   const cases = await db.case.findMany({
     where: { userId: user.id },
     orderBy: { updatedAt: "desc" },
-    include: { issues: true, documents: { where: { deletedAt: null } } },
+    include: { reconstruction: { select: { currentPosition: true } } },
   });
+  const presentations = await loadPresentationsByCaseIds(cases.map((item) => item.id));
 
   return (
     <div>
       <PageHeader
         title="My cases"
-        subtitle="Each case is one immigration situation, broken into issues and steps."
+        subtitle="Each case is one immigration situation, with a current posture and next step."
         actions={<ButtonLink href="/app/cases/new">New case →</ButtonLink>}
       />
       {cases.length === 0 ? (
         <EmptyState
           title="No cases yet"
-          body="Describe your situation and goal, and we'll analyze it into clear issues."
+          body="Describe your situation and goal, and we'll analyze it into a clear case plan."
           action={<ButtonLink href="/app/cases/new">Start a case</ButtonLink>}
         />
       ) : (
         <div className="space-y-4">
           {cases.map((c) => (
-            <Link key={c.id} href={`/app/cases/${c.id}`} className="block">
-              <Card className="transition hover:border-lime-300">
-                <CardBody>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-semibold text-slate-900">
-                      <span className="mr-2 font-mono text-xs text-lime-600">{formatCaseNumber(c.number)}</span>
-                      {c.title}
-                    </p>
-                    <Badge color={c.status === "analyzed" ? "green" : c.status === "consultant_recommended" ? "lime" : "slate"}>
-                      {c.status.replace(/_/g, " ")}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {c.issues.length} issue{c.issues.length === 1 ? "" : "s"} · {c.documents.length} document{c.documents.length === 1 ? "" : "s"} · opened {c.createdAt.toLocaleDateString("en-US")}
-                  </p>
-                  <div className="mt-3 max-w-sm">
-                    <ProgressBar value={c.readinessScore} label="Case readiness" />
-                  </div>
-                </CardBody>
-              </Card>
-            </Link>
+            <CaseListCard
+              key={c.id}
+              href={`/app/cases/${c.id}`}
+              number={c.number}
+              title={c.title}
+              status={c.status}
+              readinessScore={c.readinessScore}
+              summary={caseListSummary({
+                status: c.status,
+                actionReadinessScore: c.actionReadinessScore,
+                presentation: presentations.get(c.id) ?? null,
+                reconstructionPosition: c.reconstruction?.currentPosition,
+              })}
+            />
           ))}
         </div>
       )}

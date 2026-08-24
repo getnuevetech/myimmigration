@@ -9,6 +9,8 @@ import { setUserStatusAction, adminDeleteUserAction, setConsultantAccountStatusA
 import { formatCaseNumber } from "@/lib/case-number";
 import { formatTicketNumber, formatTransactionNumber } from "@/lib/ticket-number";
 import { CONSULTANT_SPECIALTIES } from "@/lib/constants";
+import { loadPresentationsByCaseIds } from "@/lib/case-presentation";
+import { caseListSummary, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
 
 // Full detail page for any customer or consultant account.
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,7 +24,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
     include: {
       subscriptions: { orderBy: { createdAt: "desc" }, take: 3, include: { plan: true } },
       transactions: { orderBy: { createdAt: "desc" }, take: 10, include: { plan: { select: { name: true } } } },
-      cases: { orderBy: { updatedAt: "desc" }, include: { issues: { select: { id: true } } } },
+      cases: { orderBy: { updatedAt: "desc" } },
       documents: { where: { deletedAt: null }, select: { id: true } },
       tickets: { orderBy: { updatedAt: "desc" }, take: 8 },
       agreementAcceptances: { include: { page: { select: { title: true } } }, orderBy: { acceptedAt: "desc" } },
@@ -37,6 +39,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const requiredArea = isConsultant ? "admin.consultants" : "admin.users";
   if (!hasAdminArea(admin, requiredArea)) redirect("/admin");
 
+  const presentations = await loadPresentationsByCaseIds(user.cases.map((item) => item.id));
   const activeSub = user.subscriptions.find((s) => ["active", "trialing"].includes(s.status));
   const p = user.consultantProfile;
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
@@ -174,18 +177,30 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                   Cases ({user.cases.length}) · Documents ({user.documents.length})
                 </h2>
                 <div className="space-y-2">
-                  {user.cases.map((c) => (
-                    <Link key={c.id} href={`/admin/cases/${c.id}`} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm hover:border-lime-300">
-                      <span className="min-w-0 truncate">
-                        <span className="mr-2 font-mono text-xs text-lime-600">{formatCaseNumber(c.number)}</span>
-                        {c.title.slice(0, 60)}
+                  {user.cases.map((c) => {
+                    const summary = caseListSummary({
+                      status: c.status,
+                      actionReadinessScore: c.actionReadinessScore,
+                      presentation: presentations.get(c.id) ?? null,
+                    });
+                    return (
+                    <Link key={c.id} href={`/admin/cases/${c.id}`} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm hover:border-lime-300">
+                      <span className="min-w-0">
+                        <span className="block truncate">
+                          <span className="mr-2 font-mono text-xs text-lime-600">{formatCaseNumber(c.number)}</span>
+                          {c.title.slice(0, 60)}
+                        </span>
+                        <span className="mt-0.5 block text-xs font-medium text-slate-700">{summary.posture}</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">{caseListActionLine(summary)}</span>
+                        <span className="mt-0.5 block text-xs text-slate-400">{caseListEvidenceLine(summary)}</span>
                       </span>
                       <span className="ml-2 flex shrink-0 items-center gap-2 text-xs text-slate-500">
-                        {c.issues.length} issues · {c.readinessScore}%
+                        {c.readinessScore}%
                         <Badge color={c.status === "analyzed" ? "green" : c.status === "consultant_recommended" ? "lime" : "slate"}>{c.status.replace(/_/g, " ")}</Badge>
                       </span>
                     </Link>
-                  ))}
+                    );
+                  })}
                   {user.cases.length === 0 && <p className="text-sm text-slate-400">No cases.</p>}
                 </div>
               </CardBody>
