@@ -452,6 +452,7 @@ const marriageInquiry = classifyImmigrationInquiry({
 });
 assert(marriageInquiry.mode === INQUIRY_MODES.OPEN_OPTIONS, "a marriage goal with no filing should classify as open options");
 assert(marriageInquiry.themes.includes("family"), "a marriage green-card question should detect the family theme");
+assert(!marriageInquiry.themes.includes("naturalization"), "mentioning a US citizen spouse must not classify the question as naturalization");
 const studentInquiry = classifyImmigrationInquiry({
   situation: "I am on F-1 graduating next month. What can I do?",
   goal: "Work or stay after graduation",
@@ -483,6 +484,14 @@ const knowledgeCatalog: KnowledgeRecord[] = [
     tags: "i-130, family, petitioner, beneficiary, relationship evidence",
     url: "https://www.uscis.gov/i-130",
     content: "Form I-130 is used by a U.S. citizen or lawful permanent resident petitioner to establish a qualifying family relationship with a beneficiary. Evidence usually includes identity documents, proof of status, relationship documents, and bona fide marriage evidence when based on marriage. Approval of I-130 alone does not grant status.",
+  },
+  {
+    title: "Naturalization overview",
+    reference: "Form N-400",
+    sourceType: "form_instruction",
+    tags: "n-400, naturalization, citizenship, continuous residence",
+    url: "https://www.uscis.gov/n-400",
+    content: "Form N-400 is used to apply for naturalization. A review should consider lawful permanent resident period, continuous residence, physical presence, good moral character, selective service if applicable, support obligations, trips outside the United States, and interview/civics requirements.",
   },
   {
     title: "Optional Practical Training for F-1 students",
@@ -517,7 +526,7 @@ const rankedMarriage = rankKnowledgeSources(knowledgeCatalog, {
   authorityQueries: ["I-130", "I-485"],
 });
 assert(rankedMarriage[0]?.title === "Family petition overview", `marriage options should rank the I-130 source first, got ${rankedMarriage[0]?.title}`);
-assert(!rankedMarriage.some((source) => source.reference === "I-797C" || source.reference === "RFE"), "open-options marriage ranking must drop unrelated notice sources");
+assert(!rankedMarriage.some((source) => source.reference === "I-797C" || source.reference === "RFE" || source.reference === "F-1 OPT" || source.reference === "Form N-400"), "open-options marriage ranking must drop unrelated notice, student, and naturalization sources");
 
 const rankedStudent = rankKnowledgeSources(knowledgeCatalog, {
   query: "I am on F-1 graduating next month. What can I do? Work or stay after graduation",

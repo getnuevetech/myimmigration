@@ -53,7 +53,7 @@ export function queryTerms(query: string): string[] {
 }
 
 function haystack(source: KnowledgeRecord): string {
-  return `${source.title} ${source.reference} ${source.tags ?? ""} ${source.content} ${source.url ?? ""}`.toLowerCase();
+  return `${source.title} ${source.reference} ${source.tags ?? ""} ${source.content}`.toLowerCase();
 }
 
 function compact(value: string): string {
@@ -86,6 +86,18 @@ export function scoreKnowledgeSource(source: KnowledgeRecord, hint: KnowledgeRet
   const openOptions = hint.inquiryMode === "open_options" && !NOTICE_QUERY_RE.test(query);
   if (openOptions && isNoticeSource(source)) score -= 20;
   if (!openOptions && NOTICE_QUERY_RE.test(query) && isNoticeSource(source)) score += 10;
+  if (openOptions) {
+    const exclusiveHay = `${source.title} ${source.reference} ${source.tags ?? ""}`;
+    const exclusiveThemes: { theme: string; pattern: RegExp }[] = [
+      { theme: "naturalization", pattern: /n-?400|naturalization/i },
+      { theme: "student", pattern: /\bf-?1\b|\bopt\b|i-20/i },
+      { theme: "asylum", pattern: /i-?589|\basylum\b|eoir|removal/i },
+    ];
+    const themes = hint.themes ?? [];
+    for (const item of exclusiveThemes) {
+      if (item.pattern.test(exclusiveHay) && !themes.includes(item.theme)) score -= 15;
+    }
+  }
   return score;
 }
 

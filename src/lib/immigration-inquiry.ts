@@ -93,7 +93,7 @@ const THEME_PATTERNS: { theme: InquiryTheme; pattern: RegExp }[] = [
   { theme: "parents_children", pattern: /\b(parent|mother|father|child(?:ren)?|son|daughter|bring (?:my|our) (?:parents|kids|family))\b/i },
   { theme: "employment", pattern: /\b(work(?:ing)?(?: authorization| permit)?|job|employer|sponsor(?:ship)?|h-?1b|i-?765|ead|employment)\b/i },
   { theme: "student", pattern: /\b(f-?1|student|opt|cpt|i-?20|graduat(?:e|ing)|study(?:ing)?|school|university|college)\b/i },
-  { theme: "naturalization", pattern: /\b(citizen(?:ship)?|naturaliz(?:e|ation)|n-?400|civics test|oath ceremony)\b/i },
+  { theme: "naturalization", pattern: /\b(naturaliz(?:e|ation)|n-?400|civics test|oath ceremony|become a (?:u\.?s\.? )?citizen|apply(?:ing)? for (?:u\.?s\.? )?citizenship|citizenship (?:application|interview))\b/i },
   { theme: "asylum", pattern: /\b(asylum|refugee|persecution|i-?589|withholding of removal)\b/i },
   { theme: "humanitarian", pattern: /\b(tps|daca|parole|humanitarian|u visa|t visa|vawa|special immigrant)\b/i },
   { theme: "visitor", pattern: /\b(visit(?:or|ing)?|tourist|b-?1|b-?2|visa waiver|esta)\b/i },
