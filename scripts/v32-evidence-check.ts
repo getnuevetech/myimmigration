@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_PROMPTS, PROMPT_SUPERSEDES, PROMPT_VERSION } from "../src/lib/ai/prompts";
 import { assemblePresentationContract, evidenceStrengthFromScores, parsePresentationRecord } from "../src/lib/case-presentation-contract";
+import { presentationActionStatus, presentationEvidenceGateLabel, presentationStepCta } from "../src/lib/case-presentation-ui";
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, extractUniversalDocumentIntelligence, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -206,6 +207,11 @@ const parsedPresentation = parsePresentationRecord({
 });
 assert(parsedPresentation.hero.next_best_action?.action_key === "UPLOAD_NOTICE", "stored presentation should round-trip the next best action");
 assert(parsedPresentation.hero.professional_review_recommended === true, "stored presentation should round-trip professional review");
+assert(presentationActionStatus("READY").label === "Ready now", "ready actions should use a customer-facing Ready now label");
+assert(presentationActionStatus("COMPLETED").tone === "done", "completed actions should use the done tone");
+assert(presentationEvidenceGateLabel("pass") === "Records checked", "pass evidence gate should use a customer-facing records label");
+assert(presentationStepCta("UPLOAD_NOTICE", "case-1")?.href === "/app/documents", "notice upload should link to documents");
+assert(presentationStepCta("DRAFT_LETTER", "case-1")?.href === "/app/letters/new?case=case-1", "letter action should keep the case id");
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
@@ -219,3 +225,4 @@ console.log("- prompts: analyst, reviewer, and presenter are evidence-gate aware
 console.log(`- readiness split: available ${readiness.evidenceAvailableScore}, processed ${readiness.evidenceProcessedScore}, action ${readiness.actionReadinessScore}`);
 console.log(`- letter guard: replaced ${guardedLetter.findings.length} unsupported value(s)`);
 console.log(`- presentation contract: ${presentation.hero.current_posture}, next ${presentation.hero.next_best_action?.action_key}, ${presentation.findings.length} findings`);
+console.log("- presentation UX: action statuses and evidence-gate labels are customer-facing");
