@@ -113,20 +113,19 @@ export async function runStage(
   const stepOutputs: StageOutcome["stepOutputs"] = [];
   let prior = "";
 
-  for (const step of steps) {
-    const prompt = fill(step.promptTemplate, { ...vars, prior });
+  async function runOneStep(step: (typeof steps)[number], stepPrior: string): Promise<StageOutcome["stepOutputs"][number] | null> {
+    const prompt = fill(step.promptTemplate, { ...vars, prior: stepPrior });
     const messages: ChatMessage[] = [{ role: "user", content: prompt }];
     const started = Date.now();
     try {
       const result = await callProvider(step.provider, messages, opts?.media ?? []);
       const data = extractJson(result.text);
-      stepOutputs.push({
+      const output = {
         source: `${step.provider.name} (${step.role})`,
         role: step.role,
         data,
         rawText: result.text,
-      });
-      if (opts?.sequentialContext) prior += `\n\n[${step.role}]\n${result.text}`;
+      };
       if (opts?.runId) {
         await db.analysisStepResult.create({
           data: {
@@ -140,6 +139,7 @@ export async function runStage(
           },
         });
       }
+      return output;
     } catch (err) {
       const { logSystem } = await import("../syslog");
       await logSystem("error", "ai_call", `${step.provider.name} failed in stage "${stageKey}" (${step.role})`, String(err));
@@ -155,7 +155,21 @@ export async function runStage(
           },
         });
       }
+      return null;
     }
+  }
+
+  if (opts?.sequentialContext) {
+    for (const step of steps) {
+      const output = await runOneStep(step, prior);
+      if (output) {
+        stepOutputs.push(output);
+        prior += `\n\n[${output.role}]\n${output.rawText}`;
+      }
+    }
+  } else {
+    const outputs = await Promise.all(steps.map((step) => runOneStep(step, "")));
+    stepOutputs.push(...outputs.filter((output): output is StageOutcome["stepOutputs"][number] => Boolean(output)));
   }
 
   const structured = stepOutputs.filter((o) => o.data);
@@ -171,7 +185,16 @@ export async function runStage(
 // directly, and digital PDFs (like USCIS case records downloaded from the online
 // account) via their embedded text layer. Scanned PDFs and photos have no
 // text layer — they go to vision-capable providers as media instead.
-async function getDocumentText(doc: { filePath: string; fileName: string; mimeType: string }): Promise<string> {
+async function getDocumentText(doc: { filePath: string; fileName: string; mimeType: string; extractedJson?: string }): Promise<string> {
+  if (doc.extractedJson) {
+    try {
+      const parsed = JSON.parse(doc.extractedJson);
+      const rawText = typeof parsed?.raw_text === "string" ? parsed.raw_text.trim() : "";
+      if (rawText.length > 80) return rawText.slice(0, 15000);
+    } catch {
+      // Fall through to reading the upload.
+    }
+  }
   const textLike =
     doc.mimeType.startsWith("text/") ||
     /\.(txt|csv|md|log)$/i.test(doc.fileName) ||
@@ -221,8 +244,8 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   const docParts: string[] = [];
   let rawDocText = "";
   const readableDocIds = new Set<string>();
-  for (const d of c.documents) {
-    const content = await getDocumentText(d);
+  const docContents = await Promise.all(c.documents.map(async (d) => ({ doc: d, content: await getDocumentText(d) })));
+  for (const { doc: d, content } of docContents) {
     if (content) {
       readableDocIds.add(d.id);
       if (!d.extractedJson) {
@@ -277,11 +300,13 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   }
 
   // Layer 2/3: summary, goal, and document analysis (multi-model, admin-selected).
-  const summaryOut = await stageRun(STAGE_KEYS.SUMMARY, { input: c.situation }, true);
-  const goalOut = await stageRun(STAGE_KEYS.GOAL, { input: c.goal }, true);
-  const documentOut = c.documents.length
-    ? await stageRun(STAGE_KEYS.DOCUMENT, { input: docText }, false, media)
-    : null;
+  // These stages do not depend on each other, so run them together. Within each
+  // stage, only stages that request sequential context keep provider calls serial.
+  const [summaryOut, goalOut, documentOut] = await Promise.all([
+    stageRun(STAGE_KEYS.SUMMARY, { input: c.situation }, true),
+    stageRun(STAGE_KEYS.GOAL, { input: c.goal }, true),
+    c.documents.length ? stageRun(STAGE_KEYS.DOCUMENT, { input: docText }, false, media) : Promise.resolve(null),
+  ]);
 
   // Documents read by a vision model count as examined evidence.
   if (documentOut?.usedAi && media.length > 0) {
