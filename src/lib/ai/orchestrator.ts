@@ -7,6 +7,7 @@ import { STAGE_KEYS } from "../constants";
 import { getNumberSetting } from "../settings";
 import { readUpload } from "../uploads";
 import { verifyCaseProgress } from "../case-progress";
+import { ensureCaseVersion, finalizeCaseVersion } from "../case-versioning";
 import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
 import { getCaseEvidenceBrief } from "../evidence/brief";
 import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
@@ -234,6 +235,13 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   });
   if (!c) return;
   await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
+  let caseVersionId: string | null = null;
+  try {
+    caseVersionId = (await ensureCaseVersion(caseId, "analysis")).id;
+  } catch (err) {
+    const { logSystem } = await import("../syslog");
+    await logSystem("warning", "case_versioning", "Could not create case version before analysis", String(err));
+  }
 
   // Clear previous results for a clean re-run.
   await db.issue.deleteMany({ where: { caseId } });
@@ -525,6 +533,26 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
 
   // Immediately verify path-step evidence (e.g. documents already uploaded at intake).
   await verifyCaseProgress(caseId);
+  if (caseVersionId) {
+    await finalizeCaseVersion(caseVersionId, caseId, {
+      status: needsConsultant ? "consultant_recommended" : "analyzed",
+      readinessScore: readiness,
+      evidenceGate: evidenceGateJson,
+      issues: issues.map((issue) => ({
+        issue_type: issue.issue_type ?? "other",
+        title: issue.title ?? issue.issue_identified ?? "",
+        next_action: issue.next_action ?? "",
+        evidence_status: issue.evidence_status ?? "needs_verification",
+      })),
+      path_steps: pathSteps.map((step) => ({
+        title: step.title ?? "",
+        action_key: step.action_key ?? "",
+      })),
+    }).catch(async (err) => {
+      const { logSystem } = await import("../syslog");
+      await logSystem("warning", "case_versioning", "Could not finalize case version after analysis", String(err));
+    });
+  }
 }
 
 // ---------- Single-purpose AI helpers ----------

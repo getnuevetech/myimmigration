@@ -332,6 +332,9 @@ model Case {
   deadlines      Deadline[]
   letters        ResponseLetter[]
   notices        Notice[]
+  versions       CaseVersion[]
+  evidenceSnapshots EvidenceSnapshot[]
+  canonicalState CanonicalCaseState?
   qaThreads      QaThread[]
   reportDownloads CaseReportDownload[]
   assignments    ConsultantAssignment[]
@@ -344,6 +347,52 @@ model Case {
   reconstruction CaseReconstruction?
   unknowns       CaseUnknown[]
   suppressedQuestions SuppressedQuestion[]
+}
+
+model EvidenceSnapshot {
+  id            String   @id @default(cuid())
+  caseId        String
+  hash          String
+  documentsJson String   @default("[]")
+  factsJson     String   @default("[]")
+  eventsJson    String   @default("[]")
+  createdAt     DateTime @default(now())
+  case          Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  versions      CaseVersion[]
+
+  @@unique([caseId, hash])
+  @@index([caseId, createdAt])
+}
+
+model CaseVersion {
+  id          String   @id @default(cuid())
+  caseId      String
+  version     Int
+  reason      String   @default("analysis")
+  status      String   @default("created") // created | analyzing | complete | failed
+  pipelineConfigVersion String @default("")
+  evidenceSnapshotId String?
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  evidenceSnapshot EvidenceSnapshot? @relation(fields: [evidenceSnapshotId], references: [id], onDelete: SetNull)
+  canonicalState CanonicalCaseState?
+
+  @@unique([caseId, version])
+  @@index([caseId, createdAt])
+  @@index([evidenceSnapshotId])
+}
+
+model CanonicalCaseState {
+  id          String   @id @default(cuid())
+  caseId      String   @unique
+  versionId   String?  @unique
+  evidenceSnapshotHash String @default("")
+  stateJson   String   @default("{}")
+  approvedStateJson String @default("{}")
+  updatedAt   DateTime @updatedAt
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  version     CaseVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
 }
 
 // The clarifying-questions conversation: when the analysis lacks specific
