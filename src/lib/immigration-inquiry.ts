@@ -391,8 +391,9 @@ function themeIssue(theme: InquiryTheme, situation: string, goal: string): OpenO
 
 export function openOptionsReconstruction(inquiry: ImmigrationInquiry, goal = ""): OpenOptionsAnalysis["reconstruction"] {
   const themeText = inquiry.themes.filter((theme) => theme !== "general").map(themeLabel).join(", ");
-  const summary = goal.trim()
-    ? `You asked about ${goal.trim()}. No USCIS case file is on record, so this is an options review — possible paths and conditions, not a reconstructed filing.`
+  const goalText = goal.trim().replace(/[.]+$/, "");
+  const summary = goalText
+    ? `You asked about ${goalText}. No USCIS case file is on record, so this is an options review — possible paths and conditions, not a reconstructed filing.`
     : themeText
       ? `You may have options related to ${themeText}. No USCIS case file is on record yet.`
       : "You can explore immigration options without a USCIS case, letter, or notice on file.";

@@ -32,7 +32,7 @@ import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
 import { getCaseEvidenceBrief } from "../evidence/brief";
 import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
 import { mergeSupportedText, presentationGroundingBlock, withPresentationNoticeSteps } from "../case-presentation-brief";
-import { buildQaFallbackAnswer, classifyImmigrationInquiry } from "../immigration-inquiry";
+import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry } from "../immigration-inquiry";
 
 type Json = Record<string, unknown>;
 
@@ -738,9 +738,16 @@ export async function runQaChat(history: { role: string; content: string }[], op
   const steps = await getRunnableSteps(STAGE_KEYS.QA);
   const convo = history.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
   const question = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
-  const knowledge = await retrieveKnowledge(history.map((m) => m.content).join(" "));
-  const grounding = await loadCaseGrounding(opts?.caseId);
   const inquiry = classifyImmigrationInquiry({ situation: question, goal: question });
+  const knowledgeQuery = [
+    history.map((m) => m.content).join(" "),
+    inquiry.mode === "open_options" ? inquiry.themes.join(" ") : "",
+    inquiry.mode === "open_options" ? authorityQueriesForInquiry(inquiry).join(" ") : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const knowledge = await retrieveKnowledge(knowledgeQuery);
+  const grounding = await loadCaseGrounding(opts?.caseId);
   const fallbackAnswer = () =>
     buildQaFallbackAnswer({
       question,
