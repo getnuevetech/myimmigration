@@ -129,3 +129,47 @@ export function assemblePresentationContract(input: {
     professional_review: professionalReview ? { issue_id: professionalReview.id, title: professionalReview.title } : null,
   };
 }
+
+function parseJson<T>(value: string, fallback: T): T {
+  try {
+    return JSON.parse(value || "") as T;
+  } catch {
+    return fallback;
+  }
+}
+
+export function parsePresentationRecord(row: {
+  heroJson: string;
+  whatThisMeansJson: string;
+  timelineJson: string;
+  findingsJson: string;
+  deadlinesJson: string;
+  actionsJson: string;
+  evidenceJson: string;
+  professionalReviewJson: string;
+}): PresentationContract {
+  return {
+    hero: parseJson(row.heroJson, {
+      current_posture: "",
+      status: "",
+      next_best_action: null,
+      nearest_deadline: null,
+      evidence_strength: "Limited" as PresentationEvidenceStrength,
+      professional_review_recommended: false,
+    }),
+    what_this_means: parseJson(row.whatThisMeansJson, {
+      summary: "",
+      unresolved_count: 0,
+      pending_actions: [],
+      unknowns: [],
+      evidence_gate_status: null,
+      conflicts: [],
+    }),
+    timeline: parseJson(row.timelineJson, []),
+    findings: parseJson(row.findingsJson, []),
+    deadlines: parseJson(row.deadlinesJson, []),
+    actions: parseJson(row.actionsJson, []),
+    evidence: parseJson(row.evidenceJson, []),
+    professional_review: parseJson(row.professionalReviewJson, null),
+  };
+}

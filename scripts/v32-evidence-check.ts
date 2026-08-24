@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_PROMPTS, PROMPT_SUPERSEDES, PROMPT_VERSION } from "../src/lib/ai/prompts";
-import { assemblePresentationContract, evidenceStrengthFromScores } from "../src/lib/case-presentation-contract";
+import { assemblePresentationContract, evidenceStrengthFromScores, parsePresentationRecord } from "../src/lib/case-presentation-contract";
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, extractUniversalDocumentIntelligence, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -98,6 +98,8 @@ for (const promptKey of ["analyst", "reviewer", "presenter"]) {
   assert(prompt.includes("suppressed"), `${promptKey} prompt should mention suppressed questions`);
   assert((PROMPT_SUPERSEDES[promptKey] ?? []).length > 0, `${promptKey} prompt should declare superseded hashes`);
 }
+assert(DEFAULT_PROMPTS.presenter.includes("Presenter lockdown"), "presenter prompt should declare presenter lockdown");
+assert((PROMPT_SUPERSEDES.presenter ?? []).includes("1293dbaff7ad239de591aeed73d91dcfd84e3c2c28be89582ecd573c9c029023"), "presenter prompt should supersede the pre-lockdown hash");
 assert(DEFAULT_PROMPTS.analyst.includes("primary_reasoner_context"), "analyst prompt should mention primary_reasoner_context");
 assert(DEFAULT_PROMPTS.reviewer.includes("primary_reasoner_context"), "reviewer prompt should mention primary_reasoner_context");
 assert(DEFAULT_PROMPTS.notice_explainer.includes("COMPILED CASE EVIDENCE BRIEF"), "notice explainer prompt should mention compiled evidence brief");
@@ -192,6 +194,18 @@ assert(presentation.findings.length === 2, "presentation should include findings
 assert(presentation.actions.some((action) => action.status === "READY"), "presentation should include ready actions");
 assert(presentation.evidence[0].document_type === "rfe", "presentation should include extracted evidence");
 assert(presentation.professional_review?.issue_id === "issue-review", "presentation should attach the professional review finding");
+const parsedPresentation = parsePresentationRecord({
+  heroJson: JSON.stringify(presentation.hero),
+  whatThisMeansJson: JSON.stringify(presentation.what_this_means),
+  timelineJson: JSON.stringify(presentation.timeline),
+  findingsJson: JSON.stringify(presentation.findings),
+  deadlinesJson: JSON.stringify(presentation.deadlines),
+  actionsJson: JSON.stringify(presentation.actions),
+  evidenceJson: JSON.stringify(presentation.evidence),
+  professionalReviewJson: JSON.stringify(presentation.professional_review),
+});
+assert(parsedPresentation.hero.next_best_action?.action_key === "UPLOAD_NOTICE", "stored presentation should round-trip the next best action");
+assert(parsedPresentation.hero.professional_review_recommended === true, "stored presentation should round-trip professional review");
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
