@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "./db";
+import { nextPlannedQuestion } from "./question-planner";
 
 // The clarifying interview: when the analysis is thin (missing timeline years,
 // forms, receipt numbers, dates, notices, or documents), the app asks the customer targeted questions in a
@@ -56,8 +57,10 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
   const hasCaseRecord =
     c.documents.some((d) => ["case_record", "case record", "receipt"].includes(d.docKind)) ||
     (suppressedEvidenceKeys.has("receipt_number") && suppressedEvidenceKeys.has("form_type"));
-  const evidenceUnknown = c.unknowns.find((u) => !answered.has(`evidence:${u.key}`) && !suppressedEvidenceKeys.has(u.key));
-  if (evidenceUnknown) return { key: `evidence:${evidenceUnknown.key}`, text: evidenceUnknown.question };
+  const plannedQuestion = await nextPlannedQuestion(caseId);
+  if (plannedQuestion && !answered.has(`evidence:${plannedQuestion.unknownKey}`)) {
+    return { key: `evidence:${plannedQuestion.unknownKey}`, text: plannedQuestion.question };
+  }
   const caseUpdateIssue = c.issues.find((i) => i.issueType === "case_update_discrepancy");
   const feeIssue = c.issues.find((i) => i.issueType === "fee_or_payment_issue");
   const noticeIssue = c.issues.find((i) => i.issueType === "uscis_notice_response");

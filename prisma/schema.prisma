@@ -376,6 +376,7 @@ model Case {
   assignments    ConsultantAssignment[]
   comments       CaseComment[]
   clarifyMessages CaseClarifyMessage[]
+  questionPlans  CaseQuestionPlan[]
   evidenceFacts  EvidenceFact[]
   caseEvents     CaseEvent[]
   evidenceRelationships EvidenceRelationship[]
@@ -383,6 +384,25 @@ model Case {
   reconstruction CaseReconstruction?
   unknowns       CaseUnknown[]
   suppressedQuestions SuppressedQuestion[]
+}
+
+model CaseQuestionPlan {
+  id          String   @id @default(cuid())
+  caseId      String
+  unknownKey  String
+  question    String
+  whyItMatters String @default("")
+  materiality String @default("MEDIUM") // HIGH | MEDIUM | LOW
+  canExistingEvidenceAnswer Boolean @default(false)
+  betterSourceAction String?
+  priority    Int      @default(1)
+  status      String   @default("proposed") // proposed | asked | answered | suppressed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, unknownKey])
+  @@index([caseId, status, priority])
 }
 
 model EvidenceSnapshot {
