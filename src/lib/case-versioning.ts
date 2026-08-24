@@ -40,7 +40,19 @@ export async function createEvidenceSnapshot(caseId: string) {
     db.evidenceFact.findMany({
       where: { caseId },
       orderBy: { createdAt: "asc" },
-      select: { id: true, documentId: true, key: true, value: true, confidence: true, observedAt: true },
+      select: {
+        id: true,
+        documentId: true,
+        key: true,
+        value: true,
+        confidence: true,
+        provenance: true,
+        verificationState: true,
+        sourceId: true,
+        sourceAnchorJson: true,
+        observedAt: true,
+        effectiveTime: true,
+      },
     }),
     db.caseEvent.findMany({
       where: { caseId },

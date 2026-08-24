@@ -181,8 +181,18 @@ export async function processDocumentEvidence(documentId: string): Promise<Proce
             value: item.value,
             valueJson: item.valueJson === undefined ? "" : JSON.stringify(item.valueJson),
             confidence: item.confidence,
+            provenance: "DOCUMENT_EXTRACTED",
+            verificationState: item.confidence === "confirmed" ? "VERIFIED" : "EXTRACTED",
+            sourceId: doc.id,
+            sourceAnchorJson: JSON.stringify({
+              documentId: doc.id,
+              documentType: compiled.documentType,
+              fileName: doc.fileName,
+              label: item.sourceText ?? "",
+            }),
             sourceText: item.sourceText ?? "",
             observedAt: item.observedAt ? new Date(item.observedAt) : undefined,
+            effectiveTime: item.observedAt ? new Date(item.observedAt) : undefined,
           })),
         });
       }

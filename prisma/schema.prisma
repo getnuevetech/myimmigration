@@ -450,6 +450,11 @@ model EvidenceFact {
   value       String
   valueJson   String   @default("")
   confidence  String   @default("needs_verification") // confirmed | likely | possible | needs_verification | not_supported
+  provenance  String   @default("DOCUMENT_EXTRACTED") // USER_REPORTED | DOCUMENT_EXTRACTED | DOCUMENT_VERIFIED | OFFICIAL_AUTHORITY | SYSTEM_CALCULATED | PROFESSIONAL_CONFIRMED | MODEL_INFERENCE
+  verificationState String @default("EXTRACTED") // EXTRACTED | VERIFIED | CONFLICTING | UNREADABLE
+  sourceId    String   @default("")
+  sourceAnchorJson String @default("{}")
+  effectiveTime DateTime?
   sourceText  String   @default("")
   sourcePage  Int?
   observedAt  DateTime?
