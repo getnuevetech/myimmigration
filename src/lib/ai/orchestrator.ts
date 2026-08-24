@@ -9,6 +9,7 @@ import { readUpload } from "../uploads";
 import { snapshotAuthorityForPlan } from "../authority-retrieval";
 import { buildPrimaryReasonerContext } from "../primary-reasoner-context";
 import { buildCaseActionGraph } from "../action-graph";
+import { buildCasePresentation } from "../case-presentation";
 import { verifyCaseProgress } from "../case-progress";
 import { ensureCaseVersion, finalizeCaseVersion } from "../case-versioning";
 import { createCaseAnalysisPlan } from "../case-orchestrator";
@@ -559,6 +560,10 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   await buildCaseActionGraph(caseId).catch(async (err) => {
     const { logSystem } = await import("../syslog");
     await logSystem("warning", "action_graph", "Could not build case action graph", String(err));
+  });
+  await buildCasePresentation(caseId, caseVersionId).catch(async (err) => {
+    const { logSystem } = await import("../syslog");
+    await logSystem("warning", "case_presentation", "Could not build case presentation contract", String(err));
   });
   if (caseVersionId) {
     await finalizeCaseVersion(caseVersionId, caseId, {

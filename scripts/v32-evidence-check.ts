@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_PROMPTS, PROMPT_SUPERSEDES, PROMPT_VERSION } from "../src/lib/ai/prompts";
+import { assemblePresentationContract, evidenceStrengthFromScores } from "../src/lib/case-presentation-contract";
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, extractUniversalDocumentIntelligence, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -137,6 +138,61 @@ assert(guardedLetter.text.includes("I-485"), "letter guard should keep supported
 assert(!guardedLetter.text.includes("WAC0000000000"), "letter guard should remove unsupported receipt number");
 assert(!guardedLetter.text.includes("August 5, 2026"), "letter guard should remove unsupported date");
 
+assert(evidenceStrengthFromScores(100) === "Strong", "high action readiness should map to Strong evidence");
+assert(evidenceStrengthFromScores(40) === "Moderate", "mid action readiness should map to Moderate evidence");
+assert(evidenceStrengthFromScores(10) === "Limited", "low action readiness should map to Limited evidence");
+const presentation = assemblePresentationContract({
+  status: "analyzed",
+  actionReadinessScore: 100,
+  reconstruction: {
+    currentPosition: reconciled.reconstruction.currentPosition,
+    summary: reconciled.reconstruction.summary,
+    timeline: reconciled.reconstruction.timeline,
+    pendingActions: reconciled.reconstruction.pendingActions,
+  },
+  issues: [{
+    id: "issue-rfe",
+    title: "Respond to the RFE",
+    itemKind: "issue",
+    state: "action_needed",
+    evidenceStatus: "confirmed",
+    evidenceStrength: "strong",
+    conclusion: "The RFE deadline is on the notice.",
+    nextAction: "UPLOAD_NOTICE",
+    issueType: "uscis_notice_response",
+    altAction: "",
+  }, {
+    id: "issue-review",
+    title: "Licensed professional review",
+    itemKind: "risk",
+    state: "review",
+    evidenceStatus: "possible",
+    evidenceStrength: "limited",
+    conclusion: "A licensed professional should review the response.",
+    nextAction: "REVIEW_ANALYSIS",
+    issueType: "professional_review",
+    altAction: "",
+  }],
+  deadlines: [{ id: "dl-rfe", title: "RFE response", dueDate: "2026-07-31T00:00:00.000Z", source: "notice" }],
+  actionNodes: [
+    { id: "act-blocked", title: "Gather older records", actionKey: "GET_CASE_RECORD", status: "COMPLETED", priority: 1 },
+    { id: "act-ready", title: "Respond to the RFE", actionKey: "UPLOAD_NOTICE", status: "READY", priority: 2 },
+  ],
+  documents: [{ id: "doc-rfe", fileName: "rfe-notice.txt", documentType: "rfe", processingStatus: "extracted" }],
+  unknowns: [{ question: "What evidence will be submitted for the RFE?" }],
+  evidenceGateStatus: gate.status,
+  conflicts: [],
+});
+assert(presentation.hero.current_posture === "RFE notice needs review", "presentation hero should use reconstructed posture");
+assert(presentation.hero.next_best_action?.action_key === "UPLOAD_NOTICE", "presentation hero should pick the ready action");
+assert(presentation.hero.nearest_deadline?.title === "RFE response", "presentation hero should include the nearest deadline");
+assert(presentation.hero.professional_review_recommended === true, "presentation hero should flag professional review");
+assert(presentation.what_this_means.unresolved_count === 2, "presentation should count unresolved findings");
+assert(presentation.findings.length === 2, "presentation should include findings");
+assert(presentation.actions.some((action) => action.status === "READY"), "presentation should include ready actions");
+assert(presentation.evidence[0].document_type === "rfe", "presentation should include extracted evidence");
+assert(presentation.professional_review?.issue_id === "issue-review", "presentation should attach the professional review finding");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -148,3 +204,4 @@ console.log("- action intelligence: case record, notice, and deadline satisfied 
 console.log("- prompts: analyst, reviewer, and presenter are evidence-gate aware");
 console.log(`- readiness split: available ${readiness.evidenceAvailableScore}, processed ${readiness.evidenceProcessedScore}, action ${readiness.actionReadinessScore}`);
 console.log(`- letter guard: replaced ${guardedLetter.findings.length} unsupported value(s)`);
+console.log(`- presentation contract: ${presentation.hero.current_posture}, next ${presentation.hero.next_best_action?.action_key}, ${presentation.findings.length} findings`);
