@@ -8,6 +8,7 @@ import { getNumberSetting } from "../settings";
 import { readUpload } from "../uploads";
 import { verifyCaseProgress } from "../case-progress";
 import { ensureCaseVersion, finalizeCaseVersion } from "../case-versioning";
+import { createCaseAnalysisPlan } from "../case-orchestrator";
 import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
 import { getCaseEvidenceBrief } from "../evidence/brief";
 import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
@@ -236,11 +237,13 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   if (!c) return;
   await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
   let caseVersionId: string | null = null;
+  let analysisPlanId: string | null = null;
   try {
     caseVersionId = (await ensureCaseVersion(caseId, "analysis")).id;
+    analysisPlanId = (await createCaseAnalysisPlan(caseId, caseVersionId))?.id ?? null;
   } catch (err) {
     const { logSystem } = await import("../syslog");
-    await logSystem("warning", "case_versioning", "Could not create case version before analysis", String(err));
+    await logSystem("warning", "case_versioning", "Could not create case version or analysis plan before analysis", String(err));
   }
 
   // Clear previous results for a clean re-run.
@@ -551,6 +554,12 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
     }).catch(async (err) => {
       const { logSystem } = await import("../syslog");
       await logSystem("warning", "case_versioning", "Could not finalize case version after analysis", String(err));
+    });
+  }
+  if (analysisPlanId) {
+    await db.caseAnalysisPlan.update({ where: { id: analysisPlanId }, data: { status: "complete" } }).catch(async (err) => {
+      const { logSystem } = await import("../syslog");
+      await logSystem("warning", "case_orchestrator", "Could not mark analysis plan complete", String(err));
     });
   }
 }
