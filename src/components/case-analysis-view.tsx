@@ -7,8 +7,11 @@ import { InlineUpload } from "@/components/inline-upload";
 import { CaseUpload } from "@/components/case-upload";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { parsePresentationRecord } from "@/lib/case-presentation-contract";
+import { parseCanonicalApprovedState } from "@/lib/canonical-case-state";
+import { getLatestCaseVersion, listCaseVersions } from "@/lib/case-versioning";
 import { CasePresentationView } from "@/components/case-presentation-view";
 import { CaseAnalysisPlanCard } from "@/components/case-analysis-plan-card";
+import { CaseVersionCard } from "@/components/case-version-card";
 import Link from "next/link";
 
 export type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
@@ -51,7 +54,23 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     where: { caseId },
     orderBy: { createdAt: "desc" },
   }).catch(() => null);
-  const presentation = presentationRow ? parsePresentationRecord(presentationRow) : null;
+  const canonicalState = await db.canonicalCaseState.findUnique({
+    where: { caseId },
+    select: { approvedStateJson: true },
+  }).catch(() => null);
+  const approvedState = parseCanonicalApprovedState(canonicalState?.approvedStateJson);
+  const presentation = presentationRow
+    ? parsePresentationRecord(presentationRow)
+    : (approvedState?.presentation ?? null);
+  const latestVersion = await getLatestCaseVersion(caseId).catch(() => null);
+  const versionHistory = viewer.role === "admin" ? await listCaseVersions(caseId, 8).catch(() => []) : [];
+  const versionCard = (
+    <CaseVersionCard
+      version={latestVersion}
+      versions={viewer.role === "admin" ? versionHistory : []}
+      approvedStateJson={viewer.role === "admin" ? canonicalState?.approvedStateJson : null}
+    />
+  );
   const analysisPlanRow = await db.caseAnalysisPlan.findFirst({
     where: { caseId },
     orderBy: { createdAt: "desc" },
@@ -169,6 +188,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           formI485Id={formI485?.id ?? null}
         />
         {analysisPlanRow?.planJson ? <CaseAnalysisPlanCard planJson={analysisPlanRow.planJson} /> : null}
+        {versionCard}
       </div>
     );
   }
@@ -263,6 +283,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           </div>
         )}
         {analysisPlanRow?.planJson ? <CaseAnalysisPlanCard planJson={analysisPlanRow.planJson} /> : null}
+        {versionCard}
         {professionalReviewRecommended && (
           <div className="rounded-xl border border-lime-300 bg-lime-50 px-4 py-3 text-sm text-lime-900">
             <span className="font-semibold">▲ Professional review recommended.</span> Based on the analysis, this case would benefit

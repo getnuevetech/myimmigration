@@ -5,6 +5,8 @@ import { PageHeader, Card, CardBody, Badge } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
 import { CaseAnalysisView } from "@/components/case-analysis-view";
 import { CaseComments } from "@/components/case-comments";
+import { listCaseVersions } from "@/lib/case-versioning";
+import { parseCanonicalApprovedState, versionReasonLabel } from "@/lib/canonical-case-state";
 
 // Admins see EXACTLY what the customer sees, plus the case discussion (with
 // internal comments) and the technical pipeline diagnostics collapsed below.
@@ -27,6 +29,12 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
   if (!c) notFound();
   const usedAi = c.runs.some((r) => r.stepResults.length > 0);
   const failedCalls = c.runs.flatMap((r) => r.stepResults).filter((sr) => sr.status === "failed");
+  const versions = await listCaseVersions(id, 8).catch(() => []);
+  const canonical = await db.canonicalCaseState.findUnique({
+    where: { caseId: id },
+    select: { approvedStateJson: true, evidenceSnapshotHash: true, updatedAt: true },
+  }).catch(() => null);
+  const approved = parseCanonicalApprovedState(canonical?.approvedStateJson);
 
   return (
     <div>
@@ -63,6 +71,27 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
                 ⚙ Technical diagnostics — analysis runs ({c.runs.length}), model calls, and consensus data (staff only)
               </summary>
               <div className="mt-4 space-y-3">
+                {(versions.length > 0 || approved) && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                    <p className="font-semibold text-slate-800">Approved case record versions</p>
+                    {approved && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        v{approved.version} · {versionReasonLabel(approved.reason)} · posture {approved.presentation?.hero.current_posture || "not stored"}
+                        {canonical?.evidenceSnapshotHash ? ` · snapshot ${canonical.evidenceSnapshotHash.slice(0, 12)}` : ""}
+                      </p>
+                    )}
+                    {versions.length > 0 && (
+                      <ol className="mt-2 space-y-1 text-xs text-slate-500">
+                        {versions.map((item) => (
+                          <li key={item.id}>
+                            v{item.version} · {versionReasonLabel(item.reason)} · {item.status} · {item.createdAt.toLocaleString("en-US")}
+                            {item.evidenceSnapshot?.hash ? ` · ${item.evidenceSnapshot.hash.slice(0, 12)}` : ""}
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                )}
                 {c.runs.map((r) => (
                   <details key={r.id} className="rounded-xl border border-slate-200 p-3">
                     <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
