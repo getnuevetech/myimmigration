@@ -19,7 +19,7 @@ export default async function AdminSettingsPage() {
     <div>
       <PageHeader
         title="App settings"
-        subtitle="Every variable the app uses — branding, URLs, OAuth keys, analysis parameters — lives here. Nothing is hardcoded."
+        subtitle="Every variable the app uses — branding, typography, URLs, OAuth keys, analysis parameters — lives here. Nothing is hardcoded."
       />
 
       <Card className="mb-6 border-lime-200">

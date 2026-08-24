@@ -24,8 +24,8 @@ function hasLegacyTaxonmePromptMarker(prompt: string): boolean {
 }
 
 async function seedSettings() {
-  const settings: [string, string, string, string, string][] = [
-    // key, value, group, label, description
+  const settings: [string, string, string, string, string, string?][] = [
+    // key, value, group, label, description, type
     ["app.name", "ImmigrationOnMe", "branding", "App name", "Shown in the header, titles, and emails."],
     ["app.tagline", "Immigration paperwork, organized", "branding", "Tagline", "Short slogan shown on the landing page."],
     ["app.url", "http://localhost:3000", "general", "App URL", "Public base URL, used for OAuth callbacks and payment redirects."],
@@ -35,6 +35,9 @@ async function seedSettings() {
     ["home.cta_primary", "Start a case review", "branding", "Primary call to action", ""],
     ["home.cta_secondary", "Ask an immigration question", "branding", "Secondary call to action", ""],
     ["home.hero_images", '["/hero/hero-1.png", "/hero/hero-2.png", "/hero/hero-3.png"]', "branding", "Hero images (JSON array)", "Rotating homepage hero images. JSON array of image URLs or paths — add, remove, or reorder freely."],
+    ["font.body", "var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif", "typography", "Body font", "Main text and interface font. Use a CSS font stack or one of the provided font variables.", "font"],
+    ["font.heading", "var(--font-playfair), Georgia, 'Times New Roman', serif", "typography", "Heading / display font", "Headlines, logo text, editorial numbers, hero display text, and large design typography.", "font"],
+    ["font.mono", "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace", "typography", "Mono / label font", "Small uppercase labels, technical metadata, and monospace accents.", "font"],
     ["auth.google_client_id", "", "auth", "Google OAuth client ID", "Leave empty to hide the Google sign-in button."],
     ["auth.google_client_secret", "", "auth", "Google OAuth client secret", ""],
     ["billing.free_plan_key", "free", "billing", "Free plan key", "Plan applied to users without a paid subscription."],
@@ -66,11 +69,11 @@ async function seedSettings() {
     ["mail.from", "", "mail", "From address", "e.g. ImmigrationOnMe <no-reply@immigrationonme.com>"],
     ["mail.secure", "false", "mail", "SMTP TLS (implicit)", "true for port 465, false for STARTTLS on 587."],
   ];
-  for (const [key, value, group, label, description] of settings) {
+  for (const [key, value, group, label, description, type] of settings) {
     await db.setting.upsert({
       where: { key },
       update: {},
-      create: { key, value, group, label, description, type: key.includes("secret") ? "secret" : "text" },
+      create: { key, value, group, label, description, type: type ?? (key.includes("secret") ? "secret" : "text") },
     });
   }
   // Repair common TaxOnMe leftovers on existing installs without overwriting
