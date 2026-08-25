@@ -4,10 +4,17 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
 import { uploadDocumentAction } from "@/actions/documents";
 import { SubmitButton } from "./action-form";
-import { DOC_KINDS } from "@/lib/constants";
 import { inputClass } from "./ui";
 
-export function CaseUpload({ caseId }: { caseId: string }) {
+export function CaseUpload({
+  caseId,
+  kinds,
+  defaultKind,
+}: {
+  caseId: string;
+  kinds: { kind: string; name: string }[];
+  defaultKind: string;
+}) {
   const [state, formAction] = useActionState(uploadDocumentAction, null);
   const router = useRouter();
   useEffect(() => {
@@ -20,9 +27,9 @@ export function CaseUpload({ caseId }: { caseId: string }) {
       <input type="hidden" name="caseId" value={caseId} />
       <input type="file" name="files" multiple className="block w-full text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-lime-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-lime-700" />
       <div className="flex gap-2">
-        <select name="docKind" className={`${inputClass} !py-1.5 text-xs`}>
-          {DOC_KINDS.map((k) => (
-            <option key={k.key} value={k.key}>{k.name}</option>
+        <select name="docKind" defaultValue={defaultKind} className={`${inputClass} !py-1.5 text-xs`}>
+          {kinds.map((k) => (
+            <option key={k.kind} value={k.kind}>{k.name}</option>
           ))}
         </select>
         <SubmitButton className="!px-3 !py-1.5 text-xs">Add & re-analyze</SubmitButton>

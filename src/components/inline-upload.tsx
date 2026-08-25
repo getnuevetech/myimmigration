@@ -8,7 +8,7 @@ import { uploadDocumentAction } from "@/actions/documents";
 // asks for it, submits automatically, and the analysis re-runs.
 export function InlineUpload({
   caseId,
-  docKind = "other",
+  docKind = "identity",
   label = "Upload documents",
 }: {
   caseId: string;

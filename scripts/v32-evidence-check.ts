@@ -76,6 +76,7 @@ import {
   rankMatchingForms,
   resolveFormCatalogEntitlement,
 } from "../src/lib/goal-forms";
+import { parseWizardSteps } from "../src/lib/form-wizard-steps";
 import {
   fallbackLetterDraft,
   letterComposerHref,
@@ -87,7 +88,15 @@ import {
   rankMatchingLetters,
   resolveLetterCatalogEntitlement,
 } from "../src/lib/goal-letters";
-import { parseWizardSteps } from "../src/lib/form-wizard-steps";
+import {
+  documentKindFromEvidenceItem,
+  documentUploadAllowed,
+  matchingDocumentKind,
+  neededDocumentsFromRanked,
+  rankDocumentCatalog,
+  rankMatchingDocuments,
+  resolveDocumentCatalogEntitlement,
+} from "../src/lib/goal-documents";
 import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
@@ -1208,6 +1217,77 @@ assert(presentation.hero.current_posture === "RFE notice needs review", "goal-dr
 assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven letters must keep the approved open-options posture");
 assert(requested.autoAssigned === false, "goal-driven letters must not auto-assign consultants");
 
+const familyDocs = rankMatchingDocuments({
+  inquiryMode: "open_options",
+  themes: marriageInquiry.themes,
+  sources: [knowledgeCatalog.find((item) => item.reference === "Form I-130")!],
+  authorityQueries: ["I-130", "I-485"],
+});
+assert(familyDocs[0]?.kind === "identity", `family open-options must rank identity first, got ${familyDocs[0]?.kind}`);
+assert(
+  familyDocs.findIndex((item) => item.kind === "identity") < familyDocs.findIndex((item) => item.kind === "receipt"),
+  "family open-options must rank identity before a USCIS receipt",
+);
+assert(
+  familyDocs.findIndex((item) => item.kind === "relationship") < familyDocs.findIndex((item) => item.kind === "rfe"),
+  "family open-options must rank relationship evidence before an RFE",
+);
+const studentDocs = rankMatchingDocuments({
+  inquiryMode: "open_options",
+  themes: studentInquiry.themes,
+  authorityQueries: ["I-765", "I-485", "F-1"],
+});
+assert(studentDocs[0]?.kind === "identity", `F-1/student must rank identity first, got ${studentDocs[0]?.kind}`);
+assert(
+  studentDocs.findIndex((item) => item.kind === "status_record") < studentDocs.findIndex((item) => item.kind === "receipt"),
+  "student options must rank an I-20/status record before a receipt",
+);
+const asylumDocs = rankMatchingDocuments({
+  inquiryMode: "open_options",
+  themes: ["asylum"],
+  sources: [knowledgeCatalog.find((item) => item.reference === "Form I-589")!],
+  authorityQueries: ["I-589", "I-485"],
+});
+assert(asylumDocs[0]?.kind === "identity", `asylum must rank identity first, got ${asylumDocs[0]?.kind}`);
+assert(
+  asylumDocs.findIndex((item) => item.kind === "declaration") < asylumDocs.findIndex((item) => item.kind === "case_record"),
+  "asylum must rank a declaration before a case record",
+);
+const rfeDocs = rankMatchingDocuments({
+  inquiryMode: "existing_case",
+  themes: ["adjustment"],
+  query: "I got an RFE from USCIS on my I-485 and the deadline is coming up.",
+  authorityQueries: ["I-485", "I-130"],
+  noticeTypes: ["RFE"],
+});
+assert(rfeDocs[0]?.kind === "rfe", `existing I-485 RFE must rank the RFE first, got ${rfeDocs[0]?.kind}`);
+assert(matchingDocumentKind({ inquiryMode: "open_options", themes: ["family"], authorityQueries: ["I-130", "I-485"] }) === "identity", "matching document for family options is identity");
+assert(documentKindFromEvidenceItem("identity documents and a bona fide marriage") === "identity", "official I-130 evidence items map to identity");
+assert(documentKindFromEvidenceItem("relationship documents for the spouse") === "relationship", "official relationship evidence maps to relationship");
+const rankedDocCatalog = rankDocumentCatalog(
+  [{ kind: "receipt" }, { kind: "identity" }, { kind: "rfe" }],
+  familyDocs,
+);
+assert(rankedDocCatalog[0]?.kind === "identity", "document catalog must list identity before a receipt for family options");
+assert(!neededDocumentsFromRanked(familyDocs).some((item) => ["receipt", "rfe", "case_record", "notice", "approval"].includes(item.kind)), "open-options needed docs must not require a filed-case notice");
+assert(neededDocumentsFromRanked(rfeDocs)[0]?.kind === "rfe", "RFE needed docs still start with the RFE");
+const guestDocs = resolveDocumentCatalogEntitlement({ isGuest: true });
+const freeDocs = resolveDocumentCatalogEntitlement({ planKey: "free", hasUpload: true });
+const plusDocs = resolveDocumentCatalogEntitlement({ planKey: "plus", hasUpload: true });
+const proDocs = resolveDocumentCatalogEntitlement({ planKey: "pro", hasUpload: true });
+const staffDocs = resolveDocumentCatalogEntitlement({ isStaff: true });
+assert(guestDocs.showRegisterCta && !guestDocs.canUpload, "guests must sign in before the document vault");
+assert(freeDocs.canUpload && plusDocs.canUpload && proDocs.canUpload && staffDocs.canUpload, "free, plus, pro, and staff can upload matching documents");
+assert(documentUploadAllowed({ canUpload: true, used: 4, limit: 5 }).allowed, "free can upload while under the 5-document limit");
+assert(documentUploadAllowed({ canUpload: true, used: 5, limit: 5 }).overLimit, "free must stop at 5 documents");
+assert(documentUploadAllowed({ canUpload: true, used: 4, incoming: 2, limit: 5 }).overLimit, "free must reject a batch that would exceed 5 documents");
+assert(documentUploadAllowed({ canUpload: true, used: 20, limit: null }).allowed, "plus/pro documents stay unlimited");
+assert(!marriageOptions.pathSteps.some((step) => step.action_key === "GET_CASE_RECORD"), "goal-driven documents must not require a USCIS case record for family options");
+assert(/Form I-130/i.test(marriageOptions.pathSteps.find((step) => step.action_key === "PREPARE_FORM")?.title ?? ""), "marriage path still prepares Form I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven documents must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven documents must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven documents must not auto-assign consultants");
+
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
@@ -1239,3 +1319,4 @@ console.log(`- v4 C9: guest steps ${guestSuggestions.maxPathSteps}, free steps $
 console.log(`- v4 C10: guest request=${guestMatch.canRequest}, pro request=${proMatch.canRequest}, autoAssigned=${requested.autoAssigned}, sharesFiles=${customerMatchSharesFiles(requested.status)}`);
 console.log(`- v4 C11: family ${familyForms[0]?.formNumber}, student ${studentForms[0]?.formNumber}, asylum ${asylumForms[0]?.formNumber}, RFE ${rfeForms[0]?.formNumber}, marriage action ${marriageOptions.pathSteps.find((step) => step.action_key === "PREPARE_FORM")?.action_key}`);
 console.log(`- v4 C12: family ${familyLetters[0]?.kind}, student ${studentLetters[0]?.kind}, asylum ${asylumLetters[0]?.kind}, RFE ${rfeLetters[0]?.kind}, plus remaining ${letterGenerationAllowed({ canGenerate: true, used: 2, limit: 3 }).remaining}`);
+console.log(`- v4 C13: family ${familyDocs[0]?.kind}, student ${studentDocs.find((item) => item.kind === "status_record")?.kind}, asylum ${asylumDocs.find((item) => item.kind === "declaration")?.kind}, RFE ${rfeDocs[0]?.kind}, free remaining ${documentUploadAllowed({ canUpload: true, used: 4, limit: 5 }).remaining}`);

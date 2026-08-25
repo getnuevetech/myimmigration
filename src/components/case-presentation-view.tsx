@@ -10,6 +10,7 @@ import { formatPresentationDate, presentationActionStatus, presentationEvidenceG
 import { limitSuggestionItems, suggestionConsultantCopy, type SuggestionChatAccess } from "@/lib/suggestion-access";
 import { formCatalogHref, formNumberForStep, formStartLabel } from "@/lib/goal-forms";
 import { letterCatalogHref, letterComposerHref, letterKindDef, letterKindForStep, letterStartLabel } from "@/lib/goal-letters";
+import { documentCatalogHref, documentKindDef, documentStartLabel } from "@/lib/goal-documents";
 
 type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
 
@@ -69,6 +70,8 @@ export function CasePresentationView({
   canStartForm,
   matchingLetterKind,
   canGenerateLetter,
+  matchingDocumentKind,
+  documentKinds,
   suggestionAccess,
 }: {
   caseId: string;
@@ -90,6 +93,8 @@ export function CasePresentationView({
   canStartForm: boolean;
   matchingLetterKind: string | null;
   canGenerateLetter: boolean;
+  matchingDocumentKind: string | null;
+  documentKinds: { kind: string; name: string }[];
   suggestionAccess?: SuggestionChatAccess;
 }) {
   const issueById = new Map(issues.map((issue) => [issue.id, issue]));
@@ -253,6 +258,21 @@ export function CasePresentationView({
               className="mt-3 inline-flex rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700"
             >
               {canGenerateLetter ? `${letterStartLabel(matchingLetterKind)} →` : `See matching ${letterKindDef(matchingLetterKind)?.title ?? "letter"} →`}
+            </a>
+          </div>
+        )}
+        {matchingDocumentKind && interactive && (
+          <div className="mt-3 rounded-xl border border-lime-200 bg-white px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Matching evidence</p>
+            <p className="mt-1 text-sm text-slate-700">
+              Official material for this case points to {documentKindDef(matchingDocumentKind)?.name ?? "matching documents"} first
+              {documentKindDef(matchingDocumentKind)?.isFiledCase ? "." : ", not a USCIS receipt."}
+            </p>
+            <a
+              href={documentCatalogHref(matchingDocumentKind)}
+              className="mt-3 inline-flex rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700"
+            >
+              {documentStartLabel(matchingDocumentKind)} →
             </a>
           </div>
         )}
@@ -443,7 +463,7 @@ export function CasePresentationView({
                               </a>
                             )}
                             {interactive && nextAction.toUpperCase() === "UPLOAD_DOCUMENTS" && (
-                              <InlineUpload caseId={caseId} label="Upload for this item" />
+                              <InlineUpload caseId={caseId} docKind={matchingDocumentKind || "identity"} label="Upload for this item" />
                             )}
                             {interactive && nextAction.toUpperCase() !== "UPLOAD_DOCUMENTS" && cta && (
                               <a href={cta.href} className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
@@ -534,7 +554,7 @@ export function CasePresentationView({
                                 {cta.label} →
                               </a>
                             ) : action.action_key.toUpperCase() === "UPLOAD_DOCUMENTS" ? (
-                              <InlineUpload caseId={caseId} label="Upload documents" />
+                              <InlineUpload caseId={caseId} docKind={matchingDocumentKind || "identity"} label="Upload documents" />
                             ) : cta ? (
                               <a href={cta.href} className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
                                 {cta.label} →
@@ -620,7 +640,7 @@ export function CasePresentationView({
                 </ul>
                 {interactive && neededDocs.some((doc) => !haveKinds.has(doc.kind)) && (
                   <div className="mt-3">
-                    <InlineUpload caseId={caseId} label="Upload now" />
+                    <InlineUpload caseId={caseId} docKind={matchingDocumentKind || neededDocs.find((doc) => !haveKinds.has(doc.kind))?.kind || "identity"} label="Upload now" />
                   </div>
                 )}
               </CardBody>
@@ -659,7 +679,7 @@ export function CasePresentationView({
               </ul>
               {interactive && (
                 <div className="mt-3">
-                  <CaseUpload caseId={caseId} />
+                  <CaseUpload caseId={caseId} kinds={documentKinds} defaultKind={matchingDocumentKind || "identity"} />
                 </div>
               )}
             </CardBody>

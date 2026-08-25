@@ -112,13 +112,17 @@ export const CONSULTANT_SPECIALTIES = [
 ] as const;
 
 export const DOC_KINDS = [
-  { key: "case_record", name: "USCIS case record / online account" },
-  { key: "receipt", name: "USCIS receipt notice" },
-  { key: "approval", name: "USCIS approval notice" },
-  { key: "rfe", name: "Request for Evidence (RFE)" },
-  { key: "form", name: "Immigration form" },
   { key: "identity", name: "Passport / visa / identity document" },
+  { key: "relationship", name: "Marriage and relationship evidence" },
+  { key: "status_record", name: "Status record (I-20, green card, visa stamp)" },
+  { key: "declaration", name: "Personal declaration / statement" },
+  { key: "country_conditions", name: "Country-conditions material" },
+  { key: "form", name: "Immigration form" },
   { key: "evidence", name: "Supporting evidence" },
   { key: "notice", name: "USCIS notice or letter" },
+  { key: "rfe", name: "Request for Evidence (RFE)" },
+  { key: "receipt", name: "USCIS receipt notice" },
+  { key: "case_record", name: "USCIS case record / online account" },
+  { key: "approval", name: "USCIS approval notice" },
   { key: "other", name: "Other" },
 ] as const;

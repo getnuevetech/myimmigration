@@ -12,7 +12,20 @@ import { saveUpload, validateUploadFile } from "@/lib/uploads";
 import { processDocumentsEvidence } from "@/lib/evidence/document-processing";
 import { recordSuggestionsForCase } from "@/lib/goal-suggestion-store";
 import { suggestionQuestionKey } from "@/lib/goal-suggestions";
+import { matchingDocumentKind } from "@/lib/goal-documents";
+import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import type { ActionState } from "./auth";
+
+function matchingKindForNarrative(situation: string, goal: string, noticeTypes?: string[]): string {
+  const inquiry = classifyImmigrationInquiry({ situation, goal });
+  return matchingDocumentKind({
+    themes: inquiry.themes,
+    inquiryMode: inquiry.mode,
+    query: `${situation} ${goal}`,
+    authorityQueries: authorityQueriesForInquiry(inquiry),
+    noticeTypes,
+  }) ?? "identity";
+}
 
 // Guest-friendly intake: situation + goal + documents, no account required.
 export async function startIntakeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -29,6 +42,11 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
   }
 
   const user = await getCurrentUser();
+  if (user && files.length) {
+    const { documentQuotaError } = await import("@/actions/documents");
+    const quotaError = await documentQuotaError(user.id, files.length);
+    if (quotaError) return { error: quotaError };
+  }
   // Capture the guest session once so all documents reference the same session.
   const guest = user ? null : await getOrCreateGuestSession();
   let caseId: string;
@@ -47,6 +65,7 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
 
   // Attach uploaded documents.
   const documentIds: string[] = [];
+  const docKind = matchingKindForNarrative(situation, goal);
   for (const file of files.slice(0, 10)) {
     const { filePath, sizeBytes } = await saveUpload(file);
     const doc = await db.document.create({
@@ -58,6 +77,7 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
         filePath,
         mimeType: file.type || "application/octet-stream",
         sizeBytes,
+        docKind,
       },
     });
     documentIds.push(doc.id);
@@ -130,6 +150,11 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
     const validationError = validateUploadFile(f);
     if (validationError) return { error: validationError };
   }
+  if (files.length) {
+    const { documentQuotaError } = await import("@/actions/documents");
+    const quotaError = await documentQuotaError(user.id, files.length);
+    if (quotaError) return { error: quotaError };
+  }
 
   const { nextClarifyQuestion, situationLine } = await import("@/lib/clarify");
   const q = await nextClarifyQuestion(caseId);
@@ -139,6 +164,7 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
   // where the re-analysis below picks them up as evidence.
   const attachedNames: string[] = [];
   const documentIds: string[] = [];
+  const docKind = matchingKindForNarrative(c.situation, c.goal);
   for (const file of files.slice(0, 10)) {
     const { filePath, sizeBytes } = await saveUpload(file);
     const doc = await db.document.create({
@@ -149,7 +175,7 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
         filePath,
         mimeType: file.type || "application/octet-stream",
         sizeBytes,
-        docKind: "other",
+        docKind,
       },
     });
     attachedNames.push(file.name);

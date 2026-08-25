@@ -18,6 +18,11 @@ import { FEATURE_KEYS } from "@/lib/constants";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { formNumberForStep, formStartLabel, matchingFormNumber } from "@/lib/goal-forms";
 import { letterKindForStep, matchingLetterKind } from "@/lib/goal-letters";
+import {
+  documentKindDef,
+  neededDocumentsFromRanked,
+  rankMatchingDocuments,
+} from "@/lib/goal-documents";
 import { presentationStepCta } from "@/lib/case-presentation-ui";
 
 export type CaseViewer = {
@@ -124,25 +129,29 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const nearestDeadline = presentation?.hero.nearest_deadline ?? null;
 
   const haveKinds = new Set(c.documents.map((d) => d.docKind));
-  const yearHint = c.issues.find((i) => i.caseYear)?.caseYear;
-  const neededDocs: { kind: string; label: string; hint: string }[] = [];
-  const wantDoc = (kind: string, label: string, hint: string) => {
-    if (!neededDocs.some((d) => d.kind === kind)) neededDocs.push({ kind, label, hint });
-  };
-  for (const issue of c.issues) {
-    if (["uscis_notice_response", "deadline_tracking", "case_timeline", "missing_evidence", "case_update_discrepancy", "status_question"].includes(issue.issueType)) {
-      wantDoc("case_record", `USCIS case record or receipt${yearHint ? ` (${yearHint})` : ""}`, "Shows receipt number, form type, filing date, and current case status.");
-      wantDoc("form", `Immigration filing packet${yearHint ? ` for ${yearHint}` : ""}`, "Shows what was filed, for comparison against USCIS records.");
-    }
-    if (issue.issueType === "uscis_notice_response") {
-      wantDoc("notice", "The USCIS notice or letter itself", "A phone photo is fine — the receipt number, notice type, and deadline are printed on it.");
-    }
-    if (issue.issueType === "missing_evidence") {
-      wantDoc("evidence", "Missing evidence documents", "Needed to complete the filing or response packet.");
-    }
-  }
-
   const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const rankedDocuments = rankMatchingDocuments({
+    themes: inquiry.themes,
+    inquiryMode: inquiry.mode,
+    query: `${c.situation} ${c.goal}`,
+    authorityQueries: authorityQueriesForInquiry(inquiry),
+    sources: c.issues.map((issue) => ({
+      reference: issue.uscisBasis,
+      title: issue.title,
+      content: issue.conclusion,
+    })),
+    noticeTypes: c.notices.map((notice) => notice.noticeType),
+  });
+  const neededDocs = neededDocumentsFromRanked(rankedDocuments).map((item) => ({
+    kind: item.kind,
+    label: item.label,
+    hint: item.hint,
+  }));
+  const matchingDocumentKind = rankedDocuments[0]?.kind ?? "identity";
+  const documentKinds = rankedDocuments.map((item) => ({
+    kind: item.kind,
+    name: documentKindDef(item.kind)?.name ?? item.label,
+  }));
   const matchingNumber = matchingFormNumber({
     themes: inquiry.themes,
     inquiryMode: inquiry.mode,
@@ -222,6 +231,8 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           canStartForm={canStartForm}
           matchingLetterKind={matchingLetter}
           canGenerateLetter={canGenerateLetter}
+          matchingDocumentKind={matchingDocumentKind}
+          documentKinds={documentKinds}
           suggestionAccess={viewer.suggestionAccess}
         />
         {analysisPlanJson && (viewer.role !== "customer" || viewer.suggestionAccess?.personalized !== false) ? <CaseAnalysisPlanCard planJson={analysisPlanJson} /> : null}
@@ -554,7 +565,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                         )}
                         {interactive && (
                           issue.nextAction.toUpperCase() === "UPLOAD_DOCUMENTS" ? (
-                            <InlineUpload caseId={c.id} label="Upload for this item" />
+                            <InlineUpload caseId={c.id} docKind={matchingDocumentKind} label="Upload for this item" />
                           ) : (
                             <>
                               {stepCta(issue.nextAction) && (
@@ -653,7 +664,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                               {stepCta(step.actionKey, step.title)!.label} →
                             </a>
                           ) : step.actionKey.toUpperCase() === "UPLOAD_DOCUMENTS" ? (
-                            <InlineUpload caseId={c.id} label="Upload documents" />
+                            <InlineUpload caseId={c.id} docKind={matchingDocumentKind} label="Upload documents" />
                           ) : stepCta(step.actionKey, step.title) ? (
                             <a href={stepCta(step.actionKey, step.title)!.href} className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
                               {stepCta(step.actionKey, step.title)!.label} →
@@ -732,7 +743,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
               </ul>
               {interactive && neededDocs.some((d) => !haveKinds.has(d.kind)) && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <InlineUpload caseId={c.id} label="Upload now" />
+                  <InlineUpload caseId={c.id} docKind={matchingDocumentKind} label="Upload now" />
                   {neededDocs.some((d) => d.kind === "case_record" && !haveKinds.has("case_record")) && (
                     <a href="/app/uscis-account" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
                       Case record guide →
@@ -779,7 +790,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
             </ul>
             {interactive && (
               <div className="mt-3">
-                <CaseUpload caseId={c.id} />
+                <CaseUpload caseId={c.id} kinds={documentKinds} defaultKind={matchingDocumentKind} />
               </div>
             )}
           </CardBody>

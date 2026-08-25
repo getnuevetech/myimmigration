@@ -7,7 +7,7 @@ import { startIntakeAction } from "@/actions/case";
 const STEPS = [
   { title: "What's going on?", subtitle: "A USCIS case, a letter, or just a life situation — start with your own words." },
   { title: "What do you want?", subtitle: "A next step, a possible path, or help understanding a notice." },
-  { title: "Any documents?", subtitle: "Optional. Upload notices if you have them. You can continue with none." },
+  { title: "Any documents?", subtitle: "Optional. Identity and relationship records help a family petition; skip a USCIS notice if you do not have one." },
 ];
 
 function Submit() {
@@ -101,7 +101,7 @@ export function IntakeWizard() {
             <span className="text-base font-medium text-slate-700">
               {fileCount > 0 ? `${fileCount} file${fileCount > 1 ? "s" : ""} ready to upload` : "Tap to add photos or files"}
             </span>
-            <span className="mt-1 text-xs text-slate-500">USCIS notices if you have them, or skip this. PDF or photos.</span>
+            <span className="mt-1 text-xs text-slate-500">Identity, relationship, or status records if you have them — not a receipt unless USCIS already sent one.</span>
             <input
               type="file"
               name="documents"
