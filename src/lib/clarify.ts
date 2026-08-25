@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { nextPlannedQuestion } from "./question-planner";
 import { classifyImmigrationInquiry, INQUIRY_MODES, OPEN_OPTIONS_POSTURE } from "./immigration-inquiry";
-import { selectNextClarifyQuestion, situationLine, type ClarifyQuestionPick } from "./goal-suggestions";
+import { selectNextClarifyQuestion, type ClarifyQuestionPick } from "./goal-suggestions";
 import { resolveCasePresentation } from "./case-presentation";
 
 // The clarifying interview: when the analysis is thin (missing timeline years,
