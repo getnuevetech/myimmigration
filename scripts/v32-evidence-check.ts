@@ -47,6 +47,14 @@ import {
   knowledgeFromSnapshot,
   overlappingOfficialUpdate,
 } from "../src/lib/authority-match";
+import {
+  consultantFromOfficialSources,
+  historicalSuggestionBoost,
+  officialSuggestionCandidates,
+  rankGoalSuggestions,
+  refineInquiryThemes,
+  suggestionBoostsFromStats,
+} from "../src/lib/goal-suggestions";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -517,7 +525,7 @@ const knowledgeCatalog: KnowledgeRecord[] = [
     sourceType: "form_instruction",
     tags: "i-765, ead, employment, student, opt, work",
     url: "https://www.uscis.gov/i-765",
-    content: "Form I-765 is used to apply for an Employment Authorization Document. Eligibility categories include F-1 OPT, pending adjustment of status, and others listed on the form instructions. Evidence usually includes identity documents, proof of the qualifying status, and category-specific records such as an I-20 for OPT.",
+    content: "Form I-765 is used to apply for an Employment Authorization Document. Eligibility categories include F-1 OPT, pending adjustment of status, asylum-related categories, and others listed on the form instructions. Evidence usually includes identity documents, proof of the qualifying status, and category-specific records such as an I-20 for OPT.",
   },
   {
     title: "Asylum and withholding overview",
@@ -565,6 +573,8 @@ assert(/identity documents|relationship documents|bona fide marriage/i.test(JSON
 assert(!marriageOptions.unknowns.some((item) => item.key === "receipt_number"), "open-options analysis must not ask for a receipt number");
 assert(!marriageOptions.issues.some((issue) => /family green card path may be possible/i.test(issue.title)), "open-options analysis must not emit the canned family-green-card essay title");
 assert(marriageOptions.pathSteps[0]?.action_key === "ADD_CASE_DETAILS", "open-options next steps should start with clarifying facts, not uploading a notice");
+assert(/Form I-130/i.test(marriageOptions.pathSteps.find((step) => step.action_key === "COMPLETE_FORM_I485")?.title ?? ""), "marriage official-form review should name Form I-130 from the top-ranked source");
+assert(!/I-485/i.test(marriageOptions.pathSteps.map((step) => step.title).join(" ")), "marriage next-step titles must not jump to I-485 ahead of the I-130 petition");
 assert(!marriageOptions.pathSteps.some((step) => step.action_key === "UPLOAD_NOTICE" || step.action_key === "GET_CASE_RECORD"), "open-options next steps must not require a USCIS case record");
 assert(marriageOptions.issues.every((issue) => issue.professional_review === "probably_unnecessary"), "a simple marriage-options story should not require a consultant");
 assert(!/Preliminary review|No USCIS case file is on record|no USCIS documents were uploaded/i.test(JSON.stringify(marriageOptions)), "customer-facing options analysis must not be framed as preliminary or missing a case file");
@@ -586,6 +596,37 @@ assert(asylumOptions.issues.some((issue) => issue.professional_review === "requi
 assert(evaluateConsultantReferral({ text: "I received a Notice of Intent to Deny on my I-485." }).level === "required", "a NOID should require professional review");
 assert(evaluateConsultantReferral({ text: "I am on F-1 graduating next month." }).level === "probably_unnecessary", "a simple F-1 question should not require a consultant");
 assert(evaluateConsultantReferral({ text: "USCIS sent an RFE and I must respond within 87 days." }).level === "recommended", "an RFE with a deadline should recommend professional review");
+assert(evaluateConsultantReferral({
+  text: "I want to stay in the United States.",
+  sources: [knowledgeCatalog.find((item) => item.reference === "Form I-589")!],
+}).level === "required", "matching I-589 official material should require a consultant even without the word asylum in the question");
+assert(evaluateConsultantReferral({
+  text: "I want to stay in the United States.",
+  sources: [knowledgeCatalog.find((item) => item.reference === "Form I-130")!],
+}).level === "probably_unnecessary", "matching I-130 material must not by itself require a consultant");
+assert(refineInquiryThemes(["naturalization", "family"], [knowledgeCatalog.find((item) => item.reference === "Form I-130")!]).includes("family"), "themes should follow matching official material");
+assert(!refineInquiryThemes(["naturalization", "family"], [knowledgeCatalog.find((item) => item.reference === "Form I-130")!]).includes("naturalization"), "official I-130 material must drop an unrelated naturalization theme");
+
+const boostedForm = rankGoalSuggestions(
+  officialSuggestionCandidates([knowledgeCatalog[2]], [], { level: "probably_unnecessary", reason: "" }),
+  suggestionBoostsFromStats(
+    [{ queryKey: "family|I-130", actionKey: "COMPLETE_FORM_I485", completedCount: 12, recommendedCount: 20 }],
+    ["family|I-130"],
+  ),
+);
+assert(boostedForm[0]?.action_key === "COMPLETE_FORM_I485", "when facts are complete, the historically completed official form review should be the next suggestion");
+const pinnedDespiteBoost = rankGoalSuggestions(
+  officialSuggestionCandidates(
+    [knowledgeCatalog[2]],
+    [{ question: "What can you share about identity documents?", item: "identity documents" }],
+    { level: "probably_unnecessary", reason: "" },
+  ),
+  { COMPLETE_FORM_I485: 20, REVIEW_ANALYSIS: 20 },
+);
+assert(pinnedDespiteBoost[0]?.action_key === "ADD_CASE_DETAILS", "learning must not skip official evidence gaps even when another action was completed more often");
+assert(historicalSuggestionBoost(12, 4) > historicalSuggestionBoost(1, 1), "suggestions that similar customers completed should rank higher over time");
+assert(consultantFromOfficialSources([knowledgeCatalog.find((item) => item.reference === "Form I-589")!])?.level === "required", "I-589 official material itself should mark professional review required");
+assert(consultantFromOfficialSources([knowledgeCatalog.find((item) => item.reference === "Form I-765")!]) == null, "I-765 listing asylum-related EAD categories must not treat the source as an asylum case");
 
 const emptyReconcile = reconcileEvidenceStates([{
   documentType: "other",
@@ -652,6 +693,7 @@ const qaFallback = buildQaFallbackAnswer({
 });
 assert(/do not need a USCIS case/i.test(qaFallback), "Q&A without a case should still answer options questions");
 assert(/Family petition overview/i.test(qaFallback), "Q&A fallback should cite the matching official source");
+assert(/For this goal, the next step/i.test(qaFallback), "Q&A should suggest the next official step for this goal");
 assert(!/upload your USCIS notice/i.test(qaFallback), "Q&A fallback must not tell people with no file that they must upload a notice");
 assert(!/I-797C|Request for Evidence/i.test(qaFallback), "Q&A fallback must not dump unrelated notice articles into a marriage question");
 
@@ -742,3 +784,4 @@ console.log(`- v4 A11: canonical approved state v${approvedState.version} stores
 console.log(`- v4 A12: ${selected?.source} approved state wins over stale stored/live presentations (${listFromCanonical.posture}, ${caseListVersionLine(listFromCanonical)})`);
 console.log(`- v4 C2: grounded options ${marriageOptions.issues[0]?.title}, F-1 ${rankedStudent[0]?.reference}, RFE ${rfeInquiry.mode}/${rankedRfe[0]?.reference}`);
 console.log(`- v4 C3: unified authority ${findAuthorityForKnowledge(knowledgeCatalog[2], [i130Authority])?.key}, reconstruction cites official material, no preliminary/no-docs customer framing`);
+console.log(`- v4 C4: goal-driven next step ${marriageOptions.pathSteps[0]?.action_key}, I-589 consultant ${evaluateConsultantReferral({ text: "I want to stay in the United States.", sources: [knowledgeCatalog.find((item) => item.reference === "Form I-589")!] }).level}`);

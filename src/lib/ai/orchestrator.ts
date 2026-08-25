@@ -7,6 +7,7 @@ import { STAGE_KEYS } from "../constants";
 import { getNumberSetting } from "../settings";
 import { readUpload } from "../uploads";
 import { retrieveUnifiedAuthority, snapshotAuthorityForPlan } from "../authority-retrieval";
+import { loadBoostsForNarrative, recordSuggestionEvent, recordSuggestionsForCase } from "../goal-suggestion-store";
 import { buildPrimaryReasonerContext } from "../primary-reasoner-context";
 import { buildCaseActionGraph } from "../action-graph";
 import { buildCasePresentation, getCasePresentationBrief } from "../case-presentation";
@@ -33,7 +34,7 @@ import { getCaseEvidenceBrief } from "../evidence/brief";
 import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
 import { mergeSupportedText, presentationGroundingBlock, withPresentationNoticeSteps } from "../case-presentation-brief";
 import { formatKnowledgeBlock, type KnowledgeRecord } from "../knowledge-retrieval";
-import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry } from "../immigration-inquiry";
+import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry, buildOpenOptionsAnalysis } from "../immigration-inquiry";
 
 type Json = Record<string, unknown>;
 
@@ -559,6 +560,11 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       },
     });
   }
+  await recordSuggestionsForCase(
+    caseId,
+    pathSteps.map((step) => normalizeActionKey(step.action_key)).filter(Boolean),
+    "recommended",
+  );
 
   // Deterministic readiness score (our formula, not an AI's opinion).
   const unknowns = Array.isArray(facts.unknowns) ? (facts.unknowns as unknown[]).length : 0;
@@ -740,6 +746,9 @@ export async function runQaChat(history: { role: string; content: string }[], op
   const knowledgeSources = await retrieveKnowledgeRecords(knowledgeQuery, 5, opts?.caseId);
   const knowledge = formatKnowledgeBlock(knowledgeSources);
   const grounding = await loadCaseGrounding(opts?.caseId);
+  const { queryKeys, boosts } = await loadBoostsForNarrative(question, question);
+  const options = buildOpenOptionsAnalysis({ situation: question, goal: question }, inquiry, knowledgeSources, boosts);
+  await recordSuggestionEvent(queryKeys, options.suggestionKeys ?? ["REVIEW_ANALYSIS"], "recommended");
   const fallbackAnswer = () =>
     buildQaFallbackAnswer({
       question,
@@ -747,6 +756,7 @@ export async function runQaChat(history: { role: string; content: string }[], op
       sources: knowledgeSources,
       inquiry,
       hasLinkedCase: Boolean(opts?.caseId),
+      boosts,
     });
   if (steps.length === 0) {
     return fallbackAnswer();

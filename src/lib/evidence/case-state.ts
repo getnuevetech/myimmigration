@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getNumberSetting } from "@/lib/settings";
 import { classifyImmigrationInquiry, applyInquiryToEvidenceState, INQUIRY_MODES } from "@/lib/immigration-inquiry";
 import { retrieveUnifiedAuthority } from "@/lib/authority-retrieval";
+import { loadBoostsForNarrative } from "@/lib/goal-suggestion-store";
 import type { KnowledgeRecord } from "@/lib/knowledge-retrieval";
 import { computeEvidenceReadinessSplit } from "./readiness";
 import { reconcileEvidenceStates } from "./reconcile";
@@ -113,11 +114,15 @@ export async function rebuildCaseEvidenceState(caseId: string) {
       preferSnapshots: true,
     });
   }
+  const { boosts } = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS
+    ? await loadBoostsForNarrative(caseRow?.situation ?? "", caseRow?.goal ?? "")
+    : { boosts: {} };
   const reconciled = applyInquiryToEvidenceState(
     reconcileEvidenceStates([state]),
     inquiry,
     [caseRow?.situation, caseRow?.goal].filter(Boolean).join("\n"),
     knowledgeSources,
+    boosts,
   );
   const readiness = computeEvidenceReadinessSplit({
     documentsCount: documents.length,

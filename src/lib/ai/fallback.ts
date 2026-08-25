@@ -7,6 +7,7 @@ import {
   INQUIRY_MODES,
 } from "../immigration-inquiry";
 import { retrieveUnifiedAuthority } from "../authority-retrieval";
+import { loadBoostsForNarrative, recordSuggestionEvent } from "../goal-suggestion-store";
 import type { KnowledgeRecord } from "../knowledge-retrieval";
 
 type Json = Record<string, unknown>;
@@ -94,16 +95,18 @@ export async function fallbackAnalyze(
     receipts: receiptNumbers,
   });
   const ranked = await loadRankedKnowledge(`${situation} ${goal} ${documentsText}`, inquiry, caseId);
+  const { queryKeys, boosts } = await loadBoostsForNarrative(situation, goal);
   const options = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS
-    ? buildOpenOptionsAnalysis({ situation, goal, documentsText }, inquiry, ranked)
+    ? buildOpenOptionsAnalysis({ situation, goal, documentsText }, inquiry, ranked, boosts)
     : null;
   const knowledge = ranked[0] ?? null;
-  const referral = evaluateConsultantReferral({ text, inquiry, notices });
+  const referral = evaluateConsultantReferral({ text, inquiry, notices, sources: ranked });
   const issues: Json[] = [];
   const conflicts: FallbackConflict[] = [];
   const evidence = evidenceLine(docs, unreadableCount, inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS);
 
   if (options) {
+    await recordSuggestionEvent(queryKeys, options.suggestionKeys ?? options.pathSteps.map((step) => step.action_key), "recommended");
     return {
       facts: {
         user_goal: goal,

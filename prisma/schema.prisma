@@ -187,6 +187,21 @@ model AuthorityMatchStat {
   @@index([queryKey, hitCount])
 }
 
+// Retrieval feedback: which next steps historically helped similar customer
+// goals. Used to rank official suggestions — not LLM training.
+model GoalSuggestionStat {
+  id                 String    @id @default(cuid())
+  queryKey           String
+  actionKey          String
+  recommendedCount   Int       @default(0)
+  completedCount     Int       @default(0)
+  lastRecommendedAt  DateTime  @default(now())
+  lastCompletedAt    DateTime?
+
+  @@unique([queryKey, actionKey])
+  @@index([queryKey, completedCount])
+}
+
 // ---------- Users, roles, agreements ----------
 
 model User {
