@@ -59,7 +59,7 @@ export async function askGuideAction(history: { role: string; content: string }[
   if (last) {
     let thread = await db.qaThread.findFirst({ where: { userId: user.id, kind: "guide" } });
     if (!thread) {
-      thread = await db.qaThread.create({ data: { userId: user.id, kind: "guide", title: "Case guide" } });
+      thread = await db.qaThread.create({ data: { userId: user.id, kind: "guide", title: "Immigration guide" } });
     }
     await db.qaMessage.createMany({
       data: [

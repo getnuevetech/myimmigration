@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { askGuideAction } from "@/actions/support";
 import type { GuideAction } from "@/lib/guide";
+import { GUIDE_WIDGET_CHROME_DEFAULT, type GuideChrome } from "@/lib/goal-guide";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: GuideAction[] };
 
@@ -12,6 +13,7 @@ export function GuideWidget() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [pending, startTransition] = useTransition();
+  const [chrome, setChrome] = useState<GuideChrome>(GUIDE_WIDGET_CHROME_DEFAULT);
   const bottomRef = useRef<HTMLDivElement>(null);
   const openedOnce = useRef(false);
 
@@ -25,6 +27,7 @@ export function GuideWidget() {
       openedOnce.current = true;
       startTransition(async () => {
         const reply = await askGuideAction([]);
+        if (reply.chrome) setChrome(reply.chrome);
         setMessages([{ role: "assistant", content: reply.message, actions: reply.actions }]);
       });
     }
@@ -38,6 +41,7 @@ export function GuideWidget() {
     setMessages(next);
     startTransition(async () => {
       const reply = await askGuideAction(next.map((m) => ({ role: m.role, content: m.content })));
+      if (reply.chrome) setChrome(reply.chrome);
       setMessages([...next, { role: "assistant", content: reply.message, actions: reply.actions }]);
     });
   };
@@ -47,7 +51,7 @@ export function GuideWidget() {
       {/* Floating launcher */}
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label="Open your case guide"
+        aria-label={chrome.launcherLabel}
         className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-lime-600 text-white shadow-lg transition hover:bg-lime-700"
       >
         {open ? (
@@ -61,8 +65,8 @@ export function GuideWidget() {
         <div className="fixed bottom-24 right-5 z-40 flex h-[520px] w-[360px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
           <div className="flex items-center justify-between bg-lime-600 px-4 py-3 text-white">
             <div>
-              <p className="text-sm font-semibold">Your case guide</p>
-              <p className="text-xs text-lime-200">Always watching your next step</p>
+              <p className="text-sm font-semibold">{chrome.title}</p>
+              <p className="text-xs text-lime-200">{chrome.subtitle}</p>
             </div>
           </div>
 
@@ -113,7 +117,7 @@ export function GuideWidget() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
-                placeholder="Ask about your next step…"
+                placeholder={chrome.placeholder}
                 className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-lime-500 focus:outline-none focus:ring-2 focus:ring-lime-100"
               />
               <button
