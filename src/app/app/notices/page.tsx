@@ -111,7 +111,7 @@ export default async function NoticesPage({
                     </div>
                   )}
                   <div className="mt-4 flex gap-2">
-                    <ButtonLink href={`/app/letters/new?notice=${n.id}${n.caseId ? `&case=${n.caseId}` : ""}`} variant="secondary" className="!px-3 !py-1.5 text-xs">
+                    <ButtonLink href={`/app/letters/new?notice=${n.id}${n.caseId ? `&case=${n.caseId}` : ""}&kind=${/rfe|request for evidence/i.test(n.noticeType ?? "") ? "rfe_response" : "notice_response"}`} variant="secondary" className="!px-3 !py-1.5 text-xs">
                       Draft a response letter
                     </ButtonLink>
                   </div>

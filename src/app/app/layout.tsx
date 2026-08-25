@@ -13,7 +13,7 @@ const NAV = [
   { href: "/app/notices", label: "USCIS notices" },
   { href: "/app/documents", label: "Document vault" },
   { href: "/app/forms", label: "USCIS forms" },
-  { href: "/app/letters", label: "Response letters" },
+  { href: "/app/letters", label: "USCIS letters" },
   { href: "/app/deadlines", label: "Deadlines" },
   { href: "/app/qa", label: "Ask the assistant" },
   { href: "/app/consultants", label: "My consultant" },

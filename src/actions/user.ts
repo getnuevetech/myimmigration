@@ -3,15 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { getCurrentUser, requireUser } from "@/lib/auth";
+import { getCurrentUser, isAdmin, requireUser } from "@/lib/auth";
 import { getOrCreateGuestSession } from "@/lib/guest";
 import { saveUpload } from "@/lib/uploads";
 import { runQaChat, generateLetterDraft } from "@/lib/ai/orchestrator";
 import { verifyUserCasesProgress } from "@/lib/case-progress";
-import { hasFeature } from "@/lib/access";
+import { featureLimit, hasFeature } from "@/lib/access";
 import { FEATURE_KEYS } from "@/lib/constants";
 import { loadQaAccess } from "@/lib/qa-quota";
-import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { classifyImmigrationInquiry, authorityQueriesForInquiry } from "@/lib/immigration-inquiry";
+import {
+  letterGenerationAllowed,
+  letterKindFromNoticeType,
+  letterTitleForKind,
+  matchingLetterKind,
+  normalizeLetterKind,
+} from "@/lib/goal-letters";
 import { conversationNarrative } from "@/lib/goal-suggestions";
 import { previewBestConsultantForThemes } from "@/lib/matching";
 import type { ActionState } from "./auth";
@@ -133,29 +140,67 @@ export async function setDeadlineStatusAction(id: string, status: "open" | "done
 
 export async function generateLetterAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
-  if (!(await hasFeature(user.id, FEATURE_KEYS.LETTERS))) {
-    return { error: "Response letters are not included in your plan. Upgrade to generate letters." };
+  const staff = isAdmin(user);
+  const enabled = staff || (await hasFeature(user.id, FEATURE_KEYS.LETTERS));
+  const limit = staff ? null : await featureLimit(user.id, FEATURE_KEYS.LETTERS);
+  const used = await db.responseLetter.count({ where: { userId: user.id } });
+  const quota = letterGenerationAllowed({
+    canGenerate: enabled,
+    used,
+    limit: enabled ? limit : 0,
+  });
+  if (!quota.allowed) {
+    if (!enabled) return { error: "USCIS letters are not included in your plan. Upgrade to Plus to generate letters." };
+    return { error: "You've used all letters included in Plus. Upgrade to Pro for unlimited letters." };
   }
   const context = String(formData.get("context") ?? "").trim();
   const noticeId = String(formData.get("noticeId") ?? "") || null;
   let caseId = String(formData.get("caseId") ?? "") || null;
+  let kind = normalizeLetterKind(String(formData.get("kind") ?? ""));
   if (context.length < 20) return { error: "Describe what the letter should address (a few sentences)." };
 
   let noticeContext = "";
+  let noticeType: string | null = null;
   if (noticeId) {
     const notice = await db.notice.findUnique({ where: { id: noticeId } });
     if (notice && notice.userId === user.id) {
+      noticeType = notice.noticeType;
       noticeContext = `Notice type: ${notice.noticeType}. Matter year: ${notice.caseYear ?? "unknown"}. Explanation: ${notice.explanation}`;
       caseId = caseId ?? notice.caseId;
     }
   }
-  if (caseId) {
-    const c = await db.case.findFirst({ where: { id: caseId, userId: user.id }, select: { id: true } });
-    if (!c) caseId = null;
+  const scopedCase = caseId
+    ? await db.case.findFirst({
+        where: { id: caseId, userId: user.id },
+        select: {
+          id: true,
+          situation: true,
+          goal: true,
+          issues: { select: { title: true, uscisBasis: true, conclusion: true } },
+        },
+      })
+    : null;
+  if (caseId && !scopedCase) caseId = null;
+  if (!kind && scopedCase) {
+    const inquiry = classifyImmigrationInquiry({ situation: scopedCase.situation, goal: scopedCase.goal });
+    kind = matchingLetterKind({
+      themes: inquiry.themes,
+      inquiryMode: inquiry.mode,
+      query: `${scopedCase.situation} ${scopedCase.goal}`,
+      authorityQueries: authorityQueriesForInquiry(inquiry),
+      sources: scopedCase.issues.map((issue) => ({
+        reference: issue.uscisBasis,
+        title: issue.title,
+        content: issue.conclusion,
+      })),
+      noticeTypes: noticeType ? [noticeType] : [],
+    });
   }
-  const body = await generateLetterDraft([noticeContext, context].filter(Boolean).join("\n\n"), { caseId });
+  if (!kind && noticeType) kind = letterKindFromNoticeType(noticeType);
+
+  const body = await generateLetterDraft([noticeContext, context].filter(Boolean).join("\n\n"), { caseId, kind });
   const letter = await db.responseLetter.create({
-    data: { userId: user.id, caseId, noticeId, title: `Response letter — ${new Date().toLocaleDateString("en-US")}`, body },
+    data: { userId: user.id, caseId, noticeId, title: letterTitleForKind(kind), body },
   });
   await verifyUserCasesProgress(user.id);
   redirect(`/app/letters/${letter.id}`);

@@ -182,7 +182,7 @@ async function seedPlansAndFeatures() {
     ["case.analysis", "In-depth case analysis", "analysis", 5],
     ["case.full_results", "Full analysis results & action plan", "analysis", 6],
     ["qa.chat", "Immigration Q&A assistant", "assistant", 7],
-    ["letters.generate", "Response-letter generator", "letters", 8],
+    ["letters.generate", "USCIS letter drafts", "letters", 8],
     ["deadlines.reminders", "Deadline tracking & reminders", "deadlines", 9],
     ["vault.storage", "Secure document vault", "documents", 10],
     ["forms.wizard", "Simplified USCIS form wizards", "forms", 11],
@@ -200,7 +200,7 @@ async function seedPlansAndFeatures() {
   // Corrective renames for existing installs: customer-facing copy must never
   // reference AI models (standard product-language policy).
   await db.featureDef.updateMany({ where: { key: "case.analysis", name: "AI case analysis" }, data: { name: "In-depth case analysis" } });
-  await db.featureDef.updateMany({ where: { key: "qa.chat" }, data: { name: "Immigration Q&A assistant" } });
+  await db.featureDef.updateMany({ where: { key: "letters.generate" }, data: { name: "USCIS letter drafts" } });
   await db.subscriptionPlan.updateMany({
     where: { description: { contains: "AI-matched client assignments" } },
     data: { description: "For immigration professional partners: receive expertly matched client assignments and manage them in your workspace." },

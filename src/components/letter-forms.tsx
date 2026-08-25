@@ -1,23 +1,46 @@
 "use client";
 
+import { useState } from "react";
 import { ActionForm, SubmitButton } from "./action-form";
 import { generateLetterAction, updateLetterAction } from "@/actions/user";
 import { Field, inputClass } from "./ui";
 
 export function NewLetterForm({
+  kinds,
+  defaultKind,
   notices,
   defaultNoticeId,
   defaultCaseId = "",
 }: {
+  kinds: { kind: string; title: string; isNoticeResponse: boolean; placeholder: string }[];
+  defaultKind: string;
   notices: { id: string; label: string }[];
   defaultNoticeId: string;
   defaultCaseId?: string;
 }) {
+  const [kind, setKind] = useState(defaultKind);
+  const selected = kinds.find((item) => item.kind === kind) ?? kinds[0];
+  const showNoticePicker = notices.length > 0 && Boolean(selected?.isNoticeResponse);
+
   return (
     <ActionForm action={generateLetterAction}>
       <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <input type="hidden" name="caseId" value={defaultCaseId} />
-        {notices.length > 0 && (
+        {kinds.length > 0 && (
+          <Field label="Letter kind" hint="Matching kinds come from official material on this case. Family options start with an I-130 cover letter, not an RFE reply.">
+            <select
+              name="kind"
+              value={kind}
+              onChange={(event) => setKind(event.target.value)}
+              className={inputClass}
+            >
+              {kinds.map((item) => (
+                <option key={item.kind} value={item.kind}>{item.title}</option>
+              ))}
+            </select>
+          </Field>
+        )}
+        {showNoticePicker && (
           <Field label="Related USCIS notice (optional)">
             <select name="noticeId" defaultValue={defaultNoticeId} className={inputClass}>
               <option value="">Not related to a specific notice</option>
@@ -27,8 +50,14 @@ export function NewLetterForm({
             </select>
           </Field>
         )}
-        <Field label="What should the letter address?" hint="Explain your side of the story — what you are responding to, what you are requesting, and any facts that support you.">
-          <textarea name="context" rows={6} required className={inputClass} placeholder="I want to respond to the RFE by explaining the enclosed relationship evidence and asking USCIS to continue processing my I-485…" />
+        <Field label="What should the letter address?" hint="Explain what you are submitting or responding to, and any facts that support you.">
+          <textarea
+            name="context"
+            rows={6}
+            required
+            className={inputClass}
+            placeholder={selected?.placeholder ?? ""}
+          />
         </Field>
         <SubmitButton className="w-full py-3">Generate my draft →</SubmitButton>
       </div>

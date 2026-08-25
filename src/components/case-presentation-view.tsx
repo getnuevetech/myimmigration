@@ -9,6 +9,7 @@ import type { PresentationContract } from "@/lib/case-presentation-contract";
 import { formatPresentationDate, presentationActionStatus, presentationEvidenceGateLabel, presentationStepCta } from "@/lib/case-presentation-ui";
 import { limitSuggestionItems, suggestionConsultantCopy, type SuggestionChatAccess } from "@/lib/suggestion-access";
 import { formCatalogHref, formNumberForStep, formStartLabel } from "@/lib/goal-forms";
+import { letterCatalogHref, letterComposerHref, letterKindDef, letterKindForStep, letterStartLabel } from "@/lib/goal-letters";
 
 type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
 
@@ -66,6 +67,8 @@ export function CasePresentationView({
   matchingFormId,
   matchingFormNumber,
   canStartForm,
+  matchingLetterKind,
+  canGenerateLetter,
   suggestionAccess,
 }: {
   caseId: string;
@@ -85,6 +88,8 @@ export function CasePresentationView({
   matchingFormId: string | null;
   matchingFormNumber: string | null;
   canStartForm: boolean;
+  matchingLetterKind: string | null;
+  canGenerateLetter: boolean;
   suggestionAccess?: SuggestionChatAccess;
 }) {
   const issueById = new Map(issues.map((issue) => [issue.id, issue]));
@@ -94,7 +99,10 @@ export function CasePresentationView({
   const gateLabel = presentationEvidenceGateLabel(presentation.what_this_means.evidence_gate_status);
   const formFor = (actionKey: string, title?: string | null) =>
     formNumberForStep({ actionKey, title, matchingForm: matchingFormNumber });
-  const stepCta = (actionKey: string, title?: string | null) => presentationStepCta(actionKey, caseId, formFor(actionKey, title));
+  const letterFor = (actionKey: string, title?: string | null) =>
+    letterKindForStep({ actionKey, title, matchingLetter: matchingLetterKind });
+  const stepCta = (actionKey: string, title?: string | null) =>
+    presentationStepCta(actionKey, caseId, formFor(actionKey, title), letterFor(actionKey, title));
   const isFormAction = (actionKey: string) => {
     const key = actionKey.toUpperCase();
     return key === "COMPLETE_FORM_I485" || key === "PREPARE_FORM";
@@ -231,6 +239,21 @@ export function CasePresentationView({
                 {canStartForm ? `${formStartLabel(matchingFormNumber)} →` : `See matching Form ${matchingFormNumber} →`}
               </a>
             )}
+          </div>
+        )}
+        {matchingLetterKind && interactive && (
+          <div className="mt-3 rounded-xl border border-lime-200 bg-white px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Matching USCIS letter</p>
+            <p className="mt-1 text-sm text-slate-700">
+              Official material for this case points to {letterKindDef(matchingLetterKind)?.title ?? "a matching letter"} first
+              {matchingLetterKind !== "rfe_response" ? ", not an RFE response." : "."}
+            </p>
+            <a
+              href={canGenerateLetter ? letterComposerHref({ caseId, kind: matchingLetterKind }) : letterCatalogHref(matchingLetterKind)}
+              className="mt-3 inline-flex rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700"
+            >
+              {canGenerateLetter ? `${letterStartLabel(matchingLetterKind)} →` : `See matching ${letterKindDef(matchingLetterKind)?.title ?? "letter"} →`}
+            </a>
           </div>
         )}
       </section>

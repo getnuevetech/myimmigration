@@ -16,7 +16,9 @@ import Link from "next/link";
 import { hasFeature } from "@/lib/access";
 import { FEATURE_KEYS } from "@/lib/constants";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
-import { formCatalogHref, formNumberForStep, formStartLabel, matchingFormNumber } from "@/lib/goal-forms";
+import { formNumberForStep, formStartLabel, matchingFormNumber } from "@/lib/goal-forms";
+import { letterKindForStep, matchingLetterKind } from "@/lib/goal-letters";
+import { presentationStepCta } from "@/lib/case-presentation-ui";
 
 export type CaseViewer = {
   role: "customer" | "consultant" | "admin";
@@ -35,6 +37,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       issues: { orderBy: [{ priority: "asc" }, { createdAt: "asc" }] },
       pathSteps: { orderBy: { sortOrder: "asc" } },
       documents: { where: { deletedAt: null } },
+      notices: { select: { noticeType: true } },
       runs: { orderBy: { startedAt: "desc" }, include: { consensus: true }, take: 10 },
       reconstruction: true,
       evidenceAudits: { orderBy: { createdAt: "desc" }, take: 1 },
@@ -161,6 +164,21 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const canStartForm = Boolean(
     interactive && matchingForm && (viewer.role !== "customer" || (await hasFeature(viewer.userId, FEATURE_KEYS.FORMS))),
   );
+  const matchingLetter = matchingLetterKind({
+    themes: inquiry.themes,
+    inquiryMode: inquiry.mode,
+    query: `${c.situation} ${c.goal}`,
+    authorityQueries: authorityQueriesForInquiry(inquiry),
+    sources: c.issues.map((issue) => ({
+      reference: issue.uscisBasis,
+      title: issue.title,
+      content: issue.conclusion,
+    })),
+    noticeTypes: c.notices.map((notice) => notice.noticeType),
+  });
+  const canGenerateLetter = Boolean(
+    interactive && matchingLetter && (viewer.role !== "customer" || (await hasFeature(viewer.userId, FEATURE_KEYS.LETTERS))),
+  );
 
   if (presentation) {
     return (
@@ -202,6 +220,8 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           matchingFormId={matchingForm?.id ?? null}
           matchingFormNumber={matchingFormNumberValue}
           canStartForm={canStartForm}
+          matchingLetterKind={matchingLetter}
+          canGenerateLetter={canGenerateLetter}
           suggestionAccess={viewer.suggestionAccess}
         />
         {analysisPlanJson && (viewer.role !== "customer" || viewer.suggestionAccess?.personalized !== false) ? <CaseAnalysisPlanCard planJson={analysisPlanJson} /> : null}
@@ -211,29 +231,9 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   }
 
   const stepCta = (actionKey: string, title?: string): { label: string; href: string } | null => {
-    switch (actionKey.toUpperCase()) {
-      case "GET_CASE_RECORD":
-      case "GET_ACCOUNT_RECORD":
-      case "UPLOAD_NOTICE":
-        return { label: "Upload USCIS records", href: "/app/documents" };
-      case "ADD_CASE_DETAILS":
-        return { label: "Answer follow-up questions", href: "#clarify" };
-      case "PREPARE_APPOINTMENT":
-        return { label: "Upload appointment notice", href: "/app/documents" };
-      case "DRAFT_LETTER":
-        return { label: "Draft my letter", href: `/app/letters/new?case=${c.id}` };
-      case "COMPLETE_FORM_I485":
-      case "PREPARE_FORM": {
-        const formNumber = formNumberForStep({ actionKey, title, matchingForm: matchingFormNumberValue });
-        return { label: formStartLabel(formNumber), href: formCatalogHref(formNumber) };
-      }
-      case "ADD_DEADLINE":
-        return { label: "Add the deadline", href: "/app/deadlines" };
-      case "REVIEW_ANALYSIS":
-        return { label: "Ask a follow-up question", href: `/app/qa?case=${c.id}` };
-      default:
-        return null;
-    }
+    const formNumber = formNumberForStep({ actionKey, title, matchingForm: matchingFormNumberValue });
+    const letterKind = letterKindForStep({ actionKey, title, matchingLetter });
+    return presentationStepCta(actionKey, c.id, formNumber, letterKind);
   };
 
   // Plain-English walkthrough of the latest analysis batch.

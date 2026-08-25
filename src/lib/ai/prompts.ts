@@ -177,14 +177,15 @@ The closing_remarks must be warm, plain-English (8th-grade level), and SPECIFIC 
 CASE DATA:
 {{input}}`,
 
-  letter_writer: `You draft professional response letters to USCIS on behalf of an applicant. Write a complete, formal letter body based on the context. Use placeholders like [YOUR NAME], [A-NUMBER IF ANY], [RECEIPT NUMBER], [FORM TYPE], and [DATE] where personal data is needed. Be factual, respectful, and concise. Do not admit fault or make claims not supported by the context. Never promise an immigration outcome. Return ONLY the letter text.
+  letter_writer: `You draft professional USCIS letters on behalf of an applicant — cover/preparation letters for the matching official form, or notice responses when a receipt or notice is actually on file. Write a complete, formal letter body based on the context. Use placeholders like [YOUR NAME], [A-NUMBER IF ANY], [FORM TYPE], and [DATE] where personal data is needed. Be factual, respectful, and concise. Do not admit fault or make claims not supported by the context. Never promise an immigration outcome. Return ONLY the letter text.
+If CONTEXT includes LETTER KIND and it is a cover letter (for example i130_cover, i765_cover, i589_cover), draft a cover or preparation letter for that form. Do not invent a receipt number, RFE, deadline, or filed-case posture. If no receipt or notice appears in the context, omit Receipt No. entirely.
 If CONTEXT includes APPROVED CASE PRESENTATION, write the letter to that approved posture, next action, findings, and deadlines. Do not introduce a different next step or outcome. If CONTEXT includes a COMPILED CASE EVIDENCE BRIEF, do not include receipt numbers, form types, dates, or requested evidence unless they appear there or in the approved presentation.
 
 CONTEXT:
 {{input}}`,
 };
 
-export const PROMPT_VERSION = "immigration-v32-v42-goal-driven-forms-2026-08-25";
+export const PROMPT_VERSION = "immigration-v32-v42-goal-driven-letters-2026-08-25";
 
 // SHA-256 hashes of known previous default prompts. Seed uses these to upgrade
 // exact old defaults while leaving admin-edited prompts untouched.
@@ -219,7 +220,10 @@ export const PROMPT_SUPERSEDES: Record<string, string[]> = {
     "570f62015d1ec773fceda5a8564f7c3c8b96d4875f75075b4bf0956f0702952e",
     "0f2341a4000610fccec81a613709b90357bdcc91ab27d176666aa4461b6bf9b1",
   ],
-  letter_writer: ["8461ecd93dff2ce96b8e4b6d764a7e7b252d6b495138d83b68eed74d42e3d61e"],
+  letter_writer: [
+    "8461ecd93dff2ce96b8e4b6d764a7e7b252d6b495138d83b68eed74d42e3d61e",
+    "e2cd0b56b7aad1a0431595e7cb69b3e5e92d832ba76e836a3698242f0596153e",
+  ],
   guide: [
     "1fbbb6bb1fb252ea71e3f8ae2126a0da4c42738a8e92ea3984991f88b9b853b2",
     "46ee7ece86792b098ca7d3eff9600b0fb4fa385c1aa665e036bcbf14ffadaa7c",
