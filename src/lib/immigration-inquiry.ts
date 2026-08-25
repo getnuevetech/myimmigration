@@ -1,5 +1,16 @@
 import type { KnowledgeRecord } from "./knowledge-retrieval";
 import { rankKnowledgeSources } from "./knowledge-retrieval";
+import {
+  bestSuggestionLine,
+  consultantFromOfficialSources,
+  officialSuggestionCandidates,
+  rankAuthorityGaps,
+  rankGoalSuggestions,
+  refineInquiryThemes,
+  stricterReferral,
+  toPathSteps,
+  type SuggestionBoosts,
+} from "./goal-suggestions";
 
 export const INQUIRY_MODES = {
   EXISTING_CASE: "existing_case",
@@ -79,6 +90,7 @@ export type OpenOptionsAnalysis = {
   };
   unknowns: { key: string; question: string; reason: string }[];
   authorityQueries: string[];
+  suggestionKeys?: string[];
 };
 
 const RECEIPT_RE = /\b[A-Z]{3}\d{10}\b/;
@@ -234,24 +246,23 @@ export function evaluateConsultantReferral(input: {
   text: string;
   inquiry?: ImmigrationInquiry;
   notices?: string[];
+  sources?: KnowledgeRecord[];
 }): ConsultantReferral {
+  const fromSources = consultantFromOfficialSources(input.sources ?? []);
   const text = input.text.toLowerCase();
+  let fromFacts: ConsultantReferral = { level: "probably_unnecessary", reason: "The described question can be outlined from official material, with a professional review before any filing." };
   if (/\b(asylum|refugee|persecution|withholding of removal|credible fear|convention against torture)\b/.test(text)) {
-    return { level: "required", reason: "Protection and asylum questions are high-stakes and fact-specific under USCIS and DOJ/EOIR rules." };
+    fromFacts = { level: "required", reason: "Protection and asylum questions are high-stakes and fact-specific under USCIS and DOJ/EOIR rules." };
+  } else if (/\b(removal|deport|immigration court|eoir|notice to appear|\bnta\b|detained|criminal conviction)\b/.test(text)) {
+    fromFacts = { level: "required", reason: "Immigration court, removal, or criminal-immigration issues should be reviewed by a licensed professional." };
+  } else if ((input.notices ?? []).some((notice) => ["NOID", "NOIR", "NOIT"].includes(notice.toUpperCase())) || /\b(noid|notice of intent to deny)\b/.test(text)) {
+    fromFacts = { level: "required", reason: "A Notice of Intent to Deny is a serious USCIS action and should be reviewed by a licensed professional before a response." };
+  } else if (/\b(rfe|request for evidence)\b/.test(text) && /\b(deadline|within \d+ days|respond by)\b/.test(text)) {
+    fromFacts = { level: "recommended", reason: "An RFE with a running deadline can change the case outcome if the response is incomplete." };
+  } else if (input.inquiry?.mode === INQUIRY_MODES.EXISTING_CASE && /\b(denial|denied)\b/.test(text)) {
+    fromFacts = { level: "recommended", reason: "A denial or likely denial should be reviewed before the next filing or appeal." };
   }
-  if (/\b(removal|deport|immigration court|eoir|notice to appear|\bnta\b|detained|criminal conviction)\b/.test(text)) {
-    return { level: "required", reason: "Immigration court, removal, or criminal-immigration issues should be reviewed by a licensed professional." };
-  }
-  if ((input.notices ?? []).some((notice) => ["NOID", "NOIR", "NOIT"].includes(notice.toUpperCase())) || /\b(noid|notice of intent to deny)\b/.test(text)) {
-    return { level: "required", reason: "A Notice of Intent to Deny is a serious USCIS action and should be reviewed by a licensed professional before a response." };
-  }
-  if (/\b(rfe|request for evidence)\b/.test(text) && /\b(deadline|within \d+ days|respond by)\b/.test(text)) {
-    return { level: "recommended", reason: "An RFE with a running deadline can change the case outcome if the response is incomplete." };
-  }
-  if (input.inquiry?.mode === INQUIRY_MODES.EXISTING_CASE && /\b(denial|denied)\b/.test(text)) {
-    return { level: "recommended", reason: "A denial or likely denial should be reviewed before the next filing or appeal." };
-  }
-  return { level: "probably_unnecessary", reason: "The described question can be outlined from official material, with a professional review before any filing." };
+  return fromSources ? stricterReferral(fromSources, fromFacts) : fromFacts;
 }
 
 function issueFromSource(
@@ -323,58 +334,34 @@ export function openOptionsPathSteps(
   sources: KnowledgeRecord[] = [],
   gaps: { question: string; item: string }[] = [],
   referral: ConsultantReferral = { level: "probably_unnecessary", reason: "" },
+  boosts: SuggestionBoosts = {},
 ): OpenOptionsPathStep[] {
-  const steps: OpenOptionsPathStep[] = [];
-  if (gaps.length) {
-    steps.push({
-      title: "Share the facts this official material still needs",
-      description: gaps.slice(0, 3).map((item) => item.item).join("; ") + ".",
-      action_key: "ADD_CASE_DETAILS",
-    });
-  }
-  if (sources[0]) {
-    steps.push({
-      title: `Review ${sources[0].reference || sources[0].title}`,
-      description: sources[0].url
-        ? `Read the matching official instructions (${sources[0].url}) and see what filing would involve before you file anything.`
-        : `Read the matching official instructions for ${sources[0].title} before you file anything.`,
-      action_key: "COMPLETE_FORM_I485",
-    });
-  }
-  if (referral.level === "required" || referral.level === "recommended") {
-    steps.push({
-      title: referral.level === "required" ? "Talk with a licensed professional now" : "Consider a licensed professional before filing",
-      description: referral.reason,
-      action_key: "REVIEW_ANALYSIS",
-    });
-  } else {
-    steps.push({
-      title: "Ask a follow-up about these options",
-      description: "Ask anything else about the official material that matched your question. You do not need a receipt number to do that.",
-      action_key: "REVIEW_ANALYSIS",
-    });
-  }
-  return steps.slice(0, 4);
+  return toPathSteps(rankGoalSuggestions(officialSuggestionCandidates(sources, gaps, referral), boosts));
 }
 
 export function buildOpenOptionsAnalysis(
   input: InquiryClassifyInput,
   inquiry = classifyImmigrationInquiry(input),
   sources: KnowledgeRecord[] = [],
+  boosts: SuggestionBoosts = {},
 ): OpenOptionsAnalysis {
   const situation = (input.situation ?? "").trim();
   const goal = (input.goal ?? "").trim();
   const known = [situation, goal].filter(Boolean).join(" ").trim() || "You described an immigration goal.";
-  const ranked = sources.length
-    ? rankKnowledgeSources(sources, {
-        query: known,
-        inquiryMode: inquiry.mode,
-        themes: inquiry.themes,
-        authorityQueries: authorityQueriesForInquiry(inquiry),
-      }, 3)
-    : [];
-  const gaps = deriveAuthorityGaps(ranked, known);
-  const referral = evaluateConsultantReferral({ text: known, inquiry });
+  const rankHint = {
+    query: known,
+    inquiryMode: inquiry.mode,
+    themes: inquiry.themes,
+    authorityQueries: authorityQueriesForInquiry(inquiry),
+  };
+  let ranked = sources.length ? rankKnowledgeSources(sources, rankHint, 3) : [];
+  const refinedThemes = refineInquiryThemes(inquiry.themes, ranked);
+  if (ranked.length && refinedThemes.join("|") !== inquiry.themes.join("|")) {
+    inquiry = { ...inquiry, themes: refinedThemes };
+    ranked = rankKnowledgeSources(sources, { ...rankHint, themes: refinedThemes }, 3);
+  }
+  const gaps = rankAuthorityGaps(deriveAuthorityGaps(ranked, known), boosts);
+  const referral = evaluateConsultantReferral({ text: known, inquiry, sources: ranked });
   const issues: OpenOptionsIssue[] = ranked.map((source) => issueFromSource(source, known, gaps, referral));
   if (referral.level === "required" && !issues.some((issue) => issue.issue_type === "professional_review")) {
     issues.unshift({
@@ -465,15 +452,20 @@ export function buildOpenOptionsAnalysis(
       ],
     });
   }
+  const pathSteps = openOptionsPathSteps(ranked, gaps, referral, boosts);
   return {
     inquiry,
     issues,
-    pathSteps: openOptionsPathSteps(ranked, gaps, referral),
+    pathSteps,
     reconstruction: openOptionsReconstruction(inquiry, goal || situation, ranked),
     unknowns: gaps.map(({ key, question, reason }) => ({ key, question, reason })),
     authorityQueries: uniq([
       ...authorityQueriesForInquiry(inquiry),
       ...ranked.map((source) => source.reference).filter(Boolean),
+    ]),
+    suggestionKeys: uniq([
+      ...pathSteps.map((step) => step.action_key),
+      ...gaps.map((item) => `question:${item.key}`),
     ]),
   };
 }
@@ -491,10 +483,10 @@ export function applyInquiryToEvidenceState<
       confidence: string;
     };
   },
->(state: T, inquiry: ImmigrationInquiry, narrative = "", sources: KnowledgeRecord[] = []): T {
+>(state: T, inquiry: ImmigrationInquiry, narrative = "", sources: KnowledgeRecord[] = [], boosts: SuggestionBoosts = {}): T {
   if (inquiry.mode !== INQUIRY_MODES.OPEN_OPTIONS) return state;
   if (state.facts.some((fact) => CORE_FACT_KEYS.has(fact.key))) return state;
-  const options = buildOpenOptionsAnalysis({ situation: narrative, goal: narrative }, inquiry, sources);
+  const options = buildOpenOptionsAnalysis({ situation: narrative, goal: narrative }, inquiry, sources, boosts);
   const identifierUnknowns = new Set(["receipt_number", "form_type", "notice_type"]);
   const keptUnknowns = state.unknowns.filter((item) => !identifierUnknowns.has(item.key) && !item.key.startsWith("conflict_"));
   const unknowns = [...options.unknowns, ...keptUnknowns];
@@ -525,24 +517,21 @@ export function buildQaFallbackAnswer(input: {
   sources?: KnowledgeRecord[];
   inquiry?: ImmigrationInquiry;
   hasLinkedCase?: boolean;
+  boosts?: SuggestionBoosts;
 }): string {
   const inquiry = input.inquiry ?? classifyImmigrationInquiry({ situation: input.question, goal: input.question });
-  const ranked = input.sources?.length
-    ? rankKnowledgeSources(input.sources, {
-        query: input.question,
-        inquiryMode: inquiry.mode,
-        themes: inquiry.themes,
-        authorityQueries: authorityQueriesForInquiry(inquiry),
-      }, 3)
-    : [];
+  const options = buildOpenOptionsAnalysis({ situation: input.question, goal: input.question }, inquiry, input.sources ?? [], input.boosts);
+  const ranked = options.issues
+    .map((issue) => (input.sources ?? []).find((source) => source.title === issue.title))
+    .filter((source): source is KnowledgeRecord => Boolean(source));
   const knowledge = ranked.length
     ? ranked.map((source) => `${source.title} (${source.reference})${source.url ? ` ${source.url}` : ""}\n${firstSentences(source.content, 3)}`).join("\n\n")
     : (input.knowledge ?? "").trim();
-  const referral = evaluateConsultantReferral({ text: input.question, inquiry });
+  const referral = evaluateConsultantReferral({ text: input.question, inquiry, sources: ranked.length ? ranked : input.sources });
   const lines: string[] = [];
   lines.push("ImmigrationOnMe is not USCIS, a law firm, or a substitute for a licensed attorney or accredited representative.");
   if (inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS && !input.hasLinkedCase) {
-    const matched = ranked.map((source) => source.title).join("; ");
+    const matched = (ranked.length ? ranked : input.sources ?? []).slice(0, 3).map((source) => source.title).join("; ");
     lines.push(
       matched
         ? `You do not need a USCIS case, letter, or receipt on file for this kind of question. The closest official material on file is: ${matched}.`
@@ -562,6 +551,8 @@ export function buildQaFallbackAnswer(input: {
       "I could not pull matching official material just now. Add your current status, location, and the outcome you want so the right USCIS or DOJ rule can be retrieved.",
     );
   }
+  const nextLine = bestSuggestionLine(options.pathSteps);
+  if (nextLine && inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS) lines.push(nextLine);
   if (referral.level === "required") {
     lines.push(`Based on what you described, a licensed professional should be involved before you act. ${referral.reason}`);
   } else if (referral.level === "recommended") {

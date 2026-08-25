@@ -10,6 +10,7 @@ import { runCaseAnalysis } from "@/lib/ai/orchestrator";
 import { verifyCaseProgress, isVerifiable } from "@/lib/case-progress";
 import { saveUpload, validateUploadFile } from "@/lib/uploads";
 import { processDocumentsEvidence } from "@/lib/evidence/document-processing";
+import { recordSuggestionsForCase } from "@/lib/goal-suggestion-store";
 import type { ActionState } from "./auth";
 
 // Guest-friendly intake: situation + goal + documents, no account required.
@@ -160,6 +161,7 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
   await db.caseClarifyMessage.create({
     data: { caseId, role: "user", questionKey: q.key, content: answerWithFiles.slice(0, 2000) },
   });
+  await recordSuggestionsForCase(caseId, ["ADD_CASE_DETAILS", `question:${q.key}`], "completed");
   await db.case.update({
     where: { id: caseId },
     data: {
@@ -197,6 +199,7 @@ export async function completePathStepAction(stepId: string) {
   if (!isVerifiable(step.actionKey)) {
     await db.pathStep.update({ where: { id: stepId }, data: { status: "done" } });
   }
+  if (step.actionKey) await recordSuggestionsForCase(step.caseId, [step.actionKey], "completed");
   await verifyCaseProgress(step.caseId);
   revalidatePath(`/app/cases/${step.caseId}`);
 }
