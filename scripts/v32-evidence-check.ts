@@ -53,6 +53,8 @@ import {
   conversationNarrative,
   historicalSuggestionBoost,
   officialSuggestionCandidates,
+  qaConversationCanSaveAsOptionsCase,
+  QA_FOLLOW_UP_PREFIX,
   rankFollowUpQuestions,
   rankGoalSuggestions,
   refineInquiryThemes,
@@ -163,7 +165,7 @@ assert(DEFAULT_PROMPTS.notice_explainer.includes("COMPILED CASE EVIDENCE BRIEF")
 assert(DEFAULT_PROMPTS.notice_explainer.includes("APPROVED CASE PRESENTATION"), "notice explainer prompt should mention approved case presentation");
 assert((PROMPT_SUPERSEDES.notice_explainer ?? []).length > 0, "notice explainer prompt should declare superseded hashes");
 assert(DEFAULT_PROMPTS.assistant.includes("APPROVED CASE PRESENTATION"), "assistant prompt should mention approved case presentation");
-assert((PROMPT_SUPERSEDES.assistant ?? []).length > 0, "assistant prompt should declare superseded hashes");
+assert((PROMPT_SUPERSEDES.assistant ?? []).includes("4c37b46dc3cc6fa5a8581634f89b50a279a45427f50e3fd3a2898f90489ef2e1"), "assistant prompt should supersede the C6 goal-driven-qa hash");
 assert(DEFAULT_PROMPTS.letter_writer.includes("APPROVED CASE PRESENTATION"), "letter writer prompt should mention approved case presentation");
 assert((PROMPT_SUPERSEDES.letter_writer ?? []).length > 0, "letter writer prompt should declare superseded hashes");
 assert(DEFAULT_PROMPTS.guide.includes("current evidence position"), "guide prompt should mention current evidence position");
@@ -843,6 +845,34 @@ assert(!/identity documents/.test(conversationNarrative([
   { role: "user", content: "I want to marry a US citizen and we have not filed yet." },
 ])), "Q&A retrieval must not treat official excerpts in prior assistant turns as facts the customer already shared");
 assert(!/receipt notice|Do you have your USCIS/i.test(qaMarriageNext), "later Q&A turns must not fall through to a case-file question");
+const identityAsk = "What can you share about identity documents?";
+const identityHistory = [
+  { role: "user", content: "I want to marry a US citizen. What can we do if we have not filed yet?" },
+  { role: "assistant", content: `${qaFallback.split(QA_FOLLOW_UP_PREFIX)[0]}${QA_FOLLOW_UP_PREFIX} ${identityAsk}` },
+  { role: "user", content: "Passport and my birth certificate." },
+];
+const qaAfterIdentity = buildQaFallbackAnswer({
+  question: "Passport and my birth certificate.",
+  history: identityHistory,
+  sources: knowledgeCatalog,
+});
+const nextStepAfterIdentity = qaAfterIdentity.split("\n").find((line) => /For this goal, the next step/i.test(line)) ?? "";
+assert(nextStepAfterIdentity, "after an official Q&A answer the remaining official next step must still be named");
+assert(!/identity documents/i.test(nextStepAfterIdentity), "answering identity documents must drop that gap from remaining official needs");
+assert(/proof of status|relationship documents|bona fide marriage/i.test(nextStepAfterIdentity), "unanswered official gaps must remain on the next-step line");
+assert(askedFollowUpFromAssistant(qaAfterIdentity) !== identityAsk, "the next official follow-up must not re-ask the gap that was just answered");
+assert(/Family petition overview|I-130/i.test(qaAfterIdentity), "closing one official gap must keep the original marriage goal");
+assert(qaConversationCanSaveAsOptionsCase(identityHistory) === true, "answering an official follow-up should unlock saving the conversation as an options review");
+assert(qaConversationCanSaveAsOptionsCase([{ role: "user", content: "I got an RFE from USCIS and the deadline is coming up." }]) === false, "an RFE question with no official options follow-up must not offer an options review");
+assert(
+  selectNextClarifyQuestion({
+    openOptions: true,
+    answeredKeys: ["evidence:identity_documents"],
+    planned: { unknownKey: "identity_documents", question: identityAsk },
+  })?.text !== identityAsk,
+  "an options case seeded from Q&A must not re-ask the official gap already answered in chat",
+);
+assert(!/receipt notice|Do you have your USCIS/i.test(qaAfterIdentity), "gap-closing Q&A turns must not fall through to a case-file question");
 const qaRfe = buildQaFallbackAnswer({
   question: "I got an RFE from USCIS and the deadline is coming up.",
   sources: knowledgeCatalog,
@@ -898,3 +928,4 @@ console.log(`- v4 C3: unified authority ${findAuthorityForKnowledge(knowledgeCat
 console.log(`- v4 C4: goal-driven next step ${marriageOptions.pathSteps[0]?.action_key}, I-589 consultant ${evaluateConsultantReferral({ text: "I want to stay in the United States.", sources: [knowledgeCatalog.find((item) => item.reference === "Form I-589")!] }).level}`);
 console.log(`- v4 C5: follow-up ${nextOfficialQuestion?.key}, learned ${rankedOpenQuestions.map((item) => item.key).join(" > ")}`);
 console.log(`- v4 C6: Q&A follow-up ${askedMarriageFollowUp}, next ${askedFollowUpFromAssistant(qaMarriageNext)}`);
+console.log(`- v4 C7: remaining next step ${nextStepAfterIdentity}, follow-up ${askedFollowUpFromAssistant(qaAfterIdentity)}`);

@@ -13,6 +13,10 @@ import {
   answeredKeysFromQaHistory,
   nextOfficialQaFollowUp,
   withOfficialQaFollowUp,
+  workingQaNarrative,
+  answeredOfficialPairs,
+  gapClosedByOfficialAnswer,
+  slugUnknownKey,
   type SuggestionBoosts,
 } from "./goal-suggestions";
 
@@ -174,7 +178,7 @@ function firstSentences(text: string, count = 2): string {
 }
 
 function slugKey(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 48) || "needed_fact";
+  return slugUnknownKey(value);
 }
 
 function alreadyStated(item: string, userText: string): boolean {
@@ -204,13 +208,16 @@ export function evidenceItemsFromAuthority(content: string): string[] {
 export function deriveAuthorityGaps(
   sources: KnowledgeRecord[],
   userText: string,
+  answered: { keys?: Iterable<string>; questions?: Iterable<string> } = {},
 ): { key: string; question: string; reason: string; item: string }[] {
   const gaps: { key: string; question: string; reason: string; item: string }[] = [];
   const seen = new Set<string>();
+  const answeredKeys = answered.keys ?? [];
+  const answeredQuestions = answered.questions ?? [];
   for (const source of sources) {
     for (const item of evidenceItemsFromAuthority(source.content)) {
-      if (alreadyStated(item, userText)) continue;
       const key = slugKey(item);
+      if (alreadyStated(item, userText) || gapClosedByOfficialAnswer(item, key, answeredKeys, answeredQuestions)) continue;
       if (seen.has(key)) continue;
       seen.add(key);
       gaps.push({
@@ -222,7 +229,8 @@ export function deriveAuthorityGaps(
     }
   }
   const hay = userText.toLowerCase();
-  if (!/\b(status|citizen|green card|permanent resident|f-?1|h-?1b|asylum|visitor|undocumented|daca|tps|opt)\b/i.test(hay)) {
+  if (!/\b(status|citizen|green card|permanent resident|f-?1|h-?1b|asylum|visitor|undocumented|daca|tps|opt)\b/i.test(hay)
+    && !gapClosedByOfficialAnswer("current immigration status", "current_status", answeredKeys, answeredQuestions)) {
     gaps.unshift({
       key: "current_status",
       question: "What is your current immigration status, if any?",
@@ -230,7 +238,8 @@ export function deriveAuthorityGaps(
       item: "current immigration status",
     });
   }
-  if (!/\b(united states|in the u\.?s|inside the us|abroad|embassy|consul)\b/i.test(hay)) {
+  if (!/\b(united states|in the u\.?s|inside the us|abroad|embassy|consul)\b/i.test(hay)
+    && !gapClosedByOfficialAnswer("location", "location", answeredKeys, answeredQuestions)) {
     gaps.push({
       key: "location",
       question: "Are you in the United States now, or would this be handled from abroad?",
@@ -348,6 +357,8 @@ export function buildOpenOptionsAnalysis(
   inquiry = classifyImmigrationInquiry(input),
   sources: KnowledgeRecord[] = [],
   boosts: SuggestionBoosts = {},
+  answeredKeys: string[] = [],
+  answeredQuestions: string[] = [],
 ): OpenOptionsAnalysis {
   const situation = (input.situation ?? "").trim();
   const goal = (input.goal ?? "").trim();
@@ -360,7 +371,7 @@ export function buildOpenOptionsAnalysis(
   };
   const ranked = sources.length ? rankKnowledgeSources(sources, rankHint, 3) : [];
   inquiry = { ...inquiry, themes: refineInquiryThemes(inquiry.themes, ranked) };
-  const gaps = rankAuthorityGaps(deriveAuthorityGaps(ranked, known), boosts);
+  const gaps = rankAuthorityGaps(deriveAuthorityGaps(ranked, known, { keys: answeredKeys, questions: answeredQuestions }), boosts);
   const referral = evaluateConsultantReferral({ text: known, inquiry, sources: ranked });
   const issues: OpenOptionsIssue[] = ranked.map((source) => issueFromSource(source, known, gaps, referral));
   if (referral.level === "required" && !issues.some((issue) => issue.issue_type === "professional_review")) {
@@ -483,10 +494,10 @@ export function applyInquiryToEvidenceState<
       confidence: string;
     };
   },
->(state: T, inquiry: ImmigrationInquiry, narrative = "", sources: KnowledgeRecord[] = [], boosts: SuggestionBoosts = {}): T {
+>(state: T, inquiry: ImmigrationInquiry, narrative = "", sources: KnowledgeRecord[] = [], boosts: SuggestionBoosts = {}, answeredKeys: string[] = []): T {
   if (inquiry.mode !== INQUIRY_MODES.OPEN_OPTIONS) return state;
   if (state.facts.some((fact) => CORE_FACT_KEYS.has(fact.key))) return state;
-  const options = buildOpenOptionsAnalysis({ situation: narrative, goal: narrative }, inquiry, sources, boosts);
+  const options = buildOpenOptionsAnalysis({ situation: narrative, goal: narrative }, inquiry, sources, boosts, answeredKeys);
   const identifierUnknowns = new Set(["receipt_number", "form_type", "notice_type"]);
   const keptUnknowns = state.unknowns.filter((item) => !identifierUnknowns.has(item.key) && !item.key.startsWith("conflict_"));
   const unknowns = [...options.unknowns, ...keptUnknowns];
@@ -521,17 +532,20 @@ export function buildQaFallbackAnswer(input: {
   boosts?: SuggestionBoosts;
 }): string {
   const history = input.history?.length ? input.history : [{ role: "user", content: input.question }];
-  const narrative = conversationNarrative(history) || input.question;
-  const inquiry = input.inquiry ?? classifyImmigrationInquiry({ situation: narrative, goal: narrative });
-  const options = buildOpenOptionsAnalysis({ situation: narrative, goal: narrative }, inquiry, input.sources ?? [], input.boosts);
+  const userNarrative = conversationNarrative(history) || input.question;
+  const inquiry = input.inquiry ?? classifyImmigrationInquiry({ situation: userNarrative, goal: userNarrative });
+  const baseOptions = buildOpenOptionsAnalysis({ situation: userNarrative, goal: userNarrative }, inquiry, input.sources ?? [], input.boosts);
+  const answered = answeredKeysFromQaHistory(history, baseOptions.unknowns);
+  const answeredQuestions = answeredOfficialPairs(history, baseOptions.unknowns).map((item) => item.question);
+  const working = workingQaNarrative(history, baseOptions.unknowns) || userNarrative;
+  const options = buildOpenOptionsAnalysis({ situation: working, goal: userNarrative }, inquiry, input.sources ?? [], input.boosts, answered, answeredQuestions);
   const ranked = options.issues
     .map((issue) => (input.sources ?? []).find((source) => source.title === issue.title))
     .filter((source): source is KnowledgeRecord => Boolean(source));
   const knowledge = ranked.length
     ? ranked.map((source) => `${source.title} (${source.reference})${source.url ? ` ${source.url}` : ""}\n${firstSentences(source.content, 3)}`).join("\n\n")
     : (input.knowledge ?? "").trim();
-  const referral = evaluateConsultantReferral({ text: narrative, inquiry, sources: ranked.length ? ranked : input.sources });
-  const answered = answeredKeysFromQaHistory(history, options.unknowns);
+  const referral = evaluateConsultantReferral({ text: userNarrative, inquiry, sources: ranked.length ? ranked : input.sources });
   const followUp = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS && !input.hasLinkedCase
     ? nextOfficialQaFollowUp(options.unknowns, answered, input.boosts)
     : null;

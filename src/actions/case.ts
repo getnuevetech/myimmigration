@@ -191,6 +191,81 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
   return { ok: true };
 }
 
+export async function createOptionsCaseFromQaAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const threadId = String(formData.get("threadId") ?? "");
+  if (!threadId) return { error: "Conversation not found." };
+  const user = await getCurrentUser();
+  const guest = user ? null : await getOrCreateGuestSession();
+  const thread = await db.qaThread.findUnique({
+    where: { id: threadId },
+    include: { messages: { orderBy: { createdAt: "asc" } } },
+  });
+  if (!thread) return { error: "Conversation not found." };
+  if (user ? thread.userId !== user.id : thread.guestSessionId !== guest?.id) {
+    return { error: "Conversation not found." };
+  }
+  if (thread.caseId) {
+    redirect(user ? `/app/cases/${thread.caseId}` : `/start/result?case=${thread.caseId}`);
+  }
+
+  const { classifyImmigrationInquiry, INQUIRY_MODES } = await import("@/lib/immigration-inquiry");
+  const {
+    answeredOfficialPairs,
+    conversationNarrative,
+    qaConversationCanSaveAsOptionsCase,
+    suggestionQuestionKey,
+    workingQaNarrative,
+  } = await import("@/lib/goal-suggestions");
+  const history = thread.messages.map((item) => ({ role: item.role, content: item.content }));
+  if (!qaConversationCanSaveAsOptionsCase(history, thread.caseId)) {
+    return { error: "Answer at least one official follow-up first so those facts can go on the options review." };
+  }
+  const userNarrative = conversationNarrative(history);
+  const inquiry = classifyImmigrationInquiry({ situation: userNarrative, goal: userNarrative });
+  if (inquiry.mode !== INQUIRY_MODES.OPEN_OPTIONS) {
+    return { error: "This conversation is about a filed case. Start from that notice instead of an options review." };
+  }
+
+  const firstQuestion = history.find((item) => item.role === "user")?.content.trim() || userNarrative;
+  const situation = workingQaNarrative(history) || firstQuestion;
+  const c = await db.case.create({
+    data: {
+      userId: user?.id ?? null,
+      guestSessionId: user ? null : guest!.id,
+      title: firstQuestion.slice(0, 80),
+      situation,
+      goal: firstQuestion.slice(0, 500),
+      status: "analyzing",
+    },
+  });
+  const pairs = answeredOfficialPairs(history);
+  for (const pair of pairs) {
+    const key = `evidence:${pair.key}`;
+    await db.caseClarifyMessage.create({
+      data: { caseId: c.id, role: "assistant", questionKey: key, content: pair.question },
+    });
+    await db.caseClarifyMessage.create({
+      data: { caseId: c.id, role: "user", questionKey: key, content: pair.answer.slice(0, 2000) },
+    });
+  }
+  await db.qaThread.update({ where: { id: thread.id }, data: { caseId: c.id } });
+  await recordSuggestionsForCase(
+    c.id,
+    ["ADD_CASE_DETAILS", ...pairs.map((pair) => suggestionQuestionKey(pair.key))].filter(Boolean),
+    "completed",
+  );
+  after(async () => {
+    const { logSystem } = await import("@/lib/syslog");
+    try {
+      await runCaseAnalysis(c.id);
+    } catch (err) {
+      await logSystem("error", "analysis", "Background options-review analysis from Q&A failed", String(err));
+      await db.case.update({ where: { id: c.id }, data: { status: "analyzed" } }).catch(() => null);
+    }
+  });
+  redirect(user ? `/app/cases/${c.id}` : `/start/result?case=${c.id}`);
+}
+
 export async function completePathStepAction(stepId: string) {
   const user = await requireUser();
   const step = await db.pathStep.findUnique({ where: { id: stepId }, include: { case: true } });

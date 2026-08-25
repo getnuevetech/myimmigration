@@ -32,7 +32,7 @@ function parseJson(value: string): unknown {
 }
 
 export async function rebuildCaseEvidenceState(caseId: string) {
-  const [facts, events, documents, documentsExpected, caseRow] = await Promise.all([
+  const [facts, events, documents, documentsExpected, caseRow, clarifyAnswers] = await Promise.all([
     db.evidenceFact.findMany({
       where: { caseId },
       include: { document: { select: { id: true, fileName: true, documentType: true } } },
@@ -48,6 +48,7 @@ export async function rebuildCaseEvidenceState(caseId: string) {
     }),
     getNumberSetting("analysis.expected_documents", 3),
     db.case.findUnique({ where: { id: caseId }, select: { situation: true, goal: true } }),
+    db.caseClarifyMessage.findMany({ where: { caseId, role: "user" }, select: { questionKey: true } }),
   ]);
 
   const compiledFacts: CompiledEvidenceFact[] = facts
@@ -123,6 +124,7 @@ export async function rebuildCaseEvidenceState(caseId: string) {
     [caseRow?.situation, caseRow?.goal].filter(Boolean).join("\n"),
     knowledgeSources,
     boosts,
+    clarifyAnswers.map((item) => item.questionKey),
   );
   const readiness = computeEvidenceReadinessSplit({
     documentsCount: documents.length,
