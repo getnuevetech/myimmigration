@@ -69,6 +69,14 @@ import {
   suggestionUsageFromCount,
 } from "../src/lib/suggestion-access";
 import {
+  formActionKey,
+  formNumberForStep,
+  matchingFormNumber,
+  rankFormCatalog,
+  rankMatchingForms,
+  resolveFormCatalogEntitlement,
+} from "../src/lib/goal-forms";
+import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
   conversationNarrative,
@@ -601,7 +609,8 @@ assert(/identity documents|relationship documents|bona fide marriage/i.test(JSON
 assert(!marriageOptions.unknowns.some((item) => item.key === "receipt_number"), "open-options analysis must not ask for a receipt number");
 assert(!marriageOptions.issues.some((issue) => /family green card path may be possible/i.test(issue.title)), "open-options analysis must not emit the canned family-green-card essay title");
 assert(marriageOptions.pathSteps[0]?.action_key === "ADD_CASE_DETAILS", "open-options next steps should start with clarifying facts, not uploading a notice");
-assert(/Form I-130/i.test(marriageOptions.pathSteps.find((step) => step.action_key === "COMPLETE_FORM_I485")?.title ?? ""), "marriage official-form review should name Form I-130 from the top-ranked source");
+assert(/Form I-130/i.test(marriageOptions.pathSteps.find((step) => step.action_key === "PREPARE_FORM")?.title ?? ""), "marriage official-form review should name Form I-130 from the top-ranked source");
+assert(!marriageOptions.pathSteps.some((step) => step.action_key === "COMPLETE_FORM_I485"), "marriage options must not start the I-485 wizard ahead of I-130");
 assert(!/I-485/i.test(marriageOptions.pathSteps.map((step) => step.title).join(" ")), "marriage next-step titles must not jump to I-485 ahead of the I-130 petition");
 assert(!marriageOptions.pathSteps.some((step) => step.action_key === "UPLOAD_NOTICE" || step.action_key === "GET_CASE_RECORD"), "open-options next steps must not require a USCIS case record");
 assert(marriageOptions.issues.every((issue) => issue.professional_review === "probably_unnecessary"), "a simple marriage-options story should not require a consultant");
@@ -615,12 +624,15 @@ const studentOptions = buildOpenOptionsAnalysis({
 assert(studentOptions.issues.some((issue) => /opt|i-765|employment authorization/i.test(`${issue.title} ${issue.our_conclusion}`)), "F-1 options should describe OPT or I-765 from official material");
 assert(!/I-797C|Request for Evidence|receipt notice/i.test(JSON.stringify(studentOptions.issues)), "F-1 options must not dump unrelated notice articles");
 assert(studentOptions.issues.every((issue) => issue.professional_review !== "required"), "an F-1 graduation question should not require a consultant");
+assert(/Form I-765/i.test(studentOptions.pathSteps.find((step) => step.action_key === "PREPARE_FORM")?.title ?? ""), "F-1 official-form review should name Form I-765");
+assert(!studentOptions.pathSteps.some((step) => step.action_key === "COMPLETE_FORM_I485"), "F-1 options must not start I-485 ahead of I-765");
 
 const asylumOptions = buildOpenOptionsAnalysis({
   situation: "I am afraid to return home because of persecution and want to apply for asylum.",
   goal: "Find out if I can stay",
 }, undefined, knowledgeCatalog);
 assert(asylumOptions.issues.some((issue) => issue.professional_review === "required" || issue.issue_type === "professional_review"), "asylum facts should flag licensed professional review");
+assert(/Form I-589/i.test(asylumOptions.pathSteps.find((step) => step.action_key === "PREPARE_FORM")?.title ?? ""), "asylum official-form review should name Form I-589");
 assert(evaluateConsultantReferral({ text: "I received a Notice of Intent to Deny on my I-485." }).level === "required", "a NOID should require professional review");
 assert(evaluateConsultantReferral({ text: "I am on F-1 graduating next month." }).level === "probably_unnecessary", "a simple F-1 question should not require a consultant");
 assert(evaluateConsultantReferral({ text: "USCIS sent an RFE and I must respond within 87 days." }).level === "recommended", "an RFE with a deadline should recommend professional review");
@@ -638,18 +650,18 @@ assert(!refineInquiryThemes(["naturalization", "family"], [knowledgeCatalog.find
 const boostedForm = rankGoalSuggestions(
   officialSuggestionCandidates([knowledgeCatalog[2]], [], { level: "probably_unnecessary", reason: "" }),
   suggestionBoostsFromStats(
-    [{ queryKey: "family|I-130", actionKey: "COMPLETE_FORM_I485", completedCount: 12, recommendedCount: 20 }],
+    [{ queryKey: "family|I-130", actionKey: "PREPARE_FORM", completedCount: 12, recommendedCount: 20 }],
     ["family|I-130"],
   ),
 );
-assert(boostedForm[0]?.action_key === "COMPLETE_FORM_I485", "when facts are complete, the historically completed official form review should be the next suggestion");
+assert(boostedForm[0]?.action_key === "PREPARE_FORM", "when facts are complete, the historically completed official form review should be the next suggestion");
 const pinnedDespiteBoost = rankGoalSuggestions(
   officialSuggestionCandidates(
     [knowledgeCatalog[2]],
     [{ question: "What can you share about identity documents?", item: "identity documents" }],
     { level: "probably_unnecessary", reason: "" },
   ),
-  { COMPLETE_FORM_I485: 20, REVIEW_ANALYSIS: 20 },
+  { PREPARE_FORM: 20, REVIEW_ANALYSIS: 20 },
 );
 assert(pinnedDespiteBoost[0]?.action_key === "ADD_CASE_DETAILS", "learning must not skip official evidence gaps even when another action was completed more often");
 assert(historicalSuggestionBoost(12, 4) > historicalSuggestionBoost(1, 1), "suggestions that similar customers completed should rank higher over time");
@@ -1051,6 +1063,59 @@ assert(consultantSeesCaseDetails("active"), "active consultants can see the shar
 assert(/Upgrade to Pro/i.test(matchRequestBlockReason(freeMatch)), "free match copy must send people to Pro");
 assert(presentation.hero.current_posture === "RFE notice needs review", "customer match requests must not convert the RFE fixture into open-options");
 
+const familyForms = rankMatchingForms({
+  inquiryMode: "open_options",
+  themes: marriageInquiry.themes,
+  sources: [knowledgeCatalog.find((item) => item.reference === "Form I-130")!],
+  authorityQueries: ["I-130", "I-485"],
+});
+assert(familyForms[0]?.formNumber === "I-130", `family open-options must rank I-130 first, got ${familyForms[0]?.formNumber}`);
+assert(familyForms.findIndex((item) => item.formNumber === "I-130") < familyForms.findIndex((item) => item.formNumber === "I-485"), "family open-options must rank I-130 before I-485");
+const studentForms = rankMatchingForms({
+  inquiryMode: "open_options",
+  themes: studentInquiry.themes,
+  authorityQueries: ["I-765", "I-485", "F-1"],
+});
+assert(studentForms[0]?.formNumber === "I-765", `F-1/student must rank I-765 first, got ${studentForms[0]?.formNumber}`);
+assert(studentForms.findIndex((item) => item.formNumber === "I-765") < studentForms.findIndex((item) => item.formNumber === "I-485"), "student options must rank I-765 before I-485");
+const asylumForms = rankMatchingForms({
+  inquiryMode: "open_options",
+  themes: ["asylum"],
+  sources: [knowledgeCatalog.find((item) => item.reference === "Form I-589")!],
+  authorityQueries: ["I-589", "I-485"],
+});
+assert(asylumForms[0]?.formNumber === "I-589", `asylum must rank I-589 first, got ${asylumForms[0]?.formNumber}`);
+const rfeForms = rankMatchingForms({
+  inquiryMode: "existing_case",
+  themes: ["adjustment"],
+  query: "I got an RFE from USCIS on my I-485 and the deadline is coming up.",
+  authorityQueries: ["I-485", "I-130"],
+});
+assert(rfeForms[0]?.formNumber === "I-485", `existing I-485 RFE may rank I-485 first, got ${rfeForms[0]?.formNumber}`);
+assert(matchingFormNumber({ inquiryMode: "open_options", themes: ["family"], authorityQueries: ["I-130", "I-485"] }) === "I-130", "matching form for family options is I-130");
+assert(formActionKey("I-130") === "PREPARE_FORM", "non-I-485 matching forms use PREPARE_FORM");
+assert(formActionKey("I-485") === "COMPLETE_FORM_I485", "I-485 keeps COMPLETE_FORM_I485");
+assert(formNumberForStep({ actionKey: "COMPLETE_FORM_I485", title: "Review Form I-130" }) === "I-130", "stored I-485 actions must still start I-130 when the step names I-130");
+assert(presentationStepCta("PREPARE_FORM", "case-1", "I-130")?.href === "/app/forms?form=I-130", "form CTA should deep-link the matching form");
+assert(presentationStepCta("PREPARE_FORM", "case-1", "I-130")?.label === "Start Form I-130", "form CTA should name the matching form");
+assert(presentationStepCta("COMPLETE_FORM_I485", "case-1", "I-130")?.href === "/app/forms?form=I-130", "legacy I-485 actions must not outrank a matching I-130");
+const rankedCatalog = rankFormCatalog(
+  [{ formNumber: "I-485" }, { formNumber: "I-130" }, { formNumber: "N-400" }],
+  familyForms,
+);
+assert(rankedCatalog[0]?.formNumber === "I-130", "forms catalog must list I-130 before I-485 for family options");
+const guestForms = resolveFormCatalogEntitlement({ isGuest: true });
+const freeForms = resolveFormCatalogEntitlement({ planKey: "free", hasWizard: false });
+const plusForms = resolveFormCatalogEntitlement({ planKey: "plus", hasWizard: true });
+const proForms = resolveFormCatalogEntitlement({ planKey: "pro", hasWizard: true });
+const staffForms = resolveFormCatalogEntitlement({ isStaff: true });
+assert(guestForms.showRegisterCta && !guestForms.canStartWizard, "guests must sign in before the forms catalog");
+assert(!freeForms.canStartWizard && freeForms.showUpgradeCta, "free matching forms stay locked until Plus");
+assert(plusForms.canStartWizard && proForms.canStartWizard && staffForms.canStartWizard, "plus, pro, and staff can start the matching form wizard");
+assert(DEFAULT_PROMPTS.presenter.includes("PREPARE_FORM"), "presenter prompt should emit PREPARE_FORM for non-I-485 matching forms");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven forms must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven forms must keep the approved open-options posture");
+
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
@@ -1080,3 +1145,4 @@ console.log(`- v4 C7: remaining next step ${nextStepAfterIdentity}, follow-up ${
 console.log(`- v4 C8: guest limit ${guestEntitlement.questionLimit}, free ${freeEntitlement.questionLimit}, plus personalized=${plusEntitlement.personalized}, pro consultant=${proEntitlement.consultantReferral}`);
 console.log(`- v4 C9: guest steps ${guestSuggestions.maxPathSteps}, free steps ${freeSuggestions.maxPathSteps}/${freeSuggestions.maxClarifyAnswers} clarify, plus personalized=${plusSuggestions.personalized}, pro consultant=${proSuggestions.consultantReferral}`);
 console.log(`- v4 C10: guest request=${guestMatch.canRequest}, pro request=${proMatch.canRequest}, autoAssigned=${requested.autoAssigned}, sharesFiles=${customerMatchSharesFiles(requested.status)}`);
+console.log(`- v4 C11: family ${familyForms[0]?.formNumber}, student ${studentForms[0]?.formNumber}, asylum ${asylumForms[0]?.formNumber}, RFE ${rfeForms[0]?.formNumber}, marriage action ${marriageOptions.pathSteps.find((step) => step.action_key === "PREPARE_FORM")?.action_key}`);

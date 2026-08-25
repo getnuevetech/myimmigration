@@ -8,6 +8,7 @@ import { CaseUpload } from "@/components/case-upload";
 import type { PresentationContract } from "@/lib/case-presentation-contract";
 import { formatPresentationDate, presentationActionStatus, presentationEvidenceGateLabel, presentationStepCta } from "@/lib/case-presentation-ui";
 import { limitSuggestionItems, suggestionConsultantCopy, type SuggestionChatAccess } from "@/lib/suggestion-access";
+import { formNumberForStep } from "@/lib/goal-forms";
 
 type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
 
@@ -62,7 +63,9 @@ export function CasePresentationView({
   pathSteps,
   documents,
   neededDocs,
-  formI485Id,
+  matchingFormId,
+  matchingFormNumber,
+  canStartForm,
   suggestionAccess,
 }: {
   caseId: string;
@@ -79,7 +82,9 @@ export function CasePresentationView({
   pathSteps: PathStepRow[];
   documents: DocumentRow[];
   neededDocs: { kind: string; label: string; hint: string }[];
-  formI485Id: string | null;
+  matchingFormId: string | null;
+  matchingFormNumber: string | null;
+  canStartForm: boolean;
   suggestionAccess?: SuggestionChatAccess;
 }) {
   const issueById = new Map(issues.map((issue) => [issue.id, issue]));
@@ -87,8 +92,15 @@ export function CasePresentationView({
   const visibleFindings = fullAccess ? presentation.findings : presentation.findings.slice(0, 1);
   const haveKinds = new Set(documents.map((doc) => doc.docKind));
   const gateLabel = presentationEvidenceGateLabel(presentation.what_this_means.evidence_gate_status);
+  const formFor = (actionKey: string, title?: string | null) =>
+    formNumberForStep({ actionKey, title, matchingForm: matchingFormNumber });
+  const stepCta = (actionKey: string, title?: string | null) => presentationStepCta(actionKey, caseId, formFor(actionKey, title));
+  const isFormAction = (actionKey: string) => {
+    const key = actionKey.toUpperCase();
+    return key === "COMPLETE_FORM_I485" || key === "PREPARE_FORM";
+  };
   const nextActionCta = presentation.hero.next_best_action
-    ? presentationStepCta(presentation.hero.next_best_action.action_key, caseId)
+    ? stepCta(presentation.hero.next_best_action.action_key, presentation.hero.next_best_action.title)
     : null;
   const actions = presentation.actions.length > 0
     ? presentation.actions
@@ -299,7 +311,7 @@ export function CasePresentationView({
                   if (Array.isArray(parsed)) outline = parsed.filter((item) => item?.heading && item?.detail);
                 } catch { /* legacy issues */ }
                 const nextAction = finding.next_action || issue?.nextAction || "";
-                const cta = nextAction ? presentationStepCta(nextAction, caseId) : null;
+                const cta = nextAction ? stepCta(nextAction, finding.title) : null;
                 return (
                   <Card key={finding.id}>
                     <CardBody>
@@ -441,7 +453,7 @@ export function CasePresentationView({
                   const step = stepByAction.get(action.action_key.toUpperCase());
                   const verifiable = isVerifiable(action.action_key);
                   const isCurrent = status.tone === "ready";
-                  const cta = presentationStepCta(action.action_key, caseId);
+                  const cta = stepCta(action.action_key, action.title);
                   return (
                     <div key={action.id} className={`flex items-start gap-3 rounded-xl p-3 ${isCurrent ? "bg-lime-50" : ""}`}>
                       <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
@@ -465,12 +477,16 @@ export function CasePresentationView({
                         )}
                         {interactive && status.tone !== "done" && status.tone !== "muted" && (
                           <div className="mt-2 flex flex-wrap gap-2">
-                            {action.action_key.toUpperCase() === "COMPLETE_FORM_I485" && formI485Id ? (
-                              <form action={startFormAction.bind(null, formI485Id)}>
+                            {isFormAction(action.action_key) && matchingFormId && canStartForm ? (
+                              <form action={startFormAction.bind(null, matchingFormId)}>
                                 <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
-                                  Start the USCIS form →
+                                  {cta?.label ?? "Start the matching form"} →
                                 </button>
                               </form>
+                            ) : isFormAction(action.action_key) && cta ? (
+                              <a href={cta.href} className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
+                                {cta.label} →
+                              </a>
                             ) : action.action_key.toUpperCase() === "UPLOAD_DOCUMENTS" ? (
                               <InlineUpload caseId={caseId} label="Upload documents" />
                             ) : cta ? (

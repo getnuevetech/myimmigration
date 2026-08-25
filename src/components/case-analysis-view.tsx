@@ -13,6 +13,10 @@ import { CasePresentationView } from "@/components/case-presentation-view";
 import { CaseAnalysisPlanCard } from "@/components/case-analysis-plan-card";
 import { CaseVersionCard } from "@/components/case-version-card";
 import Link from "next/link";
+import { hasFeature } from "@/lib/access";
+import { FEATURE_KEYS } from "@/lib/constants";
+import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { formCatalogHref, formNumberForStep, formStartLabel, matchingFormNumber } from "@/lib/goal-forms";
 
 export type CaseViewer = {
   role: "customer" | "consultant" | "admin";
@@ -135,9 +139,28 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     }
   }
 
-  const formI485 = interactive
-    ? await db.uscisFormTemplate.findFirst({ where: { formNumber: "I-485", isPublished: true }, select: { id: true } })
+  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const matchingNumber = matchingFormNumber({
+    themes: inquiry.themes,
+    inquiryMode: inquiry.mode,
+    query: `${c.situation} ${c.goal}`,
+    authorityQueries: authorityQueriesForInquiry(inquiry),
+    sources: c.issues.map((issue) => ({
+      reference: issue.uscisBasis,
+      title: issue.title,
+      content: issue.conclusion,
+    })),
+  });
+  const matchingForm = matchingNumber
+    ? await db.uscisFormTemplate.findFirst({
+        where: { formNumber: matchingNumber, isPublished: true },
+        select: { id: true, formNumber: true },
+      })
     : null;
+  const matchingFormNumberValue = matchingForm?.formNumber ?? matchingNumber;
+  const canStartForm = Boolean(
+    interactive && matchingForm && (viewer.role !== "customer" || (await hasFeature(viewer.userId, FEATURE_KEYS.FORMS))),
+  );
 
   if (presentation) {
     return (
@@ -176,7 +199,9 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           pathSteps={c.pathSteps}
           documents={c.documents}
           neededDocs={neededDocs}
-          formI485Id={formI485?.id ?? null}
+          matchingFormId={matchingForm?.id ?? null}
+          matchingFormNumber={matchingFormNumberValue}
+          canStartForm={canStartForm}
           suggestionAccess={viewer.suggestionAccess}
         />
         {analysisPlanJson && (viewer.role !== "customer" || viewer.suggestionAccess?.personalized !== false) ? <CaseAnalysisPlanCard planJson={analysisPlanJson} /> : null}
@@ -185,7 +210,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     );
   }
 
-  const stepCta = (actionKey: string): { label: string; href: string } | null => {
+  const stepCta = (actionKey: string, title?: string): { label: string; href: string } | null => {
     switch (actionKey.toUpperCase()) {
       case "GET_CASE_RECORD":
       case "GET_ACCOUNT_RECORD":
@@ -198,8 +223,10 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       case "DRAFT_LETTER":
         return { label: "Draft my letter", href: `/app/letters/new?case=${c.id}` };
       case "COMPLETE_FORM_I485":
-      case "PREPARE_FORM":
-        return { label: "See matching USCIS forms", href: "/app/forms" };
+      case "PREPARE_FORM": {
+        const formNumber = formNumberForStep({ actionKey, title, matchingForm: matchingFormNumberValue });
+        return { label: formStartLabel(formNumber), href: formCatalogHref(formNumber) };
+      }
       case "ADD_DEADLINE":
         return { label: "Add the deadline", href: "/app/deadlines" };
       case "REVIEW_ANALYSIS":
@@ -615,17 +642,21 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                       )}
                       {interactive && step.status !== "done" && (
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {step.actionKey.toUpperCase() === "COMPLETE_FORM_I485" && formI485 ? (
-                            <form action={startFormAction.bind(null, formI485.id)}>
+                          {["COMPLETE_FORM_I485", "PREPARE_FORM"].includes(step.actionKey.toUpperCase()) && matchingForm && canStartForm ? (
+                            <form action={startFormAction.bind(null, matchingForm.id)}>
                               <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
-                                Start the USCIS form →
+                                {formStartLabel(matchingForm.formNumber)} →
                               </button>
                             </form>
+                          ) : ["COMPLETE_FORM_I485", "PREPARE_FORM"].includes(step.actionKey.toUpperCase()) && stepCta(step.actionKey, step.title) ? (
+                            <a href={stepCta(step.actionKey, step.title)!.href} className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
+                              {stepCta(step.actionKey, step.title)!.label} →
+                            </a>
                           ) : step.actionKey.toUpperCase() === "UPLOAD_DOCUMENTS" ? (
                             <InlineUpload caseId={c.id} label="Upload documents" />
-                          ) : stepCta(step.actionKey) ? (
-                            <a href={stepCta(step.actionKey)!.href} className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
-                              {stepCta(step.actionKey)!.label} →
+                          ) : stepCta(step.actionKey, step.title) ? (
+                            <a href={stepCta(step.actionKey, step.title)!.href} className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
+                              {stepCta(step.actionKey, step.title)!.label} →
                             </a>
                           ) : null}
                           {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD"].includes(step.actionKey.toUpperCase()) && (

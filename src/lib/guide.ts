@@ -34,6 +34,8 @@ const STEP_TIPS: Record<string, string> = {
     "Use Response letters → New letter. Describe what you want to say in plain English; we draft a professional letter you can edit and print. Mail it before your deadline (certified mail with return receipt is safest).",
   COMPLETE_FORM_I485:
     "Open USCIS forms → Form I-485 and answer the guided questions. Review the draft against the official USCIS instructions before filing.",
+  PREPARE_FORM:
+    "Open USCIS forms and start the matching form listed on your case. Answer the guided questions. Review the draft against the official USCIS instructions before filing.",
 };
 
 type Snapshot = {

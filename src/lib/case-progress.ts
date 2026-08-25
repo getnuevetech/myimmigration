@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "./db";
 import { getEvidenceActionState } from "./evidence/case-action-state";
+import { formNumberForStep } from "./goal-forms";
 
 // Evidence-based path-step verification. Steps with a recognized action key
 // are completed only when the system can actually observe the required
@@ -14,7 +15,8 @@ export const VERIFIABLE_ACTIONS: Record<string, string> = {
   REVIEW_ANALYSIS: "Completes when the analysis has been re-run after documents were added",
   RERUN_ANALYSIS: "Completes when the analysis has been re-run after documents were added",
   DRAFT_LETTER: "Completes when a response letter has been drafted",
-  COMPLETE_FORM_I485: "Completes when the Form I-485 wizard is finished",
+  COMPLETE_FORM_I485: "Completes when the matching Form I-485 wizard is finished",
+  PREPARE_FORM: "Completes when the matching USCIS form wizard is finished",
   ADD_DEADLINE: "Completes when a deadline is tracked for this case",
   PREPARE_APPOINTMENT: "Completes when an appointment or interview event is extracted into evidence",
 };
@@ -30,6 +32,7 @@ async function stepSatisfied(
     userId: string | null;
     caseCreatedAt: Date;
   },
+  title = "",
 ): Promise<boolean> {
   const key = actionKey.toUpperCase();
   const evidenceState = await getEvidenceActionState(ctx.caseId, key).catch(() => null);
@@ -73,10 +76,13 @@ async function stepSatisfied(
       });
       return count > 0;
     }
-    case "COMPLETE_FORM_I485": {
+    case "COMPLETE_FORM_I485":
+    case "PREPARE_FORM": {
       if (!ctx.userId) return false;
+      const formNumber = formNumberForStep({ actionKey: key, title });
+      if (!formNumber) return false;
       const count = await db.formSubmission.count({
-        where: { userId: ctx.userId, status: "completed", template: { formNumber: "I-485" } },
+        where: { userId: ctx.userId, status: "completed", template: { formNumber } },
       });
       return count > 0;
     }
@@ -114,7 +120,7 @@ export async function verifyCaseProgress(caseId: string): Promise<number> {
 
   for (const step of c.pathSteps) {
     if (!isVerifiable(step.actionKey)) continue;
-    const satisfied = await stepSatisfied(step.actionKey, ctx);
+    const satisfied = await stepSatisfied(step.actionKey, ctx, step.title);
     const desired = satisfied ? "done" : "pending";
     if ((step.status === "done") !== satisfied) {
       await db.pathStep.update({ where: { id: step.id }, data: { status: desired } });

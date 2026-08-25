@@ -26,7 +26,11 @@ export function formatPresentationDate(value: string): string {
   return date.toLocaleDateString("en-US");
 }
 
-export function presentationStepCta(actionKey: string, caseId: string): { label: string; href: string } | null {
+export function presentationStepCta(
+  actionKey: string,
+  caseId: string,
+  matchingForm?: string | null,
+): { label: string; href: string } | null {
   switch (actionKey.toUpperCase()) {
     case "GET_CASE_RECORD":
     case "GET_ACCOUNT_RECORD":
@@ -39,8 +43,13 @@ export function presentationStepCta(actionKey: string, caseId: string): { label:
     case "DRAFT_LETTER":
       return { label: "Draft my letter", href: `/app/letters/new?case=${caseId}` };
     case "COMPLETE_FORM_I485":
-    case "PREPARE_FORM":
-      return { label: "See matching USCIS forms", href: "/app/forms" };
+    case "PREPARE_FORM": {
+      const formNumber = matchingForm || (actionKey.toUpperCase() === "COMPLETE_FORM_I485" ? "I-485" : null);
+      return {
+        label: formNumber ? `Start Form ${formNumber}` : "See matching USCIS forms",
+        href: formNumber ? `/app/forms?form=${encodeURIComponent(formNumber)}` : "/app/forms",
+      };
+    }
     case "ADD_DEADLINE":
       return { label: "Add the deadline", href: "/app/deadlines" };
     case "REVIEW_ANALYSIS":

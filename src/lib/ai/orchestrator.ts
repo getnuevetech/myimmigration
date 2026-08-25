@@ -70,6 +70,7 @@ function normalizeActionKey(value: unknown): string {
     "ADD_DEADLINE",
     "DRAFT_LETTER",
     "COMPLETE_FORM_I485",
+    "PREPARE_FORM",
     "REVIEW_ANALYSIS",
     "RERUN_ANALYSIS",
     "PREPARE_APPOINTMENT",

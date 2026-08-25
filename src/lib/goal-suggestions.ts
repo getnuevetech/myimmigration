@@ -1,5 +1,6 @@
 import type { KnowledgeRecord } from "./knowledge-retrieval";
 import type { ConsultantReferral, InquiryTheme, OpenOptionsPathStep } from "./immigration-inquiry";
+import { formActionKey, matchingFormNumber, type FormMatchInput } from "./goal-forms";
 
 export type SuggestionCandidate = {
   title: string;
@@ -101,6 +102,7 @@ export function officialSuggestionCandidates(
   sources: KnowledgeRecord[] = [],
   gaps: { question: string; item: string }[] = [],
   referral: ConsultantReferral = { level: "probably_unnecessary", reason: "" },
+  formMatch: FormMatchInput = {},
 ): SuggestionCandidate[] {
   const steps: SuggestionCandidate[] = [];
   if (gaps.length) {
@@ -113,12 +115,20 @@ export function officialSuggestionCandidates(
     });
   }
   if (sources[0]) {
+    const formNumber = matchingFormNumber({
+      sources: formMatch.sources?.length ? formMatch.sources : sources,
+      themes: formMatch.themes,
+      inquiryMode: formMatch.inquiryMode,
+      query: formMatch.query,
+      authorityQueries: formMatch.authorityQueries,
+    });
+    const reference = sources[0].reference || sources[0].title;
     steps.push({
-      title: `Review ${sources[0].reference || sources[0].title}`,
+      title: formNumber ? `Review Form ${formNumber}` : `Review ${reference}`,
       description: sources[0].url
         ? `Read the matching official instructions (${sources[0].url}) and see what filing would involve before you file anything.`
         : `Read the matching official instructions for ${sources[0].title} before you file anything.`,
-      action_key: "COMPLETE_FORM_I485",
+      action_key: formActionKey(formNumber),
       officialRank: 1,
     });
   }
