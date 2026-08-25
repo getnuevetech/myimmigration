@@ -37,10 +37,12 @@ import { formatKnowledgeBlock, type KnowledgeRecord } from "../knowledge-retriev
 import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry, buildOpenOptionsAnalysis } from "../immigration-inquiry";
 import {
   answeredKeysFromQaHistory,
+  answeredOfficialPairs,
   conversationNarrative,
   nextOfficialQaFollowUp,
   suggestionQuestionKey,
   withOfficialQaFollowUp,
+  workingQaNarrative,
 } from "../goal-suggestions";
 
 type Json = Record<string, unknown>;
@@ -755,8 +757,18 @@ export async function runQaChat(history: { role: string; content: string }[], op
   const knowledge = formatKnowledgeBlock(knowledgeSources);
   const grounding = await loadCaseGrounding(opts?.caseId);
   const { queryKeys, boosts } = await loadBoostsForNarrative(narrative, narrative);
-  const options = buildOpenOptionsAnalysis({ situation: narrative, goal: narrative }, inquiry, knowledgeSources, boosts);
-  const answered = answeredKeysFromQaHistory(history, options.unknowns);
+  const baseOptions = buildOpenOptionsAnalysis({ situation: narrative, goal: narrative }, inquiry, knowledgeSources, boosts);
+  const answered = answeredKeysFromQaHistory(history, baseOptions.unknowns);
+  const answeredQuestions = answeredOfficialPairs(history, baseOptions.unknowns).map((item) => item.question);
+  const working = workingQaNarrative(history, baseOptions.unknowns) || narrative;
+  const options = buildOpenOptionsAnalysis(
+    { situation: working, goal: narrative },
+    inquiry,
+    knowledgeSources,
+    boosts,
+    answered,
+    answeredQuestions,
+  );
   const followUp = !opts?.caseId && inquiry.mode === "open_options"
     ? nextOfficialQaFollowUp(options.unknowns, answered, boosts)
     : null;
@@ -794,7 +806,7 @@ export async function runQaChat(history: { role: string; content: string }[], op
         : "";
       const evidenceContext = grounding.block
         ? `\n\n${grounding.block}\n\nGrounding rule: answer case-specific questions from the approved presentation, the evidence brief, the conversation, and USCIS reference material. Treat unsupported details as unknowns. Do not contradict the approved posture, next action, or deadlines.`
-        : `\n\nAnswer as an options question: explain possible paths with conditions from matching official material. Never invent a receipt number, deadline, notice type, or filed-case posture. Do not require the user to upload a notice before you can help.`;
+        : `\n\nAnswer as an options question: explain possible paths with conditions from matching official material. Treat official follow-ups the person already answered in this conversation as provided facts — do not list those gaps as still needed. Never invent a receipt number, deadline, notice type, or filed-case posture. Do not require the user to upload a notice before you can help.`;
       const prompt = fill(step.promptTemplate, { input: `${convo}${priorDrafts}${evidenceContext}`, knowledge: knowledge || "(none)" });
       const result = await callProvider(step.provider, [{ role: "user", content: prompt }]);
       if (result.text.trim()) drafts.push(result.text.trim());

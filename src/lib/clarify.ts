@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { nextPlannedQuestion } from "./question-planner";
 import { classifyImmigrationInquiry, INQUIRY_MODES, OPEN_OPTIONS_POSTURE } from "./immigration-inquiry";
-import { selectNextClarifyQuestion, type ClarifyQuestionPick } from "./goal-suggestions";
+import { selectNextClarifyQuestion, situationLine, type ClarifyQuestionPick } from "./goal-suggestions";
 import { resolveCasePresentation } from "./case-presentation";
 
 // The clarifying interview: when the analysis is thin (missing timeline years,
@@ -13,32 +13,7 @@ import { resolveCasePresentation } from "./case-presentation";
 
 export type ClarifyQuestion = ClarifyQuestionPick;
 
-export { suggestionQuestionKey } from "./goal-suggestions";
-
-// How each answer is written back into the case narrative. The phrasing
-// matters: it gives the extraction engine the USCIS context words it needs.
-export function situationLine(key: string, questionText: string, answer: string): string {
-  const a = answer.trim();
-  if (key.startsWith("evidence:")) return `[Clarified evidence] ${questionText}: ${a}.`;
-  switch (key) {
-    case "case_year":
-      return `[Clarified] Immigration matter year(s): ${a}.`;
-    case "case_status_expected":
-      return `[Clarified] I expected this immigration case status or result: ${a}.`;
-    case "case_status_received":
-      return `[Clarified] USCIS actually sent this status or result: ${a}.`;
-    case "fee_or_payment_issue":
-      return `[Clarified] USCIS listed this fee or payment issue: ${a}.`;
-    case "notice_details":
-      return `[Clarified] My USCIS notice: ${a}.`;
-    case "missing_filings":
-      return `[Clarified] Missing or pending filing details: ${a}.`;
-    case "have_case_record":
-      return `[Clarified] About my USCIS case record: ${a}.`;
-    default:
-      return `[Clarified] ${questionText} — ${a}.`;
-  }
-}
+export { suggestionQuestionKey, situationLine } from "./goal-suggestions";
 
 export async function caseUsesOpenOptionsInterview(caseId: string): Promise<boolean> {
   const c = await db.case.findUnique({

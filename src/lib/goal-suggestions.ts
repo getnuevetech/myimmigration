@@ -306,6 +306,103 @@ export function conversationNarrative(history: QaHistoryTurn[]): string {
     .join("\n");
 }
 
+export function slugUnknownKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 48) || "needed_fact";
+}
+
+export function situationLine(key: string, questionText: string, answer: string): string {
+  const a = answer.trim();
+  if (key.startsWith("evidence:")) return `[Clarified evidence] ${questionText}: ${a}.`;
+  switch (key) {
+    case "case_year":
+      return `[Clarified] Immigration matter year(s): ${a}.`;
+    case "case_status_expected":
+      return `[Clarified] I expected this immigration case status or result: ${a}.`;
+    case "case_status_received":
+      return `[Clarified] USCIS actually sent this status or result: ${a}.`;
+    case "fee_or_payment_issue":
+      return `[Clarified] USCIS listed this fee or payment issue: ${a}.`;
+    case "notice_details":
+      return `[Clarified] My USCIS notice: ${a}.`;
+    case "missing_filings":
+      return `[Clarified] Missing or pending filing details: ${a}.`;
+    case "have_case_record":
+      return `[Clarified] About my USCIS case record: ${a}.`;
+    default:
+      return `[Clarified] ${questionText} — ${a}.`;
+  }
+}
+
+export function officialFollowUpItem(question: string): string {
+  const cleaned = question.trim().replace(/[?]+$/, "");
+  const match = cleaned.match(/what can you share about (.+)$/i);
+  return (match?.[1] || cleaned).trim();
+}
+
+export function officialFollowUpKey(question: string): string {
+  return slugUnknownKey(officialFollowUpItem(question));
+}
+
+export type OfficialQaAnswer = { question: string; answer: string; key: string };
+
+export function answeredOfficialPairs(
+  history: QaHistoryTurn[],
+  unknowns: { key: string; question: string }[] = [],
+): OfficialQaAnswer[] {
+  const pairs: OfficialQaAnswer[] = [];
+  for (let index = 0; index < history.length; index += 1) {
+    const message = history[index];
+    if (message.role !== "assistant") continue;
+    const asked = askedFollowUpFromAssistant(message.content);
+    if (!asked) continue;
+    const unknown = unknowns.find((item) => item.question === asked || asked.includes(item.question) || item.question.includes(asked));
+    const reply = history.slice(index + 1).find((item) => item.role === "user");
+    if (!reply?.content.trim()) continue;
+    pairs.push({
+      question: asked,
+      answer: reply.content.trim(),
+      key: unknown?.key || officialFollowUpKey(asked),
+    });
+  }
+  return pairs;
+}
+
+export function qaFactsNarrative(
+  history: QaHistoryTurn[],
+  unknowns: { key: string; question: string }[] = [],
+): string {
+  return answeredOfficialPairs(history, unknowns)
+    .map((item) => situationLine(`evidence:${canonicalUnknownKey(item.key)}`, item.question, item.answer))
+    .join("\n");
+}
+
+export function workingQaNarrative(
+  history: QaHistoryTurn[],
+  unknowns: { key: string; question: string }[] = [],
+): string {
+  return [conversationNarrative(history), qaFactsNarrative(history, unknowns)].filter(Boolean).join("\n");
+}
+
+export function qaConversationCanSaveAsOptionsCase(history: QaHistoryTurn[], caseId?: string | null): boolean {
+  if (caseId) return false;
+  return answeredOfficialPairs(history).length > 0;
+}
+
+export function gapClosedByOfficialAnswer(
+  item: string,
+  key: string,
+  answeredKeys: Iterable<string> = [],
+  answeredQuestions: Iterable<string> = [],
+): boolean {
+  if (questionWasAnswered(answeredKeys, key)) return true;
+  const needle = item.toLowerCase();
+  if (!needle) return false;
+  for (const question of answeredQuestions) {
+    if (question.toLowerCase().includes(needle)) return true;
+  }
+  return false;
+}
+
 export function followUpQuestionLine(question: string): string {
   return `${QA_FOLLOW_UP_PREFIX} ${question.trim()}`;
 }
@@ -318,19 +415,9 @@ export function askedFollowUpFromAssistant(content: string): string | null {
 
 export function answeredKeysFromQaHistory(
   history: QaHistoryTurn[],
-  unknowns: { key: string; question: string }[],
+  unknowns: { key: string; question: string }[] = [],
 ): string[] {
-  const keys: string[] = [];
-  for (let index = 0; index < history.length; index += 1) {
-    const message = history[index];
-    if (message.role !== "assistant") continue;
-    const asked = askedFollowUpFromAssistant(message.content);
-    if (!asked) continue;
-    const unknown = unknowns.find((item) => item.question === asked || asked.includes(item.question) || item.question.includes(asked));
-    const reply = history.slice(index + 1).find((item) => item.role === "user");
-    if (unknown && reply?.content.trim()) keys.push(unknown.key);
-  }
-  return Array.from(new Set(keys));
+  return Array.from(new Set(answeredOfficialPairs(history, unknowns).map((item) => item.key)));
 }
 
 export function nextOfficialQaFollowUp(

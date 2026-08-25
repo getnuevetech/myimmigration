@@ -3,6 +3,8 @@
 import { useActionState, useRef, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { askQuestionAction } from "@/actions/user";
+import { createOptionsCaseFromQaAction } from "@/actions/case";
+import { qaConversationCanSaveAsOptionsCase } from "@/lib/goal-suggestions";
 
 function Submit() {
   const { pending } = useFormStatus();
@@ -17,6 +19,19 @@ function Submit() {
   );
 }
 
+function SaveOptionsCase() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-lime-800 ring-1 ring-lime-300 hover:bg-lime-100 disabled:opacity-50"
+    >
+      {pending ? "Saving…" : "Keep these answers as my options review"}
+    </button>
+  );
+}
+
 export function QaChat({
   threadId,
   caseId = "",
@@ -27,8 +42,10 @@ export function QaChat({
   messages: { id: string; role: string; content: string }[];
 }) {
   const [state, formAction] = useActionState(askQuestionAction, null);
+  const [saveState, saveAction] = useActionState(createOptionsCaseFromQaAction, null);
   const formRef = useRef<HTMLFormElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const canSave = Boolean(threadId) && qaConversationCanSaveAsOptionsCase(messages, caseId);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,6 +76,20 @@ export function QaChat({
         ))}
         <div ref={bottomRef} />
       </div>
+      {canSave && (
+        <form action={saveAction} className="border-t border-lime-100 bg-lime-50 px-4 py-3">
+          {saveState?.error && (
+            <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{saveState.error}</p>
+          )}
+          <input type="hidden" name="threadId" value={threadId} />
+          <p className="text-sm text-lime-900">
+            Official follow-ups you already answered are saved as facts for this goal. Keep them on an options review so the next questions are only the ones still open.
+          </p>
+          <div className="mt-2">
+            <SaveOptionsCase />
+          </div>
+        </form>
+      )}
       <form ref={formRef} action={formAction} className="border-t border-slate-200 p-4">
         {state?.error && (
           <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
