@@ -35,6 +35,13 @@ import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
 import { mergeSupportedText, presentationGroundingBlock, withPresentationNoticeSteps } from "../case-presentation-brief";
 import { formatKnowledgeBlock, type KnowledgeRecord } from "../knowledge-retrieval";
 import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry, buildOpenOptionsAnalysis } from "../immigration-inquiry";
+import {
+  answeredKeysFromQaHistory,
+  conversationNarrative,
+  nextOfficialQaFollowUp,
+  suggestionQuestionKey,
+  withOfficialQaFollowUp,
+} from "../goal-suggestions";
 
 type Json = Record<string, unknown>;
 
@@ -735,9 +742,10 @@ export async function runQaChat(history: { role: string; content: string }[], op
   const steps = await getRunnableSteps(STAGE_KEYS.QA);
   const convo = history.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
   const question = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
-  const inquiry = classifyImmigrationInquiry({ situation: question, goal: question });
+  const narrative = conversationNarrative(history) || question;
+  const inquiry = classifyImmigrationInquiry({ situation: narrative, goal: narrative });
   const knowledgeQuery = [
-    history.map((m) => m.content).join(" "),
+    narrative,
     inquiry.mode === "open_options" ? inquiry.themes.join(" ") : "",
     inquiry.mode === "open_options" ? authorityQueriesForInquiry(inquiry).join(" ") : "",
   ]
@@ -746,18 +754,32 @@ export async function runQaChat(history: { role: string; content: string }[], op
   const knowledgeSources = await retrieveKnowledgeRecords(knowledgeQuery, 5, opts?.caseId);
   const knowledge = formatKnowledgeBlock(knowledgeSources);
   const grounding = await loadCaseGrounding(opts?.caseId);
-  const { queryKeys, boosts } = await loadBoostsForNarrative(question, question);
-  const options = buildOpenOptionsAnalysis({ situation: question, goal: question }, inquiry, knowledgeSources, boosts);
+  const { queryKeys, boosts } = await loadBoostsForNarrative(narrative, narrative);
+  const options = buildOpenOptionsAnalysis({ situation: narrative, goal: narrative }, inquiry, knowledgeSources, boosts);
+  const answered = answeredKeysFromQaHistory(history, options.unknowns);
+  const followUp = !opts?.caseId && inquiry.mode === "open_options"
+    ? nextOfficialQaFollowUp(options.unknowns, answered, boosts)
+    : null;
   await recordSuggestionEvent(queryKeys, options.suggestionKeys ?? ["REVIEW_ANALYSIS"], "recommended");
+  if (answered.length) {
+    await recordSuggestionEvent(queryKeys, answered.map((key) => suggestionQuestionKey(key)).filter(Boolean), "completed");
+  }
+  if (followUp) {
+    await recordSuggestionEvent(queryKeys, [suggestionQuestionKey(followUp.key)].filter(Boolean), "recommended");
+  }
   const fallbackAnswer = () =>
-    buildQaFallbackAnswer({
-      question,
-      knowledge,
-      sources: knowledgeSources,
-      inquiry,
-      hasLinkedCase: Boolean(opts?.caseId),
-      boosts,
-    });
+    withOfficialQaFollowUp(
+      buildQaFallbackAnswer({
+        question,
+        history,
+        knowledge,
+        sources: knowledgeSources,
+        inquiry,
+        hasLinkedCase: Boolean(opts?.caseId),
+        boosts,
+      }),
+      followUp,
+    );
   if (steps.length === 0) {
     return fallbackAnswer();
   }
@@ -781,7 +803,7 @@ export async function runQaChat(history: { role: string; content: string }[], op
       await logSystem("error", "ai_call", `${step.provider.name} failed answering the immigration Q&A chat`, String(err));
     }
   }
-  if (drafts.length > 0) return drafts[drafts.length - 1];
+  if (drafts.length > 0) return withOfficialQaFollowUp(drafts[drafts.length - 1], followUp);
   return fallbackAnswer();
 }
 

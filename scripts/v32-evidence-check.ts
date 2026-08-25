@@ -49,6 +49,8 @@ import {
 } from "../src/lib/authority-match";
 import {
   consultantFromOfficialSources,
+  askedFollowUpFromAssistant,
+  conversationNarrative,
   historicalSuggestionBoost,
   officialSuggestionCandidates,
   rankFollowUpQuestions,
@@ -774,6 +776,8 @@ const qaFallback = buildQaFallbackAnswer({
 assert(/do not need a USCIS case/i.test(qaFallback), "Q&A without a case should still answer options questions");
 assert(/Family petition overview/i.test(qaFallback), "Q&A fallback should cite the matching official source");
 assert(/For this goal, the next step/i.test(qaFallback), "Q&A should suggest the next official step for this goal");
+assert(/To match this official material more closely:/i.test(qaFallback), "guest Q&A should ask the next official follow-up without a case file");
+assert(!/receipt notice|Do you have your USCIS/i.test(qaFallback), "guest Q&A follow-up must not ask for a USCIS case record");
 assert(!/upload your USCIS notice/i.test(qaFallback), "Q&A fallback must not tell people with no file that they must upload a notice");
 assert(!/I-797C|Request for Evidence/i.test(qaFallback), "Q&A fallback must not dump unrelated notice articles into a marriage question");
 
@@ -818,6 +822,33 @@ const qaStudent = buildQaFallbackAnswer({
 assert(/OPT|I-765|Employment authorization/i.test(qaStudent), "F-1 Q&A should answer from OPT or I-765 material");
 assert(!/I-797C|Request for Evidence|receipt notice/i.test(qaStudent), "F-1 Q&A must not dump unrelated RFE or receipt-notice articles");
 assert(!/licensed professional should be involved/i.test(qaStudent), "F-1 Q&A should not require a consultant");
+assert(/To match this official material more closely:/i.test(qaStudent), "F-1 Q&A should continue with an official OPT/I-765 follow-up");
+assert(!/receipt notice|Do you have your USCIS/i.test(qaStudent), "F-1 Q&A follow-up must not ask for a notice the student does not have");
+const askedMarriageFollowUp = askedFollowUpFromAssistant(qaFallback);
+assert(askedMarriageFollowUp, "marriage Q&A should expose a parseable official follow-up");
+const qaMarriageNext = buildQaFallbackAnswer({
+  question: "Passport and my birth certificate.",
+  history: [
+    { role: "user", content: "I want to marry a US citizen. What can we do if we have not filed yet?" },
+    { role: "assistant", content: qaFallback },
+    { role: "user", content: "Passport and my birth certificate." },
+  ],
+  sources: knowledgeCatalog,
+});
+assert(/Family petition overview|I-130/i.test(qaMarriageNext), "a short follow-up reply must keep the original marriage goal and official I-130 material");
+assert(/To match this official material more closely:/i.test(qaMarriageNext), "the next Q&A turn should ask the next official gap");
+assert(askedFollowUpFromAssistant(qaMarriageNext) !== askedMarriageFollowUp, "answering one official Q&A follow-up should advance to a different official gap");
+assert(!/identity documents/.test(conversationNarrative([
+  { role: "assistant", content: "Evidence usually includes identity documents, proof of status, and relationship documents." },
+  { role: "user", content: "I want to marry a US citizen and we have not filed yet." },
+])), "Q&A retrieval must not treat official excerpts in prior assistant turns as facts the customer already shared");
+assert(!/receipt notice|Do you have your USCIS/i.test(qaMarriageNext), "later Q&A turns must not fall through to a case-file question");
+const qaRfe = buildQaFallbackAnswer({
+  question: "I got an RFE from USCIS and the deadline is coming up.",
+  sources: knowledgeCatalog,
+});
+assert(!/To match this official material more closely:/i.test(qaRfe), "an existing-case RFE question must not start an open-options interview in Q&A");
+assert(/RFE|Request for Evidence/i.test(qaRfe), "an RFE question should still retrieve the RFE material");
 const listFromOptions = caseListSummaryFromView(
   { status: "analyzed", reconstructionPosition: "STALE reconstruction posture" },
   buildApprovedCaseView({
@@ -866,3 +897,4 @@ console.log(`- v4 C2: grounded options ${marriageOptions.issues[0]?.title}, F-1 
 console.log(`- v4 C3: unified authority ${findAuthorityForKnowledge(knowledgeCatalog[2], [i130Authority])?.key}, reconstruction cites official material, no preliminary/no-docs customer framing`);
 console.log(`- v4 C4: goal-driven next step ${marriageOptions.pathSteps[0]?.action_key}, I-589 consultant ${evaluateConsultantReferral({ text: "I want to stay in the United States.", sources: [knowledgeCatalog.find((item) => item.reference === "Form I-589")!] }).level}`);
 console.log(`- v4 C5: follow-up ${nextOfficialQuestion?.key}, learned ${rankedOpenQuestions.map((item) => item.key).join(" > ")}`);
+console.log(`- v4 C6: Q&A follow-up ${askedMarriageFollowUp}, next ${askedFollowUpFromAssistant(qaMarriageNext)}`);
