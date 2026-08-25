@@ -573,6 +573,8 @@ assert(/identity documents|relationship documents|bona fide marriage/i.test(JSON
 assert(!marriageOptions.unknowns.some((item) => item.key === "receipt_number"), "open-options analysis must not ask for a receipt number");
 assert(!marriageOptions.issues.some((issue) => /family green card path may be possible/i.test(issue.title)), "open-options analysis must not emit the canned family-green-card essay title");
 assert(marriageOptions.pathSteps[0]?.action_key === "ADD_CASE_DETAILS", "open-options next steps should start with clarifying facts, not uploading a notice");
+assert(/Form I-130/i.test(marriageOptions.pathSteps.find((step) => step.action_key === "COMPLETE_FORM_I485")?.title ?? ""), "marriage official-form review should name Form I-130 from the top-ranked source");
+assert(!/I-485/i.test(marriageOptions.pathSteps.map((step) => step.title).join(" ")), "marriage next-step titles must not jump to I-485 ahead of the I-130 petition");
 assert(!marriageOptions.pathSteps.some((step) => step.action_key === "UPLOAD_NOTICE" || step.action_key === "GET_CASE_RECORD"), "open-options next steps must not require a USCIS case record");
 assert(marriageOptions.issues.every((issue) => issue.professional_review === "probably_unnecessary"), "a simple marriage-options story should not require a consultant");
 assert(!/Preliminary review|No USCIS case file is on record|no USCIS documents were uploaded/i.test(JSON.stringify(marriageOptions)), "customer-facing options analysis must not be framed as preliminary or missing a case file");
