@@ -43,23 +43,23 @@ function asOptions(value: unknown): { value: string; label: string }[] | undefin
 
 function asFields(value: unknown): WizardField[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const record = item as Record<string, unknown>;
-      const key = String(record.key ?? "").trim();
-      if (!key) return null;
-      return {
-        key,
-        label: String(record.label ?? key),
-        type: asFieldType(record.type),
-        options: asOptions(record.options),
-        placeholder: record.placeholder ? String(record.placeholder) : undefined,
-        required: Boolean(record.required),
-        hint: record.hint ? String(record.hint) : record.help ? String(record.help) : undefined,
-      };
-    })
-    .filter((item): item is WizardField => Boolean(item));
+  const fields: WizardField[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    const key = String(record.key ?? "").trim();
+    if (!key) continue;
+    fields.push({
+      key,
+      label: String(record.label ?? key),
+      type: asFieldType(record.type),
+      options: asOptions(record.options),
+      placeholder: record.placeholder ? String(record.placeholder) : undefined,
+      required: Boolean(record.required),
+      hint: record.hint ? String(record.hint) : record.help ? String(record.help) : undefined,
+    });
+  }
+  return fields;
 }
 
 /** Accepts both wizard `{ fields }` steps and seeded `{ questions }` steps. */
