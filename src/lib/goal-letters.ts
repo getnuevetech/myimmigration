@@ -246,7 +246,7 @@ export function letterTitleForKind(kind?: string | null, now = new Date()): stri
 
 export function rankLetterCatalog<T extends { kind: string }>(items: T[], ranked: RankedLetter[]): T[] {
   if (!ranked.length) return items;
-  const order = new Map(ranked.map((item, index) => [item.kind, index]));
+  const order = new Map<string, number>(ranked.map((item, index) => [item.kind, index]));
   return items
     .map((item, index) => ({ item, index }))
     .sort((a, b) => {
