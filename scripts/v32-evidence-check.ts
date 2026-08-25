@@ -51,9 +51,12 @@ import {
   consultantFromOfficialSources,
   historicalSuggestionBoost,
   officialSuggestionCandidates,
+  rankFollowUpQuestions,
   rankGoalSuggestions,
   refineInquiryThemes,
+  selectNextClarifyQuestion,
   suggestionBoostsFromStats,
+  suggestionQuestionKey,
 } from "../src/lib/goal-suggestions";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -627,6 +630,69 @@ assert(pinnedDespiteBoost[0]?.action_key === "ADD_CASE_DETAILS", "learning must 
 assert(historicalSuggestionBoost(12, 4) > historicalSuggestionBoost(1, 1), "suggestions that similar customers completed should rank higher over time");
 assert(consultantFromOfficialSources([knowledgeCatalog.find((item) => item.reference === "Form I-589")!])?.level === "required", "I-589 official material itself should mark professional review required");
 assert(consultantFromOfficialSources([knowledgeCatalog.find((item) => item.reference === "Form I-765")!]) == null, "I-765 listing asylum-related EAD categories must not treat the source as an asylum case");
+assert(suggestionQuestionKey("evidence:identity_documents") === "question:identity_documents", "clarify completions must record the same question key the ranker uses");
+assert(suggestionQuestionKey("evidence:presentation:0") === "", "presentation-index questions must not create junk learning keys");
+const rankedOpenQuestions = rankFollowUpQuestions(
+  [
+    { key: "receipt_number" },
+    { key: "identity_documents" },
+    { key: "location" },
+    { key: "bona_fide_marriage_evidence" },
+  ],
+  suggestionBoostsFromStats(
+    [{ queryKey: "family|I-130", actionKey: "question:bona_fide_marriage_evidence", completedCount: 12, recommendedCount: 4 }],
+    ["family|I-130"],
+  ),
+  { openOptions: true },
+);
+assert(rankedOpenQuestions[0]?.key === "location", "status/location questions stay first even after similar customers answer a later evidence item");
+assert(rankedOpenQuestions[1]?.key === "bona_fide_marriage_evidence", "similar customers completing an official evidence question should promote it after pinned status/location");
+assert(!rankedOpenQuestions.some((item) => item.key === "receipt_number"), "open-options interviews must drop receipt-number questions");
+assert(rankFollowUpQuestions(
+  [{ key: "identity_documents" }, { key: "location" }],
+  { "question:identity_documents": 20 },
+  { openOptions: true },
+)[0]?.key === "location", "learning cannot skip the pinned location question");
+const nextOfficialQuestion = selectNextClarifyQuestion({
+  openOptions: true,
+  answeredKeys: [],
+  planned: { unknownKey: "identity_documents", question: "What can you share about identity documents?" },
+});
+assert(nextOfficialQuestion?.key === "evidence:identity_documents", "the live interview should ask the planned official gap first");
+assert(!/receipt number/i.test(nextOfficialQuestion?.text ?? ""), "the first open-options question must not ask for a receipt number");
+assert(selectNextClarifyQuestion({
+  openOptions: true,
+  answeredKeys: ["evidence:identity_documents"],
+  planned: { unknownKey: "identity_documents", question: "What can you share about identity documents?" },
+})?.key === "anything_else", "answering evidence:key must count as answering that official question");
+assert(!/receipt notice/i.test(selectNextClarifyQuestion({
+  openOptions: true,
+  answeredKeys: ["evidence:identity_documents", "evidence:location"],
+  planned: null,
+})?.text ?? ""), "after official gaps, open-options must not fall through to a case-file receipt question");
+assert(selectNextClarifyQuestion({
+  openOptions: true,
+  answeredKeys: ["evidence:identity_documents", "anything_else"],
+  planned: null,
+  hasCaseRecord: false,
+  hasNotice: true,
+}) === null, "open-options interviews must end without asking for a USCIS case record");
+assert(selectNextClarifyQuestion({
+  openOptions: false,
+  answeredKeys: [],
+  planned: { unknownKey: "response_deadline", question: "What evidence will be submitted for the RFE?" },
+  hasYear: true,
+  hasNotice: true,
+  hasCaseRecord: true,
+})?.key === "evidence:response_deadline", "an RFE case should still ask the planned RFE evidence question");
+assert(selectNextClarifyQuestion({
+  openOptions: false,
+  answeredKeys: ["evidence:response_deadline"],
+  planned: null,
+  hasYear: true,
+  hasNotice: true,
+  hasCaseRecord: true,
+})?.key === "notice_details", "an existing-case RFE can still ask about the notice after official gaps");
 
 const emptyReconcile = reconcileEvidenceStates([{
   documentType: "other",
@@ -785,3 +851,4 @@ console.log(`- v4 A12: ${selected?.source} approved state wins over stale stored
 console.log(`- v4 C2: grounded options ${marriageOptions.issues[0]?.title}, F-1 ${rankedStudent[0]?.reference}, RFE ${rfeInquiry.mode}/${rankedRfe[0]?.reference}`);
 console.log(`- v4 C3: unified authority ${findAuthorityForKnowledge(knowledgeCatalog[2], [i130Authority])?.key}, reconstruction cites official material, no preliminary/no-docs customer framing`);
 console.log(`- v4 C4: goal-driven next step ${marriageOptions.pathSteps[0]?.action_key}, I-589 consultant ${evaluateConsultantReferral({ text: "I want to stay in the United States.", sources: [knowledgeCatalog.find((item) => item.reference === "Form I-589")!] }).level}`);
+console.log(`- v4 C5: follow-up ${nextOfficialQuestion?.key}, learned ${rankedOpenQuestions.map((item) => item.key).join(" > ")}`);

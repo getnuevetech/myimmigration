@@ -1,19 +1,20 @@
 import { db } from "@/lib/db";
 import { nextClarifyQuestion } from "@/lib/clarify";
+import { classifyImmigrationInquiry, INQUIRY_MODES } from "@/lib/immigration-inquiry";
 import { ClarifyAnswerForm } from "./clarify-answer-form";
 import { AutoRefresh } from "./auto-refresh";
 
-// The clarifying interview card: chat-style Q&A that gathers the specific
-// facts the analysis is missing. Every answer re-runs the analysis in the
-// background; while it runs, this card waits and the page live-refreshes.
 export async function CaseClarify({ caseId }: { caseId: string }) {
   const [c, messages] = await Promise.all([
-    db.case.findUnique({ where: { id: caseId }, select: { status: true } }),
+    db.case.findUnique({
+      where: { id: caseId },
+      select: { status: true, situation: true, goal: true },
+    }),
     db.caseClarifyMessage.findMany({ where: { caseId }, orderBy: { createdAt: "asc" } }),
   ]);
   const analyzing = c?.status === "analyzing";
-  // The question generator reads the issues, which are being rebuilt during a
-  // re-run — don't compute the next question until the analysis settles.
+  const inquiry = classifyImmigrationInquiry({ situation: c?.situation, goal: c?.goal });
+  const openOptions = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS;
   const question = analyzing ? null : await nextClarifyQuestion(caseId);
   if (!analyzing && !question && messages.length === 0) return null;
 
@@ -28,7 +29,9 @@ export async function CaseClarify({ caseId }: { caseId: string }) {
             {analyzing
               ? "Your answer is saved and the analysis is re-running with it — the next question appears here when it finishes."
               : question
-                ? "Your answers feed straight into the analysis: receipt numbers, dates, notices, evidence, and case details update the findings above automatically."
+                ? openOptions
+                  ? "These follow-ups come from the official USCIS/DOJ material that matched your goal. You do not need a receipt number to answer."
+                  : "Your answers feed straight into the analysis: receipt numbers, dates, notices, evidence, and case details update the findings above automatically."
                 : "Every answer has been folded into your analysis. Add documents anytime to strengthen it further."}
           </p>
         </div>

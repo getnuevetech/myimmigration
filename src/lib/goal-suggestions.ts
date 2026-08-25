@@ -165,13 +165,120 @@ export function toPathSteps(candidates: SuggestionCandidate[]): OpenOptionsPathS
   }));
 }
 
+export const PINNED_QUESTION_KEYS = ["current_status", "location"] as const;
+export const CASE_FILE_QUESTION_KEYS = new Set([
+  "receipt_number",
+  "form_type",
+  "notice_type",
+  "have_case_record",
+  "notice_details",
+]);
+
+export function canonicalUnknownKey(key: string): string {
+  return key.replace(/^(question|evidence):/, "");
+}
+
+export function suggestionQuestionKey(unknownKey: string): string {
+  const key = canonicalUnknownKey(unknownKey);
+  if (!key || key.startsWith("presentation:")) return "";
+  return `question:${key}`;
+}
+
+export function rankFollowUpQuestions<T extends { key: string }>(
+  questions: T[],
+  boosts: SuggestionBoosts = {},
+  options: { openOptions?: boolean } = {},
+): T[] {
+  const filtered = options.openOptions
+    ? questions.filter((item) => !CASE_FILE_QUESTION_KEYS.has(canonicalUnknownKey(item.key)))
+    : questions;
+  const pinnedKeys = new Set<string>(PINNED_QUESTION_KEYS);
+  const pinned = filtered.filter((item) => pinnedKeys.has(canonicalUnknownKey(item.key)));
+  const rest = filtered
+    .filter((item) => !pinnedKeys.has(canonicalUnknownKey(item.key)))
+    .sort((a, b) => (boosts[suggestionQuestionKey(b.key)] ?? 0) - (boosts[suggestionQuestionKey(a.key)] ?? 0));
+  return [...pinned, ...rest];
+}
+
 export function rankAuthorityGaps<T extends { key: string }>(gaps: T[], boosts: SuggestionBoosts = {}): T[] {
-  const pinnedKeys = new Set(["current_status", "location"]);
-  const pinned = gaps.filter((item) => pinnedKeys.has(item.key));
-  const rest = gaps
-    .filter((item) => !pinnedKeys.has(item.key))
-    .sort((a, b) => (boosts[`question:${b.key}`] ?? 0) - (boosts[`question:${a.key}`] ?? 0));
-  return [...pinned, ...rest].slice(0, 8);
+  return rankFollowUpQuestions(gaps, boosts, { openOptions: true }).slice(0, 8);
+}
+
+export function questionWasAnswered(answeredKeys: Iterable<string>, unknownKey: string): boolean {
+  const key = canonicalUnknownKey(unknownKey);
+  const answered = new Set(answeredKeys);
+  return answered.has(key) || answered.has(`evidence:${key}`) || answered.has(`question:${key}`);
+}
+
+export type ClarifyQuestionPick = { key: string; text: string };
+
+export function selectNextClarifyQuestion(input: {
+  openOptions: boolean;
+  answeredKeys: string[];
+  planned: { unknownKey: string; question: string } | null;
+  hasYear?: boolean;
+  hasCaseUpdate?: boolean;
+  hasFee?: boolean;
+  hasNotice?: boolean;
+  hasFiling?: boolean;
+  hasCaseRecord?: boolean;
+}): ClarifyQuestionPick | null {
+  const answered = input.answeredKeys;
+  if (input.planned && !questionWasAnswered(answered, input.planned.unknownKey)) {
+    return { key: `evidence:${input.planned.unknownKey}`, text: input.planned.question };
+  }
+  if (input.openOptions) {
+    if (!questionWasAnswered(answered, "anything_else")) {
+      return {
+        key: "anything_else",
+        text: "Anything else about this goal we should know before matching more official material?",
+      };
+    }
+    return null;
+  }
+  const existing: { key: string; text: string; needed: boolean }[] = [
+    {
+      key: "case_year",
+      text: "Which year(s) does this immigration matter involve? For example: my I-485 was filed in 2024, or I received the RFE in 2026.",
+      needed: !input.hasYear,
+    },
+    {
+      key: "case_status_expected",
+      text: "Let's pin down the expected case status. What did you expect USCIS to do or send next?",
+      needed: Boolean(input.hasCaseUpdate),
+    },
+    {
+      key: "case_status_received",
+      text: "What status, notice, or result did USCIS actually send, and on what date?",
+      needed: Boolean(input.hasCaseUpdate),
+    },
+    {
+      key: "fee_or_payment_issue",
+      text: "Does the USCIS notice list a filing fee or payment issue? If yes, what does it say and where does it appear?",
+      needed: Boolean(input.hasFee),
+    },
+    {
+      key: "notice_details",
+      text: "Look at your USCIS letter: what is the notice type, receipt number, notice date, and response deadline printed on it?",
+      needed: Boolean(input.hasNotice),
+    },
+    {
+      key: "missing_filings",
+      text: "Which immigration forms or evidence packets are missing, pending, or not yet filed?",
+      needed: Boolean(input.hasFiling),
+    },
+    {
+      key: "have_case_record",
+      text: "Do you have your USCIS receipt notice, online case status, or account record? Answer: yes / no / I need help getting it.",
+      needed: !input.hasCaseRecord,
+    },
+    {
+      key: "anything_else",
+      text: "Last one: anything else we should know? Prior filings, notices, deadlines, address changes, travel, arrests, or life events that may affect the case.",
+      needed: true,
+    },
+  ];
+  return existing.find((item) => item.needed && !questionWasAnswered(answered, item.key)) ?? null;
 }
 
 export function bestSuggestionLine(steps: OpenOptionsPathStep[]): string {

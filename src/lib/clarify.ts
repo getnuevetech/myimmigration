@@ -1,6 +1,8 @@
 import "server-only";
 import { db } from "./db";
 import { nextPlannedQuestion } from "./question-planner";
+import { classifyImmigrationInquiry, INQUIRY_MODES, OPEN_OPTIONS_POSTURE } from "./immigration-inquiry";
+import { selectNextClarifyQuestion, type ClarifyQuestionPick } from "./goal-suggestions";
 import { resolveCasePresentation } from "./case-presentation";
 
 // The clarifying interview: when the analysis is thin (missing timeline years,
@@ -9,7 +11,9 @@ import { resolveCasePresentation } from "./case-presentation";
 // form the extraction engine parses, and the analysis re-runs automatically —
 // so each answer visibly sharpens the findings.
 
-export type ClarifyQuestion = { key: string; text: string };
+export type ClarifyQuestion = ClarifyQuestionPick;
+
+export { suggestionQuestionKey } from "./goal-suggestions";
 
 // How each answer is written back into the case narrative. The phrasing
 // matters: it gives the extraction engine the USCIS context words it needs.
@@ -36,6 +40,19 @@ export function situationLine(key: string, questionText: string, answer: string)
   }
 }
 
+export async function caseUsesOpenOptionsInterview(caseId: string): Promise<boolean> {
+  const c = await db.case.findUnique({
+    where: { id: caseId },
+    select: { situation: true, goal: true, reconstruction: { select: { currentPosition: true } } },
+  });
+  if (!c) return false;
+  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  if (inquiry.mode === INQUIRY_MODES.EXISTING_CASE) return false;
+  const presentation = await resolveCasePresentation(caseId).catch(() => null);
+  const posture = presentation?.hero.current_posture || c.reconstruction?.currentPosition || "";
+  return inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS || posture === OPEN_OPTIONS_POSTURE;
+}
+
 /**
  * The next unanswered question for this case, or null when the interview is
  * complete. Questions are derived from what the analysis actually lacks.
@@ -53,75 +70,23 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
   });
   if (!c || c.status === "closed") return null;
 
-  const answered = new Set(c.clarifyMessages.map((m) => m.questionKey));
+  const answered = c.clarifyMessages.map((m) => m.questionKey);
   const suppressedEvidenceKeys = new Set(c.suppressedQuestions.map((q) => q.evidenceFactId || q.questionKey));
   const hasCaseRecord =
     c.documents.some((d) => ["case_record", "case record", "receipt"].includes(d.docKind)) ||
     (suppressedEvidenceKeys.has("receipt_number") && suppressedEvidenceKeys.has("form_type"));
   const plannedQuestion = await nextPlannedQuestion(caseId);
-  if (plannedQuestion && !answered.has(`evidence:${plannedQuestion.unknownKey}`)) {
-    return { key: `evidence:${plannedQuestion.unknownKey}`, text: plannedQuestion.question };
-  }
-  const presentation = await resolveCasePresentation(caseId).catch(() => null);
-  if (presentation) {
-    for (const [index, question] of presentation.what_this_means.unknowns.entries()) {
-      const key = `evidence:presentation:${index}`;
-      if (!answered.has(key) && question && question !== plannedQuestion?.question) {
-        return { key, text: question };
-      }
-    }
-  }
-  const caseUpdateIssue = c.issues.find((i) => i.issueType === "case_update_discrepancy");
-  const feeIssue = c.issues.find((i) => i.issueType === "fee_or_payment_issue");
-  const noticeIssue = c.issues.find((i) => i.issueType === "uscis_notice_response");
-  const filingIssue = c.issues.find((i) => ["missing_filing", "missing_evidence"].includes(i.issueType));
+  const openOptions = await caseUsesOpenOptionsInterview(caseId);
   const hasYear = c.issues.some((i) => i.caseYear);
-
-  const questions: (ClarifyQuestion & { needed: boolean })[] = [
-    {
-      key: "case_year",
-      text: "Which year(s) does this immigration matter involve? For example: my I-485 was filed in 2024, or I received the RFE in 2026.",
-      needed: !hasYear,
-    },
-    {
-      key: "case_status_expected",
-      text: "Let's pin down the expected case status. What did you expect USCIS to do or send next?",
-      needed: Boolean(caseUpdateIssue),
-    },
-    {
-      key: "case_status_received",
-      text: "What status, notice, or result did USCIS actually send, and on what date?",
-      needed: Boolean(caseUpdateIssue),
-    },
-    {
-      key: "fee_or_payment_issue",
-      text: "Does the USCIS notice list a filing fee or payment issue? If yes, what does it say and where does it appear?",
-      needed: Boolean(feeIssue),
-    },
-    {
-      key: "notice_details",
-      text: "Look at your USCIS letter: what is the notice type, receipt number, notice date, and response deadline printed on it?",
-      needed: Boolean(noticeIssue),
-    },
-    {
-      key: "missing_filings",
-      text: "Which immigration forms or evidence packets are missing, pending, or not yet filed?",
-      needed: Boolean(filingIssue),
-    },
-    {
-      key: "have_case_record",
-      text: "Do you have your USCIS receipt notice, online case status, or account record? Answer: yes / no / I need help getting it.",
-      needed: !hasCaseRecord,
-    },
-    {
-      key: "anything_else",
-      text: "Last one: anything else we should know? Prior filings, notices, deadlines, address changes, travel, arrests, or life events that may affect the case.",
-      needed: true,
-    },
-  ];
-
-  for (const q of questions) {
-    if (q.needed && !answered.has(q.key)) return { key: q.key, text: q.text };
-  }
-  return null;
+  return selectNextClarifyQuestion({
+    openOptions,
+    answeredKeys: answered,
+    planned: plannedQuestion ? { unknownKey: plannedQuestion.unknownKey, question: plannedQuestion.question } : null,
+    hasYear,
+    hasCaseUpdate: Boolean(c.issues.find((i) => i.issueType === "case_update_discrepancy")),
+    hasFee: Boolean(c.issues.find((i) => i.issueType === "fee_or_payment_issue")),
+    hasNotice: Boolean(c.issues.find((i) => i.issueType === "uscis_notice_response")),
+    hasFiling: Boolean(c.issues.find((i) => ["missing_filing", "missing_evidence"].includes(i.issueType))),
+    hasCaseRecord,
+  });
 }
