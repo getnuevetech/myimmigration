@@ -1,9 +1,11 @@
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import { getGuestSession } from "@/lib/guest";
 import { SiteHeader, SiteFooter } from "@/components/site-nav";
 import { QaChat } from "@/components/qa-chat";
 import { loadQaAccess } from "@/lib/qa-quota";
 import { toQaChatAccess } from "@/lib/qa-access";
+import { redirect } from "next/navigation";
 
 export const metadata = { title: "Ask an immigration question" };
 
@@ -12,6 +14,8 @@ export default async function GuestQaPage({
 }: {
   searchParams: Promise<{ thread?: string }>;
 }) {
+  const user = await getCurrentUser();
+  if (user) redirect("/app/qa");
   const { thread: threadId } = await searchParams;
   const guest = await getGuestSession();
   const thread =
