@@ -9,9 +9,15 @@ import { inputClass } from "./ui";
 export function NoticeUpload({
   cases = [],
   defaultCaseId = "",
+  locked = false,
+  lockHref = "/app/billing?upgrade=notices",
+  lockLabel = "Unlock notice explanations with Plus →",
 }: {
   cases?: { id: string; label: string }[];
   defaultCaseId?: string;
+  locked?: boolean;
+  lockHref?: string;
+  lockLabel?: string;
 }) {
   const [state, formAction] = useActionState(uploadNoticeAction, null);
   const [caseId, setCaseId] = useState(defaultCaseId);
@@ -24,6 +30,14 @@ export function NoticeUpload({
       router.refresh();
     }
   }, [defaultCaseId, state, router]);
+
+  if (locked) {
+    return (
+      <a href={lockHref} className="inline-flex rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900">
+        {lockLabel}
+      </a>
+    );
+  }
 
   return (
     <form ref={ref} action={formAction} className="space-y-3">

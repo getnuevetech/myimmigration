@@ -4,13 +4,13 @@ import { ActionForm, SubmitButton } from "./action-form";
 import { addDeadlineAction } from "@/actions/user";
 import { inputClass } from "./ui";
 
-export function AddDeadlineForm() {
+export function AddDeadlineForm({ placeholder = "e.g. File Form I-130" }: { placeholder?: string }) {
   return (
     <ActionForm action={addDeadlineAction} successMessage="Deadline added.">
       <div className="flex flex-wrap items-end gap-3">
         <label className="min-w-48 flex-1">
           <span className="mb-1 block text-xs font-medium text-slate-600">What&apos;s due?</span>
-          <input name="title" required placeholder="e.g. Respond to RFE" className={inputClass} />
+          <input name="title" required placeholder={placeholder} className={inputClass} />
         </label>
         <label>
           <span className="mb-1 block text-xs font-medium text-slate-600">Date</span>

@@ -72,6 +72,7 @@ export function CasePresentationView({
   canGenerateLetter,
   matchingDocumentKind,
   documentKinds,
+  inquiryMode,
   suggestionAccess,
 }: {
   caseId: string;
@@ -95,6 +96,7 @@ export function CasePresentationView({
   canGenerateLetter: boolean;
   matchingDocumentKind: string | null;
   documentKinds: { kind: string; name: string }[];
+  inquiryMode?: string | null;
   suggestionAccess?: SuggestionChatAccess;
 }) {
   const issueById = new Map(issues.map((issue) => [issue.id, issue]));
@@ -107,7 +109,10 @@ export function CasePresentationView({
   const letterFor = (actionKey: string, title?: string | null) =>
     letterKindForStep({ actionKey, title, matchingLetter: matchingLetterKind });
   const stepCta = (actionKey: string, title?: string | null) =>
-    presentationStepCta(actionKey, caseId, formFor(actionKey, title), letterFor(actionKey, title));
+    presentationStepCta(actionKey, caseId, formFor(actionKey, title), letterFor(actionKey, title), {
+      inquiryMode,
+      matchingDocumentKind,
+    });
   const isFormAction = (actionKey: string) => {
     const key = actionKey.toUpperCase();
     return key === "COMPLETE_FORM_I485" || key === "PREPARE_FORM";

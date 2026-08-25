@@ -1,10 +1,15 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { isAdmin, requireUser } from "@/lib/auth";
+import { featureLimit, getActivePlan, hasFeature } from "@/lib/access";
+import { FEATURE_KEYS } from "@/lib/constants";
 import { PageHeader, Card, CardBody, Badge, EmptyState, ButtonLink } from "@/components/ui";
 import { NoticeUpload } from "@/components/notice-upload";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
 import { formatCaseNumber } from "@/lib/case-number";
+import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { noticeUploadAllowed, resolveNoticeEntitlement, resolveNoticePageCopy } from "@/lib/goal-notices";
 
 export const metadata = { title: "USCIS notices" };
 
@@ -15,7 +20,22 @@ export default async function NoticesPage({
 }) {
   const { case: caseId } = await searchParams;
   const user = await requireUser();
-  const [notices, cases] = await Promise.all([
+  const plan = await getActivePlan(user.id);
+  const staff = isAdmin(user);
+  const hasUpload = staff || (await hasFeature(user.id, FEATURE_KEYS.NOTICE_UPLOAD));
+  const entitlement = resolveNoticeEntitlement({
+    isStaff: staff,
+    planKey: plan?.key,
+    hasUpload,
+  });
+  const caseSelect = {
+    id: true,
+    situation: true,
+    goal: true,
+    issues: { select: { title: true, uscisBasis: true, conclusion: true } },
+    notices: { select: { noticeType: true } },
+  };
+  const [notices, cases, scopedCase, used, limit] = await Promise.all([
     db.notice.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
@@ -27,7 +47,33 @@ export default async function NoticesPage({
       select: { id: true, number: true, title: true },
       take: 50,
     }),
+    caseId
+      ? db.case.findFirst({ where: { id: caseId, userId: user.id }, select: caseSelect })
+      : db.case.findFirst({ where: { userId: user.id }, orderBy: { updatedAt: "desc" }, select: caseSelect }),
+    db.notice.count({ where: { userId: user.id } }),
+    staff ? Promise.resolve(null) : featureLimit(user.id, FEATURE_KEYS.NOTICE_UPLOAD),
   ]);
+  const quota = noticeUploadAllowed({
+    canUpload: entitlement.canUpload,
+    used,
+    limit: entitlement.canUpload ? limit : 0,
+  });
+  const inquiry = scopedCase
+    ? classifyImmigrationInquiry({ situation: scopedCase.situation, goal: scopedCase.goal })
+    : null;
+  const copy = resolveNoticePageCopy({
+    themes: inquiry?.themes,
+    inquiryMode: inquiry?.mode,
+    query: `${scopedCase?.situation ?? ""} ${scopedCase?.goal ?? ""}`,
+    authorityQueries: inquiry ? authorityQueriesForInquiry(inquiry) : [],
+    sources: (scopedCase?.issues ?? []).map((issue) => ({
+      reference: issue.uscisBasis,
+      title: issue.title,
+      content: issue.conclusion,
+    })),
+    noticeTypes: (scopedCase?.notices ?? []).map((notice) => notice.noticeType),
+    hasNotices: (scopedCase?.notices.length ?? 0) > 0,
+  });
   const defaultCaseId = cases.some((c) => c.id === caseId) ? caseId ?? "" : "";
   const views = await loadApprovedViewsByCaseIds(
     notices.map((n) => n.caseId).filter((id): id is string => Boolean(id)),
@@ -35,21 +81,50 @@ export default async function NoticesPage({
 
   return (
     <div>
-      <PageHeader
-        title="USCIS notices"
-        subtitle="Upload or photograph any USCIS letter. We identify it, extract the key facts, and explain it against the approved case presentation."
-      />
+      <PageHeader title={copy.pageTitle} subtitle={copy.pageSubtitle} />
+
+      {copy.skipBanner && (
+        <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
+          {copy.skipBanner}{" "}
+          <Link href={copy.primaryCta.href} className="font-semibold underline">{copy.primaryCta.label}</Link>
+        </div>
+      )}
+      {entitlement.showUpgradeCta && (
+        <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
+          Explaining a USCIS letter is included in Free with a cap.{" "}
+          <Link href="/app/billing?upgrade=notices" className="font-semibold underline">See plans →</Link>
+        </div>
+      )}
+      {quota.overLimit && (
+        <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
+          You&apos;ve used all {limit} notice explanations included in Free.{" "}
+          <Link href="/app/billing?upgrade=notices" className="font-semibold underline">Upgrade to Plus for unlimited notices →</Link>
+        </div>
+      )}
+      {quota.allowed && quota.remaining !== null && (
+        <p className="mb-4 text-xs text-slate-500">{quota.remaining} notice explanation{quota.remaining === 1 ? "" : "s"} remaining on Free.</p>
+      )}
+
       <Card className="mb-6">
         <CardBody>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            {copy.uploadPrimary ? "Add a USCIS letter" : "Have a USCIS letter? Add it here"}
+          </h2>
           <NoticeUpload
             cases={cases.map((c) => ({ id: c.id, label: `${formatCaseNumber(c.number)} · ${c.title}` }))}
             defaultCaseId={defaultCaseId}
+            locked={!quota.allowed}
+            lockLabel={quota.overLimit ? "Upgrade to Plus for unlimited notices →" : "Unlock notice explanations with Plus →"}
           />
         </CardBody>
       </Card>
 
       {notices.length === 0 ? (
-        <EmptyState title="No notices yet" body="When you upload an USCIS letter, its explanation will appear here." />
+        <EmptyState
+          title={copy.emptyTitle}
+          body={copy.emptyBody}
+          action={!copy.uploadPrimary ? <ButtonLink href={copy.primaryCta.href}>{copy.primaryCta.label}</ButtonLink> : undefined}
+        />
       ) : (
         <div className="space-y-4">
           {notices.map((n) => {

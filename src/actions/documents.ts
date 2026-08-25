@@ -13,6 +13,7 @@ import { rebuildCaseEvidenceState } from "@/lib/evidence/case-state";
 import { featureLimit, hasFeature } from "@/lib/access";
 import { FEATURE_KEYS } from "@/lib/constants";
 import { documentUploadAllowed, normalizeDocumentKind } from "@/lib/goal-documents";
+import { noticeUploadAllowed } from "@/lib/goal-notices";
 import type { ActionState } from "./auth";
 
 async function vaultDocumentCount(userId: string): Promise<number> {
@@ -37,6 +38,24 @@ export async function documentQuotaError(userId: string | null | undefined, inco
   if (quota.allowed) return null;
   if (!enabled) return "Document uploads are not included in your plan. Upgrade to Plus to add files.";
   return `You've used all ${limit} document uploads included in Free. Upgrade to Plus for unlimited vault storage.`;
+}
+
+export async function noticeQuotaError(userId: string | null | undefined, incoming: number): Promise<string | null> {
+  if (!userId) return null;
+  const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (user && isAdmin(user)) return null;
+  const enabled = await hasFeature(userId, FEATURE_KEYS.NOTICE_UPLOAD);
+  const limit = enabled ? await featureLimit(userId, FEATURE_KEYS.NOTICE_UPLOAD) : 0;
+  const used = await db.notice.count({ where: { userId } });
+  const quota = noticeUploadAllowed({
+    canUpload: enabled,
+    used,
+    incoming,
+    limit: enabled ? limit : 0,
+  });
+  if (quota.allowed) return null;
+  if (!enabled) return "Notice explanations are not included in your plan. Upgrade to Plus to add letters.";
+  return `You've used all ${limit} notice explanations included in Free. Upgrade to Plus for unlimited notices.`;
 }
 
 export async function uploadDocumentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -149,6 +168,12 @@ export async function uploadNoticeAction(_prev: ActionState, formData: FormData)
   let caseId = String(formData.get("caseId") ?? "") || null;
   if (!(file instanceof File && file.size > 0) && pastedText.length < 10) {
     return { error: "Upload a file or photo of your notice, or paste its text." };
+  }
+  const quotaError = await noticeQuotaError(user?.id, 1);
+  if (quotaError) return { error: quotaError };
+  if (file instanceof File && file.size > 0) {
+    const docQuota = await documentQuotaError(user?.id, 1);
+    if (docQuota) return { error: docQuota };
   }
   if (user && caseId) {
     const c = await db.case.findFirst({ where: { id: caseId, userId: user.id }, select: { id: true } });
