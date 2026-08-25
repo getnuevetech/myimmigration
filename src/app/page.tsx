@@ -7,6 +7,17 @@ import { Accent, Kicker } from "@/components/accent";
 import { getSettingsMap } from "@/lib/settings";
 import { IconShield, IconSparkle, IconCheckCircle } from "@/components/icons";
 import { getUscisUpdates } from "@/lib/uscis-updates";
+import {
+  PUBLIC_CLOSING,
+  PUBLIC_HOME_FEATURES,
+  PUBLIC_HOME_STEPS,
+  PUBLIC_HOW_IT_WORKS_HEADING,
+  PUBLIC_HOW_IT_WORKS_INTRO,
+  PUBLIC_UPDATES_HEADING,
+  PUBLIC_UPDATES_INTRO,
+  PUBLIC_WHY_IT_WORKS,
+  resolvePublicHero,
+} from "@/lib/goal-public";
 
 function EditorialSection({
   number,
@@ -41,7 +52,6 @@ function EditorialSection({
 
 export default async function HomePage() {
   const s = await getSettingsMap([
-    "app.name",
     "app.tagline",
     "home.hero_title",
     "home.hero_subtitle",
@@ -49,7 +59,6 @@ export default async function HomePage() {
     "home.cta_secondary",
     "home.hero_images",
   ]);
-  const appName = s["app.name"] ?? "ImmigrationOnMe";
   let heroImages: string[] = [];
   try {
     const parsed = JSON.parse(s["home.hero_images"] ?? "[]");
@@ -59,21 +68,9 @@ export default async function HomePage() {
   }
   if (heroImages.length === 0) heroImages = ["/hero/hero-1.png", "/hero/hero-2.png", "/hero/hero-3.png"];
   const updates = await getUscisUpdates(3);
-
-  const steps = [
-    { n: "01", title: "Share the situation", body: "Start with what you know: a USCIS case, letter, or notice — or a life situation with no filing yet. Receipt numbers are helpful when you have them, not required." },
-    { n: "02", title: "Map the evidence", body: "Upload USCIS notices, receipts, forms, visas, passports, RFEs, translations, and supporting records when you have them. You can still get options without a case file." },
-    { n: "03", title: "Leave with a plan", body: "Get possible pathways with conditions, or a structured case summary, issue list, missing-document checklist, and professional-ready handoff packet." },
-  ];
-
-  const features = [
-    { title: "Notice intelligence", body: "Identify the form, notice type, receipt number, response deadline, and evidence requested in a USCIS letter." },
-    { title: "Case timeline builder", body: "Turn scattered filings, status changes, appointments, and approvals into a readable immigration history." },
-    { title: "Evidence gap finder", body: "See what appears to be missing before you respond to an RFE, prepare for an interview, or organize an attorney handoff." },
-    { title: "Deadline control", body: "Capture dates from notices and keep the next required action visible before it becomes urgent." },
-    { title: "USCIS form preparation", body: "Use guided worksheets for common immigration forms and keep draft answers organized for review." },
-    { title: "Professional-ready packet", body: "Package the timeline, notices, documents, and questions so an attorney or accredited representative can move faster." },
-  ];
+  const hero = resolvePublicHero(s);
+  const steps = PUBLIC_HOME_STEPS;
+  const features = PUBLIC_HOME_FEATURES;
 
   const trust = [
     { icon: <IconShield className="h-5 w-5" />, text: "Private document vault with user-controlled deletion" },
@@ -89,22 +86,26 @@ export default async function HomePage() {
         <section className="relative overflow-hidden border-b border-slate-200 bg-[#fbfaf7]">
           <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
             <div>
-              <Kicker>{s["app.tagline"] ?? "Immigration paperwork, organized"}</Kicker>
+              <Kicker>{hero.tagline}</Kicker>
               <h1 className="mt-6 font-serif text-5xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-6xl xl:text-[4.2rem]">
-                <Accent text={s["home.hero_title"] ?? "Turn immigration paperwork into a clear *case plan*."} />
+                <Accent text={hero.title} />
               </h1>
               <p className="mt-6 max-w-md text-base leading-relaxed text-slate-600">
-                {s["home.hero_subtitle"] ??
-                  `${appName} organizes notices, forms, timelines, evidence gaps, and deadlines so you can understand what is happening and what to prepare next.`}
+                {hero.subtitle}
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <ButtonLink href="/start" className="rounded-full px-7 py-3.5 text-base shadow-lg shadow-lime-700/25">
-                  {s["home.cta_primary"] ?? "Start a case review"} →
+                <ButtonLink href={hero.primaryCta.href} className="rounded-full px-7 py-3.5 text-base shadow-lg shadow-lime-700/25">
+                  {hero.primaryCta.label} →
                 </ButtonLink>
-                <ButtonLink href="/start/qa" variant="secondary" className="rounded-full px-7 py-3.5 text-base">
-                  {s["home.cta_secondary"] ?? "Ask an immigration question"}
+                <ButtonLink href={hero.secondaryCta.href} variant="secondary" className="rounded-full px-7 py-3.5 text-base">
+                  {hero.secondaryCta.label}
                 </ButtonLink>
               </div>
+              <p className="mt-4 text-sm text-slate-500">
+                <Link href={hero.letterLink.href} className="font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 hover:decoration-lime-500">
+                  {hero.letterLink.label}
+                </Link>
+              </p>
               <p className="mt-7 font-mono text-[11px] uppercase tracking-widest text-slate-400">
                 Private by design &nbsp;·&nbsp; Evidence-first &nbsp;·&nbsp; Built for handoff
               </p>
@@ -118,10 +119,10 @@ export default async function HomePage() {
           <EditorialSection number="01" label="How it works" className="bg-white">
             <div className="max-w-md">
               <h2 className="font-serif text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
-                <Accent text="From scattered records to a *case brief*" />
+                <Accent text={PUBLIC_HOW_IT_WORKS_HEADING} />
               </h2>
               <p className="mt-4 text-sm leading-relaxed text-slate-600">
-                A durable workflow for notices, deadlines, evidence, and professional review.
+                {PUBLIC_HOW_IT_WORKS_INTRO}
               </p>
             </div>
             <div className="mt-12 divide-y divide-slate-300/60 border-t border-slate-300/60">
@@ -172,24 +173,14 @@ export default async function HomePage() {
             <Accent text="Built for clarity, not *panic*" />
           </h2>
           <div className="mt-10 grid gap-8 text-left sm:grid-cols-3">
-            <div>
-              <p className="font-serif text-6xl font-bold italic text-slate-900">9+</p>
-              <p className="mt-3 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
-                USCIS workflows organized into guided steps
-              </p>
-            </div>
-            <div>
-              <p className="font-serif text-6xl font-bold italic text-slate-900">5</p>
-              <p className="mt-3 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
-                Core record types: notices, forms, evidence, deadlines, questions
-              </p>
-            </div>
-            <div>
-              <p className="font-serif text-6xl font-bold italic text-slate-900">100%</p>
-              <p className="mt-3 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
-                User-controlled document ownership
-              </p>
-            </div>
+            {PUBLIC_WHY_IT_WORKS.map((item) => (
+              <div key={item.value}>
+                <p className="font-serif text-6xl font-bold italic text-slate-900">{item.value}</p>
+                <p className="mt-3 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
+                  {item.label}
+                </p>
+              </div>
+            ))}
           </div>
           <div className="mt-12 grid gap-4 border-t border-lime-200 pt-6 sm:grid-cols-3">
             {trust.map((item) => (
@@ -206,10 +197,10 @@ export default async function HomePage() {
             <div>
               <Kicker>Latest from USCIS</Kicker>
               <h2 className="mt-5 font-serif text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
-                <Accent text="Policy and form updates, watched for *your case*" />
+                <Accent text={PUBLIC_UPDATES_HEADING} />
               </h2>
               <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-600">
-                We pull public USCIS updates and help paid customers understand which changes may matter for their cases.
+                {PUBLIC_UPDATES_INTRO}
               </p>
             </div>
             <ButtonLink href="/uscis-updates" variant="secondary" className="rounded-full">View all updates →</ButtonLink>
@@ -236,14 +227,17 @@ export default async function HomePage() {
         <section className="bg-[#0b1322]">
           <div className="mx-auto max-w-6xl px-4 pb-4 pt-20">
             <h2 className="max-w-2xl font-serif text-4xl font-bold leading-tight text-white sm:text-5xl">
-              <Accent text="Have a USCIS notice you do not want to *misread*?" accentClass="not-italic bg-lime-200 px-1 -mx-1 text-slate-950" />
+              <Accent text={PUBLIC_CLOSING.title} accentClass="not-italic bg-lime-200 px-1 -mx-1 text-slate-950" />
             </h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
-              Upload it now. Build a timeline, extract the requested evidence, and prepare the next conversation with confidence.
+              {PUBLIC_CLOSING.body}
             </p>
-            <div className="mt-8">
-              <ButtonLink href="/start" className="rounded-full px-8 py-3.5 text-base shadow-lg shadow-lime-700/30">
-                Start free →
+            <div className="mt-8 flex flex-wrap gap-3">
+              <ButtonLink href={PUBLIC_CLOSING.optionsCta.href} className="rounded-full px-8 py-3.5 text-base shadow-lg shadow-lime-700/30">
+                {PUBLIC_CLOSING.optionsCta.label}
+              </ButtonLink>
+              <ButtonLink href={PUBLIC_CLOSING.letterCta.href} variant="ghost" className="rounded-full border border-slate-500 px-8 py-3.5 text-base text-white hover:bg-slate-800">
+                {PUBLIC_CLOSING.letterCta.label}
               </ButtonLink>
             </div>
             <p className="mt-6 text-sm text-slate-400">

@@ -3,12 +3,7 @@
 import { useState, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { startIntakeAction } from "@/actions/case";
-
-const STEPS = [
-  { title: "What's going on?", subtitle: "A USCIS case, a letter, or just a life situation — start with your own words." },
-  { title: "What do you want?", subtitle: "A next step, a possible path, or help understanding a notice." },
-  { title: "Any documents?", subtitle: "Optional. Identity and relationship records help a family petition; skip a USCIS notice if you do not have one." },
-];
+import { resolvePublicStartCopy, type PublicStartCopy } from "@/lib/goal-public";
 
 function Submit() {
   const { pending } = useFormStatus();
@@ -23,7 +18,9 @@ function Submit() {
   );
 }
 
-export function IntakeWizard() {
+export function IntakeWizard({ start }: { start?: PublicStartCopy }) {
+  const copy = start ?? resolvePublicStartCopy();
+  const steps = copy.steps;
   const [step, setStep] = useState(0);
   const [situation, setSituation] = useState("");
   const [goal, setGoal] = useState("");
@@ -37,20 +34,20 @@ export function IntakeWizard() {
       {/* Progress like a game level bar */}
       <div className="mb-8">
         <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-          <span>Step {step + 1} of {STEPS.length}</span>
-          <span>{Math.round(((step + 1) / STEPS.length) * 100)}%</span>
+          <span>Step {step + 1} of {steps.length}</span>
+          <span>{Math.round(((step + 1) / steps.length) * 100)}%</span>
         </div>
         <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
           <div
             className="h-full rounded-full bg-lime-600 transition-all duration-500"
-            style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+            style={{ width: `${((step + 1) / steps.length) * 100}%` }}
           />
         </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h2 className="text-2xl font-bold text-slate-900">{STEPS[step].title}</h2>
-        <p className="mt-1 text-sm text-slate-500">{STEPS[step].subtitle}</p>
+        <h2 className="text-2xl font-bold text-slate-900">{steps[step].title}</h2>
+        <p className="mt-1 text-sm text-slate-500">{steps[step].subtitle}</p>
 
         {state?.error && (
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -65,7 +62,7 @@ export function IntakeWizard() {
             value={situation}
             onChange={(e) => setSituation(e.target.value)}
             rows={7}
-            placeholder={'For example: "I want to marry a U.S. citizen and get a green card. We have not filed anything yet." Or: "I got an RFE from USCIS and the deadline is coming up…"'}
+            placeholder={copy.situationPlaceholder}
             className="w-full rounded-xl border border-slate-300 p-4 text-base focus:border-lime-500 focus:outline-none focus:ring-2 focus:ring-lime-100"
           />
           <p className="mt-2 text-xs text-slate-400">
@@ -79,11 +76,11 @@ export function IntakeWizard() {
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
             rows={4}
-            placeholder={'For example: "Show me what options I have, and what I can do next."'}
+            placeholder={copy.goalPlaceholder}
             className="w-full rounded-xl border border-slate-300 p-4 text-base focus:border-lime-500 focus:outline-none focus:ring-2 focus:ring-lime-100"
           />
           <div className="mt-3 flex flex-wrap gap-2">
-            {["Family green card options", "Work authorization options", "Citizenship / naturalization", "Study in the U.S.", "Bring my parents or children", "Understand a USCIS letter", "Prepare an RFE response", "Organize my case timeline", "Get ready for an interview"].map((g) => (
+            {copy.goalChips.map((g) => (
               <button
                 key={g}
                 type="button"
@@ -101,7 +98,7 @@ export function IntakeWizard() {
             <span className="text-base font-medium text-slate-700">
               {fileCount > 0 ? `${fileCount} file${fileCount > 1 ? "s" : ""} ready to upload` : "Tap to add photos or files"}
             </span>
-            <span className="mt-1 text-xs text-slate-500">Identity, relationship, or status records if you have them — not a receipt unless USCIS already sent one.</span>
+            <span className="mt-1 text-xs text-slate-500">{copy.fileHint}</span>
             <input
               type="file"
               name="documents"
@@ -124,7 +121,7 @@ export function IntakeWizard() {
           >
             ← Back
           </button>
-          {step < STEPS.length - 1 ? (
+          {step < steps.length - 1 ? (
             <button
               type="button"
               disabled={!canNext}

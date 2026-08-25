@@ -109,6 +109,24 @@ import {
   shouldShowUscisAccountGuide,
 } from "../src/lib/goal-notices";
 import {
+  PUBLIC_BILLING_SUBTITLE,
+  PUBLIC_CLOSING,
+  PUBLIC_FAQ_BODY,
+  PUBLIC_FEATURE_SORT_ORDER,
+  PUBLIC_HERO,
+  PUBLIC_HERO_CAROUSEL,
+  PUBLIC_HOME_FEATURES,
+  PUBLIC_HOW_IT_WORKS_PAGE,
+  PUBLIC_PLAN_DESCRIPTIONS,
+  PUBLIC_PRICING_INTRO,
+  STALE_PUBLIC_HERO_SUBTITLES,
+  featuresRankedBeforeNotices,
+  parsePublicStartIntent,
+  publicCopyLeadsWithOptions,
+  resolvePublicHero,
+  resolvePublicStartCopy,
+} from "../src/lib/goal-public";
+import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
   conversationNarrative,
@@ -1354,6 +1372,67 @@ assert(presentation.hero.current_posture === "RFE notice needs review", "goal-dr
 assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven notices must keep the approved open-options posture");
 assert(requested.autoAssigned === false, "goal-driven notices must not auto-assign consultants");
 
+assert(PUBLIC_HOME_FEATURES[0]?.title === "Pathway exploration", "public homepage must lead with pathway exploration");
+assert(
+  PUBLIC_HOME_FEATURES.findIndex((item) => item.title === "Pathway exploration")
+    < PUBLIC_HOME_FEATURES.findIndex((item) => item.title === "Notice intelligence"),
+  "notice intelligence must not lead the public feature list",
+);
+assert(PUBLIC_HERO_CAROUSEL.cards[0]?.title.includes("I-130"), "hero mock must show I-130 before a receipt");
+assert(!/I-797C receipt/i.test(PUBLIC_HERO_CAROUSEL.cards[0]?.title ?? ""), "hero mock must not lead with an I-797C receipt");
+assert(/identity/i.test(PUBLIC_HERO_CAROUSEL.cards[1]?.title ?? ""), "hero mock must show identity documents before a filed-case receipt");
+assert(/No USCIS receipt required/i.test(PUBLIC_HERO_CAROUSEL.checklistMeta), "hero chip must not invent a receipt");
+assert(publicCopyLeadsWithOptions(`${PUBLIC_HERO.title} ${PUBLIC_HERO.subtitle}`), "public hero copy must lead with options, not an I-797");
+assert(PUBLIC_HERO.primaryCta.label !== "Start a case review", "primary CTA must not sell a filed-case review");
+assert(PUBLIC_HERO.primaryCta.href.includes("intent=options"), "primary CTA must open the options intake");
+assert(PUBLIC_HERO.letterLink.href.includes("intent=letter"), "letter link must open the filed-letter intake");
+assert(PUBLIC_CLOSING.optionsCta.href.includes("intent=options") && PUBLIC_CLOSING.letterCta.href.includes("intent=letter"), "closing CTA must split options and letter paths");
+assert(!/^Have a USCIS notice/i.test(PUBLIC_CLOSING.title), "closing CTA must not be notice-only");
+assert(/have not filed yet/i.test(PUBLIC_PRICING_INTRO) && /USCIS letter/i.test(PUBLIC_PRICING_INTRO), "pricing intro must cover no filing yet and an existing letter");
+assert(/without a filing/i.test(PUBLIC_BILLING_SUBTITLE) && /USCIS letter/i.test(PUBLIC_BILLING_SUBTITLE), "billing intro must cover both public paths");
+assert(/before you file/i.test(PUBLIC_PLAN_DESCRIPTIONS.free), "free plan copy must mention exploring before filing");
+assert(/have not filed yet/i.test(PUBLIC_PLAN_DESCRIPTIONS.plus) && /USCIS letter/i.test(PUBLIC_PLAN_DESCRIPTIONS.plus), "plus plan copy must cover both paths");
+assert(PUBLIC_FEATURE_SORT_ORDER["case.analysis"] < PUBLIC_FEATURE_SORT_ORDER["notice.upload"], "analysis must sort before notice upload");
+assert(PUBLIC_FEATURE_SORT_ORDER["documents.upload"] < PUBLIC_FEATURE_SORT_ORDER["notice.upload"], "documents must sort before notice upload");
+assert(PUBLIC_FEATURE_SORT_ORDER["forms.wizard"] < PUBLIC_FEATURE_SORT_ORDER["notice.upload"], "forms must sort before notice upload");
+assert(PUBLIC_FEATURE_SORT_ORDER["qa.chat"] < PUBLIC_FEATURE_SORT_ORDER["notice.upload"], "Q&A must sort before notice upload");
+assert(featuresRankedBeforeNotices()[0] === "case.analysis", "customer feature catalog must open with case analysis");
+assert(/Do I need a USCIS receipt to start/i.test(PUBLIC_FAQ_BODY), "FAQ must say a receipt is not required to start");
+assert(!/Q: How do I check my USCIS case\?/.test(PUBLIC_FAQ_BODY), "FAQ must not lead with receipt-status as the second question");
+assert(/no filing yet/i.test(PUBLIC_HOW_IT_WORKS_PAGE), "how-it-works must include the no-filing path");
+assert(/notices, receipts, and RFEs only when USCIS has already sent them/i.test(PUBLIC_HOW_IT_WORKS_PAGE), "how-it-works must keep notices secondary");
+const staleHero = resolvePublicHero({
+  "home.hero_title": "Turn immigration paperwork into a clear case plan",
+  "home.hero_subtitle": STALE_PUBLIC_HERO_SUBTITLES[0],
+  "home.cta_primary": "Start a case review",
+  "app.tagline": "Immigration paperwork, organized",
+});
+assert(/options/i.test(staleHero.title), "stale filed-case hero titles must be replaced");
+assert(staleHero.primaryCta.label === "Explore my options", "stale Start a case review CTA must be replaced");
+assert(staleHero.tagline === PUBLIC_HERO.tagline, "stale paperwork-only tagline must be replaced");
+const customHero = resolvePublicHero({ "home.hero_title": "Custom admin title for families" });
+assert(customHero.title === "Custom admin title for families", "admin-customized hero titles must still win");
+assert(parsePublicStartIntent("letter") === "letter" && parsePublicStartIntent("options") === "options", "public start intents parse");
+const optionsStart = resolvePublicStartCopy("options");
+assert(/no USCIS filing yet/i.test(optionsStart.subtitle), "options intake must say no filing is fine");
+assert(/have not filed anything yet/i.test(optionsStart.situationPlaceholder), "options placeholder must not require a notice");
+const letterStart = resolvePublicStartCopy("letter");
+assert(/USCIS letter/i.test(letterStart.title), "letter intake must name the USCIS letter");
+assert(/RFE/i.test(letterStart.situationPlaceholder), "letter intake still accepts an RFE");
+const homeSrc = readFileSync(join(process.cwd(), "src/app/page.tsx"), "utf8");
+assert(homeSrc.includes("resolvePublicHero") && homeSrc.includes("PUBLIC_CLOSING"), "homepage must render the dual-path public funnel");
+assert(!homeSrc.includes("Start a case review"), "homepage source must not keep the filed-case primary CTA");
+assert(!homeSrc.includes("Have a USCIS notice you do not want to"), "homepage source must not keep the notice-only closing CTA");
+const heroSrc = readFileSync(join(process.cwd(), "src/components/hero-carousel.tsx"), "utf8");
+assert(heroSrc.includes("PUBLIC_HERO_CAROUSEL"), "hero carousel must use the options-first mock");
+assert(!heroSrc.includes("I-797C receipt") && !heroSrc.includes("USCIS receipt found"), "hero carousel must not invent a receipt-first story");
+const seedSrc = readFileSync(join(process.cwd(), "prisma/seed.ts"), "utf8");
+assert(seedSrc.includes("PUBLIC_FEATURE_SORT_ORDER") && seedSrc.includes("PUBLIC_FAQ_BODY"), "seed must apply the dual-path public catalog and FAQ");
+assert(familyForms[0]?.formNumber === "I-130", "public funnel must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "public funnel must not convert the RFE fixture into open-options");
+assert(requested.autoAssigned === false, "public funnel must not auto-assign consultants");
+assert(!/receipt number detected/i.test(PUBLIC_HERO_CAROUSEL.cards.map((card) => card.body).join(" ")), "hero cards must not invent a detected receipt number");
+
 
 
 console.log("v3.2 immigration evidence check passed");
@@ -1388,3 +1467,4 @@ console.log(`- v4 C11: family ${familyForms[0]?.formNumber}, student ${studentFo
 console.log(`- v4 C12: family ${familyLetters[0]?.kind}, student ${studentLetters[0]?.kind}, asylum ${asylumLetters[0]?.kind}, RFE ${rfeLetters[0]?.kind}, plus remaining ${letterGenerationAllowed({ canGenerate: true, used: 2, limit: 3 }).remaining}`);
 console.log(`- v4 C13: family ${familyDocs[0]?.kind}, student ${studentDocs.find((item) => item.kind === "status_record")?.kind}, asylum ${asylumDocs.find((item) => item.kind === "declaration")?.kind}, RFE ${rfeDocs[0]?.kind}, free remaining ${documentUploadAllowed({ canUpload: true, used: 4, limit: 5 }).remaining}`);
 console.log(`- v4 C14: notices skip=${!openNoticeCopy.uploadPrimary}, deadlines auto=${shouldExpectAutomaticDeadlines({ inquiryMode: "open_options" })}, account optional=${Boolean(openAccount.optionalBanner)}, RFE notices primary=${rfeNoticeCopy.uploadPrimary}`);
+console.log(`- v4 C15: hero ${PUBLIC_HOME_FEATURES[0]?.title}, catalog ${featuresRankedBeforeNotices()[0]} before notices, closing ${PUBLIC_CLOSING.optionsCta.label}`);
