@@ -26,10 +26,13 @@ export function formatPresentationDate(value: string): string {
   return date.toLocaleDateString("en-US");
 }
 
+import { letterComposerHref, letterStartLabel } from "./goal-letters";
+
 export function presentationStepCta(
   actionKey: string,
   caseId: string,
   matchingForm?: string | null,
+  matchingLetterKind?: string | null,
 ): { label: string; href: string } | null {
   switch (actionKey.toUpperCase()) {
     case "GET_CASE_RECORD":
@@ -41,7 +44,10 @@ export function presentationStepCta(
     case "PREPARE_APPOINTMENT":
       return { label: "Upload appointment notice", href: "/app/documents" };
     case "DRAFT_LETTER":
-      return { label: "Draft my letter", href: `/app/letters/new?case=${caseId}` };
+      return {
+        label: letterStartLabel(matchingLetterKind),
+        href: letterComposerHref({ caseId, kind: matchingLetterKind }),
+      };
     case "COMPLETE_FORM_I485":
     case "PREPARE_FORM": {
       const formNumber = matchingForm || (actionKey.toUpperCase() === "COMPLETE_FORM_I485" ? "I-485" : null);

@@ -32,6 +32,7 @@ import { rebuildCaseEvidenceState } from "../evidence/case-state";
 import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
 import { getCaseEvidenceBrief } from "../evidence/brief";
 import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
+import { fallbackLetterDraft, letterWriterInstruction, normalizeLetterKind } from "../goal-letters";
 import { mergeSupportedText, presentationGroundingBlock, withPresentationNoticeSteps } from "../case-presentation-brief";
 import { formatKnowledgeBlock, type KnowledgeRecord } from "../knowledge-retrieval";
 import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry, buildOpenOptionsAnalysis } from "../immigration-inquiry";
@@ -886,12 +887,17 @@ export async function explainNoticeContent(content: string, opts?: { caseId?: st
   };
 }
 
-export async function generateLetterDraft(context: string, opts?: { caseId?: string | null }): Promise<string> {
+export async function generateLetterDraft(
+  context: string,
+  opts?: { caseId?: string | null; kind?: string | null },
+): Promise<string> {
+  const kind = normalizeLetterKind(opts?.kind);
   const steps = await getRunnableSteps(STAGE_KEYS.LETTER);
   const grounding = await loadCaseGrounding(opts?.caseId);
+  const kindBlock = letterWriterInstruction(kind);
   const guardedContext = grounding.block
-    ? `${context}\n\n${grounding.block}\n\nLetter grounding rule: write to the approved presentation. Do not include receipt numbers, form types, dates, deadlines, requested evidence, or case outcomes unless they appear in the approved presentation or compiled evidence brief. If needed, use placeholders for the user to verify.`
-    : context;
+    ? `${kindBlock}\n\n${context}\n\n${grounding.block}\n\nLetter grounding rule: write to the approved presentation. Do not include receipt numbers, form types, dates, deadlines, requested evidence, or case outcomes unless they appear in the approved presentation or compiled evidence brief. If needed, use placeholders for the user to verify. If this is a cover letter and no receipt is on file, omit Receipt No.`
+    : `${kindBlock}\n\n${context}\n\nIf this is a cover letter and no receipt or notice is on file, omit Receipt No. Do not invent a receipt number, RFE, or filed-case posture.`;
   const guardBrief = grounding.supportedText ? { supportedText: grounding.supportedText } : null;
   // Try every configured model; log failures; fall back to the template letter.
   for (const step of steps) {
@@ -901,33 +907,8 @@ export async function generateLetterDraft(context: string, opts?: { caseId?: str
       if (result.text.trim()) return guardLetterDraftWithEvidence(result.text.trim(), guardBrief).text;
     } catch (err) {
       const { logSystem } = await import("../syslog");
-      await logSystem("error", "ai_call", `${step.provider.name} failed generating a response letter draft`, String(err));
+      await logSystem("error", "ai_call", `${step.provider.name} failed generating a USCIS letter draft`, String(err));
     }
   }
-  {
-    return guardLetterDraftWithEvidence(`[DATE]
-
-U.S. Citizenship and Immigration Services
-[USCIS ADDRESS FROM YOUR NOTICE]
-
-Re: [FORM TYPE / NOTICE TYPE] — Receipt No. [RECEIPT NUMBER]
-Applicant: [YOUR NAME]
-A-Number: [A-NUMBER IF ANY]
-
-To Whom It May Concern:
-
-I am writing in response to the notice referenced above.
-
-[Describe your situation here: ${context.slice(0, 300)}]
-
-I respectfully request that you review the enclosed documentation and update my case record accordingly. Please contact me at the address or phone number below if you need any additional information.
-
-Sincerely,
-
-[YOUR NAME]
-[YOUR ADDRESS]
-[YOUR PHONE]
-
-Enclosures: [LIST YOUR DOCUMENTS]`, guardBrief).text;
-  }
+  return guardLetterDraftWithEvidence(fallbackLetterDraft(kind, context), guardBrief).text;
 }

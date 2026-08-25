@@ -76,6 +76,17 @@ import {
   rankMatchingForms,
   resolveFormCatalogEntitlement,
 } from "../src/lib/goal-forms";
+import {
+  fallbackLetterDraft,
+  letterComposerHref,
+  letterGenerationAllowed,
+  letterKindForStep,
+  letterStartLabel,
+  matchingLetterKind,
+  rankLetterCatalog,
+  rankMatchingLetters,
+  resolveLetterCatalogEntitlement,
+} from "../src/lib/goal-letters";
 import { parseWizardSteps } from "../src/lib/form-wizard-steps";
 import {
   consultantFromOfficialSources,
@@ -197,7 +208,8 @@ assert((PROMPT_SUPERSEDES.notice_explainer ?? []).length > 0, "notice explainer 
 assert(DEFAULT_PROMPTS.assistant.includes("APPROVED CASE PRESENTATION"), "assistant prompt should mention approved case presentation");
 assert((PROMPT_SUPERSEDES.assistant ?? []).includes("4c37b46dc3cc6fa5a8581634f89b50a279a45427f50e3fd3a2898f90489ef2e1"), "assistant prompt should supersede the C6 goal-driven-qa hash");
 assert(DEFAULT_PROMPTS.letter_writer.includes("APPROVED CASE PRESENTATION"), "letter writer prompt should mention approved case presentation");
-assert((PROMPT_SUPERSEDES.letter_writer ?? []).length > 0, "letter writer prompt should declare superseded hashes");
+assert(DEFAULT_PROMPTS.letter_writer.includes("Do not invent a receipt number"), "letter writer prompt should refuse invented receipts on cover letters");
+assert((PROMPT_SUPERSEDES.letter_writer ?? []).includes("e2cd0b56b7aad1a0431595e7cb69b3e5e92d832ba76e836a3698242f0596153e"), "letter writer prompt should supersede the C11 response-letter hash");
 assert(DEFAULT_PROMPTS.guide.includes("current evidence position"), "guide prompt should mention current evidence position");
 assert(DEFAULT_PROMPTS.guide.includes("approved posture"), "guide prompt should mention approved posture");
 assert((PROMPT_SUPERSEDES.guide ?? []).length > 0, "guide prompt should declare superseded hashes");
@@ -311,6 +323,8 @@ assert(presentationActionStatus("COMPLETED").tone === "done", "completed actions
 assert(presentationEvidenceGateLabel("pass") === "Records checked", "pass evidence gate should use a customer-facing records label");
 assert(presentationStepCta("UPLOAD_NOTICE", "case-1")?.href === "/app/documents", "notice upload should link to documents");
 assert(presentationStepCta("DRAFT_LETTER", "case-1")?.href === "/app/letters/new?case=case-1", "letter action should keep the case id");
+assert(presentationStepCta("DRAFT_LETTER", "case-1", null, "i130_cover")?.href === "/app/letters/new?case=case-1&kind=i130_cover", "letter CTA should deep-link the matching kind");
+assert(presentationStepCta("DRAFT_LETTER", "case-1", null, "i130_cover")?.label === "Draft I-130 cover letter", "letter CTA should name the matching cover letter");
 
 const listFromContract = caseListSummary({
   status: "analyzed",
@@ -1125,6 +1139,72 @@ assert(seededI130[0]?.fields[1]?.options?.[0]?.value === "U.S. citizen", "seeded
 assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven forms must not convert the RFE fixture into open-options");
 assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven forms must keep the approved open-options posture");
 
+const familyLetters = rankMatchingLetters({
+  inquiryMode: "open_options",
+  themes: marriageInquiry.themes,
+  sources: [knowledgeCatalog.find((item) => item.reference === "Form I-130")!],
+  authorityQueries: ["I-130", "I-485"],
+});
+assert(familyLetters[0]?.kind === "i130_cover", `family open-options must rank I-130 cover first, got ${familyLetters[0]?.kind}`);
+assert(
+  familyLetters.findIndex((item) => item.kind === "i130_cover") < familyLetters.findIndex((item) => item.kind === "rfe_response"),
+  "family open-options must rank I-130 cover before RFE response",
+);
+const studentLetters = rankMatchingLetters({
+  inquiryMode: "open_options",
+  themes: studentInquiry.themes,
+  authorityQueries: ["I-765", "I-485", "F-1"],
+});
+assert(studentLetters[0]?.kind === "i765_cover", `F-1/student must rank I-765 cover first, got ${studentLetters[0]?.kind}`);
+const asylumLetters = rankMatchingLetters({
+  inquiryMode: "open_options",
+  themes: ["asylum"],
+  sources: [knowledgeCatalog.find((item) => item.reference === "Form I-589")!],
+  authorityQueries: ["I-589", "I-485"],
+});
+assert(asylumLetters[0]?.kind === "i589_cover", `asylum must rank I-589 cover first, got ${asylumLetters[0]?.kind}`);
+const rfeLetters = rankMatchingLetters({
+  inquiryMode: "existing_case",
+  themes: ["adjustment"],
+  query: "I got an RFE from USCIS on my I-485 and the deadline is coming up.",
+  authorityQueries: ["I-485", "I-130"],
+  noticeTypes: ["RFE"],
+});
+assert(rfeLetters[0]?.kind === "rfe_response", `existing I-485 RFE must rank RFE response first, got ${rfeLetters[0]?.kind}`);
+assert(matchingLetterKind({ inquiryMode: "open_options", themes: ["family"], authorityQueries: ["I-130", "I-485"] }) === "i130_cover", "matching letter for family options is I-130 cover");
+const i130Fallback = fallbackLetterDraft("i130_cover", "I am preparing Form I-130 for my spouse and have not filed yet.");
+assert(!/Receipt No/i.test(i130Fallback), "I-130 cover fallback must not include a receipt number");
+assert(!/\bMSC\d{10}\b|\bWAC\d{10}\b/.test(i130Fallback), "I-130 cover fallback must not invent a receipt number");
+assert(/Form I-130/i.test(i130Fallback), "I-130 cover fallback should name Form I-130");
+const rfeFallback = fallbackLetterDraft("rfe_response", "I am responding to the RFE.");
+assert(/Receipt No/i.test(rfeFallback), "RFE response fallback may include a receipt placeholder");
+assert(letterKindForStep({ actionKey: "DRAFT_LETTER", title: "Respond to the RFE", matchingLetter: "i130_cover" }) === "rfe_response", "stored letter steps that name an RFE stay RFE responses");
+assert(letterKindForStep({ actionKey: "DRAFT_LETTER", title: "Draft a letter", matchingLetter: "i130_cover" }) === "i130_cover", "generic letter steps use the matching cover kind");
+assert(letterComposerHref({ caseId: "case-1", kind: "i130_cover" }) === "/app/letters/new?case=case-1&kind=i130_cover", "composer href should include the matching kind");
+assert(letterStartLabel("rfe_response") === "Draft RFE response", "RFE letter CTA should say Draft RFE response");
+const rankedLetterCatalog = rankLetterCatalog(
+  [{ kind: "rfe_response" }, { kind: "i130_cover" }, { kind: "notice_response" }],
+  familyLetters,
+);
+assert(rankedLetterCatalog[0]?.kind === "i130_cover", "letters catalog must list I-130 cover before RFE for family options");
+const guestLetters = resolveLetterCatalogEntitlement({ isGuest: true });
+const freeLetters = resolveLetterCatalogEntitlement({ planKey: "free", hasLetters: false });
+const plusLetters = resolveLetterCatalogEntitlement({ planKey: "plus", hasLetters: true });
+const proLetters = resolveLetterCatalogEntitlement({ planKey: "pro", hasLetters: true });
+const staffLetters = resolveLetterCatalogEntitlement({ isStaff: true });
+assert(guestLetters.showRegisterCta && !guestLetters.canGenerate, "guests must sign in before the letters catalog");
+assert(!freeLetters.canGenerate && freeLetters.showUpgradeCta, "free matching letters stay locked until Plus");
+assert(plusLetters.canGenerate && proLetters.canGenerate && staffLetters.canGenerate, "plus, pro, and staff can generate the matching letter");
+assert(!letterGenerationAllowed({ canGenerate: false, used: 0, limit: 0 }).allowed, "free cannot generate letters");
+assert(letterGenerationAllowed({ canGenerate: true, used: 2, limit: 3 }).allowed, "plus can generate while under the 3-letter limit");
+assert(letterGenerationAllowed({ canGenerate: true, used: 3, limit: 3 }).overLimit, "plus must stop at 3 letters");
+assert(letterGenerationAllowed({ canGenerate: true, used: 10, limit: null }).allowed, "pro letters stay unlimited");
+assert(!marriageOptions.pathSteps.some((step) => step.action_key === "COMPLETE_FORM_I485"), "goal-driven letters must not jump family options to I-485");
+assert(/Form I-130/i.test(marriageOptions.pathSteps.find((step) => step.action_key === "PREPARE_FORM")?.title ?? ""), "marriage path still prepares Form I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven letters must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven letters must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven letters must not auto-assign consultants");
+
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
@@ -1155,3 +1235,4 @@ console.log(`- v4 C8: guest limit ${guestEntitlement.questionLimit}, free ${free
 console.log(`- v4 C9: guest steps ${guestSuggestions.maxPathSteps}, free steps ${freeSuggestions.maxPathSteps}/${freeSuggestions.maxClarifyAnswers} clarify, plus personalized=${plusSuggestions.personalized}, pro consultant=${proSuggestions.consultantReferral}`);
 console.log(`- v4 C10: guest request=${guestMatch.canRequest}, pro request=${proMatch.canRequest}, autoAssigned=${requested.autoAssigned}, sharesFiles=${customerMatchSharesFiles(requested.status)}`);
 console.log(`- v4 C11: family ${familyForms[0]?.formNumber}, student ${studentForms[0]?.formNumber}, asylum ${asylumForms[0]?.formNumber}, RFE ${rfeForms[0]?.formNumber}, marriage action ${marriageOptions.pathSteps.find((step) => step.action_key === "PREPARE_FORM")?.action_key}`);
+console.log(`- v4 C12: family ${familyLetters[0]?.kind}, student ${studentLetters[0]?.kind}, asylum ${asylumLetters[0]?.kind}, RFE ${rfeLetters[0]?.kind}, plus remaining ${letterGenerationAllowed({ canGenerate: true, used: 2, limit: 3 }).remaining}`);

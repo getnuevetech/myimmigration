@@ -31,7 +31,7 @@ const STEP_TIPS: Record<string, string> = {
   REVIEW_ANALYSIS:
     "You've added documents — the case page updates automatically as the evidence is processed. Check the current evidence position and path forward for the newest verified next step.",
   DRAFT_LETTER:
-    "Use Response letters → New letter. Describe what you want to say in plain English; we draft a professional letter you can edit and print. Mail it before your deadline (certified mail with return receipt is safest).",
+    "Use USCIS letters and pick the matching kind. Family options start with an I-130 cover letter. Use an RFE response only when a Request for Evidence is actually on file. Describe what you want to say in plain English; we draft a professional letter you can edit and print.",
   COMPLETE_FORM_I485:
     "Open USCIS forms → Form I-485 and answer the guided questions. Review the draft against the official USCIS instructions before filing.",
   PREPARE_FORM:
