@@ -9,6 +9,10 @@ import {
   refineInquiryThemes,
   stricterReferral,
   toPathSteps,
+  conversationNarrative,
+  answeredKeysFromQaHistory,
+  nextOfficialQaFollowUp,
+  withOfficialQaFollowUp,
   type SuggestionBoosts,
 } from "./goal-suggestions";
 
@@ -509,21 +513,28 @@ export function applyInquiryToEvidenceState<
 
 export function buildQaFallbackAnswer(input: {
   question: string;
+  history?: { role: string; content: string }[];
   knowledge?: string;
   sources?: KnowledgeRecord[];
   inquiry?: ImmigrationInquiry;
   hasLinkedCase?: boolean;
   boosts?: SuggestionBoosts;
 }): string {
-  const inquiry = input.inquiry ?? classifyImmigrationInquiry({ situation: input.question, goal: input.question });
-  const options = buildOpenOptionsAnalysis({ situation: input.question, goal: input.question }, inquiry, input.sources ?? [], input.boosts);
+  const history = input.history?.length ? input.history : [{ role: "user", content: input.question }];
+  const narrative = conversationNarrative(history) || input.question;
+  const inquiry = input.inquiry ?? classifyImmigrationInquiry({ situation: narrative, goal: narrative });
+  const options = buildOpenOptionsAnalysis({ situation: narrative, goal: narrative }, inquiry, input.sources ?? [], input.boosts);
   const ranked = options.issues
     .map((issue) => (input.sources ?? []).find((source) => source.title === issue.title))
     .filter((source): source is KnowledgeRecord => Boolean(source));
   const knowledge = ranked.length
     ? ranked.map((source) => `${source.title} (${source.reference})${source.url ? ` ${source.url}` : ""}\n${firstSentences(source.content, 3)}`).join("\n\n")
     : (input.knowledge ?? "").trim();
-  const referral = evaluateConsultantReferral({ text: input.question, inquiry, sources: ranked.length ? ranked : input.sources });
+  const referral = evaluateConsultantReferral({ text: narrative, inquiry, sources: ranked.length ? ranked : input.sources });
+  const answered = answeredKeysFromQaHistory(history, options.unknowns);
+  const followUp = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS && !input.hasLinkedCase
+    ? nextOfficialQaFollowUp(options.unknowns, answered, input.boosts)
+    : null;
   const lines: string[] = [];
   lines.push("ImmigrationOnMe is not USCIS, a law firm, or a substitute for a licensed attorney or accredited representative.");
   if (inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS && !input.hasLinkedCase) {
@@ -554,7 +565,7 @@ export function buildQaFallbackAnswer(input: {
   } else if (referral.level === "recommended") {
     lines.push(`A licensed professional is recommended before you file or respond. ${referral.reason}`);
   }
-  return lines.join("\n\n");
+  return withOfficialQaFollowUp(lines.join("\n\n"), followUp);
 }
 
 export const OPEN_OPTIONS_POSTURE = "Exploring immigration options";

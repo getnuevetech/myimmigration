@@ -293,3 +293,62 @@ export function bestSuggestionLine(steps: OpenOptionsPathStep[]): string {
   if (!first) return "";
   return `For this goal, the next step from matching official material is: ${first.title}. ${first.description}`;
 }
+
+export const QA_FOLLOW_UP_PREFIX = "To match this official material more closely:";
+
+export type QaHistoryTurn = { role: string; content: string };
+
+export function conversationNarrative(history: QaHistoryTurn[]): string {
+  return history
+    .filter((item) => item.role === "user")
+    .map((item) => item.content.trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function followUpQuestionLine(question: string): string {
+  return `${QA_FOLLOW_UP_PREFIX} ${question.trim()}`;
+}
+
+export function askedFollowUpFromAssistant(content: string): string | null {
+  const index = content.lastIndexOf(QA_FOLLOW_UP_PREFIX);
+  if (index < 0) return null;
+  return content.slice(index + QA_FOLLOW_UP_PREFIX.length).trim() || null;
+}
+
+export function answeredKeysFromQaHistory(
+  history: QaHistoryTurn[],
+  unknowns: { key: string; question: string }[],
+): string[] {
+  const keys: string[] = [];
+  for (let index = 0; index < history.length; index += 1) {
+    const message = history[index];
+    if (message.role !== "assistant") continue;
+    const asked = askedFollowUpFromAssistant(message.content);
+    if (!asked) continue;
+    const unknown = unknowns.find((item) => item.question === asked || asked.includes(item.question) || item.question.includes(asked));
+    const reply = history.slice(index + 1).find((item) => item.role === "user");
+    if (unknown && reply?.content.trim()) keys.push(unknown.key);
+  }
+  return Array.from(new Set(keys));
+}
+
+export function nextOfficialQaFollowUp(
+  unknowns: { key: string; question: string }[],
+  answeredKeys: string[] = [],
+  boosts: SuggestionBoosts = {},
+): { key: string; question: string } | null {
+  const remaining = rankFollowUpQuestions(
+    unknowns.filter((item) => !questionWasAnswered(answeredKeys, item.key) && !CASE_FILE_QUESTION_KEYS.has(canonicalUnknownKey(item.key))),
+    boosts,
+    { openOptions: true },
+  );
+  const first = remaining[0];
+  return first ? { key: first.key, question: first.question } : null;
+}
+
+export function withOfficialQaFollowUp(answer: string, followUp: { question: string } | null): string {
+  if (!followUp?.question) return answer;
+  if (answer.includes(QA_FOLLOW_UP_PREFIX)) return answer;
+  return `${answer.trim()}\n\n${followUpQuestionLine(followUp.question)}`;
+}
