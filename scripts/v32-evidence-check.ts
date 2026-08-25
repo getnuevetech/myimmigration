@@ -132,6 +132,7 @@ import {
 } from "../src/lib/goal-readiness";
 import {
   formatGuideSnapshot,
+  guideDefaultActionKey,
   guideFallbackCopy,
   guideOpeningCloser,
   guidePrimaryAction,
@@ -1560,6 +1561,10 @@ assert(/exploring options before a filing/i.test(guideUpgradeCopy("Free")) && /U
 assert(!/fastest way to get your immigration situation resolved/i.test(guideUpgradeCopy("Free")), "paid-gate copy must not be filed-case only");
 assert(guidePrimaryAction(familyGuideInput).href === "/app/documents?kind=identity", "open-options guide CTA must go to matching documents");
 assert(guidePrimaryAction(rfeGuideInput).href === "/app/notices?case=case-rfe", "RFE guide CTA must stay on the notices page");
+const openNoStep = { inquiryMode: "open_options" as const, themes: marriageInquiry.themes, authorityQueries: ["I-130", "I-485"], caseId: "case-options" };
+assert(/identity/i.test(guideTipForStep(guideDefaultActionKey(openNoStep), { ...openNoStep, actionKey: guideDefaultActionKey(openNoStep) }) ?? ""), "an open-options case with no current step must still coach matching documents");
+assert(!/haven't started a case/i.test(guideFallbackCopy(openNoStep, "What is my receipt status?")), "an existing open-options case must not be told to start a new case");
+assert(guidePrimaryAction(openNoStep).href === "/app/documents?kind=identity", "open-options with no current step still links matching documents");
 const openSnapshot = formatGuideSnapshot(familyGuideInput).join("\n");
 assert(/Situation: open_options/.test(openSnapshot), "guide snapshot must label open-options");
 assert(/Do not invent a receipt number/i.test(openSnapshot), "guide snapshot must forbid inventing a receipt");

@@ -108,6 +108,12 @@ export function formatGuideSnapshot(input: GuideMatchInput = {}): string[] {
   ];
 }
 
+export function guideDefaultActionKey(input: GuideMatchInput = {}): string | null {
+  if (input.actionKey) return String(input.actionKey).toUpperCase();
+  if (!input.caseId) return null;
+  return isFiledCaseSurface(input) ? "UPLOAD_NOTICE" : "GET_CASE_RECORD";
+}
+
 export function guideTipForStep(actionKey: string | null | undefined, input: GuideMatchInput = {}): string | null {
   const key = String(actionKey ?? "").toUpperCase();
   if (!key) return null;
@@ -181,9 +187,9 @@ export function guideUpgradeCopy(planName: string): string {
 }
 
 export function guideFallbackCopy(input: GuideMatchInput, question: string): string {
-  const tip = guideTipForStep(input.actionKey, input)
-    ?? (input.actionTitle
-      ? `Your current step is "${input.actionTitle}" — open your case and it will tell you exactly what completes it.`
+  const tip = guideTipForStep(guideDefaultActionKey(input), { ...input, actionKey: guideDefaultActionKey(input) })
+    ?? (input.caseId
+      ? `Open your case and follow the next matching step — a USCIS receipt is not required unless a notice is actually on file.`
       : "Start by creating a case — describe what happened and your goal, even if you have not filed anything with USCIS, and we'll map options and next steps.");
   return `Here's what I can tell you right now: ${tip}${guideStatusHint(question, input)}\n\nIf that doesn't answer your question, the FAQ covers the most common ones, or I can connect you with our customer service team.`;
 }
@@ -193,7 +199,7 @@ export function guidePrimaryAction(input: GuideMatchInput = {}): GuideLinkAction
   if (!caseId) {
     return { type: "link", label: "Start my first case", href: "/app/cases/new" };
   }
-  const actionKey = String(input.actionKey ?? "").toUpperCase();
+  const actionKey = guideDefaultActionKey(input);
   if (actionKey) {
     const cta = presentationStepCta(actionKey, caseId, matchingForm(input), matchingLetter(input), {
       inquiryMode: input.inquiryMode,

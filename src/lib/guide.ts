@@ -9,6 +9,7 @@ import { caseListActionLine, caseListEvidenceLine, caseListSummaryFromView, case
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "./immigration-inquiry";
 import {
   formatGuideSnapshot,
+  guideDefaultActionKey,
   guideFallbackCopy,
   guideOpeningCloser,
   guidePrimaryAction,
@@ -198,9 +199,12 @@ export async function guideRespond(
 
   // Opening message (no user question yet): proactive account analysis.
   if (!lastQuestion) {
-    const tip = guideTipForStep(snapshot.currentStep?.actionKey, snapshot.surface)
-      ?? (snapshot.currentStep
-        ? `Your next step is "${snapshot.currentStep.title}". Knock it out and you're one step closer — I'm here if you need help with it.`
+    const tip = guideTipForStep(guideDefaultActionKey(snapshot.surface), {
+      ...snapshot.surface,
+      actionKey: guideDefaultActionKey(snapshot.surface),
+    })
+      ?? (snapshot.surface.caseId
+        ? "Open your case and follow the next matching step."
         : "You haven't started a case yet — tell us what's going on, even if you have not filed anything with USCIS, and we'll map options and next steps.");
     return withChrome(snapshot, {
       message: `Here's where you stand:\n\n${snapshot.text
