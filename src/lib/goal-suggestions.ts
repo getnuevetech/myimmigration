@@ -45,15 +45,23 @@ const TAG_THEME: { pattern: RegExp; theme: InquiryTheme }[] = [
   { pattern: /\bconsular\b|nvc|embassy|ds-?260/, theme: "consular" },
 ];
 
-function sourceHay(source: KnowledgeRecord): string {
-  return `${source.reference} ${source.title} ${source.tags ?? ""} ${source.content}`.toLowerCase();
+function sourceMetaHay(source: KnowledgeRecord): string {
+  return `${source.reference} ${source.title} ${source.tags ?? ""}`.toLowerCase();
 }
+
+function sourceHay(source: KnowledgeRecord): string {
+  return `${sourceMetaHay(source)} ${source.content}`.toLowerCase();
+}
+
+const EXCLUSIVE_THEMES = new Set<InquiryTheme>(["naturalization", "student", "asylum", "visitor"]);
 
 export function themesFromOfficialSources(sources: KnowledgeRecord[]): InquiryTheme[] {
   const found: InquiryTheme[] = [];
   for (const source of sources) {
-    const hay = sourceHay(source);
+    const meta = sourceMetaHay(source);
+    const full = sourceHay(source);
     for (const item of TAG_THEME) {
+      const hay = EXCLUSIVE_THEMES.has(item.theme) ? meta : full;
       if (item.pattern.test(hay) && !found.includes(item.theme)) found.push(item.theme);
     }
   }
@@ -63,16 +71,15 @@ export function themesFromOfficialSources(sources: KnowledgeRecord[]): InquiryTh
 export function refineInquiryThemes(regexThemes: InquiryTheme[], sources: KnowledgeRecord[]): InquiryTheme[] {
   const sourceThemes = themesFromOfficialSources(sources);
   if (!sourceThemes.length) return regexThemes.length ? regexThemes : ["general"];
-  const exclusive = new Set<InquiryTheme>(["naturalization", "student", "asylum", "visitor"]);
-  const kept = regexThemes.filter((theme) => theme !== "general" && (!exclusive.has(theme) || sourceThemes.includes(theme)));
-  const extra = sourceThemes.filter((theme) => !exclusive.has(theme) || kept.includes(theme) || regexThemes.includes("general"));
+  const kept = regexThemes.filter((theme) => theme !== "general" && (!EXCLUSIVE_THEMES.has(theme) || sourceThemes.includes(theme)));
+  const extra = sourceThemes.filter((theme) => !EXCLUSIVE_THEMES.has(theme) || kept.includes(theme) || regexThemes.includes("general"));
   const merged = Array.from(new Set([...kept, ...extra]));
   return merged.length ? merged : sourceThemes;
 }
 
 export function consultantFromOfficialSources(sources: KnowledgeRecord[]): ConsultantReferral | null {
   if (!sources.length) return null;
-  const hay = sources.map(sourceHay).join(" \n ");
+  const hay = sources.map(sourceMetaHay).join(" \n ");
   if (/\bi-?589\b|\basylum\b|withholding of removal|credible fear|convention against torture/.test(hay)) {
     return { level: "required", reason: "Matching official material is about asylum or protection, which is high-stakes and fact-specific under USCIS and DOJ rules." };
   }

@@ -525,7 +525,7 @@ const knowledgeCatalog: KnowledgeRecord[] = [
     sourceType: "form_instruction",
     tags: "i-765, ead, employment, student, opt, work",
     url: "https://www.uscis.gov/i-765",
-    content: "Form I-765 is used to apply for an Employment Authorization Document. Eligibility categories include F-1 OPT, pending adjustment of status, and others listed on the form instructions. Evidence usually includes identity documents, proof of the qualifying status, and category-specific records such as an I-20 for OPT.",
+    content: "Form I-765 is used to apply for an Employment Authorization Document. Eligibility categories include F-1 OPT, pending adjustment of status, asylum-related categories, and others listed on the form instructions. Evidence usually includes identity documents, proof of the qualifying status, and category-specific records such as an I-20 for OPT.",
   },
   {
     title: "Asylum and withholding overview",
@@ -626,6 +626,7 @@ const pinnedDespiteBoost = rankGoalSuggestions(
 assert(pinnedDespiteBoost[0]?.action_key === "ADD_CASE_DETAILS", "learning must not skip official evidence gaps even when another action was completed more often");
 assert(historicalSuggestionBoost(12, 4) > historicalSuggestionBoost(1, 1), "suggestions that similar customers completed should rank higher over time");
 assert(consultantFromOfficialSources([knowledgeCatalog.find((item) => item.reference === "Form I-589")!])?.level === "required", "I-589 official material itself should mark professional review required");
+assert(consultantFromOfficialSources([knowledgeCatalog.find((item) => item.reference === "Form I-765")!]) == null, "I-765 listing asylum-related EAD categories must not treat the source as an asylum case");
 
 const emptyReconcile = reconcileEvidenceStates([{
   documentType: "other",
