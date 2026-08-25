@@ -96,7 +96,7 @@ Presenter lockdown: you format approved analysis for the UI; you do not perform 
 If there is no USCIS receipt, notice, or filed form, set the headline and current posture around exploring immigration options. Present pathway_option items as opportunities with conditions, not as reconstructed case findings. still_unclear, missing_info, and path_steps must be the facts or records the matching official material still needs from THIS person — not a generic upload-a-notice step, and not a canned family/student essay. Do not make the only next step "upload a USCIS notice" when the person has no case file.
 Set consultant_recommended true only when INTERNAL ANALYSIS marks professional_review required or recommended for THIS input. Do not flag a consultant for an ordinary options question.
 "Your situation" must restate the user's SPECIFIC immigration facts (forms, dates, receipt numbers, notices, deadlines, or — if none exist — the life situation and goal they described), never vague ("Your summary mentions an immigration concern"). "Immigration rules" states the rule, why it matters to THIS case or options question, and the official source. "Your evidence" states what each document actually establishes — never just a document count — or states clearly that no case file is on record. Never promise outcomes. Never mention AI, models, engines, or providers. Keep every string plain-English at an 8th-grade reading level.
-Use only USCIS/immigration action keys: UPLOAD_DOCUMENTS, UPLOAD_NOTICE, GET_CASE_RECORD, GET_ACCOUNT_RECORD, ADD_DEADLINE, DRAFT_LETTER, COMPLETE_FORM_I485, REVIEW_ANALYSIS, PREPARE_APPOINTMENT, or ADD_CASE_DETAILS. Never use tax/IRS action keys, tax transcript language, Form 9465, refund/balance framing, or dollar examples unless the user's immigration notice specifically discusses a USCIS filing fee.
+Use only USCIS/immigration action keys: UPLOAD_DOCUMENTS, UPLOAD_NOTICE, GET_CASE_RECORD, GET_ACCOUNT_RECORD, ADD_DEADLINE, DRAFT_LETTER, COMPLETE_FORM_I485, PREPARE_FORM, REVIEW_ANALYSIS, PREPARE_APPOINTMENT, or ADD_CASE_DETAILS. Use PREPARE_FORM when the matching official form is not Form I-485. Use COMPLETE_FORM_I485 only when the matching official form is Form I-485. For family or marriage options, do not rank Form I-485 ahead of Form I-130. Never use tax/IRS action keys, tax transcript language, Form 9465, refund/balance framing, or dollar examples unless the user's immigration notice specifically discusses a USCIS filing fee.
 
 INTERNAL ANALYSIS:
 {{input}}`,
@@ -184,7 +184,7 @@ CONTEXT:
 {{input}}`,
 };
 
-export const PROMPT_VERSION = "immigration-v32-v42-answers-close-gaps-2026-08-25";
+export const PROMPT_VERSION = "immigration-v32-v42-goal-driven-forms-2026-08-25";
 
 // SHA-256 hashes of known previous default prompts. Seed uses these to upgrade
 // exact old defaults while leaving admin-edited prompts untouched.
@@ -202,6 +202,7 @@ export const PROMPT_SUPERSEDES: Record<string, string[]> = {
     "153d2702a793c3c19e1a411de7d2f10b5cc540bbe43d7e74115deaf125865848",
   ],
   presenter: [
+    "9bab95c72cce113e36e59a4c284889b55076a41e102c785e7c5ccf10f90b7036",
     "36c5f3c6696995d1b6fe504a53438986ad31b1f2d1f88e4d393dcaed2b5efe67",
     "fb77f1b52aa379afca980affa04b07dd0bd0cd7f9439073d64630f652732f4ff",
     "80a486116362bae711bb38cdfc6da82691d87d4736ab9e15d4022fae53b109d3",

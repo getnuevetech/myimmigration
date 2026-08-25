@@ -21,6 +21,7 @@ import {
   slugUnknownKey,
   type SuggestionBoosts,
 } from "./goal-suggestions";
+import type { FormMatchInput } from "./goal-forms";
 import {
   applyQaEntitlementToAnswer,
   countAskedOfficialFollowUps,
@@ -358,8 +359,9 @@ export function openOptionsPathSteps(
   gaps: { question: string; item: string }[] = [],
   referral: ConsultantReferral = { level: "probably_unnecessary", reason: "" },
   boosts: SuggestionBoosts = {},
+  formMatch: FormMatchInput = {},
 ): OpenOptionsPathStep[] {
-  return toPathSteps(rankGoalSuggestions(officialSuggestionCandidates(sources, gaps, referral), boosts));
+  return toPathSteps(rankGoalSuggestions(officialSuggestionCandidates(sources, gaps, referral, formMatch), boosts));
 }
 
 export function buildOpenOptionsAnalysis(
@@ -473,7 +475,13 @@ export function buildOpenOptionsAnalysis(
       ],
     });
   }
-  const pathSteps = openOptionsPathSteps(ranked, gaps, referral, boosts);
+  const pathSteps = openOptionsPathSteps(ranked, gaps, referral, boosts, {
+    sources: ranked,
+    themes: inquiry.themes,
+    inquiryMode: inquiry.mode,
+    query: known,
+    authorityQueries: authorityQueriesForInquiry(inquiry),
+  });
   return {
     inquiry,
     issues,
