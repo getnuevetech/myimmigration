@@ -38,6 +38,7 @@ export type QaChatAccess = {
   showConsultantCta: boolean;
   allowSaveOptionsCase: boolean;
   consultantName?: string | null;
+  linkedCase?: boolean;
 };
 
 export function toQaChatAccess(
@@ -60,6 +61,7 @@ export function toQaChatAccess(
     showConsultantCta: entitlement.showConsultantCta,
     allowSaveOptionsCase: caseThread ? false : entitlement.allowSaveOptionsCase,
     consultantName: consultantName ?? null,
+    linkedCase: caseThread,
   };
 }
 
