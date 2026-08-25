@@ -354,7 +354,7 @@ export function buildOpenOptionsAnalysis(
     themes: inquiry.themes,
     authorityQueries: authorityQueriesForInquiry(inquiry),
   };
-  let ranked = sources.length ? rankKnowledgeSources(sources, rankHint, 3) : [];
+  const ranked = sources.length ? rankKnowledgeSources(sources, rankHint, 3) : [];
   inquiry = { ...inquiry, themes: refineInquiryThemes(inquiry.themes, ranked) };
   const gaps = rankAuthorityGaps(deriveAuthorityGaps(ranked, known), boosts);
   const referral = evaluateConsultantReferral({ text: known, inquiry, sources: ranked });
