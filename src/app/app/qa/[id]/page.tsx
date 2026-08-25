@@ -6,6 +6,11 @@ import { QaChat } from "@/components/qa-chat";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
+import { loadQaAccess } from "@/lib/qa-quota";
+import { toQaChatAccess } from "@/lib/qa-access";
+import { conversationNarrative } from "@/lib/goal-suggestions";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { previewBestConsultantForThemes } from "@/lib/matching";
 
 export default async function QaThreadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,6 +23,14 @@ export default async function QaThreadPage({ params }: { params: Promise<{ id: s
     },
   });
   if (!thread) notFound();
+  const access = await loadQaAccess({ userId: user.id });
+  let consultantName: string | null = null;
+  if (access.entitlement.consultantReferral) {
+    const narrative = conversationNarrative(thread.messages);
+    const inquiry = classifyImmigrationInquiry({ situation: narrative, goal: narrative });
+    const preview = await previewBestConsultantForThemes(inquiry.themes).catch(() => null);
+    consultantName = preview ? `${preview.name}, ${preview.credentialLabel}` : null;
+  }
   const views = thread.caseId ? await loadApprovedViewsByCaseIds([thread.caseId]) : new Map();
   const summary = thread.case
     ? caseListSummaryFromView(
@@ -40,6 +53,7 @@ export default async function QaThreadPage({ params }: { params: Promise<{ id: s
         threadId={thread.id}
         caseId={thread.caseId ?? ""}
         messages={thread.messages.map((m) => ({ id: m.id, role: m.role, content: m.content }))}
+        access={toQaChatAccess(access.entitlement, access.usage, consultantName, Boolean(thread.caseId))}
       />
     </div>
   );

@@ -7,6 +7,8 @@ import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
 import { formatCaseNumber } from "@/lib/case-number";
+import { loadQaAccess } from "@/lib/qa-quota";
+import { toQaChatAccess } from "@/lib/qa-access";
 
 export const metadata = { title: "Ask the assistant" };
 
@@ -17,6 +19,7 @@ export default async function QaPage({
 }) {
   const { case: caseId } = await searchParams;
   const user = await requireUser();
+  const access = await loadQaAccess({ userId: user.id });
   const cases = await db.case.findMany({
     where: { userId: user.id, status: { notIn: ["closed"] } },
     orderBy: { updatedAt: "desc" },
@@ -47,7 +50,7 @@ export default async function QaPage({
         subtitle={
           linkedCase
             ? "This conversation is grounded in the approved case presentation and compiled evidence."
-            : "Plain-English answers to any immigration question — including if you have no USCIS case yet. Link a case to ground answers in the approved presentation."
+            : "Plain-English answers. Your plan controls how many general questions you can ask and how personalized the follow-ups stay."
         }
       />
       {summary && <CasePresentationContextCard heading="Answers use this approved presentation" summary={summary} />}
@@ -71,7 +74,7 @@ export default async function QaPage({
               <button className="mt-2 text-sm font-medium text-lime-700 hover:text-lime-800">Apply →</button>
             </form>
           )}
-          <QaChat threadId="" caseId={linkedCase?.id ?? ""} messages={[]} />
+          <QaChat threadId="" caseId={linkedCase?.id ?? ""} messages={[]} access={toQaChatAccess(access.entitlement, access.usage, null, Boolean(linkedCase))} />
         </div>
         <div>
           <h2 className="mb-3 text-sm font-semibold text-slate-900">Recent conversations</h2>

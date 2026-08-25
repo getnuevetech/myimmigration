@@ -3,6 +3,7 @@ import { db } from "./db";
 import { getBoolSetting } from "./settings";
 import { STAGE_KEYS, CONSULTANT_SPECIALTIES } from "./constants";
 import { callProvider, extractJson } from "./ai/adapters";
+import { consultantSpecialtiesForThemes } from "./qa-access";
 
 // Consultant matching engine: deterministic scoring over specialty fit,
 // experience, and past cases handled, optionally re-ranked by an AI model,
@@ -36,17 +37,8 @@ type Candidate = {
   score: number;
 };
 
-export async function rankConsultantsForCase(caseId: string): Promise<Candidate[]> {
-  const c = await db.case.findUnique({
-    where: { id: caseId },
-    include: { issues: true },
-  });
-  if (!c) return [];
-  const issueTypes = Array.from(new Set(c.issues.map((i) => i.issueType)));
-  const wantedSpecialties = new Set(issueTypes.flatMap((t) => ISSUE_SPECIALTY_MAP[t] ?? []));
-  if (/(rfe|noid|evidence|deadline)/i.test(`${c.situation} ${c.goal}`)) wantedSpecialties.add("rfe");
-  if (/(interview|biometrics)/i.test(`${c.situation} ${c.goal}`)) wantedSpecialties.add("interviews");
-
+export async function rankConsultantsForSpecialties(wanted: string[]): Promise<Candidate[]> {
+  const wantedSpecialties = new Set(wanted);
   const consultants = await db.user.findMany({
     where: { role: "consultant", status: "active", consultantProfile: { status: "approved" } },
     include: {
@@ -65,10 +57,10 @@ export async function rankConsultantsForCase(caseId: string): Promise<Candidate[
     score += Math.min(p.yearsExperience, 10) * 0.3;
     if (["attorney", "accredited_representative"].includes(p.credentialType)) score += 1.5;
     for (const pc of pastCases) {
-      if (wantedSpecialties.has(pc.category) || issueTypes.includes(pc.category)) score += 1;
-      else score += 0.2; // any track record counts a little
+      if (wantedSpecialties.has(pc.category)) score += 1;
+      else score += 0.2;
     }
-    score -= u.consultantAssignments.length * 0.5; // workload balancing
+    score -= u.consultantAssignments.length * 0.5;
 
     return {
       userId: u.id,
@@ -85,6 +77,26 @@ export async function rankConsultantsForCase(caseId: string): Promise<Candidate[
   });
 
   return candidates.sort((a, b) => b.score - a.score);
+}
+
+export async function rankConsultantsForCase(caseId: string): Promise<Candidate[]> {
+  const c = await db.case.findUnique({
+    where: { id: caseId },
+    include: { issues: true },
+  });
+  if (!c) return [];
+  const issueTypes = Array.from(new Set(c.issues.map((i) => i.issueType)));
+  const wantedSpecialties = issueTypes.flatMap((t) => ISSUE_SPECIALTY_MAP[t] ?? []);
+  if (/(rfe|noid|evidence|deadline)/i.test(`${c.situation} ${c.goal}`)) wantedSpecialties.push("rfe");
+  if (/(interview|biometrics)/i.test(`${c.situation} ${c.goal}`)) wantedSpecialties.push("interviews");
+  return rankConsultantsForSpecialties(wantedSpecialties);
+}
+
+export async function previewBestConsultantForThemes(themes: string[]): Promise<{ name: string; credentialLabel: string } | null> {
+  const ranked = await rankConsultantsForSpecialties(consultantSpecialtiesForThemes(themes));
+  const first = ranked[0];
+  if (!first) return null;
+  return { name: first.name, credentialLabel: credentialLabel(first.credentialType) };
 }
 
 async function getStageSteps(stageKey: string) {

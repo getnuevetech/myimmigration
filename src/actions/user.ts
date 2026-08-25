@@ -10,6 +10,10 @@ import { runQaChat, generateLetterDraft } from "@/lib/ai/orchestrator";
 import { verifyUserCasesProgress } from "@/lib/case-progress";
 import { hasFeature } from "@/lib/access";
 import { FEATURE_KEYS } from "@/lib/constants";
+import { loadQaAccess } from "@/lib/qa-quota";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { conversationNarrative } from "@/lib/goal-suggestions";
+import { previewBestConsultantForThemes } from "@/lib/matching";
 import type { ActionState } from "./auth";
 
 // ---------- Profile ----------
@@ -47,39 +51,54 @@ export async function askQuestionAction(_prev: ActionState, formData: FormData):
   const threadId = String(formData.get("threadId") ?? "");
   const requestedCaseId = String(formData.get("caseId") ?? "") || null;
   const user = await getCurrentUser();
-
-  if (user && !(await hasFeature(user.id, FEATURE_KEYS.QA))) {
-    return { error: "AI Q&A is not included in your plan. Upgrade to ask unlimited questions." };
-  }
+  const guest = user ? null : await getOrCreateGuestSession();
 
   let thread;
   if (threadId) {
     thread = await db.qaThread.findUnique({ where: { id: threadId }, include: { messages: { orderBy: { createdAt: "asc" } } } });
     if (!thread) return { error: "Conversation not found." };
     if (user ? thread.userId !== user.id : true) {
-      const guest = await getOrCreateGuestSession();
-      if (thread.guestSessionId !== guest.id) return { error: "Conversation not found." };
+      if (thread.guestSessionId !== guest?.id) return { error: "Conversation not found." };
     }
-  } else {
-    const guest = user ? null : await getOrCreateGuestSession();
-    let caseId: string | null = null;
-    if (user && requestedCaseId) {
-      const c = await db.case.findFirst({ where: { id: requestedCaseId, userId: user.id }, select: { id: true } });
-      caseId = c?.id ?? null;
-    }
+  }
+
+  let ownedCaseId: string | null = null;
+  if (user && requestedCaseId) {
+    const c = await db.case.findFirst({ where: { id: requestedCaseId, userId: user.id }, select: { id: true } });
+    ownedCaseId = c?.id ?? null;
+  }
+  const linkedCase = Boolean(thread?.caseId || ownedCaseId);
+  const access = await loadQaAccess({ userId: user?.id, guestSessionId: guest?.id });
+  if (!access.entitlement.qaEnabled) {
+    return { error: "Immigration Q&A is not included in this plan. Upgrade to keep asking." };
+  }
+  if (!linkedCase && access.usage.blocked) return { error: access.usage.blockReason };
+
+  if (!thread) {
     thread = await db.qaThread.create({
-      data: { userId: user?.id ?? null, guestSessionId: guest?.id ?? null, caseId, title: question.slice(0, 60) },
+      data: { userId: user?.id ?? null, guestSessionId: guest?.id ?? null, caseId: ownedCaseId, title: question.slice(0, 60) },
       include: { messages: true },
     });
   }
 
   await db.qaMessage.create({ data: { threadId: thread.id, role: "user", content: question } });
   const history = [...thread.messages.map((m) => ({ role: m.role, content: m.content })), { role: "user", content: question }];
-  const answer = await runQaChat(history, { caseId: thread.caseId });
+  const narrative = conversationNarrative(history) || question;
+  const inquiry = classifyImmigrationInquiry({ situation: narrative, goal: narrative });
+  const consultant = access.entitlement.consultantReferral
+    ? await previewBestConsultantForThemes(inquiry.themes).catch(() => null)
+    : null;
+  const answer = await runQaChat(history, {
+    caseId: thread.caseId,
+    entitlement: access.entitlement,
+    consultant,
+  });
   await db.qaMessage.create({ data: { threadId: thread.id, role: "assistant", content: answer } });
 
   if (!threadId) redirect(user ? `/app/qa/${thread.id}` : `/start/qa?thread=${thread.id}`);
   revalidatePath(`/app/qa/${thread.id}`);
+  revalidatePath("/app/qa");
+  revalidatePath("/start/qa");
   return { ok: true };
 }
 

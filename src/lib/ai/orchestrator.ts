@@ -39,11 +39,14 @@ import {
   answeredKeysFromQaHistory,
   answeredOfficialPairs,
   conversationNarrative,
+  followUpQuestionLine,
   nextOfficialQaFollowUp,
+  QA_FOLLOW_UP_PREFIX,
   suggestionQuestionKey,
   withOfficialQaFollowUp,
   workingQaNarrative,
 } from "../goal-suggestions";
+import { applyQaEntitlementToAnswer, countAskedOfficialFollowUps, shouldAppendOfficialFollowUp, type QaConsultantPreview, type QaEntitlement } from "../qa-access";
 
 type Json = Record<string, unknown>;
 
@@ -740,7 +743,7 @@ async function loadCaseGrounding(caseId?: string | null) {
 
 // ---------- Single-purpose AI helpers ----------
 
-export async function runQaChat(history: { role: string; content: string }[], opts?: { caseId?: string | null }): Promise<string> {
+export async function runQaChat(history: { role: string; content: string }[], opts?: { caseId?: string | null; entitlement?: QaEntitlement; consultant?: QaConsultantPreview }): Promise<string> {
   const steps = await getRunnableSteps(STAGE_KEYS.QA);
   const convo = history.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
   const question = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
@@ -770,6 +773,7 @@ export async function runQaChat(history: { role: string; content: string }[], op
     answeredQuestions,
   );
   const followUp = !opts?.caseId && inquiry.mode === "open_options"
+    && shouldAppendOfficialFollowUp(opts?.entitlement?.maxFollowUps, countAskedOfficialFollowUps(history, QA_FOLLOW_UP_PREFIX))
     ? nextOfficialQaFollowUp(options.unknowns, answered, boosts)
     : null;
   await recordSuggestionEvent(queryKeys, options.suggestionKeys ?? ["REVIEW_ANALYSIS"], "recommended");
@@ -789,6 +793,8 @@ export async function runQaChat(history: { role: string; content: string }[], op
         inquiry,
         hasLinkedCase: Boolean(opts?.caseId),
         boosts,
+        entitlement: opts?.entitlement,
+        consultant: opts?.consultant,
       }),
       followUp,
     );
@@ -815,7 +821,16 @@ export async function runQaChat(history: { role: string; content: string }[], op
       await logSystem("error", "ai_call", `${step.provider.name} failed answering the immigration Q&A chat`, String(err));
     }
   }
-  if (drafts.length > 0) return withOfficialQaFollowUp(drafts[drafts.length - 1], followUp);
+  const finish = (text: string) => {
+    const withFollowUp = withOfficialQaFollowUp(text, followUp);
+    if (!opts?.entitlement) return withFollowUp;
+    return applyQaEntitlementToAnswer(withFollowUp, opts.entitlement, {
+      followUpLine: followUp ? followUpQuestionLine(followUp.question) : null,
+      consultant: opts.consultant,
+      hasLinkedCase: Boolean(opts.caseId),
+    });
+  };
+  if (drafts.length > 0) return finish(drafts[drafts.length - 1]);
   return fallbackAnswer();
 }
 

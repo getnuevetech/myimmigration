@@ -18,12 +18,13 @@ export default async function RegisterPage({
     getSetting("auth.google_client_id", ""),
     getGuestSession(),
   ]);
+  const guestQaCount = guest ? await db.qaThread.count({ where: { guestSessionId: guest.id } }) : 0;
   const agreement = await db.contentPage.findFirst({
     where: { kind: asConsultant ? "agreement_consultant" : "agreement_user", isPublished: true },
     orderBy: { version: "desc" },
     select: { slug: true, title: true },
   });
-  const hasGuestData = !!guest && (guest.situation.length > 0 || guest.goal.length > 0);
+  const hasGuestData = !!guest && (guest.situation.length > 0 || guest.goal.length > 0 || guestQaCount > 0);
 
   return (
     <div className="min-h-screen">
@@ -39,7 +40,7 @@ export default async function RegisterPage({
         </p>
         {hasGuestData && !asConsultant && (
           <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            Your answers and uploads from before will be attached to your new account automatically.
+            Your questions, answers, and uploads from before will be attached to your new account automatically. Paid plans keep a more personalized review, and Pro can match you with a licensed professional on ImmigrationOnMe.
           </div>
         )}
         <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

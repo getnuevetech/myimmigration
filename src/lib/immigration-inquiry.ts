@@ -13,12 +13,22 @@ import {
   answeredKeysFromQaHistory,
   nextOfficialQaFollowUp,
   withOfficialQaFollowUp,
+  followUpQuestionLine,
+  QA_FOLLOW_UP_PREFIX,
   workingQaNarrative,
   answeredOfficialPairs,
   gapClosedByOfficialAnswer,
   slugUnknownKey,
   type SuggestionBoosts,
 } from "./goal-suggestions";
+import {
+  applyQaEntitlementToAnswer,
+  countAskedOfficialFollowUps,
+  limitOfficialExcerpts,
+  shouldAppendOfficialFollowUp,
+  type QaConsultantPreview,
+  type QaEntitlement,
+} from "./qa-access";
 
 export const INQUIRY_MODES = {
   EXISTING_CASE: "existing_case",
@@ -530,6 +540,8 @@ export function buildQaFallbackAnswer(input: {
   inquiry?: ImmigrationInquiry;
   hasLinkedCase?: boolean;
   boosts?: SuggestionBoosts;
+  entitlement?: QaEntitlement;
+  consultant?: QaConsultantPreview;
 }): string {
   const history = input.history?.length ? input.history : [{ role: "user", content: input.question }];
   const userNarrative = conversationNarrative(history) || input.question;
@@ -542,11 +554,21 @@ export function buildQaFallbackAnswer(input: {
   const ranked = options.issues
     .map((issue) => (input.sources ?? []).find((source) => source.title === issue.title))
     .filter((source): source is KnowledgeRecord => Boolean(source));
+  const excerptLimit = input.entitlement ? (input.entitlement.maxExcerpts ?? 8) : 3;
+  const sentenceLimit = input.entitlement ? (input.entitlement.maxSentences ?? 8) : 3;
   const knowledge = ranked.length
-    ? ranked.map((source) => `${source.title} (${source.reference})${source.url ? ` ${source.url}` : ""}\n${firstSentences(source.content, 3)}`).join("\n\n")
+    ? limitOfficialExcerpts(
+        ranked
+          .slice(0, excerptLimit)
+          .map((source) => `${source.title} (${source.reference})${source.url ? ` ${source.url}` : ""}\n${firstSentences(source.content, sentenceLimit)}`)
+          .join("\n\n"),
+        excerptLimit,
+        null,
+      )
     : (input.knowledge ?? "").trim();
   const referral = evaluateConsultantReferral({ text: userNarrative, inquiry, sources: ranked.length ? ranked : input.sources });
   const followUp = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS && !input.hasLinkedCase
+    && shouldAppendOfficialFollowUp(input.entitlement?.maxFollowUps, countAskedOfficialFollowUps(history, QA_FOLLOW_UP_PREFIX))
     ? nextOfficialQaFollowUp(options.unknowns, answered, input.boosts)
     : null;
   const lines: string[] = [];
@@ -566,7 +588,7 @@ export function buildQaFallbackAnswer(input: {
   }
   if (knowledge) {
     lines.push("From matching USCIS or DOJ reference material:");
-    lines.push(knowledge.slice(0, 1600));
+    lines.push(knowledge.slice(0, input.entitlement?.personalized ? 4000 : 1600));
   } else {
     lines.push(
       "I could not pull matching official material just now. Add your current status, location, and the outcome you want so the right USCIS or DOJ rule can be retrieved.",
@@ -579,7 +601,13 @@ export function buildQaFallbackAnswer(input: {
   } else if (referral.level === "recommended") {
     lines.push(`A licensed professional is recommended before you file or respond. ${referral.reason}`);
   }
-  return withOfficialQaFollowUp(lines.join("\n\n"), followUp);
+  const raw = withOfficialQaFollowUp(lines.join("\n\n"), followUp);
+  if (!input.entitlement) return raw;
+  return applyQaEntitlementToAnswer(raw, input.entitlement, {
+    followUpLine: followUp ? followUpQuestionLine(followUp.question) : null,
+    consultant: input.consultant,
+    hasLinkedCase: input.hasLinkedCase,
+  });
 }
 
 export const OPEN_OPTIONS_POSTURE = "Exploring immigration options";

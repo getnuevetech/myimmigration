@@ -43,6 +43,7 @@ export const FEATURE_KEYS = {
   CASE_ANALYSIS: "case.analysis",
   CASE_FULL_RESULTS: "case.full_results",
   QA: "qa.chat",
+  QA_PERSONALIZED: "qa.personalized",
   LETTERS: "letters.generate",
   DEADLINES: "deadlines.reminders",
   VAULT: "vault.storage",

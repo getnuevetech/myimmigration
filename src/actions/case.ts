@@ -204,6 +204,9 @@ export async function createOptionsCaseFromQaAction(_prev: ActionState, formData
   if (user ? thread.userId !== user.id : thread.guestSessionId !== guest?.id) {
     return { error: "Conversation not found." };
   }
+  if (!user) {
+    return { error: "Create a free account to keep these answers as a personalized options review. Paid plans continue the official follow-ups, and Pro can match you with a licensed professional on ImmigrationOnMe." };
+  }
   if (thread.caseId) {
     redirect(user ? `/app/cases/${thread.caseId}` : `/start/result?case=${thread.caseId}`);
   }
