@@ -10,6 +10,7 @@ import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CaseListSummaryDetails } from "@/components/case-list-card";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
+import { resolveReportChrome } from "@/lib/goal-chrome";
 
 export const metadata = { title: "Consultant dashboard" };
 
@@ -169,7 +170,10 @@ export default async function ConsultantDashboard({
                       target="_blank"
                       className="rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700"
                     >
-                      Case report ↗
+                      {resolveReportChrome({
+                        inquiryMode: classifyImmigrationInquiry({ situation: kase.situation, goal: kase.goal }).mode,
+                        query: `${kase.situation} ${kase.goal}`,
+                      }).documentTitle} ↗
                     </a>
                     <Link
                       href={`/consultant/clients/${a.id}/cases/${kase.id}`}

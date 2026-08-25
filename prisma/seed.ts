@@ -15,6 +15,7 @@ import {
   STALE_PUBLIC_PRIMARY_CTAS,
   STALE_PUBLIC_TAGLINES,
 } from "../src/lib/goal-public";
+import { CASE_REPORT_FEATURE_NAME, SUPPORT_PLAYBOOK_MATCHING } from "../src/lib/goal-chrome";
 
 const db = new PrismaClient();
 
@@ -205,7 +206,7 @@ async function seedPlansAndFeatures() {
     ["forms.wizard", "Simplified USCIS form wizards", "forms", 11],
     ["consultant.referral", "immigration professional referral service", "consultants", 12],
     ["guide.chatbot", "Personal immigration guide chatbot", "assistant", 13],
-    ["case.report", "Downloadable full case report (with document copies)", "analysis", 14],
+    ["case.report", CASE_REPORT_FEATURE_NAME, "analysis", 14],
     ["uscis.updates_analysis", "USCIS update impact analysis", "analysis", 15],
     ["forms.download", "Downloadable completed USCIS forms", "forms", 16],
     ["qa.personalized", "Personalized Q&A follow-ups from official material", "assistant", 17],
@@ -223,6 +224,7 @@ async function seedPlansAndFeatures() {
   await db.featureDef.updateMany({ where: { key: "case.analysis", name: "AI case analysis" }, data: { name: "In-depth case analysis" } });
   await db.featureDef.updateMany({ where: { key: "letters.generate" }, data: { name: "USCIS letter drafts" } });
   await db.featureDef.updateMany({ where: { key: "guide.chatbot" }, data: { name: "Personal immigration guide chatbot" } });
+  await db.featureDef.updateMany({ where: { key: "case.report" }, data: { name: CASE_REPORT_FEATURE_NAME } });
   await db.pipelineStage.updateMany({
     where: { key: "guide", name: "In-account case guide" },
     data: {
@@ -1123,14 +1125,14 @@ async function seedFormTemplates() {
 async function seedCannedResponses() {
   const responses = [
     {
-      title: "Request latest USCIS notice",
-      category: "customer_service",
-      body: "Please upload the latest USCIS notice or receipt so we can confirm the form type, receipt number, notice date, and response deadline.",
+      title: SUPPORT_PLAYBOOK_MATCHING.title,
+      category: SUPPORT_PLAYBOOK_MATCHING.category,
+      body: SUPPORT_PLAYBOOK_MATCHING.body,
     },
     {
       title: "Recommend professional review",
       category: "customer_service",
-      body: "Because this case may involve a high-stakes deadline or eligibility question, we recommend reviewing the documents with a licensed immigration attorney or accredited representative before acting.",
+      body: "Because this situation may involve a high-stakes deadline or eligibility question, we recommend reviewing the documents with a licensed immigration attorney or accredited representative before acting.",
     },
     {
       title: "Troubleshooting upload",
@@ -1139,9 +1141,21 @@ async function seedCannedResponses() {
     },
   ];
 
+  await db.cannedResponse.updateMany({
+    where: { title: SUPPORT_PLAYBOOK_MATCHING.staleTitle },
+    data: { title: SUPPORT_PLAYBOOK_MATCHING.title, body: SUPPORT_PLAYBOOK_MATCHING.body },
+  });
+  await db.cannedResponse.updateMany({
+    where: { title: SUPPORT_PLAYBOOK_MATCHING.title },
+    data: { body: SUPPORT_PLAYBOOK_MATCHING.body },
+  });
+
   for (const response of responses) {
     const existing = await db.cannedResponse.findFirst({ where: { title: response.title } });
     if (!existing) await db.cannedResponse.create({ data: response });
+    else if (response.title === "Recommend professional review") {
+      await db.cannedResponse.update({ where: { id: existing.id }, data: { body: response.body } });
+    }
   }
 }
 
@@ -1164,8 +1178,8 @@ async function seedMessageTemplates() {
     {
       key: "case_needs_review",
       name: "Case needs review",
-      subject: "Your immigration case may need review",
-      bodyHtml: "<p>Your case includes an item that may benefit from professional review. Sign in to review the next steps.</p>",
+      subject: "Your immigration situation may need review",
+      bodyHtml: "<p>Your immigration situation includes an item that may benefit from professional review. Sign in to review the next matching steps.</p>",
       kind: "event",
     },
   ];
@@ -1177,6 +1191,13 @@ async function seedMessageTemplates() {
       create: template,
     });
   }
+  await db.messageTemplate.updateMany({
+    where: { key: "case_needs_review" },
+    data: {
+      subject: "Your immigration situation may need review",
+      bodyHtml: "<p>Your immigration situation includes an item that may benefit from professional review. Sign in to review the next matching steps.</p>",
+    },
+  });
 }
 
 async function main() {

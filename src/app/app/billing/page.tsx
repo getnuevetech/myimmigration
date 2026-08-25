@@ -5,6 +5,7 @@ import { PageHeader, Card, CardBody, Badge, Money } from "@/components/ui";
 import { cancelSubscriptionAction } from "@/actions/billing";
 import { PlanPicker } from "@/components/plan-picker";
 import { PUBLIC_BILLING_SUBTITLE } from "@/lib/goal-public";
+import { BILLING_REPORT_OVERAGE, BILLING_REPORT_RETURN } from "@/lib/goal-chrome";
 
 export const metadata = { title: "Plan & billing" };
 
@@ -52,9 +53,9 @@ export default async function BillingPage({
       )}
       {reportOverage && (
         <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
-          <span className="font-semibold">Case report download limit reached.</span>{" "}
+          <span className="font-semibold">{BILLING_REPORT_OVERAGE}</span>{" "}
           Additional downloads cost <Money cents={Number(feeCents ?? 0) || 0} />. Choose a higher plan or contact support to purchase an additional report download.
-          {returnTo && <p className="mt-1 text-xs text-lime-700">After checkout, return to your case report from the case page.</p>}
+          {returnTo && <p className="mt-1 text-xs text-lime-700">{BILLING_REPORT_RETURN}</p>}
         </div>
       )}
       {isTestGateway && (
