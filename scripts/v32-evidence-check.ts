@@ -54,6 +54,12 @@ import {
   resolveQaEntitlement,
 } from "../src/lib/qa-access";
 import {
+  limitSuggestionItems,
+  resolveSuggestionEntitlement,
+  suggestionConsultantCopy,
+  suggestionUsageFromCount,
+} from "../src/lib/suggestion-access";
+import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
   conversationNarrative,
@@ -984,6 +990,33 @@ const guestSecondFollowUp = buildQaFallbackAnswer({
 });
 assert(!/To match this official material more closely:/i.test(guestSecondFollowUp) || guestSecondFollowUp.indexOf("To match this official material more closely:") === guestSecondFollowUp.lastIndexOf("To match this official material more closely:"), "guests must not keep stacking official follow-ups after the first hook");
 
+const guestSuggestions = resolveSuggestionEntitlement({ isGuest: true });
+const freeSuggestions = resolveSuggestionEntitlement({ isGuest: false, planKey: "free" });
+const plusSuggestions = resolveSuggestionEntitlement({ isGuest: false, planKey: "plus", personalized: true });
+const proSuggestions = resolveSuggestionEntitlement({ isGuest: false, planKey: "pro", personalized: true, consultantReferral: true });
+assert(guestSuggestions.maxPathSteps === 1 && guestSuggestions.maxClarifyAnswers === 0, "guests get one suggested next step and cannot continue the interview");
+assert(freeSuggestions.maxPathSteps === 1 && freeSuggestions.maxClarifyAnswers === 3 && freeSuggestions.showUpgradeCta, "free plans keep one official next step and a few follow-ups");
+assert(plusSuggestions.personalized && plusSuggestions.maxPathSteps === null && plusSuggestions.showUpgradeCta, "plus keeps the full official suggested path");
+assert(proSuggestions.consultantReferral && !proSuggestions.showUpgradeCta, "pro can offer a matched professional on the suggested path");
+assert(suggestionUsageFromCount(0, guestSuggestions).blocked, "guests cannot answer case follow-ups until they register");
+assert(suggestionUsageFromCount(3, freeSuggestions).blocked, "free follow-ups must stop at the per-case limit");
+assert(!suggestionUsageFromCount(20, plusSuggestions).blocked, "plus follow-ups must not use the free cap");
+const fourSteps = [
+  { action_key: "ADD_CASE_DETAILS" },
+  { action_key: "REVIEW_ANALYSIS" },
+  { action_key: "PREPARE_FORM" },
+  { action_key: "FIND_CONSULTANT" },
+];
+const freeSteps = limitSuggestionItems(fourSteps, freeSuggestions.maxPathSteps);
+assert(freeSteps.visible.length === 1 && freeSteps.visible[0]?.action_key === "ADD_CASE_DETAILS", "free suggestion depth must keep the pinned official next step");
+assert(freeSteps.hidden === 3, "extra official steps stay behind the paid path");
+assert(limitSuggestionItems(fourSteps, plusSuggestions.maxPathSteps).hidden === 0, "personalized suggestions must keep the full ranked path");
+assert(/Create a free account/i.test(suggestionConsultantCopy(guestSuggestions)), "guest suggestion copy must route visitors to register");
+assert(/Upgrade to Plus|full suggested path/i.test(suggestionConsultantCopy(freeSuggestions)), "free suggestion copy must offer the paid path");
+assert(/Alex Rivera/.test(suggestionConsultantCopy(proSuggestions, { name: "Alex Rivera", credentialLabel: "immigration attorney" })), "pro suggestion copy should name the matching professional");
+assert(!/should be involved/i.test(suggestionConsultantCopy(freeSuggestions)), "a simple free suggestion teaser must not invent a consultant-required flag");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "case lists must still show the approved open-options posture after suggestion entitlements");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -1010,3 +1043,4 @@ console.log(`- v4 C5: follow-up ${nextOfficialQuestion?.key}, learned ${rankedOp
 console.log(`- v4 C6: Q&A follow-up ${askedMarriageFollowUp}, next ${askedFollowUpFromAssistant(qaMarriageNext)}`);
 console.log(`- v4 C7: remaining next step ${nextStepAfterIdentity}, follow-up ${askedFollowUpFromAssistant(qaAfterIdentity)}`);
 console.log(`- v4 C8: guest limit ${guestEntitlement.questionLimit}, free ${freeEntitlement.questionLimit}, plus personalized=${plusEntitlement.personalized}, pro consultant=${proEntitlement.consultantReferral}`);
+console.log(`- v4 C9: guest steps ${guestSuggestions.maxPathSteps}, free steps ${freeSuggestions.maxPathSteps}/${freeSuggestions.maxClarifyAnswers} clarify, plus personalized=${plusSuggestions.personalized}, pro consultant=${proSuggestions.consultantReferral}`);

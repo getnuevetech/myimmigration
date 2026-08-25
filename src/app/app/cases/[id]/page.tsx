@@ -8,6 +8,29 @@ import { formatCaseNumber } from "@/lib/case-number";
 import { CaseAnalysisView } from "@/components/case-analysis-view";
 import { CaseComments } from "@/components/case-comments";
 import { CaseClarify } from "@/components/case-clarify";
+import { loadSuggestionAccess, toCaseSuggestionAccess } from "@/lib/suggestion-quota";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { previewBestConsultantForThemes } from "@/lib/matching";
+
+export default async function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const user = await requireUser();
+  const c = await db.case.findFirst({
+    where: { id, userId: user.id },
+    select: { id: true, title: true, number: true, createdAt: true, situation: true, goal: true, _count: { select: { issues: true } } },
+  });
+  if (!c) notFound();
+
+  const fullResults = await hasFeature(user.id, FEATURE_KEYS.CASE_FULL_RESULTS);
+  const hasReportAccess = await hasFeature(user.id, FEATURE_KEYS.CASE_REPORT);
+  const suggestionLoaded = await loadSuggestionAccess({ userId: user.id, caseId: c.id });
+  let consultantName: string | null = null;
+  if (suggestionLoaded.entitlement.consultantReferral) {
+    const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+    const preview = await previewBestConsultantForThemes(inquiry.themes).catch(() => null);
+    consultantName = preview ? `${preview.name}, ${preview.credentialLabel}` : null;
+  }
+  const suggestionAccess = toCaseSuggestionAccess(suggestionLoaded, consultantName);
 
 export default async function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -52,9 +75,9 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         }
       />
       <div className="mb-6">
-        <CaseClarify caseId={c.id} />
+        <CaseClarify caseId={c.id} access={suggestionAccess} />
       </div>
-      <CaseAnalysisView caseId={c.id} viewer={{ role: "customer", userId: user.id, fullResults }} />
+      <CaseAnalysisView caseId={c.id} viewer={{ role: "customer", userId: user.id, fullResults, suggestionAccess }} />
       <CaseComments caseId={c.id} viewer={{ role: "customer", userId: user.id }} />
     </div>
   );

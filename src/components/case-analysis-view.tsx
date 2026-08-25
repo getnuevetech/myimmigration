@@ -14,7 +14,12 @@ import { CaseAnalysisPlanCard } from "@/components/case-analysis-plan-card";
 import { CaseVersionCard } from "@/components/case-version-card";
 import Link from "next/link";
 
-export type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
+export type CaseViewer = {
+  role: "customer" | "consultant" | "admin";
+  userId: string;
+  fullResults?: boolean;
+  suggestionAccess?: import("@/lib/suggestion-access").SuggestionChatAccess;
+};
 
 // The single source of truth for how a case analysis is presented. Customers,
 // consultants, and admins all see EXACTLY this view — only the available
@@ -172,8 +177,9 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           documents={c.documents}
           neededDocs={neededDocs}
           formI485Id={formI485?.id ?? null}
+          suggestionAccess={viewer.suggestionAccess}
         />
-        {analysisPlanJson ? <CaseAnalysisPlanCard planJson={analysisPlanJson} /> : null}
+        {analysisPlanJson && (viewer.role !== "customer" || viewer.suggestionAccess?.personalized !== false) ? <CaseAnalysisPlanCard planJson={analysisPlanJson} /> : null}
         {versionCard}
       </div>
     );

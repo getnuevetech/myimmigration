@@ -67,6 +67,20 @@ export default async function AdminPlansPage() {
 
       <Card className="mb-8">
         <CardBody>
+          <h2 className="mb-2 text-sm font-semibold text-slate-900">Suggested next steps</h2>
+          <p className="text-xs text-slate-500">
+            Visitor teasers live in App settings under the
+            <span className="font-medium text-slate-700"> suggestions </span>
+            group. Registered customers use this matrix: <code className="rounded bg-slate-100 px-1">suggestions.personalized</code> keeps
+            the full official path and unlimited clarify follow-ups, and <code className="rounded bg-slate-100 px-1">consultant.referral</code> names
+            a matching licensed attorney or accredited representative on the case. Stored analysis is never trimmed — only what the customer sees.
+            Suggestions never auto-assign a professional.
+          </p>
+        </CardBody>
+      </Card>
+
+      <Card className="mb-8">
+        <CardBody>
           <h2 className="mb-3 text-sm font-semibold text-slate-900">Feature access matrix</h2>
           <FeatureMatrix
             plans={plans.map((p) => ({ id: p.id, name: p.name }))}

@@ -7,6 +7,7 @@ import { InlineUpload } from "@/components/inline-upload";
 import { CaseUpload } from "@/components/case-upload";
 import type { PresentationContract } from "@/lib/case-presentation-contract";
 import { formatPresentationDate, presentationActionStatus, presentationEvidenceGateLabel, presentationStepCta } from "@/lib/case-presentation-ui";
+import { limitSuggestionItems, suggestionConsultantCopy, type SuggestionChatAccess } from "@/lib/suggestion-access";
 
 type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
 
@@ -62,6 +63,7 @@ export function CasePresentationView({
   documents,
   neededDocs,
   formI485Id,
+  suggestionAccess,
 }: {
   caseId: string;
   viewer: CaseViewer;
@@ -78,6 +80,7 @@ export function CasePresentationView({
   documents: DocumentRow[];
   neededDocs: { kind: string; label: string; hint: string }[];
   formI485Id: string | null;
+  suggestionAccess?: SuggestionChatAccess;
 }) {
   const issueById = new Map(issues.map((issue) => [issue.id, issue]));
   const stepByAction = new Map(pathSteps.map((step) => [step.actionKey.toUpperCase(), step]));
@@ -96,6 +99,27 @@ export function CasePresentationView({
         status: step.status === "done" ? "COMPLETED" : step.status === "current" ? "READY" : "BLOCKED",
         priority: index + 1,
       }));
+  const visibleActions = limitSuggestionItems(actions, suggestionAccess?.maxPathSteps ?? null);
+  const pendingActions = limitSuggestionItems(
+    presentation.what_this_means.pending_actions,
+    suggestionAccess?.maxPathSteps ?? null,
+  );
+  const consultantCopy = suggestionAccess
+    ? suggestionConsultantCopy(
+        {
+          audience: suggestionAccess.audience,
+          maxPathSteps: suggestionAccess.maxPathSteps,
+          maxClarifyAnswers: suggestionAccess.limit,
+          personalized: suggestionAccess.personalized,
+          consultantReferral: suggestionAccess.consultantReferral,
+          showRegisterCta: suggestionAccess.showRegisterCta,
+          showUpgradeCta: suggestionAccess.showUpgradeCta,
+          showConsultantCta: suggestionAccess.showConsultantCta,
+        },
+        suggestionAccess.consultantName ? { name: suggestionAccess.consultantName, credentialLabel: "" } : null,
+        presentation.hero.professional_review_recommended,
+      )
+    : "";
 
   return (
     <div className="space-y-6">
@@ -114,7 +138,7 @@ export function CasePresentationView({
             )}
           </div>
         </div>
-        {presentation.hero.professional_review_recommended && (
+        {presentation.hero.professional_review_recommended && !consultantCopy && (
           <p className="mt-3 rounded-xl border border-lime-300 bg-white px-4 py-3 text-sm text-lime-900">
             <span className="font-semibold">Professional review recommended.</span> A licensed professional should look at this case
             {interactive && (
@@ -124,6 +148,33 @@ export function CasePresentationView({
               </>
             )}
           </p>
+        )}
+        {consultantCopy && (
+          <div className="mt-3 rounded-xl border border-lime-300 bg-white px-4 py-3 text-sm text-lime-900">
+            <p>{consultantCopy}</p>
+            {interactive && suggestionAccess && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {suggestionAccess.showRegisterCta && (
+                  <Link href="/register" className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
+                    Create a free account
+                  </Link>
+                )}
+                {suggestionAccess.showUpgradeCta && (
+                  <Link href="/pricing" className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-lime-800 ring-1 ring-lime-300 hover:bg-lime-100">
+                    See paid plans
+                  </Link>
+                )}
+                {suggestionAccess.showConsultantCta && (
+                  <Link
+                    href={suggestionAccess.audience === "pro" ? "/app/consultants" : suggestionAccess.audience === "guest" ? "/register" : "/pricing"}
+                    className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+                  >
+                    {suggestionAccess.audience === "pro" ? "Request a professional match" : "Talk with a licensed professional"}
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
         )}
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-lime-200 bg-white p-4">
@@ -166,17 +217,22 @@ export function CasePresentationView({
                     {conflict.resolution && <p className="mt-1 text-xs text-lime-700">{conflict.resolution}</p>}
                   </div>
                 ))}
-                {presentation.what_this_means.pending_actions.length > 0 && (
+                {pendingActions.visible.length > 0 && (
                   <div className="mt-4">
                     <p className="mb-2 text-xs font-bold uppercase tracking-wide text-lime-600">What to do from the records</p>
                     <ul className="space-y-1">
-                      {presentation.what_this_means.pending_actions.slice(0, 4).map((action, index) => (
+                      {pendingActions.visible.map((action, index) => (
                         <li key={`${action}-${index}`} className="flex items-start gap-2 text-sm text-slate-700">
                           <span className="mt-0.5 font-bold text-lime-500">→</span>
                           <span>{action}</span>
                         </li>
                       ))}
                     </ul>
+                    {pendingActions.hidden > 0 && interactive && suggestionAccess?.showUpgradeCta && (
+                      <p className="mt-2 text-xs text-lime-700">
+                        {pendingActions.hidden} more official next step{pendingActions.hidden === 1 ? "" : "s"} stay on Plus.
+                      </p>
+                    )}
                   </div>
                 )}
                 {presentation.what_this_means.unknowns.length > 0 && (
@@ -380,7 +436,7 @@ export function CasePresentationView({
             </div>
             <Card>
               <CardBody className="space-y-1">
-                {actions.map((action, index) => {
+                {visibleActions.visible.map((action, index) => {
                   const status = presentationActionStatus(action.status);
                   const step = stepByAction.get(action.action_key.toUpperCase());
                   const verifiable = isVerifiable(action.action_key);
@@ -435,7 +491,22 @@ export function CasePresentationView({
                     </div>
                   );
                 })}
-                {actions.length === 0 && <p className="p-3 text-sm text-slate-500">Steps appear after analysis completes.</p>}
+                {visibleActions.hidden > 0 && interactive && (
+                  <div className="mt-3 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-center">
+                    <p className="text-sm font-semibold text-lime-900">
+                      {visibleActions.hidden} more official next step{visibleActions.hidden === 1 ? "" : "s"} on Plus
+                    </p>
+                    <p className="mt-1 text-xs text-lime-700">
+                      Free keeps the next best action. Plus personalizes the full path from matching USCIS/DOJ material. Pro can match you with a licensed professional.
+                    </p>
+                    {suggestionAccess?.showUpgradeCta && (
+                      <Link href="/pricing" className="mt-2 inline-block rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
+                        See paid plans
+                      </Link>
+                    )}
+                  </div>
+                )}
+                {visibleActions.visible.length === 0 && <p className="p-3 text-sm text-slate-500">Steps appear after analysis completes.</p>}
               </CardBody>
             </Card>
           </section>

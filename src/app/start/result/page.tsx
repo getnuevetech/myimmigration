@@ -5,6 +5,9 @@ import { getGuestSession } from "@/lib/guest";
 import { getCurrentUser } from "@/lib/auth";
 import { SiteHeader, SiteFooter } from "@/components/site-nav";
 import { Card, CardBody, StateMark, ButtonLink, Badge } from "@/components/ui";
+import { resolveCasePresentation } from "@/lib/case-presentation";
+import { loadSuggestionAccess } from "@/lib/suggestion-quota";
+import { suggestionConsultantCopy } from "@/lib/suggestion-access";
 
 export const metadata = { title: "Your first results" };
 
@@ -46,8 +49,16 @@ export default async function GuestResultPage({
     );
   }
 
-  // Teaser: show the count and the first issue; full details require registration.
+  // Teaser: show the count, the first issue, and one official next step. Full path requires registration.
   const [first, ...locked] = c.issues;
+  const presentation = await resolveCasePresentation(c.id).catch(() => null);
+  const suggestionAccess = await loadSuggestionAccess({});
+  const nextStep = presentation?.hero.next_best_action?.title || null;
+  const consultantCopy = suggestionConsultantCopy(
+    suggestionAccess.entitlement,
+    null,
+    Boolean(presentation?.hero.professional_review_recommended),
+  );
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -58,7 +69,7 @@ export default async function GuestResultPage({
           <h1 className="mt-3 text-3xl font-extrabold text-slate-900">
             We found {c.issues.length} {c.issues.length === 1 ? "thing" : "things"} worth looking at
           </h1>
-          <p className="mt-2 text-slate-600">Here&apos;s your first result. Create a free account to unlock the full breakdown and your step-by-step plan.</p>
+          <p className="mt-2 text-slate-600">Here&apos;s your first result and the next official step. Create a free account to keep the review, and paid plans unlock the full suggested path.</p>
         </div>
 
         {first && (
@@ -72,6 +83,22 @@ export default async function GuestResultPage({
                   <p className="mt-2 whitespace-pre-line text-sm text-slate-600">{first.description}</p>
                 </div>
                 <StateMark state={first.state} />
+              </div>
+            </CardBody>
+          </Card>
+        )}
+
+        {nextStep && (
+          <Card className="mt-4 border-lime-200">
+            <CardBody>
+              <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Suggested next step</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">{nextStep}</p>
+              <p className="mt-2 text-sm text-slate-600">{consultantCopy}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <ButtonLink href="/register" className="px-4 py-2 text-sm">Create a free account</ButtonLink>
+                <Link href="/register" className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
+                  Talk with a licensed professional
+                </Link>
               </div>
             </CardBody>
           </Card>
@@ -91,8 +118,8 @@ export default async function GuestResultPage({
             </div>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="rounded-xl bg-white/95 px-6 py-4 text-center shadow-lg ring-1 ring-slate-200">
-                <p className="font-semibold text-slate-900">{locked.length} more {locked.length === 1 ? "result" : "results"} + your action plan</p>
-                <p className="text-sm text-slate-500">Free account · takes 30 seconds</p>
+                <p className="font-semibold text-slate-900">{locked.length} more {locked.length === 1 ? "result" : "results"} + the rest of your suggested path</p>
+                <p className="text-sm text-slate-500">Free keeps a little more. Plus personalizes the full official path. Pro can match a licensed professional.</p>
               </div>
             </div>
           </div>
@@ -101,7 +128,7 @@ export default async function GuestResultPage({
         <div className="mt-8 rounded-2xl bg-lime-600 p-8 text-center text-white">
           <h2 className="text-xl font-bold">Unlock your full analysis</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-lime-100">
-            Your answers and {c.documents.length > 0 ? `${c.documents.length} uploaded document${c.documents.length > 1 ? "s" : ""}` : "results"} will be attached to your account automatically — nothing is lost.
+            Your answers and {c.documents.length > 0 ? `${c.documents.length} uploaded document${c.documents.length > 1 ? "s" : ""}` : "results"} will be attached to your account automatically — nothing is lost. Paid plans keep the full suggested path, and Pro can match you with a licensed attorney or accredited representative.
           </p>
           <div className="mt-5 flex justify-center gap-3">
             <ButtonLink href="/register" variant="secondary" className="px-6 py-3">Create free account</ButtonLink>
