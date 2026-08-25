@@ -1332,7 +1332,7 @@ assert(!openAccount.showGuidePrimary, "open-options must not lead with my.uscis.
 assert(/have not filed|already filed/i.test(`${openAccount.pageSubtitle} ${openAccount.intro}`), "USCIS account copy for options must say this is for a filed case");
 const rfeAccount = resolveUscisAccountCopy({ inquiryMode: "existing_case", noticeTypes: ["RFE"] });
 assert(rfeAccount.showGuidePrimary && !rfeAccount.optionalBanner, "RFE USCIS account guide stays the filed-case walkthrough");
-assert(!isFiledCaseSurface({ inquiryMode: "open_options", themes: ["family"] }), "family options are not a filed-case surface");
+assert(isFiledCaseSurface({ hasNotices: true, inquiryMode: "open_options" }) === false, "a leftover notice on another case must not convert family options into a filed-case surface");
 assert(isFiledCaseSurface({ inquiryMode: "existing_case", noticeTypes: ["RFE"] }), "an RFE is a filed-case surface");
 const guestNotices = resolveNoticeEntitlement({ isGuest: true });
 const freeNotices = resolveNoticeEntitlement({ planKey: "free", hasUpload: true });

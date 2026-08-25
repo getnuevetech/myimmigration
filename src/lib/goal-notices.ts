@@ -53,10 +53,10 @@ function mentionsRfe(input: FiledSurfaceInput): boolean {
 }
 
 export function isFiledCaseSurface(input: FiledSurfaceInput = {}): boolean {
+  if (input.inquiryMode === "open_options") return false;
   if (input.inquiryMode === "existing_case") return true;
   if (mentionsRfe(input)) return true;
   if (input.hasNotices) return true;
-  if ((input.noticeTypes ?? []).some((type) => String(type ?? "").trim())) return true;
   return false;
 }
 

@@ -72,7 +72,7 @@ export default async function NoticesPage({
       content: issue.conclusion,
     })),
     noticeTypes: (scopedCase?.notices ?? []).map((notice) => notice.noticeType),
-    hasNotices: notices.length > 0,
+    hasNotices: (scopedCase?.notices.length ?? 0) > 0,
   });
   const defaultCaseId = cases.some((c) => c.id === caseId) ? caseId ?? "" : "";
   const views = await loadApprovedViewsByCaseIds(
