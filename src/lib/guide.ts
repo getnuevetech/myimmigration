@@ -23,7 +23,7 @@ export type GuideReply = { message: string; actions: GuideAction[] };
 // Practical, deterministic how-to knowledge for each verifiable step.
 const STEP_TIPS: Record<string, string> = {
   GET_CASE_RECORD:
-    "Fastest way to verify your USCIS case: sign in at my.uscis.gov or use the official USCIS case-status tool with your receipt number. Save any notices, receipt details, filing dates, or status updates you can access, then upload them here.",
+    "Only if you already have a USCIS case: sign in at my.uscis.gov or use the official case-status tool with your receipt number. Family options start with identity documents, not a receipt. Save any notices you actually have, then upload them here.",
   GET_ACCOUNT_RECORD:
     "Sign in at my.uscis.gov and collect the receipt number, form type, filing date, latest status, and any available notice PDFs. Upload those records to your case documents here.",
   UPLOAD_DOCUMENTS:

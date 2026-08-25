@@ -98,6 +98,17 @@ import {
   resolveDocumentCatalogEntitlement,
 } from "../src/lib/goal-documents";
 import {
+  isFiledCaseSurface,
+  noticeUploadAllowed,
+  resolveDashboardFiledCopy,
+  resolveDeadlinesPageCopy,
+  resolveNoticeEntitlement,
+  resolveNoticePageCopy,
+  resolveUscisAccountCopy,
+  shouldExpectAutomaticDeadlines,
+  shouldShowUscisAccountGuide,
+} from "../src/lib/goal-notices";
+import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
   conversationNarrative,
@@ -330,7 +341,7 @@ assert(parsedPresentation.hero.professional_review_recommended === true, "stored
 assert(presentationActionStatus("READY").label === "Ready now", "ready actions should use a customer-facing Ready now label");
 assert(presentationActionStatus("COMPLETED").tone === "done", "completed actions should use the done tone");
 assert(presentationEvidenceGateLabel("pass") === "Records checked", "pass evidence gate should use a customer-facing records label");
-assert(presentationStepCta("UPLOAD_NOTICE", "case-1")?.href === "/app/documents", "notice upload should link to documents");
+assert(presentationStepCta("UPLOAD_NOTICE", "case-1")?.href === "/app/notices?case=case-1", "notice upload should link to the notices page");
 assert(presentationStepCta("DRAFT_LETTER", "case-1")?.href === "/app/letters/new?case=case-1", "letter action should keep the case id");
 assert(presentationStepCta("DRAFT_LETTER", "case-1", null, "i130_cover")?.href === "/app/letters/new?case=case-1&kind=i130_cover", "letter CTA should deep-link the matching kind");
 assert(presentationStepCta("DRAFT_LETTER", "case-1", null, "i130_cover")?.label === "Draft I-130 cover letter", "letter CTA should name the matching cover letter");
@@ -1288,6 +1299,62 @@ assert(presentation.hero.current_posture === "RFE notice needs review", "goal-dr
 assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven documents must keep the approved open-options posture");
 assert(requested.autoAssigned === false, "goal-driven documents must not auto-assign consultants");
 
+const openNoticeCopy = resolveNoticePageCopy({
+  inquiryMode: "open_options",
+  themes: marriageInquiry.themes,
+  authorityQueries: ["I-130", "I-485"],
+});
+assert(!openNoticeCopy.uploadPrimary, "family open-options must not treat a USCIS letter as the primary next step");
+assert(/skip/i.test(openNoticeCopy.skipBanner ?? "") || /skip/i.test(openNoticeCopy.pageSubtitle), "open-options notices copy must say to skip a letter they do not have");
+assert(!/I-797 receipt/i.test(openNoticeCopy.pageSubtitle) || /not an I-797/i.test(openNoticeCopy.pageSubtitle), "open-options notices copy must not chase an I-797");
+assert(openNoticeCopy.primaryCta.href.includes("/app/documents"), "open-options notice page should send people to matching documents");
+const rfeNoticeCopy = resolveNoticePageCopy({
+  inquiryMode: "existing_case",
+  themes: ["adjustment"],
+  query: "I got an RFE from USCIS on my I-485",
+  noticeTypes: ["RFE"],
+  hasNotices: true,
+});
+assert(rfeNoticeCopy.uploadPrimary, "existing I-485 RFE must keep notice upload as primary");
+assert(/RFE/i.test(rfeNoticeCopy.pageSubtitle) || /RFE/i.test(rfeNoticeCopy.emptyBody), "RFE notice page still names the RFE");
+const openDeadlineCopy = resolveDeadlinesPageCopy({ inquiryMode: "open_options", themes: marriageInquiry.themes });
+assert(!shouldExpectAutomaticDeadlines({ inquiryMode: "open_options", themes: marriageInquiry.themes }), "open-options must not expect an invented notice deadline");
+assert(!/respond-by date on a notice/i.test(openDeadlineCopy.emptyBody), "open-options deadline empty state must not wait for a notice date");
+assert(/do not invent/i.test(openDeadlineCopy.emptyBody), "open-options deadlines must say no RFE date is invented");
+const rfeDeadlineCopy = resolveDeadlinesPageCopy({ inquiryMode: "existing_case", noticeTypes: ["RFE"], hasNotices: true });
+assert(shouldExpectAutomaticDeadlines({ inquiryMode: "existing_case", noticeTypes: ["RFE"] }), "RFE cases still expect notice deadlines");
+assert(/RFE|notice/i.test(rfeDeadlineCopy.emptyBody), "RFE deadline empty state still mentions the notice");
+assert(!shouldShowUscisAccountGuide({ inquiryMode: "open_options", themes: marriageInquiry.themes }), "open-options must not push the USCIS account guide as required");
+assert(shouldShowUscisAccountGuide({ inquiryMode: "existing_case", noticeTypes: ["RFE"] }), "existing RFE may still use the USCIS account guide");
+const openAccount = resolveUscisAccountCopy({ inquiryMode: "open_options", themes: marriageInquiry.themes });
+assert(Boolean(openAccount.optionalBanner), "open-options USCIS account page must mark the guide as optional");
+assert(!openAccount.showGuidePrimary, "open-options must not lead with my.uscis.gov");
+assert(/have not filed|already filed/i.test(`${openAccount.pageSubtitle} ${openAccount.intro}`), "USCIS account copy for options must say this is for a filed case");
+const rfeAccount = resolveUscisAccountCopy({ inquiryMode: "existing_case", noticeTypes: ["RFE"] });
+assert(rfeAccount.showGuidePrimary && !rfeAccount.optionalBanner, "RFE USCIS account guide stays the filed-case walkthrough");
+assert(!isFiledCaseSurface({ inquiryMode: "open_options", themes: ["family"] }), "family options are not a filed-case surface");
+assert(isFiledCaseSurface({ inquiryMode: "existing_case", noticeTypes: ["RFE"] }), "an RFE is a filed-case surface");
+const guestNotices = resolveNoticeEntitlement({ isGuest: true });
+const freeNotices = resolveNoticeEntitlement({ planKey: "free", hasUpload: true });
+assert(guestNotices.showRegisterCta && !guestNotices.canUpload, "guests must sign in before notice explanations");
+assert(freeNotices.canUpload, "free can explain notices under the plan cap");
+assert(noticeUploadAllowed({ canUpload: true, used: 1, limit: 2 }).allowed, "free can explain a notice while under the 2-notice limit");
+assert(noticeUploadAllowed({ canUpload: true, used: 2, limit: 2 }).overLimit, "free must stop at 2 notice explanations");
+assert(noticeUploadAllowed({ canUpload: true, used: 8, limit: null }).allowed, "plus/pro notices stay unlimited");
+const openDash = resolveDashboardFiledCopy({ inquiryMode: "open_options", themes: marriageInquiry.themes, authorityQueries: ["I-130"] });
+assert(!/from notices and analyses appear here automatically/i.test(openDash.deadlinesEmptyBody), "dashboard must not tell options customers that notice dates will appear");
+assert(/I-130|identity|matching/i.test(openDash.matchingCta.label + openDash.matchingCta.href), "dashboard matching CTA for family options is the form or evidence, not a receipt");
+assert(presentationStepCta("UPLOAD_NOTICE", "case-1", null, null, { inquiryMode: "open_options", matchingDocumentKind: "identity" })?.href === "/app/documents?kind=identity", "open-options notice actions should send people to matching documents");
+assert(presentationStepCta("GET_CASE_RECORD", "case-1", null, null, { inquiryMode: "open_options", matchingDocumentKind: "identity" })?.href === "/app/documents?kind=identity", "open-options must not send GET_CASE_RECORD to a receipt hunt");
+assert(presentationStepCta("UPLOAD_NOTICE", "case-1", null, null, { inquiryMode: "existing_case", noticeTypes: ["RFE"] })?.href === "/app/notices?case=case-1", "existing RFE notice actions stay on the notices page");
+assert(!marriageOptions.pathSteps.some((step) => step.action_key === "GET_CASE_RECORD"), "goal-driven notices must not require a USCIS case record for family options");
+assert(!marriageOptions.pathSteps.some((step) => step.action_key === "UPLOAD_NOTICE"), "goal-driven notices must not require a USCIS letter for family options");
+assert(/Form I-130/i.test(marriageOptions.pathSteps.find((step) => step.action_key === "PREPARE_FORM")?.title ?? ""), "marriage path still prepares Form I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven notices must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven notices must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven notices must not auto-assign consultants");
+
+
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
@@ -1320,3 +1387,4 @@ console.log(`- v4 C10: guest request=${guestMatch.canRequest}, pro request=${pro
 console.log(`- v4 C11: family ${familyForms[0]?.formNumber}, student ${studentForms[0]?.formNumber}, asylum ${asylumForms[0]?.formNumber}, RFE ${rfeForms[0]?.formNumber}, marriage action ${marriageOptions.pathSteps.find((step) => step.action_key === "PREPARE_FORM")?.action_key}`);
 console.log(`- v4 C12: family ${familyLetters[0]?.kind}, student ${studentLetters[0]?.kind}, asylum ${asylumLetters[0]?.kind}, RFE ${rfeLetters[0]?.kind}, plus remaining ${letterGenerationAllowed({ canGenerate: true, used: 2, limit: 3 }).remaining}`);
 console.log(`- v4 C13: family ${familyDocs[0]?.kind}, student ${studentDocs.find((item) => item.kind === "status_record")?.kind}, asylum ${asylumDocs.find((item) => item.kind === "declaration")?.kind}, RFE ${rfeDocs[0]?.kind}, free remaining ${documentUploadAllowed({ canUpload: true, used: 4, limit: 5 }).remaining}`);
+console.log(`- v4 C14: notices skip=${!openNoticeCopy.uploadPrimary}, deadlines auto=${shouldExpectAutomaticDeadlines({ inquiryMode: "open_options" })}, account optional=${Boolean(openAccount.optionalBanner)}, RFE notices primary=${rfeNoticeCopy.uploadPrimary}`);

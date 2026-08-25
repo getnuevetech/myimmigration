@@ -27,18 +27,36 @@ export function formatPresentationDate(value: string): string {
 }
 
 import { letterComposerHref, letterStartLabel } from "./goal-letters";
+import { documentCatalogHref, documentStartLabel } from "./goal-documents";
+import { isFiledCaseSurface, noticeCatalogHref } from "./goal-notices";
 
 export function presentationStepCta(
   actionKey: string,
   caseId: string,
   matchingForm?: string | null,
   matchingLetterKind?: string | null,
+  filed?: {
+    inquiryMode?: string | null;
+    matchingDocumentKind?: string | null;
+    noticeTypes?: string[];
+  },
 ): { label: string; href: string } | null {
+  const filedSurface = isFiledCaseSurface({
+    inquiryMode: filed?.inquiryMode ?? undefined,
+    noticeTypes: filed?.noticeTypes,
+  });
+  const matchingKind = filed?.matchingDocumentKind ?? (filedSurface ? "case_record" : "identity");
   switch (actionKey.toUpperCase()) {
     case "GET_CASE_RECORD":
     case "GET_ACCOUNT_RECORD":
+      return {
+        label: filedSurface ? "Upload USCIS records" : documentStartLabel(matchingKind),
+        href: documentCatalogHref(matchingKind),
+      };
     case "UPLOAD_NOTICE":
-      return { label: "Upload USCIS records", href: "/app/documents" };
+      return filedSurface || !filed?.inquiryMode
+        ? { label: "Upload the USCIS notice", href: noticeCatalogHref(caseId) }
+        : { label: documentStartLabel(matchingKind), href: documentCatalogHref(matchingKind) };
     case "ADD_CASE_DETAILS":
       return { label: "Answer follow-up questions", href: "#clarify" };
     case "PREPARE_APPOINTMENT":

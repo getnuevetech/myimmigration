@@ -7,6 +7,8 @@ import { markNotificationReadAction } from "@/actions/user";
 import { CaseListCard } from "@/components/case-list-card";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
+import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { resolveDashboardFiledCopy } from "@/lib/goal-notices";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -15,7 +17,11 @@ export default async function DashboardPage() {
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
       take: 5,
-      include: { reconstruction: { select: { currentPosition: true } } },
+      include: {
+        reconstruction: { select: { currentPosition: true } },
+        issues: { select: { title: true, uscisBasis: true, conclusion: true } },
+        notices: { select: { noticeType: true } },
+      },
     }),
     db.issue.findMany({ where: { case: { userId: user.id }, state: { not: "resolved" } } }),
     db.deadline.findMany({ where: { userId: user.id, status: "open", dueDate: { gte: new Date() } }, orderBy: { dueDate: "asc" }, take: 5 }),
@@ -23,6 +29,24 @@ export default async function DashboardPage() {
     getActivePlan(user.id),
   ]);
   const views = await loadApprovedViewsByCaseIds(cases.map((item) => item.id));
+  const latest = cases[0] ?? null;
+  const inquiry = latest
+    ? classifyImmigrationInquiry({ situation: latest.situation, goal: latest.goal })
+    : null;
+  const dashboardCopy = resolveDashboardFiledCopy({
+    themes: inquiry?.themes,
+    inquiryMode: inquiry?.mode,
+    query: `${latest?.situation ?? ""} ${latest?.goal ?? ""}`,
+    authorityQueries: inquiry ? authorityQueriesForInquiry(inquiry) : [],
+    sources: (latest?.issues ?? []).map((issue) => ({
+      reference: issue.uscisBasis,
+      title: issue.title,
+      content: issue.conclusion,
+    })),
+    noticeTypes: (latest?.notices ?? []).map((notice) => notice.noticeType),
+    hasNotices: (latest?.notices.length ?? 0) > 0,
+    hasDeadlines: deadlines.length > 0,
+  });
 
   const soon = new Date();
   soon.setDate(soon.getDate() + 30);
@@ -40,6 +64,13 @@ export default async function DashboardPage() {
         subtitle={plan ? `You're on the ${plan.name} plan` : undefined}
         actions={<ButtonLink href="/app/cases/new">New case →</ButtonLink>}
       />
+
+      {latest && (
+        <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
+          Matching next step from official material:{" "}
+          <Link href={dashboardCopy.matchingCta.href} className="font-semibold underline">{dashboardCopy.matchingCta.label}</Link>
+        </div>
+      )}
 
       {notifications.length > 0 && (
         <div className="mb-6 space-y-2">
@@ -114,7 +145,7 @@ export default async function DashboardPage() {
         <div>
           <h2 className="mb-3 text-base font-semibold text-slate-900">Upcoming deadlines</h2>
           {deadlines.length === 0 ? (
-            <EmptyState title="Nothing due" body="Deadlines from notices and analyses appear here automatically." />
+            <EmptyState title="Nothing due" body={dashboardCopy.deadlinesEmptyBody} />
           ) : (
             <div className="space-y-3">
               {deadlines.map((d) => (

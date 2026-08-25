@@ -23,6 +23,7 @@ import {
   neededDocumentsFromRanked,
   rankMatchingDocuments,
 } from "@/lib/goal-documents";
+import { shouldShowUscisAccountGuide } from "@/lib/goal-notices";
 import { presentationStepCta } from "@/lib/case-presentation-ui";
 
 export type CaseViewer = {
@@ -148,6 +149,10 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     hint: item.hint,
   }));
   const matchingDocumentKind = rankedDocuments[0]?.kind ?? "identity";
+  const showUscisAccountGuide = shouldShowUscisAccountGuide({
+    inquiryMode: inquiry.mode,
+    noticeTypes: c.notices.map((notice) => notice.noticeType),
+  });
   const documentKinds = rankedDocuments.map((item) => ({
     kind: item.kind,
     name: documentKindDef(item.kind)?.name ?? item.label,
@@ -233,6 +238,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           canGenerateLetter={canGenerateLetter}
           matchingDocumentKind={matchingDocumentKind}
           documentKinds={documentKinds}
+          inquiryMode={inquiry.mode}
           suggestionAccess={viewer.suggestionAccess}
         />
         {analysisPlanJson && (viewer.role !== "customer" || viewer.suggestionAccess?.personalized !== false) ? <CaseAnalysisPlanCard planJson={analysisPlanJson} /> : null}
@@ -244,7 +250,11 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const stepCta = (actionKey: string, title?: string): { label: string; href: string } | null => {
     const formNumber = formNumberForStep({ actionKey, title, matchingForm: matchingFormNumberValue });
     const letterKind = letterKindForStep({ actionKey, title, matchingLetter });
-    return presentationStepCta(actionKey, c.id, formNumber, letterKind);
+    return presentationStepCta(actionKey, c.id, formNumber, letterKind, {
+      inquiryMode: inquiry.mode,
+      matchingDocumentKind,
+      noticeTypes: c.notices.map((notice) => notice.noticeType),
+    });
   };
 
   // Plain-English walkthrough of the latest analysis batch.
@@ -575,10 +585,12 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                               )}
                               {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD"].includes(issue.nextAction.toUpperCase()) && (
                                 <>
-                                  <a href="/app/uscis-account" className="rounded-lg border border-lime-200 bg-white px-3 py-1.5 text-xs font-medium text-lime-700 hover:bg-lime-50">
-                                    Open USCIS account guide →
-                                  </a>
-                                  <InlineUpload caseId={c.id} docKind="case_record" label="Have it? Upload case record" />
+                                  {showUscisAccountGuide && (
+                                    <a href="/app/uscis-account" className="rounded-lg border border-lime-200 bg-white px-3 py-1.5 text-xs font-medium text-lime-700 hover:bg-lime-50">
+                                      Open USCIS account guide →
+                                    </a>
+                                  )}
+                                  <InlineUpload caseId={c.id} docKind={showUscisAccountGuide ? "case_record" : matchingDocumentKind} label={showUscisAccountGuide ? "Have it? Upload case record" : "Upload matching documents"} />
                                 </>
                               )}
                             </>
@@ -670,7 +682,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                               {stepCta(step.actionKey, step.title)!.label} →
                             </a>
                           ) : null}
-                          {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD"].includes(step.actionKey.toUpperCase()) && (
+                          {["GET_CASE_RECORD", "GET_ACCOUNT_RECORD"].includes(step.actionKey.toUpperCase()) && showUscisAccountGuide && (
                             <a href="/app/uscis-account" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
                               Open USCIS account guide →
                             </a>
