@@ -3,8 +3,10 @@ import { nextClarifyQuestion } from "@/lib/clarify";
 import { classifyImmigrationInquiry, INQUIRY_MODES } from "@/lib/immigration-inquiry";
 import { ClarifyAnswerForm } from "./clarify-answer-form";
 import { AutoRefresh } from "./auto-refresh";
+import Link from "next/link";
+import type { SuggestionChatAccess } from "@/lib/suggestion-access";
 
-export async function CaseClarify({ caseId }: { caseId: string }) {
+export async function CaseClarify({ caseId, access }: { caseId: string; access?: SuggestionChatAccess }) {
   const [c, messages] = await Promise.all([
     db.case.findUnique({
       where: { id: caseId },
@@ -38,6 +40,7 @@ export async function CaseClarify({ caseId }: { caseId: string }) {
         {(question || analyzing) && (
           <span className="shrink-0 rounded-full bg-lime-600 px-3 py-1 text-xs font-bold text-white">
             {messages.filter((m) => m.role === "user").length} answered
+            {access?.remaining != null ? ` · ${access.remaining} left on this plan` : ""}
           </span>
         )}
       </div>
@@ -66,6 +69,23 @@ export async function CaseClarify({ caseId }: { caseId: string }) {
           <span className="h-2.5 w-2.5 shrink-0 animate-ping rounded-full bg-lime-500" />
           Re-analyzing with your answer — this usually takes under a minute; a detailed review can take a few.
           <AutoRefresh />
+        </div>
+      ) : question && access?.blocked ? (
+        <div className="mt-4 rounded-xl border border-lime-200 bg-white px-4 py-3">
+          <p className="text-sm text-slate-800">{question.text}</p>
+          <p className="mt-2 text-sm text-lime-900">{access.blockReason}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {access.showUpgradeCta && (
+              <Link href="/pricing" className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
+                See paid plans
+              </Link>
+            )}
+            {access.showConsultantCta && (
+              <Link href={access.audience === "pro" ? "/app/consultants" : "/pricing"} className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
+                Talk with a licensed professional
+              </Link>
+            )}
+          </div>
         </div>
       ) : question ? (
         <div className="mt-4">

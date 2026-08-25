@@ -123,6 +123,9 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
   const c = await db.case.findUnique({ where: { id: caseId } });
   if (!c || c.userId !== user.id) return { error: "Case not found." };
   if (!answer && files.length === 0) return { error: "Type an answer (or attach a file) first." };
+  const { loadSuggestionAccess } = await import("@/lib/suggestion-quota");
+  const suggestionAccess = await loadSuggestionAccess({ userId: user.id, caseId });
+  if (suggestionAccess.usage.blocked) return { error: suggestionAccess.usage.blockReason };
   for (const f of files) {
     const validationError = validateUploadFile(f);
     if (validationError) return { error: validationError };

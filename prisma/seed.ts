@@ -65,6 +65,9 @@ async function seedSettings() {
     ["qa.free_max_sentences", "3", "qa", "Free-plan Q&A excerpt sentences", "How many sentences of official material a Free-plan general answer may include.", "number"],
     ["qa.free_max_excerpts", "1", "qa", "Free-plan Q&A official excerpts", "How many official sources a Free-plan general answer may quote.", "number"],
     ["qa.free_follow_ups", "1", "qa", "Free-plan Q&A official follow-ups", "How many official follow-up questions a Free-plan general thread may include.", "number"],
+    ["suggestions.guest_max_steps", "1", "suggestions", "Guest suggested next steps", "How many official next steps a visitor sees on the first-results page.", "number"],
+    ["suggestions.free_max_steps", "1", "suggestions", "Free-plan suggested next steps", "How many official path steps a Free-plan case shows before upgrade.", "number"],
+    ["suggestions.free_max_clarify", "3", "suggestions", "Free-plan follow-up answers per case", "How many clarify answers a Free-plan case may record before upgrade.", "number"],
     ["forms.paid_downloads", "true", "forms", "Paid form downloads", "Whether downloading completed USCIS forms requires a plan with the forms.download feature (toggle on the USCIS form templates page)."],
     ["comments.customer_private_enabled", "true", "comments", "Customer private notes", "Allow customers to mark case comments as private (hidden from consultants AND admins)."],
     ["comments.consultant_hide_from_customer_enabled", "true", "comments", "Consultant hidden comments", "Allow consultants to hide case comments from the customer. Admins always see consultant comments."],
@@ -94,6 +97,9 @@ async function seedSettings() {
           "qa.free_max_sentences",
           "qa.free_max_excerpts",
           "qa.free_follow_ups",
+          "suggestions.guest_max_steps",
+          "suggestions.free_max_steps",
+          "suggestions.free_max_clarify",
         ],
       },
     },
@@ -186,6 +192,7 @@ async function seedPlansAndFeatures() {
     ["uscis.updates_analysis", "USCIS update impact analysis", "analysis", 15],
     ["forms.download", "Downloadable completed USCIS forms", "forms", 16],
     ["qa.personalized", "Personalized Q&A follow-ups from official material", "assistant", 17],
+    ["suggestions.personalized", "Personalized suggested next steps from official material", "assistant", 18],
   ];
   for (const [key, name, category, sortOrder] of features) {
     await db.featureDef.upsert({ where: { key }, update: {}, create: { key, name, category, sortOrder } });
@@ -216,6 +223,7 @@ async function seedPlansAndFeatures() {
         "case.report": { enabled: true, limit: 1 },
         "qa.chat": { enabled: true, limit: 3 },
         "qa.personalized": { enabled: false, limit: null },
+        "suggestions.personalized": { enabled: false, limit: null },
         "vault.storage": { enabled: true, limit: 5 },
         "deadlines.reminders": { enabled: true, limit: null },
       },
@@ -237,6 +245,7 @@ async function seedPlansAndFeatures() {
         "case.full_results": { enabled: true, limit: null },
         "qa.chat": { enabled: true, limit: null },
         "qa.personalized": { enabled: true, limit: null },
+        "suggestions.personalized": { enabled: true, limit: null },
         "letters.generate": { enabled: true, limit: 3 },
         "deadlines.reminders": { enabled: true, limit: null },
         "vault.storage": { enabled: true, limit: null },
@@ -264,6 +273,7 @@ async function seedPlansAndFeatures() {
         "case.full_results": { enabled: true, limit: null },
         "qa.chat": { enabled: true, limit: null },
         "qa.personalized": { enabled: true, limit: null },
+        "suggestions.personalized": { enabled: true, limit: null },
         "letters.generate": { enabled: true, limit: null },
         "deadlines.reminders": { enabled: true, limit: null },
         "vault.storage": { enabled: true, limit: null },
@@ -320,6 +330,8 @@ async function seedPlansAndFeatures() {
   await db.planFeature.updateMany({ where: { plan: { key: "free" }, featureKey: "qa.chat", limitValue: 10 }, data: { limitValue: 3 } });
   await db.planFeature.updateMany({ where: { plan: { key: "plus" }, featureKey: "qa.personalized" }, data: { enabled: true } });
   await db.planFeature.updateMany({ where: { plan: { key: "pro" }, featureKey: "qa.personalized" }, data: { enabled: true } });
+  await db.planFeature.updateMany({ where: { plan: { key: "plus" }, featureKey: "suggestions.personalized" }, data: { enabled: true } });
+  await db.planFeature.updateMany({ where: { plan: { key: "pro" }, featureKey: "suggestions.personalized" }, data: { enabled: true } });
 }
 
 async function seedGateway() {
