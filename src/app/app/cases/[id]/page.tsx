@@ -32,18 +32,6 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
   }
   const suggestionAccess = toCaseSuggestionAccess(suggestionLoaded, consultantName);
 
-export default async function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const user = await requireUser();
-  const c = await db.case.findFirst({
-    where: { id, userId: user.id },
-    select: { id: true, title: true, number: true, createdAt: true, _count: { select: { issues: true } } },
-  });
-  if (!c) notFound();
-
-  const fullResults = await hasFeature(user.id, FEATURE_KEYS.CASE_FULL_RESULTS);
-  const hasReportAccess = await hasFeature(user.id, FEATURE_KEYS.CASE_REPORT);
-
   return (
     <div>
       <PageHeader
