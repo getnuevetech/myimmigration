@@ -7,21 +7,9 @@ import { requireUser } from "@/lib/auth";
 import { hasFeature } from "@/lib/access";
 import { verifyUserCasesProgress } from "@/lib/case-progress";
 import type { ActionState } from "./auth";
+import { parseWizardSteps, type WizardStep } from "@/lib/form-wizard-steps";
 
-export type WizardStep = {
-  id: string;
-  title: string;
-  help: string;
-  fields: {
-    key: string;
-    label: string;
-    type: "text" | "number" | "money" | "date" | "select" | "boolean" | "textarea";
-    options?: { value: string; label: string }[];
-    placeholder?: string;
-    required?: boolean;
-    hint?: string;
-  }[];
-};
+export type { WizardStep } from "@/lib/form-wizard-steps";
 
 export async function startFormAction(templateId: string) {
   const user = await requireUser();
@@ -49,7 +37,7 @@ export async function saveFormStepAction(_prev: ActionState, formData: FormData)
   });
   if (!submission || submission.userId !== user.id) return { error: "Not found." };
 
-  const steps: WizardStep[] = JSON.parse(submission.template.stepsJson || "[]");
+  const steps: WizardStep[] = parseWizardSteps(submission.template.stepsJson);
   const step = steps[stepIndex];
   if (!step) return { error: "Invalid step." };
 

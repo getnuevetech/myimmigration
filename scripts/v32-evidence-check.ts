@@ -76,6 +76,7 @@ import {
   rankMatchingForms,
   resolveFormCatalogEntitlement,
 } from "../src/lib/goal-forms";
+import { parseWizardSteps } from "../src/lib/form-wizard-steps";
 import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
@@ -1113,6 +1114,14 @@ assert(guestForms.showRegisterCta && !guestForms.canStartWizard, "guests must si
 assert(!freeForms.canStartWizard && freeForms.showUpgradeCta, "free matching forms stay locked until Plus");
 assert(plusForms.canStartWizard && proForms.canStartWizard && staffForms.canStartWizard, "plus, pro, and staff can start the matching form wizard");
 assert(DEFAULT_PROMPTS.presenter.includes("PREPARE_FORM"), "presenter prompt should emit PREPARE_FORM for non-I-485 matching forms");
+const seededI130 = parseWizardSteps(JSON.stringify([
+  { title: "Petitioner", questions: [
+    { key: "petitioner_name", label: "Petitioner's full legal name", type: "text", required: true },
+    { key: "petitioner_status", label: "Petitioner's immigration status", type: "select", required: true, options: ["U.S. citizen", "Lawful permanent resident"] },
+  ]},
+]));
+assert(seededI130[0]?.fields[0]?.key === "petitioner_name", "seeded I-130 steps must parse into wizard fields");
+assert(seededI130[0]?.fields[1]?.options?.[0]?.value === "U.S. citizen", "seeded select options must become value/label pairs");
 assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven forms must not convert the RFE fixture into open-options");
 assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven forms must keep the approved open-options posture");
 

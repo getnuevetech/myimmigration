@@ -6,7 +6,7 @@ import { PageHeader, Card, CardBody, ProgressBar } from "@/components/ui";
 import { FormStep } from "@/components/form-wizard";
 import { KnownFactsPanel } from "@/components/known-facts-panel";
 import { buildFormPrefill } from "@/lib/form-prefill";
-import type { WizardStep } from "@/actions/forms";
+import { parseWizardSteps, type WizardStep } from "@/lib/form-wizard-steps";
 
 export default async function FillFormPage({
   params,
@@ -24,7 +24,7 @@ export default async function FillFormPage({
   });
   if (!submission) notFound();
 
-  const steps: WizardStep[] = JSON.parse(submission.template.stepsJson || "[]");
+  const steps: WizardStep[] = parseWizardSteps(submission.template.stepsJson);
   const data: Record<string, string> = JSON.parse(submission.dataJson || "{}");
 
   if (done || submission.status === "completed") {

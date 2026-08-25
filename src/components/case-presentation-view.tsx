@@ -8,7 +8,7 @@ import { CaseUpload } from "@/components/case-upload";
 import type { PresentationContract } from "@/lib/case-presentation-contract";
 import { formatPresentationDate, presentationActionStatus, presentationEvidenceGateLabel, presentationStepCta } from "@/lib/case-presentation-ui";
 import { limitSuggestionItems, suggestionConsultantCopy, type SuggestionChatAccess } from "@/lib/suggestion-access";
-import { formNumberForStep } from "@/lib/goal-forms";
+import { formCatalogHref, formNumberForStep, formStartLabel } from "@/lib/goal-forms";
 
 type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
 
@@ -210,6 +210,29 @@ export function CasePresentationView({
             )}
           </div>
         </div>
+        {matchingFormNumber && interactive && (
+          <div className="mt-3 rounded-xl border border-lime-200 bg-white px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Matching USCIS form</p>
+            <p className="mt-1 text-sm text-slate-700">
+              Official material for this case points to Form {matchingFormNumber} first
+              {matchingFormNumber !== "I-485" ? ", not Form I-485." : "."}
+            </p>
+            {canStartForm && matchingFormId ? (
+              <form action={startFormAction.bind(null, matchingFormId)} className="mt-3">
+                <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
+                  {formStartLabel(matchingFormNumber)} →
+                </button>
+              </form>
+            ) : (
+              <a
+                href={formCatalogHref(matchingFormNumber)}
+                className="mt-3 inline-flex rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700"
+              >
+                {canStartForm ? `${formStartLabel(matchingFormNumber)} →` : `See matching Form ${matchingFormNumber} →`}
+              </a>
+            )}
+          </div>
+        )}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-3">
