@@ -24,6 +24,7 @@ import {
   rankMatchingDocuments,
 } from "@/lib/goal-documents";
 import { shouldShowUscisAccountGuide } from "@/lib/goal-notices";
+import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { presentationStepCta } from "@/lib/case-presentation-ui";
 
 export type CaseViewer = {
@@ -131,6 +132,12 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
 
   const haveKinds = new Set(c.documents.map((d) => d.docKind));
   const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const readinessCopy = resolveReadinessCopy({
+    themes: inquiry.themes,
+    inquiryMode: inquiry.mode,
+    query: `${c.situation} ${c.goal}`,
+    noticeTypes: c.notices.map((notice) => notice.noticeType),
+  });
   const rankedDocuments = rankMatchingDocuments({
     themes: inquiry.themes,
     inquiryMode: inquiry.mode,
@@ -458,7 +465,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                 </ol>
                 <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
                   <span className="font-semibold">Result:</span> {c.issues.length} item{c.issues.length === 1 ? "" : "s"} below — each
-                  classified, evidence-rated, and given a next move · case readiness {c.readinessScore}%.
+                  classified, evidence-rated, and given a next move · {readinessCopy.overallLabel.toLowerCase()} {c.readinessScore}%.
                 </p>
               </CardBody>
             </Card>
@@ -709,17 +716,17 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       <div className="space-y-6">
         <Card>
           <CardBody>
-            <ProgressBar value={c.readinessScore} label="Case readiness" />
+            <ProgressBar value={c.readinessScore} label={readinessCopy.overallLabel} />
             <p className="mt-2 text-xs text-slate-500">
-              Computed from documents obtained, facts verified, USCIS source confirmation, and unresolved contradictions.
+              {readinessCopy.overallHint}
             </p>
             {(c.evidenceAvailableScore > 0 || c.evidenceProcessedScore > 0 || c.actionReadinessScore > 0) && (
               <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
-                <ProgressBar value={c.evidenceAvailableScore} label="Evidence provided" />
-                <ProgressBar value={c.evidenceProcessedScore} label="Evidence processed" />
-                <ProgressBar value={c.actionReadinessScore} label="Action readiness" />
+                <ProgressBar value={c.evidenceAvailableScore} label={readinessCopy.availableLabel} />
+                <ProgressBar value={c.evidenceProcessedScore} label={readinessCopy.processedLabel} />
+                <ProgressBar value={c.actionReadinessScore} label={readinessCopy.actionLabel} />
                 <p className="text-[11px] leading-relaxed text-slate-500">
-                  Provided means records are uploaded. Processed means the platform read them. Action readiness means the compiled evidence is strong enough to support next steps.
+                  {readinessCopy.splitHint}
                 </p>
               </div>
             )}

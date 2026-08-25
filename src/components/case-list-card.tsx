@@ -50,6 +50,7 @@ export function CaseListCard({
   readinessScore,
   summary,
   compact = false,
+  readinessLabel = "Case readiness",
 }: {
   href: string;
   number: number;
@@ -58,6 +59,7 @@ export function CaseListCard({
   readinessScore: number;
   summary: CaseListSummary;
   compact?: boolean;
+  readinessLabel?: string;
 }) {
   const statusColor = status === "analyzed" ? "green" : status === "consultant_recommended" ? "lime" : "slate";
   return (
@@ -75,7 +77,7 @@ export function CaseListCard({
             <CaseListSummaryDetails summary={summary} showMeaning={!compact} />
             {!compact && (
               <div className="mt-3 max-w-sm">
-                <ProgressBar value={readinessScore} label="Case readiness" />
+                <ProgressBar value={readinessScore} label={readinessLabel} />
               </div>
             )}
           </div>

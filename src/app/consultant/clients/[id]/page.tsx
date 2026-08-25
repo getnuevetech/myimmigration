@@ -7,6 +7,8 @@ import { formatCaseNumber } from "@/lib/case-number";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CaseListSummaryDetails } from "@/components/case-list-card";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { resolveReadinessCopy } from "@/lib/goal-readiness";
 
 export default async function ClientWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -66,7 +68,10 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
                       <Badge>{c.status.replace(/_/g, " ")}</Badge>
                     </div>
                     <CaseListSummaryDetails summary={summary} />
-                    <div className="mt-3"><ProgressBar value={c.readinessScore} label="Readiness" /></div>
+                    <div className="mt-3"><ProgressBar value={c.readinessScore} label={resolveReadinessCopy({
+                      inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
+                      query: `${c.situation} ${c.goal}`,
+                    }).overallLabel} /></div>
                     <div className="mt-4 flex gap-2">
                       <Link
                         href={`/consultant/clients/${assignment.id}/cases/${c.id}`}

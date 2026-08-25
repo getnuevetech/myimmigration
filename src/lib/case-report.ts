@@ -6,6 +6,8 @@ import { formatCaseNumber } from "./case-number";
 import { resolveCasePresentation } from "./case-presentation";
 import { parseCanonicalApprovedState, canonicalStateSummary } from "./canonical-case-state";
 import { presentationReportSections } from "./case-report-presentation";
+import { classifyImmigrationInquiry } from "./immigration-inquiry";
+import { resolveReadinessCopy } from "./goal-readiness";
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -37,6 +39,11 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
   const ref = formatCaseNumber(c.number);
   const generatedAt = new Date().toLocaleString("en-US");
   const reviewLevel = "Case analysis";
+  const readinessCopy = resolveReadinessCopy({
+    inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
+    query: `${c.situation} ${c.goal}`,
+    noticeTypes: c.notices.map((notice) => notice.noticeType),
+  });
 
   const docSections: string[] = [];
   for (const [i, d] of c.documents.entries()) {
@@ -88,8 +95,8 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
   <p class="meta">
     <strong>Case reference:</strong> ${ref} &nbsp;·&nbsp; <strong>Generated:</strong> ${generatedAt}<br/>
     <strong>Applicant:</strong> ${esc(`${c.user?.firstName ?? ""} ${c.user?.lastName ?? ""}`.trim() || "—")} (${esc(c.user?.email ?? "—")}${c.user?.phone ? `, ${esc(c.user.phone)}` : ""})${c.user?.address ? `<br/><strong>Address:</strong> ${esc(c.user.address)}` : ""}<br/>
-    <strong>Case opened:</strong> ${c.createdAt.toLocaleDateString("en-US")} &nbsp;·&nbsp; <strong>Status:</strong> ${esc(c.status.replace(/_/g, " "))} &nbsp;·&nbsp; <strong>Readiness:</strong> ${c.readinessScore}% &nbsp;·&nbsp; <strong>Review level:</strong> ${reviewLevel}<br/>
-    <strong>Evidence provided:</strong> ${c.evidenceAvailableScore}% &nbsp;·&nbsp; <strong>Evidence processed:</strong> ${c.evidenceProcessedScore}% &nbsp;·&nbsp; <strong>Action readiness:</strong> ${c.actionReadinessScore}%
+    <strong>Case opened:</strong> ${c.createdAt.toLocaleDateString("en-US")} &nbsp;·&nbsp; <strong>Status:</strong> ${esc(c.status.replace(/_/g, " "))} &nbsp;·&nbsp; <strong>${esc(readinessCopy.reportOverallLabel)}:</strong> ${c.readinessScore}% &nbsp;·&nbsp; <strong>Review level:</strong> ${reviewLevel}<br/>
+    <strong>${esc(readinessCopy.availableLabel)}:</strong> ${c.evidenceAvailableScore}% &nbsp;·&nbsp; <strong>${esc(readinessCopy.processedLabel)}:</strong> ${c.evidenceProcessedScore}% &nbsp;·&nbsp; <strong>${esc(readinessCopy.actionLabel)}:</strong> ${c.actionReadinessScore}%
     ${approvedSummary ? `<br/><strong>Case record:</strong> ${esc(approvedSummary.versionLabel)} · ${esc(approvedSummary.reasonLabel)}` : ""}
   </p>
 </header>

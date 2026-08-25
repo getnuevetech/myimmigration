@@ -9,6 +9,8 @@ import { getCaseEvidenceBrief } from "./evidence/brief";
 import { getCasePresentationBrief } from "./case-presentation";
 import { mergeSupportedText } from "./case-presentation-brief";
 import { guardLetterDraftWithEvidence } from "./evidence/letter-guard";
+import { classifyImmigrationInquiry } from "./immigration-inquiry";
+import { resolveReadinessCopy } from "./goal-readiness";
 
 // Closing remarks & final review: a dedicated AI stage (admin-configurable
 // like every other pipeline stage) writes the case's closing summary; a
@@ -52,7 +54,10 @@ async function deterministicClosing(caseId: string, reason: "completed" | "aband
       lines.push(`• ${finding.title}: ${finding.state === "resolved" ? "resolved." : finding.conclusion || "see the analysis for the remaining step."}`);
     }
   } else {
-    lines.push(`What was covered: ${c.issues.length} item${c.issues.length === 1 ? "" : "s"} were identified and analyzed${resolved ? `, ${resolved} resolved` : ""}${open ? `, ${open} still open` : ""}. You completed ${done} of ${c.pathSteps.length} path steps and provided ${c.documents.length} document${c.documents.length === 1 ? "" : "s"}. Case readiness reached ${c.readinessScore}%.`);
+    lines.push(`What was covered: ${c.issues.length} item${c.issues.length === 1 ? "" : "s"} were identified and analyzed${resolved ? `, ${resolved} resolved` : ""}${open ? `, ${open} still open` : ""}. You completed ${done} of ${c.pathSteps.length} path steps and provided ${c.documents.length} document${c.documents.length === 1 ? "" : "s"}. ${resolveReadinessCopy({
+      inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
+      query: `${c.situation} ${c.goal}`,
+    }).closingReached(c.readinessScore)}`);
     if (evidenceBrief) {
       lines.push(`Compiled evidence position: ${evidenceBrief.currentPosition}. Evidence status: ${evidenceBrief.status.replace(/_/g, " ")}.`);
       if (evidenceBrief.pendingActions.length) lines.push(`Evidence-derived actions to keep in mind: ${evidenceBrief.pendingActions.slice(0, 3).join("; ")}.`);

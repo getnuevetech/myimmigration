@@ -11,6 +11,7 @@ import { limitSuggestionItems, suggestionConsultantCopy, type SuggestionChatAcce
 import { formCatalogHref, formNumberForStep, formStartLabel } from "@/lib/goal-forms";
 import { letterCatalogHref, letterComposerHref, letterKindDef, letterKindForStep, letterStartLabel } from "@/lib/goal-letters";
 import { documentCatalogHref, documentKindDef, documentStartLabel } from "@/lib/goal-documents";
+import { resolveReadinessCopy } from "@/lib/goal-readiness";
 
 type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
 
@@ -99,6 +100,7 @@ export function CasePresentationView({
   inquiryMode?: string | null;
   suggestionAccess?: SuggestionChatAccess;
 }) {
+  const readinessCopy = resolveReadinessCopy({ inquiryMode: inquiryMode ?? undefined });
   const issueById = new Map(issues.map((issue) => [issue.id, issue]));
   const stepByAction = new Map(pathSteps.map((step) => [step.actionKey.toUpperCase(), step]));
   const visibleFindings = fullAccess ? presentation.findings : presentation.findings.slice(0, 1);
@@ -602,15 +604,15 @@ export function CasePresentationView({
         <div className="space-y-6">
           <Card>
             <CardBody>
-              <ProgressBar value={readinessScore} label="Case readiness" />
+              <ProgressBar value={readinessScore} label={readinessCopy.overallLabel} />
               <p className="mt-2 text-xs text-slate-500">
-                Computed from documents obtained, facts verified, USCIS source confirmation, and unresolved contradictions.
+                {readinessCopy.overallHint}
               </p>
               {(evidenceAvailableScore > 0 || evidenceProcessedScore > 0 || actionReadinessScore > 0) && (
                 <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
-                  <ProgressBar value={evidenceAvailableScore} label="Evidence provided" />
-                  <ProgressBar value={evidenceProcessedScore} label="Evidence processed" />
-                  <ProgressBar value={actionReadinessScore} label="Action readiness" />
+                  <ProgressBar value={evidenceAvailableScore} label={readinessCopy.availableLabel} />
+                  <ProgressBar value={evidenceProcessedScore} label={readinessCopy.processedLabel} />
+                  <ProgressBar value={actionReadinessScore} label={readinessCopy.actionLabel} />
                 </div>
               )}
             </CardBody>

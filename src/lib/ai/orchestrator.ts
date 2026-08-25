@@ -35,7 +35,8 @@ import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
 import { fallbackLetterDraft, letterKindDef, letterWriterInstruction, normalizeLetterKind } from "../goal-letters";
 import { mergeSupportedText, presentationGroundingBlock, withPresentationNoticeSteps } from "../case-presentation-brief";
 import { formatKnowledgeBlock, type KnowledgeRecord } from "../knowledge-retrieval";
-import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry, buildOpenOptionsAnalysis } from "../immigration-inquiry";
+import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry, buildOpenOptionsAnalysis, INQUIRY_MODES } from "../immigration-inquiry";
+import { resolveReadinessPolicy, unknownPenaltyCount } from "../goal-readiness";
 import {
   answeredKeysFromQaHistory,
   answeredOfficialPairs,
@@ -581,9 +582,23 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   );
 
   // Deterministic readiness score (our formula, not an AI's opinion).
-  const unknowns = Array.isArray(facts.unknowns) ? (facts.unknowns as unknown[]).length : 0;
+  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const readinessPolicy = resolveReadinessPolicy({
+    themes: inquiry.themes,
+    inquiryMode: inquiry.mode,
+    query: `${c.situation} ${c.goal}`,
+    authorityQueries: authorityQueriesForInquiry(inquiry),
+    documentsExpected: await getNumberSetting("analysis.expected_documents", 3),
+    haveKinds: c.documents.map((doc) => doc.docKind),
+  });
+  const unknownItems = Array.isArray(facts.unknowns)
+    ? (facts.unknowns as unknown[]).map((item, index) => {
+        if (typeof item === "string") return { key: item };
+        if (item && typeof item === "object" && "key" in item) return { key: String((item as { key?: string }).key ?? `unknown_${index}`) };
+        return { key: `unknown_${index}` };
+      })
+    : [];
   const allConflicts = [...summaryOut.conflicts, ...goalOut.conflicts, ...(documentOut?.conflicts ?? []), ...situationConflicts];
-  const expectedDocs = await getNumberSetting("analysis.expected_documents", 3);
   const factKeys = Object.keys(facts).filter((k) => k !== "unknowns");
   const verifiedFacts = factKeys.filter((k) => {
     const v = facts[k];
@@ -591,12 +606,12 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   }).length;
   const readiness = computeReadiness({
     documentsCount: c.documents.length,
-    documentsExpected: expectedDocs,
+    documentsExpected: readinessPolicy.documentsExpected,
     factsVerified: verifiedFacts,
     factsTotal: Math.max(factKeys.length, 1),
     uscisSourcesMatched: knowledge ? Math.min(3, knowledge.split("---").length) : 0,
     unresolvedConflicts: allConflicts.length,
-    unknowns,
+    unknowns: unknownPenaltyCount(unknownItems, readinessPolicy.penalizeAllUnknowns),
   });
 
   // Information conflicts: contradictions between the customer's narrative and
@@ -640,7 +655,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
     // below the readiness threshold, admins are notified but no assignment is
     // proposed automatically.
     const minReadiness = await getNumberSetting("consultants.auto_assign_min_readiness", 60);
-    if (readiness >= minReadiness) {
+    if (readiness >= minReadiness && inquiry.mode !== INQUIRY_MODES.OPEN_OPTIONS) {
       const { autoAssignConsultant } = await import("../matching");
       await autoAssignConsultant(caseId).catch(async (err) => {
         const { logSystem } = await import("../syslog");

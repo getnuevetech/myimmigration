@@ -4,6 +4,8 @@ import { PageHeader, ButtonLink, EmptyState } from "@/components/ui";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CaseListCard } from "@/components/case-list-card";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { resolveReadinessCopy } from "@/lib/goal-readiness";
 
 export const metadata = { title: "My cases" };
 
@@ -39,6 +41,10 @@ export default async function CasesPage() {
               title={c.title}
               status={c.status}
               readinessScore={c.readinessScore}
+              readinessLabel={resolveReadinessCopy({
+                inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
+                query: `${c.situation} ${c.goal}`,
+              }).overallLabel}
               summary={caseListSummaryFromView(
                 {
                   status: c.status,
