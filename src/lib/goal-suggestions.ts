@@ -63,7 +63,11 @@ export function themesFromOfficialSources(sources: KnowledgeRecord[]): InquiryTh
 export function refineInquiryThemes(regexThemes: InquiryTheme[], sources: KnowledgeRecord[]): InquiryTheme[] {
   const sourceThemes = themesFromOfficialSources(sources);
   if (!sourceThemes.length) return regexThemes.length ? regexThemes : ["general"];
-  return sourceThemes;
+  const exclusive = new Set<InquiryTheme>(["naturalization", "student", "asylum", "visitor"]);
+  const kept = regexThemes.filter((theme) => theme !== "general" && (!exclusive.has(theme) || sourceThemes.includes(theme)));
+  const extra = sourceThemes.filter((theme) => !exclusive.has(theme) || kept.includes(theme) || regexThemes.includes("general"));
+  const merged = Array.from(new Set([...kept, ...extra]));
+  return merged.length ? merged : sourceThemes;
 }
 
 export function consultantFromOfficialSources(sources: KnowledgeRecord[]): ConsultantReferral | null {

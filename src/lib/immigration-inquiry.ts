@@ -355,11 +355,7 @@ export function buildOpenOptionsAnalysis(
     authorityQueries: authorityQueriesForInquiry(inquiry),
   };
   let ranked = sources.length ? rankKnowledgeSources(sources, rankHint, 3) : [];
-  const refinedThemes = refineInquiryThemes(inquiry.themes, ranked);
-  if (ranked.length && refinedThemes.join("|") !== inquiry.themes.join("|")) {
-    inquiry = { ...inquiry, themes: refinedThemes };
-    ranked = rankKnowledgeSources(sources, { ...rankHint, themes: refinedThemes }, 3);
-  }
+  inquiry = { ...inquiry, themes: refineInquiryThemes(inquiry.themes, ranked) };
   const gaps = rankAuthorityGaps(deriveAuthorityGaps(ranked, known), boosts);
   const referral = evaluateConsultantReferral({ text: known, inquiry, sources: ranked });
   const issues: OpenOptionsIssue[] = ranked.map((source) => issueFromSource(source, known, gaps, referral));
