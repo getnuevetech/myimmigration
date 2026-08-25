@@ -54,6 +54,15 @@ import {
   resolveQaEntitlement,
 } from "../src/lib/qa-access";
 import {
+  assignmentPayloadFromCustomerRequest,
+  canRequestConsultantMatch,
+  consultantSeesCaseDetails,
+  customerMatchSharesFiles,
+  matchRequestBlockReason,
+  openMatchBlocksNewRequest,
+  resolveMatchRequestEntitlement,
+} from "../src/lib/consultant-match";
+import {
   limitSuggestionItems,
   resolveSuggestionEntitlement,
   suggestionConsultantCopy,
@@ -1017,6 +1026,32 @@ assert(/Alex Rivera/.test(suggestionConsultantCopy(proSuggestions, { name: "Alex
 assert(!/should be involved/i.test(suggestionConsultantCopy(freeSuggestions)), "a simple free suggestion teaser must not invent a consultant-required flag");
 assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "case lists must still show the approved open-options posture after suggestion entitlements");
 
+const guestMatch = resolveMatchRequestEntitlement({ isGuest: true });
+const freeMatch = resolveMatchRequestEntitlement({ audience: "free", consultantReferral: false });
+const plusMatch = resolveMatchRequestEntitlement({ audience: "plus", consultantReferral: false });
+const proMatch = resolveMatchRequestEntitlement({ audience: "pro", consultantReferral: true });
+assert(!guestMatch.canRequest && guestMatch.showRegisterCta, "guests cannot request a professional match");
+assert(!freeMatch.canRequest && freeMatch.showUpgradeCta, "free plans cannot request a professional match");
+assert(!plusMatch.canRequest, "plus still upgrades to Pro for a named professional match");
+assert(proMatch.canRequest && canRequestConsultantMatch(proMatch), "pro with consultant.referral can request a match");
+assert(!openMatchBlocksNewRequest(0), "no open assignment should allow a new customer request");
+assert(openMatchBlocksNewRequest(1), "an open proposed match must not stack another request");
+const requested = assignmentPayloadFromCustomerRequest({
+  userId: "user-1",
+  consultantId: "consultant-1",
+  caseId: "case-1",
+  reasonSummary: "Alex Rivera matches this family matter.",
+});
+assert(requested.autoAssigned === false, "customer match requests must never be marked auto-assigned");
+assert(requested.status === "user_accepted" && requested.assignedById === "user-1", "requesting a match is the customer's consent");
+assert(!customerMatchSharesFiles(requested.status), "files stay private until the professional also accepts");
+assert(customerMatchSharesFiles("active"), "active connections may share the case with the matched professional");
+assert(!consultantSeesCaseDetails("proposed") && !consultantSeesCaseDetails("user_accepted"), "consultants must not see case files before the connection is active");
+assert(consultantSeesCaseDetails("active"), "active consultants can see the shared case");
+assert(/Upgrade to Pro/i.test(matchRequestBlockReason(freeMatch)), "free match copy must send people to Pro");
+assert(presentation.hero.current_posture === "RFE notice needs review", "customer match requests must not convert the RFE fixture into open-options");
+
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -1044,3 +1079,4 @@ console.log(`- v4 C6: Q&A follow-up ${askedMarriageFollowUp}, next ${askedFollow
 console.log(`- v4 C7: remaining next step ${nextStepAfterIdentity}, follow-up ${askedFollowUpFromAssistant(qaAfterIdentity)}`);
 console.log(`- v4 C8: guest limit ${guestEntitlement.questionLimit}, free ${freeEntitlement.questionLimit}, plus personalized=${plusEntitlement.personalized}, pro consultant=${proEntitlement.consultantReferral}`);
 console.log(`- v4 C9: guest steps ${guestSuggestions.maxPathSteps}, free steps ${freeSuggestions.maxPathSteps}/${freeSuggestions.maxClarifyAnswers} clarify, plus personalized=${plusSuggestions.personalized}, pro consultant=${proSuggestions.consultantReferral}`);
+console.log(`- v4 C10: guest request=${guestMatch.canRequest}, pro request=${proMatch.canRequest}, autoAssigned=${requested.autoAssigned}, sharesFiles=${customerMatchSharesFiles(requested.status)}`);

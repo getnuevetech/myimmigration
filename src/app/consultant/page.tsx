@@ -178,8 +178,14 @@ export default async function ConsultantDashboard({
                   </div>
                 )}
 
-                {kase ? (
-                  <details className="group mt-4 rounded-xl border border-slate-200 bg-slate-50/60">
+                {a.status !== "active" && (
+                  <p className="mt-3 text-sm text-slate-600">
+                    {a.reasonSummary || "A customer requested a professional match."} Case files, findings, and contact details stay private until the connection is active.
+                  </p>
+                )}
+
+                {a.status === "active" && kase ? (
+                  <details className="group mt-4 rounded-xl border border-slate-200 bg-slate-50/60" open>
                     <summary className="flex cursor-pointer items-start gap-2 p-4 text-sm text-slate-600 [&::-webkit-details-marker]:hidden">
                       <span className="mt-0.5 text-xs text-lime-500 transition-transform group-open:rotate-90">▶</span>
                       <span>
@@ -237,9 +243,9 @@ export default async function ConsultantDashboard({
                       </div>
                     </div>
                   </details>
-                ) : (
+                ) : a.status === "active" ? (
                   <p className="mt-3 text-sm text-slate-500">This client hasn&apos;t started a case yet — you&apos;ll see the full analysis briefing here once they do.</p>
-                )}
+                ) : null}
 
                 {!a.consultantAgreedAt && a.status !== "active" && (
                   <div className="mt-4 rounded-xl bg-slate-50 p-4">

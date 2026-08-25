@@ -92,9 +92,13 @@ export async function rankConsultantsForCase(caseId: string): Promise<Candidate[
   return rankConsultantsForSpecialties(wantedSpecialties);
 }
 
-export async function previewBestConsultantForThemes(themes: string[]): Promise<{ name: string; credentialLabel: string } | null> {
+export async function pickConsultantForThemes(themes: string[]): Promise<Candidate | null> {
   const ranked = await rankConsultantsForSpecialties(consultantSpecialtiesForThemes(themes));
-  const first = ranked[0];
+  return ranked[0] ?? null;
+}
+
+export async function previewBestConsultantForThemes(themes: string[]): Promise<{ name: string; credentialLabel: string } | null> {
+  const first = await pickConsultantForThemes(themes);
   if (!first) return null;
   return { name: first.name, credentialLabel: credentialLabel(first.credentialType) };
 }

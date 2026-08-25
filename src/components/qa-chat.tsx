@@ -36,7 +36,7 @@ function SaveOptionsCase() {
   );
 }
 
-function ConversionLinks({ access }: { access: QaChatAccess }) {
+function ConversionLinks({ access, caseId }: { access: QaChatAccess; caseId?: string }) {
   return (
     <div className="mt-2 flex flex-wrap gap-2">
       {access.showRegisterCta && (
@@ -51,7 +51,7 @@ function ConversionLinks({ access }: { access: QaChatAccess }) {
       )}
       {access.showConsultantCta && (
         <Link
-          href={access.audience === "guest" ? "/register" : access.audience === "pro" ? "/app/consultants" : "/pricing"}
+          href={access.audience === "guest" ? "/register" : access.audience === "pro" ? (caseId ? `/app/consultants?case=${caseId}` : "/app/consultants") : "/pricing"}
           className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
         >
           {access.audience === "pro" ? "Request a professional match" : "Talk with a licensed professional"}
@@ -126,7 +126,7 @@ export function QaChat({
                   ? "1 general question left at this access level."
                   : `${access.remaining} general questions left at this access level.`}
           </p>
-          <ConversionLinks access={access} />
+          <ConversionLinks access={access} caseId={caseId} />
         </div>
       )}
       {canSave && (

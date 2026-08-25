@@ -74,7 +74,7 @@ export default async function AdminPlansPage() {
             group. Registered customers use this matrix: <code className="rounded bg-slate-100 px-1">suggestions.personalized</code> keeps
             the full official path and unlimited clarify follow-ups, and <code className="rounded bg-slate-100 px-1">consultant.referral</code> names
             a matching licensed attorney or accredited representative on the case. Stored analysis is never trimmed — only what the customer sees.
-            Suggestions never auto-assign a professional.
+            Suggestions never auto-assign a professional. Pro customers can request a match themselves; files stay private until both parties accept.
           </p>
         </CardBody>
       </Card>

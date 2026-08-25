@@ -904,6 +904,43 @@ async function seedAuthoritySources() {
   }
 }
 
+async function seedDemoConsultant() {
+  const email = "consultant@immigrationonme.com";
+  const password = process.env.SEED_CONSULTANT_PASSWORD || "ChangeMe!2026";
+  const user = await db.user.upsert({
+    where: { email },
+    update: {},
+    create: {
+      email,
+      firstName: "Alex",
+      lastName: "Rivera",
+      role: "consultant",
+      status: "active",
+      passwordHash: await bcrypt.hash(password, 10),
+      emailVerifiedAt: new Date(),
+      bio: "Licensed immigration attorney focusing on family petitions, adjustment of status, and RFE responses.",
+    },
+  });
+  await db.consultantProfile.upsert({
+    where: { userId: user.id },
+    update: {},
+    create: {
+      userId: user.id,
+      credentialType: "attorney",
+      credentialNumber: "CA-IMM-1001",
+      licenseState: "CA",
+      specialties: JSON.stringify(["family", "rfe", "notices", "employment"]),
+      yearsExperience: 8,
+      status: "approved",
+      attestedCompliance: true,
+      languages: "English, Spanish",
+      statesServed: "CA, NY, TX",
+      experiences: "Family petitions\nAdjustment of status\nRFE responses",
+      approvedAt: new Date(),
+    },
+  });
+}
+
 async function seedFormTemplates() {
   const templates = [
     {
@@ -1133,6 +1170,7 @@ async function main() {
   await seedFormTemplates();
   await seedCannedResponses();
   await seedMessageTemplates();
+  await seedDemoConsultant();
   console.log("Seed complete.");
 }
 
