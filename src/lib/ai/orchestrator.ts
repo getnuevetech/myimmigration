@@ -32,7 +32,7 @@ import { rebuildCaseEvidenceState } from "../evidence/case-state";
 import { getCaseEvidenceGateBrief } from "../evidence/case-gate";
 import { getCaseEvidenceBrief } from "../evidence/brief";
 import { guardLetterDraftWithEvidence } from "../evidence/letter-guard";
-import { fallbackLetterDraft, letterWriterInstruction, normalizeLetterKind } from "../goal-letters";
+import { fallbackLetterDraft, letterKindDef, letterWriterInstruction, normalizeLetterKind } from "../goal-letters";
 import { mergeSupportedText, presentationGroundingBlock, withPresentationNoticeSteps } from "../case-presentation-brief";
 import { formatKnowledgeBlock, type KnowledgeRecord } from "../knowledge-retrieval";
 import { buildQaFallbackAnswer, classifyImmigrationInquiry, authorityQueriesForInquiry, buildOpenOptionsAnalysis } from "../immigration-inquiry";
@@ -898,7 +898,9 @@ export async function generateLetterDraft(
   const guardedContext = grounding.block
     ? `${kindBlock}\n\n${context}\n\n${grounding.block}\n\nLetter grounding rule: write to the approved presentation. Do not include receipt numbers, form types, dates, deadlines, requested evidence, or case outcomes unless they appear in the approved presentation or compiled evidence brief. If needed, use placeholders for the user to verify. If this is a cover letter and no receipt is on file, omit Receipt No.`
     : `${kindBlock}\n\n${context}\n\nIf this is a cover letter and no receipt or notice is on file, omit Receipt No. Do not invent a receipt number, RFE, or filed-case posture.`;
-  const guardBrief = grounding.supportedText ? { supportedText: grounding.supportedText } : null;
+  const kindForm = letterKindDef(kind)?.formNumber ?? "";
+  const supported = mergeSupportedText(grounding.supportedText, kindForm, kindForm ? `Form ${kindForm}` : "");
+  const guardBrief = supported ? { supportedText: supported } : null;
   // Try every configured model; log failures; fall back to the template letter.
   for (const step of steps) {
     try {

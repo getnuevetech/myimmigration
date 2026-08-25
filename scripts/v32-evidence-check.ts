@@ -1176,6 +1176,9 @@ const i130Fallback = fallbackLetterDraft("i130_cover", "I am preparing Form I-13
 assert(!/Receipt No/i.test(i130Fallback), "I-130 cover fallback must not include a receipt number");
 assert(!/\bMSC\d{10}\b|\bWAC\d{10}\b/.test(i130Fallback), "I-130 cover fallback must not invent a receipt number");
 assert(/Form I-130/i.test(i130Fallback), "I-130 cover fallback should name Form I-130");
+const guardedCover = guardLetterDraftWithEvidence(i130Fallback, { supportedText: "FORM I-130" });
+assert(/Form I-130/i.test(guardedCover.text), "letter guard should keep the matching I-130 cover form");
+assert(!/Receipt No/i.test(guardedCover.text), "I-130 cover must still omit a receipt after the evidence guard");
 const rfeFallback = fallbackLetterDraft("rfe_response", "I am responding to the RFE.");
 assert(/Receipt No/i.test(rfeFallback), "RFE response fallback may include a receipt placeholder");
 assert(letterKindForStep({ actionKey: "DRAFT_LETTER", title: "Respond to the RFE", matchingLetter: "i130_cover" }) === "rfe_response", "stored letter steps that name an RFE stay RFE responses");
