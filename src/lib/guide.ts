@@ -6,11 +6,24 @@ import { callProvider } from "./ai/adapters";
 import { getCaseEvidenceBrief } from "./evidence/brief";
 import { loadApprovedViewsByCaseIds } from "./case-presentation";
 import { caseListActionLine, caseListEvidenceLine, caseListSummaryFromView, caseListVersionLine } from "./case-presentation-list";
+import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "./immigration-inquiry";
+import {
+  formatGuideSnapshot,
+  guideFallbackCopy,
+  guideOpeningCloser,
+  guidePrimaryAction,
+  guideTipForStep,
+  guideUpgradeCopy,
+  guideWidgetChrome,
+  type GuideChrome,
+  type GuideMatchInput,
+} from "./goal-guide";
 
 // The in-account guide chatbot. It always analyzes the user's account state,
-// coaches them through the current step of their case, and routes anything it
-// can't help with to the FAQ or the ticketing system. It never intakes a new
-// case in chat — it hands off to the real case flow with the user's consent.
+// coaches them through the current matching step (open-options or a filed
+// USCIS case), and routes anything it can't help with to the FAQ or the
+// ticketing system. It never intakes a new case in chat — it hands off to
+// the real case flow with the user's consent.
 
 export type GuideAction = {
   type: "new_case" | "ticket_tech" | "ticket_service" | "link" | "upgrade";
@@ -18,31 +31,37 @@ export type GuideAction = {
   href: string;
 };
 
-export type GuideReply = { message: string; actions: GuideAction[] };
-
-// Practical, deterministic how-to knowledge for each verifiable step.
-const STEP_TIPS: Record<string, string> = {
-  GET_CASE_RECORD:
-    "Only if you already have a USCIS case: sign in at my.uscis.gov or use the official case-status tool with your receipt number. Family options start with identity documents, not a receipt. Save any notices you actually have, then upload them here.",
-  GET_ACCOUNT_RECORD:
-    "Sign in at my.uscis.gov and collect the receipt number, form type, filing date, latest status, and any available notice PDFs. Upload those records to your case documents here.",
-  UPLOAD_DOCUMENTS:
-    "Use the document vault and pick the matching kind. Family options start with identity documents and relationship evidence, not a USCIS receipt. Photos from your phone work fine.",
-  REVIEW_ANALYSIS:
-    "You've added documents — the case page updates automatically as the evidence is processed. Check the current evidence position and path forward for the newest verified next step.",
-  DRAFT_LETTER:
-    "Use USCIS letters and pick the matching kind. Family options start with an I-130 cover letter. Use an RFE response only when a Request for Evidence is actually on file. Describe what you want to say in plain English; we draft a professional letter you can edit and print.",
-  COMPLETE_FORM_I485:
-    "Open USCIS forms → Form I-485 and answer the guided questions. Review the draft against the official USCIS instructions before filing.",
-  PREPARE_FORM:
-    "Open USCIS forms and start the matching form listed on your case. Answer the guided questions. Review the draft against the official USCIS instructions before filing.",
-};
+export type GuideReply = { message: string; actions: GuideAction[]; chrome: GuideChrome };
 
 type Snapshot = {
   text: string;
   currentStep: { title: string; actionKey: string; caseId: string } | null;
   planName: string;
+  surface: GuideMatchInput;
 };
+
+function surfaceFromCase(input: {
+  id: string;
+  situation: string;
+  goal: string;
+  notices: { noticeType: string }[];
+  actionKey?: string | null;
+  actionTitle?: string | null;
+}): GuideMatchInput {
+  const inquiry = classifyImmigrationInquiry({ situation: input.situation, goal: input.goal });
+  const noticeTypes = input.notices.map((notice) => notice.noticeType).filter(Boolean);
+  return {
+    inquiryMode: inquiry.mode,
+    themes: inquiry.themes,
+    authorityQueries: authorityQueriesForInquiry(inquiry),
+    query: `${input.situation} ${input.goal}`.trim(),
+    noticeTypes,
+    hasNotices: noticeTypes.length > 0,
+    caseId: input.id,
+    actionKey: input.actionKey ?? null,
+    actionTitle: input.actionTitle ?? null,
+  };
+}
 
 export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
   const [user, cases, deadlines, plan] = await Promise.all([
@@ -53,6 +72,7 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
       take: 3,
       include: {
         pathSteps: { orderBy: { sortOrder: "asc" } },
+        notices: { select: { noticeType: true } },
       },
     }),
     db.deadline.findMany({
@@ -66,6 +86,7 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
   const views = await loadApprovedViewsByCaseIds(cases.map((c) => c.id));
   const lines: string[] = [`User first name: ${user?.firstName || "there"}`, `Plan: ${plan?.name ?? "Free"}`];
   let currentStep: Snapshot["currentStep"] = null;
+  const surfaces = new Map<string, GuideMatchInput>();
   for (const c of cases) {
     const view = views.get(c.id) ?? null;
     const presentation = view?.presentation ?? null;
@@ -77,9 +98,6 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
       view,
     );
     const version = caseListVersionLine(summary);
-    lines.push(
-      `Case "${c.title.slice(0, 60)}": approved posture ${summary.posture}; ${caseListActionLine(summary)}; ${caseListEvidenceLine(summary)}${version ? `; ${version}` : ""}`,
-    );
     const readyAction = presentation?.hero.next_best_action;
     if (!currentStep && readyAction) {
       currentStep = { title: readyAction.title, actionKey: readyAction.action_key, caseId: c.id };
@@ -88,6 +106,37 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
       const current = c.pathSteps.find((s) => s.status === "current");
       if (current) currentStep = { title: current.title, actionKey: current.actionKey, caseId: c.id };
     }
+    const surface = surfaceFromCase({
+      id: c.id,
+      situation: c.situation,
+      goal: c.goal,
+      notices: c.notices,
+      actionKey: currentStep?.caseId === c.id ? currentStep.actionKey : readyAction?.action_key ?? c.pathSteps.find((s) => s.status === "current")?.actionKey,
+      actionTitle: currentStep?.caseId === c.id ? currentStep.title : readyAction?.title ?? c.pathSteps.find((s) => s.status === "current")?.title,
+    });
+    surfaces.set(c.id, surface);
+    lines.push(
+      `Case "${c.title.slice(0, 60)}": approved posture ${summary.posture}; inquiry ${surface.inquiryMode}; ${caseListActionLine(summary)}; ${caseListEvidenceLine(summary)}${version ? `; ${version}` : ""}`,
+    );
+  }
+  const primary = (currentStep && cases.find((c) => c.id === currentStep.caseId)) || cases[0] || null;
+  let surface: GuideMatchInput = primary
+    ? surfaces.get(primary.id) ?? surfaceFromCase({
+        id: primary.id,
+        situation: primary.situation,
+        goal: primary.goal,
+        notices: primary.notices,
+        actionKey: currentStep?.actionKey,
+        actionTitle: currentStep?.title,
+      })
+    : {};
+  if (currentStep) {
+    surface = { ...surface, caseId: currentStep.caseId, actionKey: currentStep.actionKey, actionTitle: currentStep.title };
+  }
+  if (primary) {
+    lines.push(...formatGuideSnapshot(surface));
+    if (primary.situation) lines.push(`Current situation: ${primary.situation.slice(0, 220)}`);
+    if (primary.goal) lines.push(`Current goal: ${primary.goal.slice(0, 160)}`);
   }
   if (currentStep) {
     const brief = await getCaseEvidenceBrief(currentStep.caseId).catch(() => null);
@@ -103,7 +152,7 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
   for (const d of deadlines) {
     lines.push(`Deadline: "${d.title}" due ${d.dueDate.toLocaleDateString("en-US")}`);
   }
-  return { text: lines.join("\n"), currentStep, planName: plan?.name ?? "Free" };
+  return { text: lines.join("\n"), currentStep, planName: plan?.name ?? "Free", surface };
 }
 
 function detectIntent(question: string): "new_case" | "tech" | "service" | null {
@@ -121,6 +170,14 @@ function baseActions(): GuideAction[] {
   ];
 }
 
+function withChrome(snapshot: Snapshot, reply: Omit<GuideReply, "chrome">): GuideReply {
+  return { ...reply, chrome: guideWidgetChrome(snapshot.surface) };
+}
+
+function primaryActions(snapshot: Snapshot): GuideAction[] {
+  return [{ ...guidePrimaryAction(snapshot.surface) }, ...baseActions()];
+}
+
 export async function guideRespond(
   userId: string,
   history: { role: string; content: string }[],
@@ -130,64 +187,61 @@ export async function guideRespond(
 
   // Paid-feature gate: free accounts get a friendly upsell instead of coaching.
   if (!(await hasFeature(userId, FEATURE_KEYS.GUIDE_CHATBOT))) {
-    return {
-      message:
-        `Hi! I'm your personal case guide — I watch your case, tell you exactly what to do next, and answer questions along the way. The guide is part of our paid plans, and honestly it's the fastest way to get your immigration situation resolved. You're currently on the ${snapshot.planName} plan — upgrade to unlock me, and I'll walk you through every step.`,
+    return withChrome(snapshot, {
+      message: guideUpgradeCopy(snapshot.planName),
       actions: [
         { type: "upgrade", label: "See plans & upgrade", href: "/app/billing" },
         { type: "link", label: "Browse the FAQ", href: "/p/faq" },
       ],
-    };
+    });
   }
 
   // Opening message (no user question yet): proactive account analysis.
   if (!lastQuestion) {
-    const tip = snapshot.currentStep
-      ? STEP_TIPS[snapshot.currentStep.actionKey.toUpperCase()] ??
-        `Your next step is "${snapshot.currentStep.title}". Knock it out and you're one step closer — I'm here if you need help with it.`
-      : "You haven't started a case yet — tell us what's going on, even if you have not filed anything with USCIS, and we'll map options and next steps.";
-    return {
+    const tip = guideTipForStep(snapshot.currentStep?.actionKey, snapshot.surface)
+      ?? (snapshot.currentStep
+        ? `Your next step is "${snapshot.currentStep.title}". Knock it out and you're one step closer — I'm here if you need help with it.`
+        : "You haven't started a case yet — tell us what's going on, even if you have not filed anything with USCIS, and we'll map options and next steps.");
+    return withChrome(snapshot, {
       message: `Here's where you stand:\n\n${snapshot.text
         .split("\n")
-        .filter((l) => l.startsWith("Case") || l.startsWith("Deadline") || l.startsWith("No cases"))
-        .join("\n")}\n\nNext up: ${tip}\n\nYou're making progress — stick with the plan and ask me anything about your next step.`,
-      actions: snapshot.currentStep
-        ? [{ type: "link", label: "Open my case", href: `/app/cases/${snapshot.currentStep.caseId}` }, ...baseActions()]
-        : [{ type: "link", label: "Start my first case", href: "/app/cases/new" }, ...baseActions()],
-    };
+        .filter((l) => l.startsWith("Case") || l.startsWith("Deadline") || l.startsWith("No cases") || l.startsWith("Situation:") || l.startsWith("Matching "))
+        .join("\n")}\n\nNext up: ${tip}\n\n${guideOpeningCloser(snapshot.surface)}`,
+      actions: primaryActions(snapshot),
+    });
   }
 
   // Hard routing rules the AI must not override.
   const intent = detectIntent(lastQuestion);
   if (intent === "new_case") {
-    return {
+    return withChrome(snapshot, {
       message:
         "That sounds like a separate immigration situation — it deserves its own case so it gets a full analysis, its own issues, and its own step-by-step plan (chat isn't the right place to handle it). Want me to start it as a new case? Your message will be pre-filled and you just confirm.",
       actions: [
         { type: "new_case", label: "Yes — start this as a new case", href: `/app/cases/new?prefill=${encodeURIComponent(lastQuestion.slice(0, 500))}` },
         ...baseActions(),
       ],
-    };
+    });
   }
   if (intent === "tech") {
-    return {
+    return withChrome(snapshot, {
       message:
         "That sounds like a technical issue — I'll route you to our tech support team so it gets fixed properly. I've prepared a tech support ticket with your description; just review and submit it, and the team will follow up.",
       actions: [
         { type: "ticket_tech", label: "Create tech support ticket", href: `/app/support/new?category=tech_support&subject=${encodeURIComponent(lastQuestion.slice(0, 120))}` },
         { type: "link", label: "Browse the FAQ", href: "/p/faq" },
       ],
-    };
+    });
   }
   if (intent === "service") {
-    return {
+    return withChrome(snapshot, {
       message:
         "I want to make sure a human takes care of this for you. Let's create a customer service ticket — an agent will pick it up and follow up with you directly. Your message will be pre-filled.",
       actions: [
         { type: "ticket_service", label: "Create customer service ticket", href: `/app/support/new?category=customer_service&subject=${encodeURIComponent(lastQuestion.slice(0, 120))}` },
         { type: "link", label: "Browse the FAQ", href: "/p/faq" },
       ],
-    };
+    });
   }
 
   // AI coaching: run each configured model in order. Later providers see prior
@@ -218,20 +272,10 @@ export async function guideRespond(
       // fall through to the next configured model
     }
   }
-  if (drafts.length > 0) return { message: drafts[drafts.length - 1], actions: baseActions() };
+  if (drafts.length > 0) return withChrome(snapshot, { message: drafts[drafts.length - 1], actions: primaryActions(snapshot) });
 
-  // Deterministic fallback when no AI is reachable: coach the current step.
-  const tip = snapshot.currentStep
-    ? STEP_TIPS[snapshot.currentStep.actionKey.toUpperCase()] ??
-      `Your current step is "${snapshot.currentStep.title}" — open your case and it will tell you exactly what completes it.`
-    : "Start by creating a case — describe what happened and your goal, and we'll build your step-by-step plan.";
-  const statusHint = /(status|receipt|rfe|notice|deadline|interview|biometrics)/i.test(lastQuestion)
-    ? " If your question is about status, an RFE, a notice, or a deadline, upload the USCIS notice or receipt number so the case page can verify it."
-    : "";
-  return {
-    message: `Here's what I can tell you right now: ${tip}${statusHint}\n\nIf that doesn't answer your question, the FAQ covers the most common ones, or I can connect you with our customer service team.`,
-    actions: snapshot.currentStep
-      ? [{ type: "link", label: "Open my case", href: `/app/cases/${snapshot.currentStep.caseId}` }, ...baseActions()]
-      : [{ type: "link", label: "Start a case", href: "/app/cases/new" }, ...baseActions()],
-  };
+  return withChrome(snapshot, {
+    message: guideFallbackCopy(snapshot.surface, lastQuestion),
+    actions: primaryActions(snapshot),
+  });
 }

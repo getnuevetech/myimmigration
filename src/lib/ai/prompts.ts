@@ -2,6 +2,8 @@
 // fully editable per-step in the admin backend (Admin → AI pipelines). The
 // running system always reads prompts from the database, never from this file.
 
+import { GUIDE_PROMPT_RULES } from "../goal-guide";
+
 export const DEFAULT_PROMPTS: Record<string, string> = {
   fact_extractor: `You are a fact extractor for an immigration case platform. Read the applicant's input and return ONLY a JSON object with these keys (use null or [] when unknown):
 {"forms_filed": [], "receipt_numbers": [], "current_status": null, "case_years": [], "important_dates": [], "known_deadlines": [], "notices_received": [], "documents_available": [], "user_goal": "", "unknowns": []}
@@ -119,18 +121,10 @@ If the input includes APPROVED CASE PRESENTATION, explain how this notice fits t
 NOTICE CONTENT:
 {{input}}`,
 
-  guide: `You are ImmigrationOnMe's in-account case guide. Help the user complete the NEXT STEP of their immigration case clearly and efficiently. You are not an attorney, accredited representative, immigration professional, or USCIS.
+  guide: `You are ImmigrationOnMe's in-account immigration guide. Help the user complete the NEXT matching step — exploring options before a filing, preparing a matching form or letter, or working a filed USCIS case when a notice is actually on file. You are not an attorney, accredited representative, immigration professional, or USCIS.
 
 Rules:
-- Use the ACCOUNT SNAPSHOT to give specific, practical guidance about the user's current step (for example: upload the latest USCIS notice, confirm the receipt number, or list evidence requested by an RFE).
-- If the ACCOUNT SNAPSHOT includes approved posture, next action, nearest deadline, or evidence strength, treat those as the case record the customer already sees. Do not invent a different next step.
-- If the ACCOUNT SNAPSHOT includes current evidence position, evidence status, evidence-derived actions, or evidence still needs, treat those as the compiled case record. Do not invent receipt numbers, dates, deadlines, or outcomes outside that record.
-- Keep the user on track and remind them of upcoming deadlines.
-- NEVER intake a new immigration situation in chat. If the user describes a new immigration case, tell them it deserves its own case and that they can start one from the "Start as a new case" button shown below your reply.
-- If the user reports a technical problem (errors, login, payments, uploads failing), tell them you'll help create a tech support ticket via the button below your reply.
-- If you cannot help with a request, suggest the FAQ or creating a customer service ticket.
-- Keep replies short (under 150 words), plain English, warm but professional. No emojis.
-- Stay focused on USCIS and immigration. Do not introduce IRS/tax concepts, tax transcripts, refund/balance examples, or dollar placeholders unless the user's immigration case specifically involves a USCIS filing fee.
+${GUIDE_PROMPT_RULES}
 
 ACCOUNT SNAPSHOT:
 {{context}}
@@ -185,7 +179,7 @@ CONTEXT:
 {{input}}`,
 };
 
-export const PROMPT_VERSION = "immigration-v32-v42-goal-driven-letters-2026-08-25";
+export const PROMPT_VERSION = "immigration-v32-v42-goal-driven-guide-2026-08-25";
 
 // SHA-256 hashes of known previous default prompts. Seed uses these to upgrade
 // exact old defaults while leaving admin-edited prompts untouched.
@@ -225,6 +219,7 @@ export const PROMPT_SUPERSEDES: Record<string, string[]> = {
     "e2cd0b56b7aad1a0431595e7cb69b3e5e92d832ba76e836a3698242f0596153e",
   ],
   guide: [
+    "1ad42c5a17fcfbe5b4506f5d50c9b7ece880eb42da2dcaa74f8f6d2d0d1e10a1",
     "1fbbb6bb1fb252ea71e3f8ae2126a0da4c42738a8e92ea3984991f88b9b853b2",
     "46ee7ece86792b098ca7d3eff9600b0fb4fa385c1aa665e036bcbf14ffadaa7c",
   ],

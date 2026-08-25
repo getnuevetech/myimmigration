@@ -204,7 +204,7 @@ async function seedPlansAndFeatures() {
     ["vault.storage", "Secure document vault", "documents", 10],
     ["forms.wizard", "Simplified USCIS form wizards", "forms", 11],
     ["consultant.referral", "immigration professional referral service", "consultants", 12],
-    ["guide.chatbot", "Personal case guide chatbot", "assistant", 13],
+    ["guide.chatbot", "Personal immigration guide chatbot", "assistant", 13],
     ["case.report", "Downloadable full case report (with document copies)", "analysis", 14],
     ["uscis.updates_analysis", "USCIS update impact analysis", "analysis", 15],
     ["forms.download", "Downloadable completed USCIS forms", "forms", 16],
@@ -222,6 +222,14 @@ async function seedPlansAndFeatures() {
   // reference AI models (standard product-language policy).
   await db.featureDef.updateMany({ where: { key: "case.analysis", name: "AI case analysis" }, data: { name: "In-depth case analysis" } });
   await db.featureDef.updateMany({ where: { key: "letters.generate" }, data: { name: "USCIS letter drafts" } });
+  await db.featureDef.updateMany({ where: { key: "guide.chatbot" }, data: { name: "Personal immigration guide chatbot" } });
+  await db.pipelineStage.updateMany({
+    where: { key: "guide", name: "In-account case guide" },
+    data: {
+      name: "In-account immigration guide",
+      description: "The floating chatbot that coaches users through the next matching step — options, a letter, or a filed case. Models are tried in order until one answers — all five providers are chained by default.",
+    },
+  });
   await db.subscriptionPlan.updateMany({
     where: { description: { contains: "AI-matched client assignments" } },
     data: { description: "For immigration professional partners: receive expertly matched client assignments and manage them in your workspace." },
@@ -481,8 +489,8 @@ async function seedAiAndPipelines() {
     },
     {
       key: "guide",
-      name: "In-account case guide",
-      description: "The floating chatbot that coaches users through their next step. Models are tried in order until one answers — all five providers are chained by default.",
+      name: "In-account immigration guide",
+      description: "The floating chatbot that coaches users through the next matching step — options, a letter, or a filed case. Models are tried in order until one answers — all five providers are chained by default.",
       steps: [
         { provider: "OpenAI GPT-5.6 Sol", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 0 },
         { provider: "Anthropic Claude Sonnet 5", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 1 },

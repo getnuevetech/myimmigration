@@ -131,6 +131,17 @@ import {
   resolveReadinessPolicy,
 } from "../src/lib/goal-readiness";
 import {
+  formatGuideSnapshot,
+  guideFallbackCopy,
+  guideOpeningCloser,
+  guidePrimaryAction,
+  guideStatusHint,
+  guideTipForStep,
+  guideUpgradeCopy,
+  guideWidgetChrome,
+  shouldChaseNoticeInGuide,
+} from "../src/lib/goal-guide";
+import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
   conversationNarrative,
@@ -1504,6 +1515,74 @@ assert(presentation.hero.current_posture === "RFE notice needs review", "goal-dr
 assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven readiness must keep the approved open-options posture");
 assert(requested.autoAssigned === false, "goal-driven readiness must not auto-assign consultants");
 
+const familyGuideInput = {
+  inquiryMode: "open_options" as const,
+  themes: marriageInquiry.themes,
+  authorityQueries: ["I-130", "I-485"],
+  caseId: "case-options",
+  actionKey: "GET_CASE_RECORD",
+  actionTitle: "Get the USCIS case record",
+};
+const familyNoticeGuideInput = { ...familyGuideInput, actionKey: "UPLOAD_NOTICE", actionTitle: "Upload the USCIS notice" };
+const familyFormGuideInput = { ...familyGuideInput, actionKey: "COMPLETE_FORM_I485", actionTitle: "Complete Form I-485" };
+const rfeGuideInput = {
+  inquiryMode: "existing_case" as const,
+  noticeTypes: ["RFE"],
+  hasNotices: true,
+  caseId: "case-rfe",
+  actionKey: "UPLOAD_NOTICE",
+  actionTitle: "Upload the RFE",
+  query: "I got an RFE from USCIS",
+};
+const openRecordTip = guideTipForStep("GET_CASE_RECORD", familyGuideInput) ?? "";
+const openAccountTip = guideTipForStep("GET_ACCOUNT_RECORD", familyGuideInput) ?? "";
+const openNoticeTip = guideTipForStep("UPLOAD_NOTICE", familyNoticeGuideInput) ?? "";
+const openFormTip = guideTipForStep("COMPLETE_FORM_I485", familyFormGuideInput) ?? "";
+const rfeNoticeTip = guideTipForStep("UPLOAD_NOTICE", rfeGuideInput) ?? "";
+assert(/identity/i.test(openRecordTip) && /I-130/.test(openRecordTip), "open-options GET_CASE_RECORD must coach identity and I-130");
+assert(!/sign in at my\.uscis\.gov/i.test(openRecordTip), "open-options GET_CASE_RECORD must not send people to my.uscis.gov");
+assert(/Skip my\.uscis\.gov/i.test(openAccountTip), "open-options GET_ACCOUNT_RECORD must skip the USCIS account hunt");
+assert(/identity/i.test(openNoticeTip) && !/upload the USCIS notice/i.test(openNoticeTip), "open-options UPLOAD_NOTICE must remap to matching documents");
+assert(/Form I-130/.test(openFormTip) && !/Form I-485/.test(openFormTip), "open-options must not coach Form I-485 ahead of I-130");
+assert(/\bRFE\b/.test(rfeNoticeTip), "filed RFE UPLOAD_NOTICE must still name the RFE");
+assert(shouldChaseNoticeInGuide("Where is my receipt status?", rfeGuideInput) === true, "filed cases may still chase a receipt in the guide");
+assert(shouldChaseNoticeInGuide("Where is my receipt status?", familyGuideInput) === false, "open-options must not chase a receipt in the guide");
+const openReceiptFallback = guideFallbackCopy(familyGuideInput, "What is my receipt status?");
+assert(!/upload the USCIS notice/i.test(openReceiptFallback), "open-options receipt questions must not tell people to upload a notice");
+assert(/no USCIS receipt/i.test(openReceiptFallback) || /open-options/i.test(openReceiptFallback), "open-options receipt questions must say there is no receipt to chase");
+assert(/upload the USCIS notice or receipt number/i.test(guideStatusHint("What is my RFE deadline?", rfeGuideInput)), "RFE status questions still ask for the notice");
+assert(/no receipt required/i.test(guideWidgetChrome(familyGuideInput).subtitle), "open-options widget chrome must not be notice-only");
+assert(guideWidgetChrome(familyGuideInput).title === "Your options guide", "open-options widget title must be options-aware");
+assert(guideWidgetChrome(rfeGuideInput).title === "Your case guide", "filed RFE widget title stays case guide");
+assert(/receipt is not required/i.test(guideOpeningCloser(familyGuideInput)), "open-options opening must not say stick with a filed-case plan");
+assert(/stick with the plan/i.test(guideOpeningCloser(rfeGuideInput)), "filed opening may still keep people on the case plan");
+assert(/exploring options before a filing/i.test(guideUpgradeCopy("Free")) && /USCIS letter/i.test(guideUpgradeCopy("Free")), "paid-gate copy must cover options and a letter");
+assert(!/fastest way to get your immigration situation resolved/i.test(guideUpgradeCopy("Free")), "paid-gate copy must not be filed-case only");
+assert(guidePrimaryAction(familyGuideInput).href === "/app/documents?kind=identity", "open-options guide CTA must go to matching documents");
+assert(guidePrimaryAction(rfeGuideInput).href === "/app/notices?case=case-rfe", "RFE guide CTA must stay on the notices page");
+const openSnapshot = formatGuideSnapshot(familyGuideInput).join("\n");
+assert(/Situation: open_options/.test(openSnapshot), "guide snapshot must label open-options");
+assert(/Do not invent a receipt number/i.test(openSnapshot), "guide snapshot must forbid inventing a receipt");
+assert(/Matching form: I-130/.test(openSnapshot), "guide snapshot must name I-130 as the matching form");
+assert(/Situation: existing_case/.test(formatGuideSnapshot(rfeGuideInput).join("\n")), "RFE snapshot must stay a filed case");
+assert(DEFAULT_PROMPTS.guide.includes("open_options"), "guide prompt must lead with the options path");
+assert(DEFAULT_PROMPTS.guide.includes("Do not invent receipt numbers"), "guide prompt must not invent a receipt");
+assert(DEFAULT_PROMPTS.guide.includes("current evidence position"), "guide prompt should mention current evidence position");
+assert(DEFAULT_PROMPTS.guide.includes("approved posture"), "guide prompt should mention approved posture");
+assert(PROMPT_SUPERSEDES.guide.includes("1ad42c5a17fcfbe5b4506f5d50c9b7ece880eb42da2dcaa74f8f6d2d0d1e10a1"), "seed must supersede the notice-first guide prompt");
+const guideSrc = readFileSync(join(process.cwd(), "src/lib/guide.ts"), "utf8");
+assert(guideSrc.includes("formatGuideSnapshot") && guideSrc.includes("guideTipForStep"), "guide runtime must use goal-driven tips and snapshot");
+assert(!guideSrc.includes("Sign in at my.uscis.gov and collect the receipt number"), "guide runtime must not hardcode a receipt hunt for every step");
+const widgetSrc = readFileSync(join(process.cwd(), "src/components/guide-widget.tsx"), "utf8");
+assert(widgetSrc.includes("guideWidgetChrome") || widgetSrc.includes("GUIDE_WIDGET_CHROME_DEFAULT"), "guide widget must use goal-driven chrome");
+assert(!widgetSrc.includes("Always watching your next step"), "guide widget must not hardcode filed-case chrome");
+const seedGuideSrc = readFileSync(join(process.cwd(), "prisma/seed.ts"), "utf8");
+assert(seedGuideSrc.includes("Personal immigration guide chatbot"), "seed must rename the guide feature off case-only copy");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven guide must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven guide must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven guide must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven guide must not auto-assign consultants");
+assert(!/receipt number detected/i.test(openRecordTip + openNoticeTip + DEFAULT_PROMPTS.guide), "guide copy must not invent a detected receipt number");
 
 
 
@@ -1541,3 +1620,4 @@ console.log(`- v4 C13: family ${familyDocs[0]?.kind}, student ${studentDocs.find
 console.log(`- v4 C14: notices skip=${!openNoticeCopy.uploadPrimary}, deadlines auto=${shouldExpectAutomaticDeadlines({ inquiryMode: "open_options" })}, account optional=${Boolean(openAccount.optionalBanner)}, RFE notices primary=${rfeNoticeCopy.uploadPrimary}`);
 console.log(`- v4 C15: hero ${PUBLIC_HOME_FEATURES[0]?.title}, catalog ${featuresRankedBeforeNotices()[0]} before notices, closing ${PUBLIC_CLOSING.optionsCta.label}`);
 console.log(`- v4 C16: options ${optionsReadinessCopy.overallLabel} expected=${optionsReadinessPolicy.documentsExpected} empty=${optionsEmptyReadiness.actionReadinessScore} identity=${optionsIdentityReadiness.actionReadinessScore}, RFE action=${readiness.actionReadinessScore}`);
+console.log(`- v4 C17: open tip ${openRecordTip.includes("I-130") ? "I-130" : "missing"}, chase receipt=${shouldChaseNoticeInGuide("receipt status", familyGuideInput)}, RFE chrome ${guideWidgetChrome(rfeGuideInput).title}`);
