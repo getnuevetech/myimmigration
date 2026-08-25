@@ -9,6 +9,7 @@ import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { resolveDashboardFiledCopy } from "@/lib/goal-notices";
+import { resolveReadinessCopy } from "@/lib/goal-readiness";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -56,6 +57,12 @@ export default async function DashboardPage() {
   const avgReadiness = cases.length
     ? Math.round(cases.reduce((s, c) => s + c.readinessScore, 0) / cases.length)
     : 0;
+  const dashboardReadiness = resolveReadinessCopy({
+    themes: inquiry?.themes,
+    inquiryMode: inquiry?.mode,
+    query: `${latest?.situation ?? ""} ${latest?.goal ?? ""}`,
+    noticeTypes: (latest?.notices ?? []).map((notice) => notice.noticeType),
+  });
 
   return (
     <div>
@@ -99,11 +106,11 @@ export default async function DashboardPage() {
         <Stat label="Action items" value={actionItems} sub="urgent or needs action" />
         <Card>
           <CardBody>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Case readiness</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{dashboardReadiness.dashboardStatLabel}</p>
             <div className="mt-2">
               <ProgressBar value={avgReadiness} />
             </div>
-            <p className="mt-1 text-xs text-slate-500">{avgReadiness}% · documents + verified facts − open questions</p>
+            <p className="mt-1 text-xs text-slate-500">{avgReadiness}% · {dashboardReadiness.dashboardStatHint}</p>
           </CardBody>
         </Card>
       </div>
@@ -128,6 +135,11 @@ export default async function DashboardPage() {
                   status={c.status}
                   readinessScore={c.readinessScore}
                   compact
+                  readinessLabel={resolveReadinessCopy({
+                    inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
+                    query: `${c.situation} ${c.goal}`,
+                    noticeTypes: c.notices.map((notice) => notice.noticeType),
+                  }).overallLabel}
                   summary={caseListSummaryFromView(
                     {
                       status: c.status,

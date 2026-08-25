@@ -127,6 +127,10 @@ import {
   resolvePublicStartCopy,
 } from "../src/lib/goal-public";
 import {
+  resolveReadinessCopy,
+  resolveReadinessPolicy,
+} from "../src/lib/goal-readiness";
+import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
   conversationNarrative,
@@ -1433,6 +1437,74 @@ assert(presentation.hero.current_posture === "RFE notice needs review", "public 
 assert(requested.autoAssigned === false, "public funnel must not auto-assign consultants");
 assert(!/receipt number detected/i.test(PUBLIC_HERO_CAROUSEL.cards.map((card) => card.body).join(" ")), "hero cards must not invent a detected receipt number");
 
+const optionsReadinessPolicy = resolveReadinessPolicy({
+  inquiryMode: "open_options",
+  themes: marriageInquiry.themes,
+  authorityQueries: ["I-130", "I-485"],
+  documentsExpected: 3,
+});
+assert(optionsReadinessPolicy.documentsExpected === 2, `family options expected matching docs must be 2, got ${optionsReadinessPolicy.documentsExpected}`);
+assert(!optionsReadinessPolicy.coreKeys.includes("receipt_number"), "family options readiness must not require a receipt number");
+assert(optionsReadinessPolicy.coreKeys.includes("identity"), "family options readiness must score identity evidence");
+assert(optionsReadinessPolicy.coreKeys.includes("matching_form") || optionsReadinessPolicy.coreKeys[0] === "matching_form", "family options readiness must credit the matching I-130 path");
+const optionsEmptyReadiness = computeEvidenceReadinessSplit({
+  documentsCount: 0,
+  documentsExpected: 3,
+  extractedDocumentsCount: 0,
+  needsReviewDocumentsCount: 0,
+  reconciled: {
+    audit: { status: "needs_more_evidence", summary: "", blockingUnknowns: ["identity_documents"], warnings: [] },
+    facts: [],
+    unknowns: [
+      { key: "identity_documents", question: "identity?", reason: "official material" },
+      { key: "location", question: "location?", reason: "official material" },
+      { key: "receipt_number", question: "receipt?", reason: "identifier" },
+    ],
+    conflicts: [],
+  },
+  policy: optionsReadinessPolicy,
+});
+assert(optionsEmptyReadiness.evidenceAvailableScore === 0, "options with no matching docs must show 0% provided");
+assert(optionsEmptyReadiness.actionReadinessScore >= 30, `options next-step readiness must not be tanked by official follow-ups, got ${optionsEmptyReadiness.actionReadinessScore}`);
+assert(optionsEmptyReadiness.actionReadinessScore < 100, "options with no matching docs must not look like a complete filed case");
+const optionsIdentityPolicy = resolveReadinessPolicy({
+  inquiryMode: "open_options",
+  themes: marriageInquiry.themes,
+  authorityQueries: ["I-130", "I-485"],
+  documentsExpected: 3,
+  haveKinds: ["identity"],
+});
+const optionsIdentityReadiness = computeEvidenceReadinessSplit({
+  documentsCount: 1,
+  documentsExpected: 3,
+  extractedDocumentsCount: 1,
+  needsReviewDocumentsCount: 0,
+  reconciled: {
+    audit: { status: "needs_more_evidence", summary: "", blockingUnknowns: [], warnings: [] },
+    facts: [],
+    unknowns: [{ key: "relationship", question: "relationship?", reason: "official material" }],
+    conflicts: [],
+  },
+  policy: optionsIdentityPolicy,
+});
+assert(optionsIdentityReadiness.evidenceAvailableScore === 50, `one of two matching docs must be 50%, got ${optionsIdentityReadiness.evidenceAvailableScore}`);
+assert(optionsIdentityReadiness.actionReadinessScore > optionsEmptyReadiness.actionReadinessScore, "uploading identity must raise options next-step readiness");
+const filedReadinessCopy = resolveReadinessCopy({ inquiryMode: "existing_case", noticeTypes: ["RFE"] });
+const optionsReadinessCopy = resolveReadinessCopy({ inquiryMode: "open_options", themes: ["family"] });
+assert(filedReadinessCopy.overallLabel === "Case readiness", "filed cases keep Case readiness");
+assert(optionsReadinessCopy.overallLabel === "Options progress", "open-options must not be labeled Case readiness");
+assert(/not from a receipt you do not have/i.test(optionsReadinessCopy.overallHint), "options progress hint must say a receipt is not required");
+assert(filedReadinessCopy.actionLabel === "Action readiness", "filed split keeps Action readiness");
+assert(optionsReadinessCopy.actionLabel === "Next-step readiness", "options split uses Next-step readiness");
+assert(readiness.actionReadinessScore === 100, "goal-driven readiness must not lower the RFE fixture action score");
+const presentationSrc = readFileSync(join(process.cwd(), "src/components/case-presentation-view.tsx"), "utf8");
+assert(presentationSrc.includes("resolveReadinessCopy"), "case presentation must use goal-driven readiness labels");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven readiness must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven readiness must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven readiness must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven readiness must not auto-assign consultants");
+
+
 
 
 console.log("v3.2 immigration evidence check passed");
@@ -1468,3 +1540,4 @@ console.log(`- v4 C12: family ${familyLetters[0]?.kind}, student ${studentLetter
 console.log(`- v4 C13: family ${familyDocs[0]?.kind}, student ${studentDocs.find((item) => item.kind === "status_record")?.kind}, asylum ${asylumDocs.find((item) => item.kind === "declaration")?.kind}, RFE ${rfeDocs[0]?.kind}, free remaining ${documentUploadAllowed({ canUpload: true, used: 4, limit: 5 }).remaining}`);
 console.log(`- v4 C14: notices skip=${!openNoticeCopy.uploadPrimary}, deadlines auto=${shouldExpectAutomaticDeadlines({ inquiryMode: "open_options" })}, account optional=${Boolean(openAccount.optionalBanner)}, RFE notices primary=${rfeNoticeCopy.uploadPrimary}`);
 console.log(`- v4 C15: hero ${PUBLIC_HOME_FEATURES[0]?.title}, catalog ${featuresRankedBeforeNotices()[0]} before notices, closing ${PUBLIC_CLOSING.optionsCta.label}`);
+console.log(`- v4 C16: options ${optionsReadinessCopy.overallLabel} expected=${optionsReadinessPolicy.documentsExpected} empty=${optionsEmptyReadiness.actionReadinessScore} identity=${optionsIdentityReadiness.actionReadinessScore}, RFE action=${readiness.actionReadinessScore}`);

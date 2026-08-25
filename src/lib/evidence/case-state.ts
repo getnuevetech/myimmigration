@@ -4,9 +4,10 @@ import { isImmigrationFactKey, type ImmigrationFactKey } from "@/domain/facts";
 import type { ImmigrationDocumentType } from "@/domain/documents";
 import { db } from "@/lib/db";
 import { getNumberSetting } from "@/lib/settings";
-import { classifyImmigrationInquiry, applyInquiryToEvidenceState, INQUIRY_MODES } from "@/lib/immigration-inquiry";
+import { classifyImmigrationInquiry, applyInquiryToEvidenceState, INQUIRY_MODES, authorityQueriesForInquiry } from "@/lib/immigration-inquiry";
 import { retrieveUnifiedAuthority } from "@/lib/authority-retrieval";
 import { loadBoostsForNarrative } from "@/lib/goal-suggestion-store";
+import { resolveReadinessPolicy } from "@/lib/goal-readiness";
 import type { KnowledgeRecord } from "@/lib/knowledge-retrieval";
 import { computeEvidenceReadinessSplit } from "./readiness";
 import { reconcileEvidenceStates } from "./reconcile";
@@ -44,7 +45,7 @@ export async function rebuildCaseEvidenceState(caseId: string) {
     }),
     db.document.findMany({
       where: { caseId, deletedAt: null, docKind: { not: "avatar" } },
-      select: { processingStatus: true },
+      select: { processingStatus: true, docKind: true },
     }),
     getNumberSetting("analysis.expected_documents", 3),
     db.case.findUnique({ where: { id: caseId }, select: { situation: true, goal: true } }),
@@ -132,6 +133,15 @@ export async function rebuildCaseEvidenceState(caseId: string) {
     extractedDocumentsCount: documents.filter((doc) => doc.processingStatus === "extracted").length,
     needsReviewDocumentsCount: documents.filter((doc) => doc.processingStatus === "needs_review").length,
     reconciled,
+    policy: resolveReadinessPolicy({
+      themes: inquiry.themes,
+      inquiryMode: inquiry.mode,
+      query: [caseRow?.situation, caseRow?.goal].filter(Boolean).join(" "),
+      authorityQueries: authorityQueriesForInquiry(inquiry),
+      noticeTypes: compiledFacts.filter((fact) => fact.key === "notice_type").map((fact) => fact.value),
+      documentsExpected,
+      haveKinds: documents.map((doc) => doc.docKind),
+    }),
   });
 
   await db.$transaction(async (tx) => {

@@ -8,6 +8,8 @@ import { caseRoutingReason } from "@/lib/matching";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CaseListSummaryDetails } from "@/components/case-list-card";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { resolveReadinessCopy } from "@/lib/goal-readiness";
 
 export const metadata = { title: "Consultant dashboard" };
 
@@ -231,7 +233,13 @@ export default async function ConsultantDashboard({
                       )}
 
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                        <ProgressBar value={kase.readinessScore} label="Case readiness" />
+                        <ProgressBar
+                          value={kase.readinessScore}
+                          label={resolveReadinessCopy({
+                            inquiryMode: classifyImmigrationInquiry({ situation: kase.situation, goal: kase.goal }).mode,
+                            query: `${kase.situation} ${kase.goal}`,
+                          }).overallLabel}
+                        />
                         <div className="text-sm text-slate-600">
                           <p>
                             <span className="font-medium text-slate-700">{kase._count.documents}</span> document{kase._count.documents === 1 ? "" : "s"} shared
