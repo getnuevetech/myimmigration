@@ -525,7 +525,7 @@ model Document {
   filePath       String
   mimeType       String    @default("application/octet-stream")
   sizeBytes      Int       @default(0)
-  docKind        String    @default("other") // receipt | approval | rfe | form | identity | evidence | notice | proof | avatar | other
+  docKind        String    @default("other") // identity | relationship | status_record | declaration | country_conditions | form | evidence | notice | rfe | receipt | case_record | approval | proof | avatar | other
   status         String    @default("uploaded") // uploaded | analyzing | extracted | verification_required
   extractedJson  String    @default("")
   documentType   String    @default("") // immigration-native classifier, e.g. i797_notice | rfe | case_status_record

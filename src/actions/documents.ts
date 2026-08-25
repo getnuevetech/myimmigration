@@ -3,21 +3,50 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUser, requireUser } from "@/lib/auth";
+import { getCurrentUser, isAdmin, requireUser } from "@/lib/auth";
 import { getOrCreateGuestSession } from "@/lib/guest";
 import { saveUpload, deleteUpload, validateUploadFile } from "@/lib/uploads";
 import { explainNoticeContent } from "@/lib/ai/orchestrator";
 import { verifyCaseProgress, verifyUserCasesProgress } from "@/lib/case-progress";
 import { processDocumentEvidence, processDocumentsEvidence } from "@/lib/evidence/document-processing";
 import { rebuildCaseEvidenceState } from "@/lib/evidence/case-state";
+import { featureLimit, hasFeature } from "@/lib/access";
+import { FEATURE_KEYS } from "@/lib/constants";
+import { documentUploadAllowed, normalizeDocumentKind } from "@/lib/goal-documents";
 import type { ActionState } from "./auth";
+
+async function vaultDocumentCount(userId: string): Promise<number> {
+  return db.document.count({
+    where: { userId, deletedAt: null, docKind: { not: "avatar" } },
+  });
+}
+
+export async function documentQuotaError(userId: string | null | undefined, incoming: number): Promise<string | null> {
+  if (!userId) return null;
+  const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (user && isAdmin(user)) return null;
+  const enabled = await hasFeature(userId, FEATURE_KEYS.DOC_UPLOAD);
+  const limit = enabled ? await featureLimit(userId, FEATURE_KEYS.DOC_UPLOAD) : 0;
+  const used = await vaultDocumentCount(userId);
+  const quota = documentUploadAllowed({
+    canUpload: enabled,
+    used,
+    incoming,
+    limit: enabled ? limit : 0,
+  });
+  if (quota.allowed) return null;
+  if (!enabled) return "Document uploads are not included in your plan. Upgrade to Plus to add files.";
+  return `You've used all ${limit} document uploads included in Free. Upgrade to Plus for unlimited vault storage.`;
+}
 
 export async function uploadDocumentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await getCurrentUser();
-  const docKind = String(formData.get("docKind") ?? "other");
+  const docKind = normalizeDocumentKind(String(formData.get("docKind") ?? "other")) ?? "other";
   const caseId = String(formData.get("caseId") ?? "") || null;
   const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length === 0) return { error: "Choose at least one file." };
+  const quotaError = await documentQuotaError(user?.id, files.length);
+  if (quotaError) return { error: quotaError };
 
   const guest = user ? null : await getOrCreateGuestSession();
   const documentIds: string[] = [];

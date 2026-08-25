@@ -27,7 +27,7 @@ const STEP_TIPS: Record<string, string> = {
   GET_ACCOUNT_RECORD:
     "Sign in at my.uscis.gov and collect the receipt number, form type, filing date, latest status, and any available notice PDFs. Upload those records to your case documents here.",
   UPLOAD_DOCUMENTS:
-    "Add your USCIS notices, receipts, immigration forms, identity records, and supporting evidence. Photos from your phone work fine. The more you add, the more precisely we can verify dates, receipt numbers, and deadlines.",
+    "Use the document vault and pick the matching kind. Family options start with identity documents and relationship evidence, not a USCIS receipt. Photos from your phone work fine.",
   REVIEW_ANALYSIS:
     "You've added documents — the case page updates automatically as the evidence is processed. Check the current evidence position and path forward for the newest verified next step.",
   DRAFT_LETTER:

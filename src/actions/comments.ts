@@ -23,7 +23,7 @@ export async function addCaseCommentAction(_prev: ActionState, formData: FormDat
     if (f.size > 20 * 1024 * 1024) return { error: `${f.name} is larger than 20 MB.` };
   }
 
-  const c = await db.case.findUnique({ where: { id: caseId }, select: { id: true, userId: true, title: true, number: true } });
+  const c = await db.case.findUnique({ where: { id: caseId }, select: { id: true, userId: true, title: true, number: true, situation: true, goal: true } });
   if (!c) return { error: "Case not found." };
 
   // Determine the viewer's relationship to this case.
@@ -59,7 +59,21 @@ export async function addCaseCommentAction(_prev: ActionState, formData: FormDat
   // posts them), so they join the evidence and are analyzed like any upload.
   const attachmentIds: string[] = [];
   if (files.length > 0) {
+    if (authorRole === "customer") {
+      const { documentQuotaError } = await import("@/actions/documents");
+      const quotaError = await documentQuotaError(user.id, files.length);
+      if (quotaError) return { error: quotaError };
+    }
     const { saveUpload } = await import("@/lib/uploads");
+    const { matchingDocumentKind } = await import("@/lib/goal-documents");
+    const { authorityQueriesForInquiry, classifyImmigrationInquiry } = await import("@/lib/immigration-inquiry");
+    const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+    const docKind = matchingDocumentKind({
+      themes: inquiry.themes,
+      inquiryMode: inquiry.mode,
+      query: `${c.situation} ${c.goal}`,
+      authorityQueries: authorityQueriesForInquiry(inquiry),
+    }) ?? "identity";
     for (const file of files.slice(0, 10)) {
       const { filePath, sizeBytes } = await saveUpload(file);
       const doc = await db.document.create({
@@ -70,7 +84,7 @@ export async function addCaseCommentAction(_prev: ActionState, formData: FormDat
           filePath,
           mimeType: file.type || "application/octet-stream",
           sizeBytes,
-          docKind: "other",
+          docKind,
         },
       });
       attachmentIds.push(doc.id);

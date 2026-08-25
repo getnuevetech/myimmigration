@@ -41,7 +41,7 @@ function declaredTypeFromDocKind(docKind: string): ImmigrationDocumentType | "" 
   if (key === "rfe") return "rfe";
   if (key === "form") return "uscis_form";
   if (key === "identity") return "identity_document";
-  if (key === "evidence" || key === "proof") return "supporting_evidence";
+  if (key === "evidence" || key === "proof" || key === "relationship" || key === "declaration" || key === "country_conditions" || key === "status_record") return "supporting_evidence";
   return "";
 }
 
