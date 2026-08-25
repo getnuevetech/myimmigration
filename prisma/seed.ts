@@ -2,6 +2,19 @@ import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { DEFAULT_PROMPTS, PROMPT_SUPERSEDES } from "../src/lib/ai/prompts";
+import {
+  PUBLIC_FAQ_BODY,
+  PUBLIC_FEATURE_SORT_ORDER,
+  PUBLIC_HERO,
+  PUBLIC_HOW_IT_WORKS_PAGE,
+  PUBLIC_PLAN_DESCRIPTIONS,
+  PUBLIC_TAGLINE,
+  STALE_PLAN_DESCRIPTIONS,
+  STALE_PUBLIC_HERO_SUBTITLES,
+  STALE_PUBLIC_HERO_TITLES,
+  STALE_PUBLIC_PRIMARY_CTAS,
+  STALE_PUBLIC_TAGLINES,
+} from "../src/lib/goal-public";
 
 const db = new PrismaClient();
 
@@ -27,13 +40,13 @@ async function seedSettings() {
   const settings: [string, string, string, string, string, string?][] = [
     // key, value, group, label, description, type
     ["app.name", "ImmigrationOnMe", "branding", "App name", "Shown in the header, titles, and emails."],
-    ["app.tagline", "Immigration paperwork, organized", "branding", "Tagline", "Short slogan shown on the landing page."],
+    ["app.tagline", PUBLIC_TAGLINE, "branding", "Tagline", "Short slogan shown on the landing page."],
     ["app.url", "http://localhost:3000", "general", "App URL", "Public base URL, used for OAuth callbacks and payment redirects."],
     ["app.disclaimer", "ImmigrationOnMe is an immigration case assistant that helps you understand your immigration situation and USCIS documents in plain English. We are not USCIS and we are not a law firm. We provide informational guidance only, not legal advice. For high-stakes decisions, consult a licensed immigration attorney or accredited representative.", "branding", "Footer disclaimer", "Compliance disclaimer shown in the site footer."],
-    ["home.hero_title", "Turn immigration paperwork into a clear case plan", "branding", "Homepage hero title", ""],
-    ["home.hero_subtitle", "ImmigrationOnMe organizes notices, forms, timelines, evidence gaps, and deadlines so applicants can understand what is happening and what to prepare next.", "branding", "Homepage hero subtitle", ""],
-    ["home.cta_primary", "Start a case review", "branding", "Primary call to action", ""],
-    ["home.cta_secondary", "Ask an immigration question", "branding", "Secondary call to action", ""],
+    ["home.hero_title", PUBLIC_HERO.title, "branding", "Homepage hero title", ""],
+    ["home.hero_subtitle", PUBLIC_HERO.subtitle, "branding", "Homepage hero subtitle", ""],
+    ["home.cta_primary", PUBLIC_HERO.primaryCta.label, "branding", "Primary call to action", ""],
+    ["home.cta_secondary", PUBLIC_HERO.secondaryCta.label, "branding", "Secondary call to action", ""],
     ["home.hero_images", '["/hero/hero-1.png", "/hero/hero-2.png", "/hero/hero-3.png"]', "branding", "Hero images (JSON array)", "Rotating homepage hero images. JSON array of image URLs or paths — add, remove, or reorder freely."],
     ["font.body", "var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif", "typography", "Body font", "Main text and interface font. Use a CSS font stack or one of the provided font variables.", "font"],
     ["font.heading", "var(--font-playfair), Georgia, 'Times New Roman', serif", "typography", "Heading / display font", "Headlines, logo text, editorial numbers, hero display text, and large design typography.", "font"],
@@ -108,9 +121,13 @@ async function seedSettings() {
   // Repair common TaxOnMe leftovers on existing installs without overwriting
   // administrator-customized values that are already immigration-specific.
   await db.setting.updateMany({ where: { key: "app.name", value: { in: ["TaxOnMe", "MyImmigration"] } }, data: { value: "ImmigrationOnMe" } });
-  await db.setting.updateMany({ where: { key: "app.tagline", value: { contains: "tax" } }, data: { value: "Immigration paperwork, organized" } });
-  await db.setting.updateMany({ where: { key: "home.hero_title", value: { contains: "tax" } }, data: { value: "Turn immigration paperwork into a clear case plan" } });
-  await db.setting.updateMany({ where: { key: "home.hero_subtitle", value: { contains: "tax" } }, data: { value: "ImmigrationOnMe organizes notices, forms, timelines, evidence gaps, and deadlines so applicants can understand what is happening and what to prepare next." } });
+  await db.setting.updateMany({ where: { key: "app.tagline", value: { in: STALE_PUBLIC_TAGLINES } }, data: { value: PUBLIC_TAGLINE } });
+  await db.setting.updateMany({ where: { key: "app.tagline", value: { contains: "tax" } }, data: { value: PUBLIC_TAGLINE } });
+  await db.setting.updateMany({ where: { key: "home.hero_title", value: { in: STALE_PUBLIC_HERO_TITLES } }, data: { value: PUBLIC_HERO.title } });
+  await db.setting.updateMany({ where: { key: "home.hero_title", value: { contains: "tax" } }, data: { value: PUBLIC_HERO.title } });
+  await db.setting.updateMany({ where: { key: "home.hero_subtitle", value: { in: STALE_PUBLIC_HERO_SUBTITLES } }, data: { value: PUBLIC_HERO.subtitle } });
+  await db.setting.updateMany({ where: { key: "home.hero_subtitle", value: { contains: "tax" } }, data: { value: PUBLIC_HERO.subtitle } });
+  await db.setting.updateMany({ where: { key: "home.cta_primary", value: { in: STALE_PUBLIC_PRIMARY_CTAS } }, data: { value: PUBLIC_HERO.primaryCta.label } });
   await db.setting.deleteMany({ where: { key: "irs.account_url" } });
   await repairBrandName();
 }
@@ -195,7 +212,11 @@ async function seedPlansAndFeatures() {
     ["suggestions.personalized", "Personalized suggested next steps from official material", "assistant", 18],
   ];
   for (const [key, name, category, sortOrder] of features) {
-    await db.featureDef.upsert({ where: { key }, update: {}, create: { key, name, category, sortOrder } });
+    await db.featureDef.upsert({
+      where: { key },
+      update: { sortOrder: PUBLIC_FEATURE_SORT_ORDER[key] ?? sortOrder },
+      create: { key, name, category, sortOrder: PUBLIC_FEATURE_SORT_ORDER[key] ?? sortOrder },
+    });
   }
   // Corrective renames for existing installs: customer-facing copy must never
   // reference AI models (standard product-language policy).
@@ -210,7 +231,7 @@ async function seedPlansAndFeatures() {
     {
       key: "free",
       name: "Free",
-      description: "Understand what's going on — no credit card needed.",
+      description: PUBLIC_PLAN_DESCRIPTIONS.free,
       priceMonthlyCents: 0,
       priceYearlyCents: 0,
       sortOrder: 0,
@@ -231,7 +252,7 @@ async function seedPlansAndFeatures() {
     {
       key: "plus",
       name: "Plus",
-      description: "The full toolkit for handling one immigration situation end to end.",
+      description: PUBLIC_PLAN_DESCRIPTIONS.plus,
       priceMonthlyCents: 1900,
       priceYearlyCents: 18900,
       sortOrder: 1,
@@ -259,7 +280,7 @@ async function seedPlansAndFeatures() {
     {
       key: "pro",
       name: "Pro",
-      description: "Everything, unlimited — plus professional referrals.",
+      description: PUBLIC_PLAN_DESCRIPTIONS.pro,
       priceMonthlyCents: 4900,
       priceYearlyCents: 49900,
       sortOrder: 2,
@@ -332,6 +353,14 @@ async function seedPlansAndFeatures() {
   await db.planFeature.updateMany({ where: { plan: { key: "pro" }, featureKey: "qa.personalized" }, data: { enabled: true } });
   await db.planFeature.updateMany({ where: { plan: { key: "plus" }, featureKey: "suggestions.personalized" }, data: { enabled: true } });
   await db.planFeature.updateMany({ where: { plan: { key: "pro" }, featureKey: "suggestions.personalized" }, data: { enabled: true } });
+  for (const [key, description] of Object.entries(PUBLIC_PLAN_DESCRIPTIONS)) {
+    const stale = STALE_PLAN_DESCRIPTIONS[key] ?? [];
+    if (!stale.length) continue;
+    await db.subscriptionPlan.updateMany({
+      where: { key, description: { in: stale } },
+      data: { description },
+    });
+  }
 }
 
 async function seedGateway() {
@@ -571,42 +600,13 @@ async function seedContent() {
       slug: "faq",
       title: "Frequently asked questions",
       kind: "page",
-      body: `Q: Is ImmigrationOnMe USCIS or a law firm?
-No. ImmigrationOnMe is an immigration case assistant that explains your situation and guides your next steps in plain English. For high-stakes decisions we connect you with licensed professionals.
-
-Q: How do I check my USCIS case?
-Use your USCIS receipt number at the official USCIS case status site or sign in at my.uscis.gov when available. Upload receipts and notices here so we can organize the case timeline.
-
-Q: What happens to documents I upload?
-They're stored in your private vault. Only you can see them — and a consultant only after you explicitly approve the connection. You can delete files or your whole account anytime.
-
-Q: How does the analysis work?
-We extract facts from your answers and documents, compare them with USCIS reference material, and turn everything into issues and a step-by-step plan. When something can't be verified, we say so — we never guess.
-
-Q: Can ImmigrationOnMe file with USCIS for me?
-No. ImmigrationOnMe helps organize information and prepare draft materials for review. You are responsible for filings, and complex or high-stakes matters should be reviewed by a licensed immigration attorney or accredited representative.
-
-Q: How do I cancel my subscription?
-Plan & billing → Cancel subscription. You keep access until the end of the paid period.
-
-Q: Something in the app isn't working.
-Open a tech support ticket under Support tickets (or ask the guide chatbot to create one) and our team will fix it.
-
-(Edit this FAQ in the admin backend under Content & agreements.)`,
+      body: PUBLIC_FAQ_BODY,
     },
     {
       slug: "how-it-works",
       title: "How it works",
       kind: "page",
-      body: `ImmigrationOnMe helps you understand and resolve immigration situations in plain English.
-
-1. Tell us what happened — in your own words.
-2. Tell us your goal — what a great outcome looks like.
-3. Add documents — USCIS notices, receipts, forms, visas, passports, RFEs, and evidence.
-
-Our analysis engine breaks your situation into clear issues, checks facts against your documents, and builds a step-by-step path forward. When facts can't be verified, we say so — we never guess.
-
-If your case needs a licensed professional, we can help prepare a handoff to an immigration attorney, accredited representative, or vetted immigration professional — only with your approval.`,
+      body: PUBLIC_HOW_IT_WORKS_PAGE,
     },
     {
       slug: "terms-of-service",
@@ -672,6 +672,20 @@ If your case needs a licensed professional, we can help prepare a handoff to an 
       where: { slug: p.slug },
       update: {},
       create: { ...p, isPublished: true },
+    });
+  }
+  const faq = await db.contentPage.findUnique({ where: { slug: "faq" } });
+  if (faq && /How do I check my USCIS case\?/.test(faq.body) && !/Do I need a USCIS receipt to start\?/.test(faq.body)) {
+    await db.contentPage.update({
+      where: { slug: "faq" },
+      data: { body: PUBLIC_FAQ_BODY, version: { increment: 1 } },
+    });
+  }
+  const howItWorks = await db.contentPage.findUnique({ where: { slug: "how-it-works" } });
+  if (howItWorks && /Add documents — USCIS notices, receipts/.test(howItWorks.body)) {
+    await db.contentPage.update({
+      where: { slug: "how-it-works" },
+      data: { body: PUBLIC_HOW_IT_WORKS_PAGE, version: { increment: 1 } },
     });
   }
 }

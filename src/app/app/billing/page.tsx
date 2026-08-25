@@ -4,6 +4,7 @@ import { getActivePlan } from "@/lib/access";
 import { PageHeader, Card, CardBody, Badge, Money } from "@/components/ui";
 import { cancelSubscriptionAction } from "@/actions/billing";
 import { PlanPicker } from "@/components/plan-picker";
+import { PUBLIC_BILLING_SUBTITLE } from "@/lib/goal-public";
 
 export const metadata = { title: "Plan & billing" };
 
@@ -37,7 +38,7 @@ export default async function BillingPage({
 
   return (
     <div>
-      <PageHeader title="Plan & billing" subtitle="Upgrade or downgrade anytime. Access changes immediately." />
+      <PageHeader title="Plan & billing" subtitle={PUBLIC_BILLING_SUBTITLE} />
       {(subscribed || justActivated) && (
         <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           Your plan is active. Enjoy your new features!

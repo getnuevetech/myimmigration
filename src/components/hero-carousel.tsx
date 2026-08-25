@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { PUBLIC_HERO_CAROUSEL } from "@/lib/goal-public";
 
 // Crossfading hero imagery. The image list is admin-managed via the
-// home.hero_images setting (JSON array of URLs/paths).
+// home.hero_images setting (JSON array of URLs/paths). Overlay copy is
+// options-first so the public funnel does not sell a filed USCIS case.
 export function HeroCarousel({ images, intervalMs = 5000 }: { images: string[]; intervalMs?: number }) {
   const [index, setIndex] = useState(0);
 
@@ -30,14 +32,10 @@ export function HeroCarousel({ images, intervalMs = 5000 }: { images: string[]; 
         <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-lime-50/80 to-lime-100/70" />
         <div className="absolute inset-x-8 top-8 rounded-3xl border border-lime-100 bg-white/90 p-5 shadow-xl backdrop-blur">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-lime-500">
-            USCIS case file
+            {PUBLIC_HERO_CAROUSEL.kicker}
           </p>
           <div className="mt-4 space-y-3">
-            {[
-              ["I-797C receipt", "Receipt number detected"],
-              ["RFE deadline", "Evidence checklist ready"],
-              ["I-485 packet", "Timeline cross-check"],
-            ].map(([title, body]) => (
+            {PUBLIC_HERO_CAROUSEL.cards.map(({ title, body }) => (
               <div key={title} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
                 <p className="text-sm font-semibold text-slate-900">{title}</p>
                 <p className="text-xs text-slate-500">{body}</p>
@@ -49,20 +47,20 @@ export function HeroCarousel({ images, intervalMs = 5000 }: { images: string[]; 
 
       {/* Floating product chips for a software feel */}
       <div className="absolute -left-5 top-6 hidden rounded-2xl bg-white px-4 py-3 shadow-lg ring-1 ring-slate-200 sm:block">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Case readiness</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{PUBLIC_HERO_CAROUSEL.readinessLabel}</p>
         <div className="mt-1 flex items-center gap-2">
           <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200">
-            <div className="h-full w-[72%] rounded-full bg-lime-300" />
+            <div className="h-full w-[38%] rounded-full bg-lime-300" />
           </div>
-          <span className="text-xs font-bold text-slate-800">72%</span>
+          <span className="text-xs font-bold text-slate-800">{PUBLIC_HERO_CAROUSEL.readinessValue}</span>
         </div>
       </div>
       <div className="absolute -right-4 bottom-16 hidden rounded-2xl bg-white px-4 py-3 shadow-lg ring-1 ring-slate-200 sm:block">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-lime-100 text-[10px] font-bold text-lime-700">✓</span>
-          Missing evidence checklist created
+          {PUBLIC_HERO_CAROUSEL.checklistTitle}
         </p>
-        <p className="mt-0.5 text-[10px] text-slate-400">Case IMM-000123 · USCIS receipt found</p>
+        <p className="mt-0.5 text-[10px] text-slate-400">{PUBLIC_HERO_CAROUSEL.checklistMeta}</p>
       </div>
 
       {images.length > 1 && (

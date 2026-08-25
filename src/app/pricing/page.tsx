@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { SiteHeader, SiteFooter } from "@/components/site-nav";
 import { Card, CardBody, ButtonLink, Badge } from "@/components/ui";
+import { PUBLIC_PRICING_INTRO } from "@/lib/goal-public";
 
 export const metadata = { title: "Pricing" };
 
@@ -20,7 +21,7 @@ export default async function PricingPage() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-16">
         <div className="text-center">
           <h1 className="text-3xl font-extrabold text-slate-900">Simple pricing, serious help</h1>
-          <p className="mt-2 text-slate-600">Start free. Upgrade when you want the full toolkit. Visitors get one short official answer and one suggested next step; Free keeps a few general questions and the next official step each month; Plus personalizes follow-ups and the full suggested path; Pro can request a matched licensed professional — nothing is shared until both of you accept.</p>
+          <p className="mt-2 text-slate-600">{PUBLIC_PRICING_INTRO}</p>
         </div>
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {plans.map((plan) => {
