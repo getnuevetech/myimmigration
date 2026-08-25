@@ -11,6 +11,7 @@ import { verifyCaseProgress, isVerifiable } from "@/lib/case-progress";
 import { saveUpload, validateUploadFile } from "@/lib/uploads";
 import { processDocumentsEvidence } from "@/lib/evidence/document-processing";
 import { recordSuggestionsForCase } from "@/lib/goal-suggestion-store";
+import { suggestionQuestionKey } from "@/lib/goal-suggestions";
 import type { ActionState } from "./auth";
 
 // Guest-friendly intake: situation + goal + documents, no account required.
@@ -161,7 +162,7 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
   await db.caseClarifyMessage.create({
     data: { caseId, role: "user", questionKey: q.key, content: answerWithFiles.slice(0, 2000) },
   });
-  await recordSuggestionsForCase(caseId, ["ADD_CASE_DETAILS", `question:${q.key}`], "completed");
+  await recordSuggestionsForCase(caseId, ["ADD_CASE_DETAILS", suggestionQuestionKey(q.key)].filter(Boolean), "completed");
   await db.case.update({
     where: { id: caseId },
     data: {
