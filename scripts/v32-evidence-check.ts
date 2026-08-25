@@ -687,6 +687,20 @@ assert(selectNextClarifyQuestion({
 })?.key === "evidence:response_deadline", "an RFE case should still ask the planned RFE evidence question");
 assert(selectNextClarifyQuestion({
   openOptions: false,
+  answeredKeys: [],
+  planned: null,
+  presentationUnknowns: ["What evidence will be submitted for the RFE?"],
+  hasYear: false,
+})?.text === "What evidence will be submitted for the RFE?", "an existing-case RFE should still use the approved presentation follow-up when no planned unknown remains");
+assert(selectNextClarifyQuestion({
+  openOptions: true,
+  answeredKeys: ["evidence:identity_documents", "anything_else"],
+  planned: null,
+  presentationUnknowns: ["What is your USCIS receipt number?"],
+  hasCaseRecord: false,
+}) === null, "open-options must ignore presentation receipt follow-ups after official gaps");
+assert(selectNextClarifyQuestion({
+  openOptions: false,
   answeredKeys: ["evidence:response_deadline"],
   planned: null,
   hasYear: true,

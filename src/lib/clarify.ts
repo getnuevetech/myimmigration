@@ -77,11 +77,13 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
     (suppressedEvidenceKeys.has("receipt_number") && suppressedEvidenceKeys.has("form_type"));
   const plannedQuestion = await nextPlannedQuestion(caseId);
   const openOptions = await caseUsesOpenOptionsInterview(caseId);
+  const presentation = openOptions ? null : await resolveCasePresentation(caseId).catch(() => null);
   const hasYear = c.issues.some((i) => i.caseYear);
   return selectNextClarifyQuestion({
     openOptions,
     answeredKeys: answered,
     planned: plannedQuestion ? { unknownKey: plannedQuestion.unknownKey, question: plannedQuestion.question } : null,
+    presentationUnknowns: presentation?.what_this_means.unknowns ?? [],
     hasYear,
     hasCaseUpdate: Boolean(c.issues.find((i) => i.issueType === "case_update_discrepancy")),
     hasFee: Boolean(c.issues.find((i) => i.issueType === "fee_or_payment_issue")),

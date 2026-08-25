@@ -216,6 +216,7 @@ export function selectNextClarifyQuestion(input: {
   openOptions: boolean;
   answeredKeys: string[];
   planned: { unknownKey: string; question: string } | null;
+  presentationUnknowns?: string[];
   hasYear?: boolean;
   hasCaseUpdate?: boolean;
   hasFee?: boolean;
@@ -235,6 +236,11 @@ export function selectNextClarifyQuestion(input: {
       };
     }
     return null;
+  }
+  for (const [index, question] of (input.presentationUnknowns ?? []).entries()) {
+    if (!question || question === input.planned?.question) continue;
+    const key = `evidence:presentation:${index}`;
+    if (!questionWasAnswered(answered, key)) return { key, text: question };
   }
   const existing: { key: string; text: string; needed: boolean }[] = [
     {
@@ -278,7 +284,8 @@ export function selectNextClarifyQuestion(input: {
       needed: true,
     },
   ];
-  return existing.find((item) => item.needed && !questionWasAnswered(answered, item.key)) ?? null;
+  const found = existing.find((item) => item.needed && !questionWasAnswered(answered, item.key));
+  return found ? { key: found.key, text: found.text } : null;
 }
 
 export function bestSuggestionLine(steps: OpenOptionsPathStep[]): string {
