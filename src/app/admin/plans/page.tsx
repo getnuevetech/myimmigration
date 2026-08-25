@@ -52,6 +52,21 @@ export default async function AdminPlansPage() {
 
       <Card className="mb-8">
         <CardBody>
+          <h2 className="mb-2 text-sm font-semibold text-slate-900">General Q&amp;A access</h2>
+          <p className="text-xs text-slate-500">
+            Visitors are not on a plan. Their question count, excerpt length, and follow-ups live in App settings under the
+            <span className="font-medium text-slate-700"> qa </span>
+            group. Registered customers use this matrix: <code className="rounded bg-slate-100 px-1">qa.chat</code> is the monthly
+            general-question allowance (empty = unlimited), <code className="rounded bg-slate-100 px-1">qa.personalized</code> keeps
+            full official follow-ups, and <code className="rounded bg-slate-100 px-1">consultant.referral</code> offers a matched
+            licensed attorney or accredited representative. Linked-case Q&amp;A does not consume the general-question limit.
+            Q&amp;A never auto-assigns a professional — the customer still has to approve a match.
+          </p>
+        </CardBody>
+      </Card>
+
+      <Card className="mb-8">
+        <CardBody>
           <h2 className="mb-3 text-sm font-semibold text-slate-900">Feature access matrix</h2>
           <FeatureMatrix
             plans={plans.map((p) => ({ id: p.id, name: p.name }))}

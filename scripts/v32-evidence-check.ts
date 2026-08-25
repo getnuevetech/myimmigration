@@ -48,6 +48,12 @@ import {
   overlappingOfficialUpdate,
 } from "../src/lib/authority-match";
 import {
+  applyQaEntitlementToAnswer,
+  consultantSpecialtiesForThemes,
+  qaUsageFromCount,
+  resolveQaEntitlement,
+} from "../src/lib/qa-access";
+import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
   conversationNarrative,
@@ -904,6 +910,80 @@ const listFromOptions = caseListSummaryFromView(
 );
 assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "case lists must show the approved open-options posture, not a stale reconstruction");
 
+const guestEntitlement = resolveQaEntitlement({ isGuest: true });
+const freeEntitlement = resolveQaEntitlement({ isGuest: false, planKey: "free", qaQuestionLimit: 3 });
+const plusEntitlement = resolveQaEntitlement({ isGuest: false, planKey: "plus", qaQuestionLimit: null, personalized: true });
+const proEntitlement = resolveQaEntitlement({
+  isGuest: false,
+  planKey: "pro",
+  qaQuestionLimit: null,
+  personalized: true,
+  consultantReferral: true,
+});
+assert(guestEntitlement.questionLimit === 1 && guestEntitlement.allowSaveOptionsCase === false, "guests get one general question and cannot save an options case");
+assert(freeEntitlement.questionLimit === 3 && freeEntitlement.showUpgradeCta && !freeEntitlement.personalized, "free plans get a small monthly general Q&A allowance");
+assert(plusEntitlement.personalized && plusEntitlement.maxFollowUps === null && plusEntitlement.showUpgradeCta, "plus keeps personalized official follow-ups");
+assert(proEntitlement.consultantReferral && !proEntitlement.showUpgradeCta, "pro can offer a matched professional");
+assert(qaUsageFromCount(1, guestEntitlement).blocked, "a guest who already asked the allowed question must be blocked");
+assert(qaUsageFromCount(3, freeEntitlement).blocked, "free Q&A must stop at the monthly limit");
+assert(!qaUsageFromCount(20, plusEntitlement).blocked, "plus general Q&A must not use the free monthly cap");
+assert(consultantSpecialtiesForThemes(["family", "student"]).includes("family"), "marriage themes should map to family consultants");
+assert(consultantSpecialtiesForThemes(["student"]).includes("employment"), "student themes should map to employment consultants");
+
+const guestQa = buildQaFallbackAnswer({
+  question: "I want to marry a US citizen. What can we do if we have not filed yet?",
+  sources: knowledgeCatalog,
+  entitlement: guestEntitlement,
+});
+assert(/I-130|Family petition overview/i.test(guestQa), "a limited guest answer must still name the matching I-130 path");
+assert(/Create a free account/i.test(guestQa), "guest answers must route visitors to register");
+assert(/licensed immigration attorney or accredited representative/i.test(guestQa), "guest answers must tease platform professionals without assigning one");
+assert(/To match this official material more closely:/i.test(guestQa), "the first guest answer should still include one official follow-up hook");
+assert(!/should be involved before you act/i.test(guestQa), "a simple marriage guest answer must not require a consultant");
+
+const guestF1 = buildQaFallbackAnswer({
+  question: "I am on F-1 graduating next month. What can I do?",
+  sources: knowledgeCatalog,
+  entitlement: guestEntitlement,
+});
+assert(/OPT|I-765/i.test(guestF1), "a limited guest F-1 answer must still name OPT or I-765");
+assert(!/should be involved before you act/i.test(guestF1), "guest F-1 answers must not invent a consultant-required flag");
+assert(!/Create a free account/i.test(qaFallback), "full unentitled fallback used by C1–C7 must not grow a register footer");
+
+const freeQa = buildQaFallbackAnswer({
+  question: "I want to marry a US citizen. What can we do if we have not filed yet?",
+  sources: knowledgeCatalog,
+  entitlement: freeEntitlement,
+});
+assert(/Upgrade to Plus|Paid plans keep personalized/i.test(freeQa) || /Plus keeps personalized/i.test(freeQa), "free answers must offer an upgrade for personalized follow-ups");
+assert(/Pro adds a matched licensed attorney/i.test(freeQa), "free answers must tease Pro consultant matching, not name a specific professional");
+assert(!/A licensed professional on ImmigrationOnMe who works this kind of matter:/i.test(freeQa), "free Q&A must not reveal a named consultant match");
+
+const plusQa = buildQaFallbackAnswer({
+  question: "I want to marry a US citizen. What can we do if we have not filed yet?",
+  sources: knowledgeCatalog,
+  entitlement: plusEntitlement,
+});
+assert(!/Create a free account/i.test(plusQa), "plus answers must not show the guest register CTA");
+assert(/Upgrade to Pro to get a matched professional/i.test(plusQa), "plus answers should offer Pro consultant matching");
+assert(/Approval of I-130 alone does not grant status/i.test(plusQa), "personalized plus answers should keep the matching official excerpt");
+
+const proQa = applyQaEntitlementToAnswer(
+  "Form I-130 is the family petition used to establish a qualifying relationship.",
+  proEntitlement,
+  { consultant: { name: "Alex Rivera", credentialLabel: "immigration attorney" } },
+);
+assert(/Alex Rivera, immigration attorney/i.test(proQa), "pro answers should name the best matching professional when one exists");
+assert(/nothing is shared until you approve/i.test(proQa), "pro consultant offers must still require customer consent");
+
+const guestSecondFollowUp = buildQaFallbackAnswer({
+  question: "Passport and my birth certificate.",
+  history: identityHistory,
+  sources: knowledgeCatalog,
+  entitlement: guestEntitlement,
+});
+assert(!/To match this official material more closely:/i.test(guestSecondFollowUp) || guestSecondFollowUp.indexOf("To match this official material more closely:") === guestSecondFollowUp.lastIndexOf("To match this official material more closely:"), "guests must not keep stacking official follow-ups after the first hook");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -929,3 +1009,4 @@ console.log(`- v4 C4: goal-driven next step ${marriageOptions.pathSteps[0]?.acti
 console.log(`- v4 C5: follow-up ${nextOfficialQuestion?.key}, learned ${rankedOpenQuestions.map((item) => item.key).join(" > ")}`);
 console.log(`- v4 C6: Q&A follow-up ${askedMarriageFollowUp}, next ${askedFollowUpFromAssistant(qaMarriageNext)}`);
 console.log(`- v4 C7: remaining next step ${nextStepAfterIdentity}, follow-up ${askedFollowUpFromAssistant(qaAfterIdentity)}`);
+console.log(`- v4 C8: guest limit ${guestEntitlement.questionLimit}, free ${freeEntitlement.questionLimit}, plus personalized=${plusEntitlement.personalized}, pro consultant=${proEntitlement.consultantReferral}`);
