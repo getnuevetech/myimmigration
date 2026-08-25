@@ -166,7 +166,7 @@ export function CasePresentationView({
                 )}
                 {suggestionAccess.showConsultantCta && (
                   <Link
-                    href={suggestionAccess.audience === "pro" ? "/app/consultants" : suggestionAccess.audience === "guest" ? "/register" : "/pricing"}
+                    href={suggestionAccess.audience === "pro" ? `/app/consultants?case=${caseId}` : suggestionAccess.audience === "guest" ? "/register" : "/pricing"}
                     className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
                   >
                     {suggestionAccess.audience === "pro" ? "Request a professional match" : "Talk with a licensed professional"}

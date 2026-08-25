@@ -1,12 +1,28 @@
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { hasFeature } from "@/lib/access";
+import { FEATURE_KEYS } from "@/lib/constants";
 import { PageHeader, Card, CardBody, Badge, EmptyState } from "@/components/ui";
 import { respondToAssignmentAction } from "@/actions/user";
 import { CONSULTANT_SPECIALTIES } from "@/lib/constants";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { conversationNarrative } from "@/lib/goal-suggestions";
+import { previewBestConsultantForThemes } from "@/lib/matching";
+import { RequestConsultantMatchForm } from "@/components/request-consultant-match";
+import {
+  canRequestConsultantMatch,
+  matchRequestBlockReason,
+  resolveMatchRequestEntitlement,
+} from "@/lib/consultant-match";
 
 export const metadata = { title: "My consultant" };
 
-export default async function MyConsultantsPage() {
+export default async function MyConsultantsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ case?: string; requested?: string }>;
+}) {
+  const { case: caseId, requested } = await searchParams;
   const user = await requireUser();
   const assignments = await db.consultantAssignment.findMany({
     where: { userId: user.id, status: { not: "revoked" } },
@@ -18,6 +34,11 @@ export default async function MyConsultantsPage() {
     orderBy: { version: "desc" },
     select: { slug: true, title: true },
   });
+  const hasReferral = await hasFeature(user.id, FEATURE_KEYS.CONSULTANT_REFERRAL);
+  const entitlement = resolveMatchRequestEntitlement({
+    audience: hasReferral ? "pro" : "free",
+    consultantReferral: hasReferral,
+  });
 
   const specialtyName = (k: string) => CONSULTANT_SPECIALTIES.find((s) => s.key === k)?.name ?? k;
   const credentialLabel = (type: string | undefined) => {
@@ -26,17 +47,73 @@ export default async function MyConsultantsPage() {
     return "Immigration consultant";
   };
 
+  const open = assignments.find((a) => ["proposed", "user_accepted", "active"].includes(a.status));
+  const ownedCase = !open && canRequestConsultantMatch(entitlement)
+    ? caseId
+      ? await db.case.findFirst({ where: { id: caseId, userId: user.id }, select: { id: true, situation: true, goal: true } })
+      : await db.case.findFirst({ where: { userId: user.id }, orderBy: { updatedAt: "desc" }, select: { id: true, situation: true, goal: true } })
+    : null;
+  const thread = !open && canRequestConsultantMatch(entitlement) && !ownedCase
+    ? await db.qaThread.findFirst({
+        where: { userId: user.id, caseId: null },
+        orderBy: { createdAt: "desc" },
+        include: { messages: { orderBy: { createdAt: "asc" }, select: { role: true, content: true } } },
+      })
+    : null;
+  const inquiry = ownedCase
+    ? classifyImmigrationInquiry({ situation: ownedCase.situation, goal: ownedCase.goal })
+    : thread
+      ? classifyImmigrationInquiry({ situation: conversationNarrative(thread.messages), goal: thread.title })
+      : null;
+  const preview = inquiry ? await previewBestConsultantForThemes(inquiry.themes).catch(() => null) : null;
+
   return (
     <div className="max-w-3xl">
       <PageHeader
         title="My consultant"
-        subtitle="When your case needs a professional, we propose a vetted immigration professional or accredited representative. Nothing is shared until you approve."
+        subtitle="Pro can request a matched licensed attorney or accredited representative. Nothing is shared until you approve and they accept. The platform never auto-assigns a professional from Q&A or suggested next steps."
       />
+      {requested && (
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Match requested. Your files stay private until the professional accepts the connection agreement.
+        </div>
+      )}
       {assignments.length === 0 ? (
-        <EmptyState
-          title="No consultant proposed yet"
-          body="If your analysis shows your case would benefit from a professional, our team will recommend one that matches your situation. You always approve first."
-        />
+        <Card>
+          <CardBody>
+            {canRequestConsultantMatch(entitlement) && preview ? (
+              <>
+                <h2 className="text-lg font-semibold text-slate-900">{preview.name}</h2>
+                <p className="mt-1 text-sm text-slate-500">{preview.credentialLabel}</p>
+                <p className="mt-3 text-sm text-slate-600">
+                  A licensed professional on ImmigrationOnMe who works this kind of matter. Request a match — nothing is shared until they also accept.
+                </p>
+                <RequestConsultantMatchForm
+                  caseId={ownedCase?.id}
+                  threadId={thread?.id}
+                  consultantName={preview.name}
+                  agreementHref={agreement ? `/p/${agreement.slug}` : null}
+                  agreementTitle={agreement?.title ?? null}
+                />
+              </>
+            ) : canRequestConsultantMatch(entitlement) ? (
+              <EmptyState
+                title="No matching professional is available yet"
+                body="Start a case review or ask a question so we can match a licensed attorney or accredited representative who works this kind of matter. Nothing is shared until you request a match and they accept."
+              />
+            ) : (
+              <EmptyState
+                title="No consultant proposed yet"
+                body={matchRequestBlockReason(entitlement)}
+              />
+            )}
+            {entitlement.showUpgradeCta && (
+              <a href="/pricing" className="mt-4 inline-flex rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700">
+                See Pro plans
+              </a>
+            )}
+          </CardBody>
+        </Card>
       ) : (
         <div className="space-y-4">
           {assignments.map((a) => {
@@ -107,7 +184,7 @@ export default async function MyConsultantsPage() {
                     </div>
                   )}
                   {a.status === "user_accepted" && (
-                    <p className="mt-3 text-sm text-slate-500">You&apos;ve agreed. Waiting for the consultant to accept the connection agreement.</p>
+                    <p className="mt-3 text-sm text-slate-500">You&apos;ve agreed. Waiting for the consultant to accept the connection agreement. Nothing is shared until they do.</p>
                   )}
                   {a.status === "active" && (
                     <p className="mt-3 text-sm text-emerald-700">Connection active — your consultant can now review your shared documents.</p>
