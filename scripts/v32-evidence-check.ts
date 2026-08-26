@@ -1985,6 +1985,35 @@ assert(!caseClarifySrc.includes("INQUIRY_MODES.OPEN_OPTIONS"), "case clarify mus
 assert(familyForms[0]?.formNumber === "I-130", "goal-driven clarify chrome must not rerank I-485 ahead of I-130");
 assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven clarify chrome must not convert the RFE fixture into open-options");
 assert(requested.autoAssigned === false, "goal-driven clarify chrome must not auto-assign consultants");
+
+const emptyOpenGuide = { inquiryMode: "open_options" as const, themes: marriageInquiry.themes };
+const emptyRfeGuide = { inquiryMode: "existing_case" as const, noticeTypes: ["RFE"], hasNotices: true };
+assert(guidePrimaryAction(emptyOpenGuide).label === "Start your first situation", "empty open-options guide CTA must not stay Start my first case");
+assert(guidePrimaryAction(emptyOpenGuide).href === "/app/cases/new", "empty open-options guide CTA still starts intake");
+assert(guidePrimaryAction(emptyRfeGuide).label === "Start your first case", "empty filed guide CTA stays Start your first case");
+assert(guidePrimaryAction({}).label === "Start your first situation", "unlabeled empty guide CTA defaults to a situation");
+assert(/This situation is still open-options/.test(guideStatusHint("What is my receipt status?", familyGuideInput)), "open-options receipt hint must not say This case is still open-options");
+assert(/This situation is still open-options/.test(guideStatusHint("What is my receipt status?", emptyOpenGuide)), "empty open-options receipt hint must not say This case");
+assert(/upload the USCIS notice or receipt number/.test(guideStatusHint("What is my RFE deadline?", rfeGuideInput)), "filed RFE receipt hint stays on the case page");
+assert(!/This case is still open-options/.test(guideStatusHint("What is my receipt status?", familyGuideInput)), "open-options status hint must drop This case");
+assert(/the situation page updates automatically/.test(guideTipForStep("REVIEW_ANALYSIS", familyGuideInput) ?? ""), "open-options review tip must not say the case page");
+assert(/the case page updates automatically/.test(guideTipForStep("REVIEW_ANALYSIS", rfeGuideInput) ?? ""), "filed RFE review tip stays the case page");
+assert(/the situation page updates automatically/.test(guideTipForStep("REVIEW_ANALYSIS") ?? ""), "unlabeled review tip defaults to the situation page");
+assert(/listed on your situation/.test(guideTipForStep("PREPARE_FORM", { inquiryMode: "open_options" }) ?? ""), "open-options form fallback must not say listed on your case");
+assert(/listed on your case/.test(guideTipForStep("PREPARE_FORM", { inquiryMode: "existing_case" }) ?? ""), "filed form fallback stays listed on your case");
+assert(/Form I-130/.test(guideTipForStep("PREPARE_FORM", familyGuideInput) ?? ""), "open-options with a matching form still names I-130");
+assert(!/Start my first case/.test(guidePrimaryAction(emptyOpenGuide).label + guidePrimaryAction({}).label), "guide empty CTA must not hardcode Start my first case");
+const goalGuideSrc = readFileSync(join(process.cwd(), "src/lib/goal-guide.ts"), "utf8");
+assert(goalGuideSrc.includes("resolveIntakeChrome(input).firstCta"), "empty guide CTA must reuse C21 firstCta");
+assert(!goalGuideSrc.includes("Start my first case"), "goal-guide must not hardcode Start my first case");
+assert(!goalGuideSrc.includes("This case is still open-options"), "goal-guide must not hardcode This case is still open-options");
+assert(!goalGuideSrc.includes("the case page updates automatically"), "goal-guide must not hardcode the case page updates automatically");
+assert(!goalGuideSrc.includes("listed on your case"), "goal-guide must not hardcode listed on your case");
+assert(goalGuideSrc.includes("the ${surfaceNoun(input)} page updates automatically"), "review tip must use the surface noun");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven guide copy must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven guide copy must not convert the RFE fixture into open-options");
+assert(requested.autoAssigned === false, "goal-driven guide copy must not auto-assign consultants");
+
 const progressSrc = readFileSync(join(process.cwd(), "src/lib/case-progress.ts"), "utf8");
 assert(progressSrc.includes("matchingProgressKinds") && progressSrc.includes("usesMatchingEvidenceProgress"), "progress verification must count matching kinds on open-options");
 assert(progressSrc.includes("FILED_VERIFIABLE_ACTIONS"), "progress key table stays the filed keys so verification still runs");
@@ -2269,3 +2298,4 @@ console.log(`- v4 C25: open ${analysisTaskLabel("PRESENT_APPROVED_STATE", family
 console.log(`- v4 C26: open ${openGuideItem.slice(0, 10)}, empty ${guideAccountEmptyLine(familyGuideInput).slice(0, 18)}, RFE ${rfeGuideItem.slice(0, 5)}`);
 console.log(`- v4 C27: open ${recordRefLabel(familyGuideInput, 11)}, RFE ${recordRefLabel(rfeGuideInput, 1)}`);
 console.log(`- v4 C28: open ${openClarify.placeholder.includes("receipt is not required") ? "no receipt" : "missing"}, RFE ${rfeClarify.placeholder.includes("receipt numbers") ? "receipts" : "missing"}`);
+console.log(`- v4 C29: empty ${guidePrimaryAction(emptyOpenGuide).label}, hint ${guideStatusHint("receipt status", familyGuideInput).includes("This situation") ? "situation" : "missing"}, RFE ${guidePrimaryAction(emptyRfeGuide).label}`);
