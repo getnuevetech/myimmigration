@@ -103,7 +103,7 @@ export function CasePresentationView({
   inquiryMode?: string | null;
   suggestionAccess?: SuggestionChatAccess;
 }) {
-  const presented = withPresentationSurfaceCopy(presentation, { inquiryMode });
+  const presented = withPresentationSurfaceCopy(presentation, { inquiryMode: inquiryMode ?? undefined });
   const readinessCopy = resolveReadinessCopy({ inquiryMode: inquiryMode ?? undefined });
   const versionChrome = resolveVersionChrome({ inquiryMode: inquiryMode ?? undefined });
   const intake = resolveIntakeChrome({ inquiryMode: inquiryMode ?? undefined });
