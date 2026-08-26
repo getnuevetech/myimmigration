@@ -4,6 +4,7 @@ import { ButtonLink, Badge } from "@/components/ui";
 import { Accent, Kicker } from "@/components/accent";
 import { getCurrentUser } from "@/lib/auth";
 import { getUpdateImpactsForUser, getUscisUpdates } from "@/lib/uscis-updates";
+import { UPDATES_CHROME } from "@/lib/goal-chrome";
 
 export const metadata = { title: "USCIS updates" };
 
@@ -26,16 +27,17 @@ export default async function UpdatesPage() {
               <Accent text="Latest public USCIS news and alerts" />
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600">
-              We monitor current USCIS alerts and news from the current and previous week, refreshing automatically throughout the day. Paid customers also see deterministic notes when an update appears to touch forms, notices, or topics present in their active cases.
+              {UPDATES_CHROME.intro}
             </p>
             {!user ? (
               <div className="mt-6 flex flex-wrap gap-3">
-                <ButtonLink href="/login" variant="secondary" className="rounded-full">Sign in for case impact notes</ButtonLink>
+                <ButtonLink href="/login" variant="secondary" className="rounded-full">{UPDATES_CHROME.signInCta}</ButtonLink>
                 <ButtonLink href="/pricing" className="rounded-full">See plans →</ButtonLink>
               </div>
             ) : !paidAnalysisAvailable ? (
               <div className="mt-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
-                Case-impact notes are included with paid plans. <Link href="/app/billing" className="font-semibold underline">Upgrade to unlock them →</Link>
+                {UPDATES_CHROME.paidBanner}{" "}
+                <Link href="/app/billing" className="font-semibold underline">Upgrade to unlock them →</Link>
               </div>
             ) : null}
           </div>
@@ -62,7 +64,7 @@ export default async function UpdatesPage() {
                     <p className="mt-2 text-sm leading-relaxed text-slate-600">{update.summary}</p>
                     {impact?.allowed && impact.impacts.length > 0 && (
                       <div className="mt-4 rounded-xl border border-lime-200 bg-lime-50 p-4">
-                        <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Possible impact on your cases</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-lime-600">{UPDATES_CHROME.impactHeading}</p>
                         <ul className="mt-2 space-y-2">
                           {impact.impacts.map((item) => (
                             <li key={`${update.url}-${item.caseId}`} className="text-sm text-lime-900">
@@ -74,7 +76,7 @@ export default async function UpdatesPage() {
                       </div>
                     )}
                     {impact?.allowed && impact.impacts.length === 0 && (
-                      <p className="mt-3 text-xs text-slate-400">No active case match detected from the visible update text.</p>
+                      <p className="mt-3 text-xs text-slate-400">{UPDATES_CHROME.noMatch}</p>
                     )}
                   </article>
                 );

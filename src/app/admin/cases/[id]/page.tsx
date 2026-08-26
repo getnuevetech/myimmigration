@@ -5,6 +5,8 @@ import { PageHeader, Card, CardBody, Badge } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
 import { CaseAnalysisView } from "@/components/case-analysis-view";
 import { CaseComments } from "@/components/case-comments";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { resolveReportChrome } from "@/lib/goal-chrome";
 import { listCaseVersions } from "@/lib/case-versioning";
 import { parseCanonicalApprovedState, versionReasonLabel } from "@/lib/canonical-case-state";
 
@@ -36,6 +38,11 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
   }).catch(() => null);
   const approved = parseCanonicalApprovedState(canonical?.approvedStateJson);
 
+  const reportChrome = resolveReportChrome({
+    inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
+    query: `${c.situation} ${c.goal}`,
+  });
+
   return (
     <div>
       <PageHeader
@@ -47,7 +54,7 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
             target="_blank"
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            Case report ↗
+            {reportChrome.documentTitle} ↗
           </a>
         }
       />

@@ -6,29 +6,30 @@ import { db } from "@/lib/db";
 import { logoutAction } from "@/actions/auth";
 
 import { GuideWidget } from "@/components/guide-widget";
-
-const NAV = [
-  { href: "/app", label: "Overview" },
-  { href: "/app/cases", label: "My cases" },
-  { href: "/app/notices", label: "USCIS notices" },
-  { href: "/app/documents", label: "Document vault" },
-  { href: "/app/forms", label: "USCIS forms" },
-  { href: "/app/letters", label: "USCIS letters" },
-  { href: "/app/deadlines", label: "Deadlines" },
-  { href: "/app/qa", label: "Ask the assistant" },
-  { href: "/app/consultants", label: "My consultant" },
-  { href: "/app/support", label: "Support tickets" },
-  { href: "/app/uscis-account", label: "USCIS online account" },
-  { href: "/app/billing", label: "Plan & billing" },
-  { href: "/app/profile", label: "Profile" },
-];
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { resolveAccountNav } from "@/lib/goal-chrome";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.role === "consultant") redirect("/consultant");
   const appName = await getSetting("app.name", "ImmigrationOnMe");
-  const unread = await db.notification.count({ where: { userId: user.id, readAt: null } });
+  const [unread, latest] = await Promise.all([
+    db.notification.count({ where: { userId: user.id, readAt: null } }),
+    db.case.findFirst({
+      where: { userId: user.id },
+      orderBy: { updatedAt: "desc" },
+      select: { situation: true, goal: true, notices: { select: { noticeType: true } } },
+    }),
+  ]);
+  const inquiry = latest
+    ? classifyImmigrationInquiry({ situation: latest.situation, goal: latest.goal })
+    : { mode: "open_options" as const };
+  const nav = resolveAccountNav({
+    inquiryMode: inquiry.mode,
+    query: latest ? `${latest.situation} ${latest.goal}` : "",
+    noticeTypes: (latest?.notices ?? []).map((notice) => notice.noticeType),
+  });
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -59,11 +60,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="mx-auto flex max-w-7xl gap-8 px-4 py-8">
         <aside className="hidden w-52 shrink-0 md:block">
           <nav className="sticky top-20 space-y-1">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-900"
+                className={`block rounded-lg px-3 py-2 text-sm font-medium hover:bg-white hover:text-slate-900 ${
+                  item.optional ? "text-slate-400" : "text-slate-600"
+                }`}
               >
                 {item.label}
               </Link>

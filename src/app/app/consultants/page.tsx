@@ -14,6 +14,7 @@ import {
   matchRequestBlockReason,
   resolveMatchRequestEntitlement,
 } from "@/lib/consultant-match";
+import { CONSULTANT_EMPTY_BODY } from "@/lib/goal-chrome";
 
 export const metadata = { title: "My consultant" };
 
@@ -99,7 +100,7 @@ export default async function MyConsultantsPage({
             ) : canRequestConsultantMatch(entitlement) ? (
               <EmptyState
                 title="No matching professional is available yet"
-                body="Start a case review or ask a question so we can match a licensed attorney or accredited representative who works this kind of matter. Nothing is shared until you request a match and they accept."
+                body={CONSULTANT_EMPTY_BODY}
               />
             ) : (
               <EmptyState

@@ -143,6 +143,19 @@ import {
   shouldChaseNoticeInGuide,
 } from "../src/lib/goal-guide";
 import {
+  BILLING_REPORT_OVERAGE,
+  CASE_REPORT_FEATURE_NAME,
+  CONSULTANT_EMPTY_BODY,
+  navHrefsBefore,
+  reportFileName,
+  resolveAccountNav,
+  resolveCaseChrome,
+  resolveCasesListCopy,
+  resolveReportChrome,
+  SUPPORT_PLAYBOOK_MATCHING,
+  UPDATES_CHROME,
+} from "../src/lib/goal-chrome";
+import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
   conversationNarrative,
@@ -1589,6 +1602,51 @@ assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven guide must
 assert(requested.autoAssigned === false, "goal-driven guide must not auto-assign consultants");
 assert(!/receipt number detected/i.test(openRecordTip + openNoticeTip + DEFAULT_PROMPTS.guide), "guide copy must not invent a detected receipt number");
 
+const openNav = resolveAccountNav(familyGuideInput);
+const rfeNav = resolveAccountNav(rfeGuideInput);
+assert(navHrefsBefore(openNav, "/app/notices").includes("/app/documents"), "open-options nav must list documents before notices");
+assert(navHrefsBefore(openNav, "/app/notices").includes("/app/forms"), "open-options nav must list forms before notices");
+assert(openNav.find((item) => item.href === "/app/notices")?.optional === true, "open-options notices nav is optional");
+assert(openNav.find((item) => item.href === "/app/uscis-account")?.label.includes("optional"), "open-options USCIS account nav is optional");
+assert(navHrefsBefore(rfeNav, "/app/documents").includes("/app/notices"), "filed RFE nav still lists notices before documents");
+assert(rfeNav.find((item) => item.href === "/app/notices")?.optional === false, "filed RFE notices nav is not optional");
+const openChrome = resolveCaseChrome({ ...familyGuideInput, caseId: "case-options", hasReportAccess: true });
+const rfeChrome = resolveCaseChrome({ ...rfeGuideInput, caseId: "case-rfe", hasReportAccess: true });
+assert(openChrome.evidenceHref === "/app/documents?kind=identity", "open-options case actions must not send people to Upload notice");
+assert(/identity/i.test(openChrome.evidenceLabel), "open-options case action must name matching identity documents");
+assert(rfeChrome.evidenceHref === "/app/notices?case=case-rfe", "RFE case actions stay on the notices page");
+assert(rfeChrome.evidenceLabel === "Upload the USCIS notice", "RFE case actions still upload the notice");
+assert(openChrome.reportTitle === "Options report", "open-options download is an Options report");
+assert(rfeChrome.reportTitle === "Case report", "filed RFE download stays a Case report");
+assert(resolveReportChrome(familyGuideInput).heading === "Options Report", "open-options printable heading is Options Report");
+assert(/receipt is not required/i.test(resolveReportChrome(familyGuideInput).footerVerify), "options report footer must not require a receipt");
+assert(resolveReportChrome(rfeGuideInput).heading === "Case Report", "RFE printable heading stays Case Report");
+assert(reportFileName("ImmigrationOnMe", "IMM-1", familyGuideInput).includes("options-report"), "options report filename must not be case-report");
+assert(reportFileName("ImmigrationOnMe", "IMM-1", rfeGuideInput).includes("case-report"), "RFE report filename stays case-report");
+assert(/have not filed/i.test(resolveCasesListCopy(familyGuideInput).emptyBody), "empty cases list must allow no filing yet");
+assert(!/Start a case review/.test(CONSULTANT_EMPTY_BODY), "consultant empty state must not sell a filed-case review");
+assert(/options or filed case/i.test(UPDATES_CHROME.signInCta), "updates sign-in must cover options and a filed case");
+assert(!/Please upload the latest USCIS notice or receipt/.test(SUPPORT_PLAYBOOK_MATCHING.body), "support playbook must not only chase a notice");
+assert(/not a USCIS receipt/.test(SUPPORT_PLAYBOOK_MATCHING.body), "support playbook must mention matching evidence first");
+assert(CASE_REPORT_FEATURE_NAME.includes("options or case report"), "feature catalog must not be case-report-only");
+assert(!/Case report download limit/.test(BILLING_REPORT_OVERAGE), "billing overage must not be case-report-only");
+const layoutSrc = readFileSync(join(process.cwd(), "src/app/app/layout.tsx"), "utf8");
+assert(layoutSrc.includes("resolveAccountNav"), "app nav must use goal-driven chrome");
+assert(!layoutSrc.includes('"USCIS notices"'), "app layout must not hardcode filed-case notice nav");
+const casePageSrc = readFileSync(join(process.cwd(), "src/app/app/cases/[id]/page.tsx"), "utf8");
+assert(casePageSrc.includes("resolveCaseChrome"), "case page actions must use goal-driven chrome");
+assert(!casePageSrc.includes("Upload notice"), "case page must not hardcode Upload notice");
+const reportSrc = readFileSync(join(process.cwd(), "src/lib/case-report.ts"), "utf8");
+assert(reportSrc.includes("resolveReportChrome"), "printable report must use goal-driven chrome");
+const updatesSrc = readFileSync(join(process.cwd(), "src/app/uscis-updates/page.tsx"), "utf8");
+assert(updatesSrc.includes("UPDATES_CHROME"), "updates page must use dual-path chrome");
+const seedChromeSrc = readFileSync(join(process.cwd(), "prisma/seed.ts"), "utf8");
+assert(seedChromeSrc.includes("SUPPORT_PLAYBOOK_MATCHING") && seedChromeSrc.includes("CASE_REPORT_FEATURE_NAME"), "seed must apply dual-path playbook and report feature name");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven chrome must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven chrome must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven chrome must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven chrome must not auto-assign consultants");
+assert(!/receipt number detected/i.test(openChrome.evidenceLabel + resolveReportChrome(familyGuideInput).footerVerify), "chrome copy must not invent a detected receipt number");
 
 
 console.log("v3.2 immigration evidence check passed");
@@ -1626,3 +1684,4 @@ console.log(`- v4 C14: notices skip=${!openNoticeCopy.uploadPrimary}, deadlines 
 console.log(`- v4 C15: hero ${PUBLIC_HOME_FEATURES[0]?.title}, catalog ${featuresRankedBeforeNotices()[0]} before notices, closing ${PUBLIC_CLOSING.optionsCta.label}`);
 console.log(`- v4 C16: options ${optionsReadinessCopy.overallLabel} expected=${optionsReadinessPolicy.documentsExpected} empty=${optionsEmptyReadiness.actionReadinessScore} identity=${optionsIdentityReadiness.actionReadinessScore}, RFE action=${readiness.actionReadinessScore}`);
 console.log(`- v4 C17: open tip ${openRecordTip.includes("I-130") ? "I-130" : "missing"}, chase receipt=${shouldChaseNoticeInGuide("receipt status", familyGuideInput)}, RFE chrome ${guideWidgetChrome(rfeGuideInput).title}`);
+console.log(`- v4 C18: nav docs-before-notices=${navHrefsBefore(openNav, "/app/notices").includes("/app/documents")}, options report=${openChrome.reportTitle}, RFE notice=${rfeChrome.evidenceLabel}`);

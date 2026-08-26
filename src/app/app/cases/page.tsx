@@ -5,6 +5,7 @@ import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CaseListCard } from "@/components/case-list-card";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { resolveCasesListCopy } from "@/lib/goal-chrome";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 
 export const metadata = { title: "My cases" };
@@ -18,18 +19,23 @@ export default async function CasesPage() {
   });
   const views = await loadApprovedViewsByCaseIds(cases.map((item) => item.id));
 
+  const latestInquiry = cases[0]
+    ? classifyImmigrationInquiry({ situation: cases[0].situation, goal: cases[0].goal })
+    : { mode: "open_options" as const };
+  const listCopy = resolveCasesListCopy({ inquiryMode: latestInquiry.mode });
+
   return (
     <div>
       <PageHeader
-        title="My cases"
-        subtitle="Each case is one immigration situation, with a current posture and next step."
+        title={listCopy.pageTitle}
+        subtitle={listCopy.pageSubtitle}
         actions={<ButtonLink href="/app/cases/new">New case →</ButtonLink>}
       />
       {cases.length === 0 ? (
         <EmptyState
-          title="No cases yet"
-          body="Describe your situation and goal, and we'll analyze it into a clear case plan."
-          action={<ButtonLink href="/app/cases/new">Start a case</ButtonLink>}
+          title={listCopy.emptyTitle}
+          body={listCopy.emptyBody}
+          action={<ButtonLink href="/app/cases/new">{listCopy.startLabel}</ButtonLink>}
         />
       ) : (
         <div className="space-y-4">

@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
 import { CaseAnalysisView } from "@/components/case-analysis-view";
 import { CaseComments } from "@/components/case-comments";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { resolveReportChrome } from "@/lib/goal-chrome";
 
 // Consultants see EXACTLY what the customer sees — same analysis, findings,
 // walkthroughs, and plan — in read-and-review mode with the case discussion.
@@ -23,9 +25,13 @@ export default async function ConsultantCaseViewPage({
   if (!assignment) notFound();
   const c = await db.case.findFirst({
     where: { id: caseId, userId: assignment.user.id },
-    select: { id: true, title: true, number: true, createdAt: true },
+    select: { id: true, title: true, number: true, createdAt: true, situation: true, goal: true },
   });
   if (!c) notFound();
+  const reportChrome = resolveReportChrome({
+    inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
+    query: `${c.situation} ${c.goal}`,
+  });
 
   return (
     <div>
@@ -35,7 +41,7 @@ export default async function ConsultantCaseViewPage({
         actions={
           <div className="flex gap-2">
             <a href={`/api/cases/${c.id}/report`} target="_blank" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-              Case report ↗
+              {reportChrome.documentTitle} ↗
             </a>
             <Link href={`/consultant/clients/${assignment.id}`} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
               ← Client workspace
