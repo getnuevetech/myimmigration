@@ -66,6 +66,10 @@ export function surfaceNoun(input: FiledSurfaceInput = {}): "case" | "situation"
   return isFiledCaseSurface(input) ? "case" : "situation";
 }
 
+export function thisSurfacePhrase(input: FiledSurfaceInput = {}): string {
+  return `this ${surfaceNoun(input)}`;
+}
+
 export function noticeCatalogHref(caseId?: string | null): string {
   return caseId ? `/app/notices?case=${encodeURIComponent(caseId)}` : "/app/notices";
 }

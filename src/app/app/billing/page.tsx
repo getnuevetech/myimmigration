@@ -5,7 +5,8 @@ import { PageHeader, Card, CardBody, Badge, Money } from "@/components/ui";
 import { cancelSubscriptionAction } from "@/actions/billing";
 import { PlanPicker } from "@/components/plan-picker";
 import { PUBLIC_BILLING_SUBTITLE } from "@/lib/goal-public";
-import { BILLING_REPORT_OVERAGE, BILLING_REPORT_RETURN } from "@/lib/goal-chrome";
+import { BILLING_REPORT_OVERAGE, billingReportReturn } from "@/lib/goal-chrome";
+import { matchInputFromCase } from "@/lib/goal-versions";
 
 export const metadata = { title: "Plan & billing" };
 
@@ -36,6 +37,14 @@ export default async function BillingPage({
   const isTestGateway = !activeGateway || activeGateway.kind === "manual" || activeGateway.mode === "test";
   const { getPlanDiscounts } = await import("@/lib/discounts");
   const discounts = await getPlanDiscounts(plans.map((p) => p.id), user.email);
+  const returnCaseId = returnTo?.match(/\/cases\/([^/?#]+)/)?.[1] ?? null;
+  const returnCase = returnCaseId
+    ? await db.case.findFirst({
+        where: { id: returnCaseId, userId: user.id },
+        select: { situation: true, goal: true },
+      })
+    : null;
+  const reportReturnCopy = billingReportReturn(returnCase ? matchInputFromCase(returnCase) : undefined);
 
   return (
     <div>
@@ -55,7 +64,7 @@ export default async function BillingPage({
         <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
           <span className="font-semibold">{BILLING_REPORT_OVERAGE}</span>{" "}
           Additional downloads cost <Money cents={Number(feeCents ?? 0) || 0} />. Choose a higher plan or contact support to purchase an additional report download.
-          {returnTo && <p className="mt-1 text-xs text-lime-700">{BILLING_REPORT_RETURN}</p>}
+          {returnTo && <p className="mt-1 text-xs text-lime-700">{reportReturnCopy}</p>}
         </div>
       )}
       {isTestGateway && (

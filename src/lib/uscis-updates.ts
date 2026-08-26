@@ -3,6 +3,8 @@ import { db } from "./db";
 import { hasFeature } from "./access";
 import { FEATURE_KEYS } from "./constants";
 import { formatCaseNumber } from "./case-number";
+import { updatesImpactReason } from "./goal-chrome";
+import { matchInputFromCase } from "./goal-versions";
 
 const USCIS_UPDATE_SOURCES = [
   { kind: "All News", url: "https://www.uscis.gov/newsroom/all-news" },
@@ -151,7 +153,7 @@ export async function getUpdateImpactsForUser(userId: string, update: UscisUpdat
       caseId: c.id,
       caseRef: formatCaseNumber(c.number),
       caseTitle: c.title,
-      reason: `This update mentions ${matched.slice(0, 3).join(", ")}, which also appears in this case.`,
+      reason: updatesImpactReason(matched, matchInputFromCase({ situation: c.situation, goal: c.goal })),
     });
   }
   return { allowed, impacts };

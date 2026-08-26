@@ -1,5 +1,6 @@
 import type { PresentationContract } from "./case-presentation-contract";
 import { formatPresentationDate, presentationActionStatus } from "./case-presentation-ui";
+import { thisSurfacePhrase, type FiledSurfaceInput } from "./goal-notices";
 
 export type PresentationBrief = {
   text: string;
@@ -99,9 +100,14 @@ export function mergeSupportedText(...parts: (string | null | undefined)[]): str
   return parts.filter(Boolean).join("\n");
 }
 
+export function presentationNoticeStepDescription(posture: string, input: FiledSurfaceInput = {}): string {
+  return `Approved next step for ${thisSurfacePhrase(input)} (${posture}).`;
+}
+
 export function withPresentationNoticeSteps(
   steps: NoticeNextStep[],
   contract: PresentationContract | null,
+  input: FiledSurfaceInput = {},
 ): NoticeNextStep[] {
   const next = contract?.hero.next_best_action;
   if (!contract || !next?.title) return steps;
@@ -109,7 +115,7 @@ export function withPresentationNoticeSteps(
   return [
     {
       title: next.title,
-      description: `Approved next step for this case (${contract.hero.current_posture}).`,
+      description: presentationNoticeStepDescription(contract.hero.current_posture, input),
     },
     ...steps,
   ];

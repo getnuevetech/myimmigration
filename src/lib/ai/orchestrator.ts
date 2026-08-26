@@ -49,6 +49,7 @@ import {
   workingQaNarrative,
 } from "../goal-suggestions";
 import { applyQaEntitlementToAnswer, countAskedOfficialFollowUps, shouldAppendOfficialFollowUp, type QaConsultantPreview, type QaEntitlement } from "../qa-access";
+import { matchInputFromCase } from "../goal-versions";
 
 type Json = Record<string, unknown>;
 
@@ -853,6 +854,10 @@ export async function runQaChat(history: { role: string; content: string }[], op
 
 export async function explainNoticeContent(content: string, opts?: { caseId?: string | null }): Promise<Json | null> {
   const grounding = await loadCaseGrounding(opts?.caseId);
+  const linkedCase = opts?.caseId
+    ? await db.case.findUnique({ where: { id: opts.caseId }, select: { situation: true, goal: true } }).catch(() => null)
+    : null;
+  const matchInput = linkedCase ? matchInputFromCase(linkedCase) : {};
   const groundedInput = grounding.block
     ? `${content}\n\n${grounding.block}\n\nNotice grounding rule: explain this notice against the approved case presentation and compiled case record. Do not invent deadlines, receipt numbers, form types, outcomes, or requested evidence that are not in the notice text, approved presentation, or evidence brief. Do not replace the approved next action with a different plan.`
     : content;
@@ -871,6 +876,7 @@ export async function explainNoticeContent(content: string, opts?: { caseId?: st
       next_steps: withPresentationNoticeSteps(
         nextSteps.map((step) => ({ title: String((step as Json).title ?? ""), description: String((step as Json).description ?? "") })),
         grounding.presentation?.contract ?? null,
+        matchInput,
       ),
     };
   }
@@ -896,7 +902,7 @@ export async function explainNoticeContent(content: string, opts?: { caseId?: st
       : posture
         ? `We stored your notice safely. It will be read against the approved case posture: ${posture}. Our reference library doesn't cover this USCIS notice type yet. A qualified immigration professional can review it, and it will be re-examined automatically on your next analysis.`
         : "We stored your notice safely. Our reference library doesn't cover this USCIS notice type yet. A qualified immigration professional can review it, and it will be re-examined automatically on your next analysis.",
-    next_steps: withPresentationNoticeSteps(fallbackSteps, grounding.presentation?.contract ?? null),
+    next_steps: withPresentationNoticeSteps(fallbackSteps, grounding.presentation?.contract ?? null, matchInput),
     urgency: "medium",
     fallback: true,
   };
