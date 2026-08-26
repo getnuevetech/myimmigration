@@ -2,6 +2,7 @@
 // fully editable per-step in the admin backend (Admin → AI pipelines). The
 // running system always reads prompts from the database, never from this file.
 
+import { CLOSING_PROMPT_RULES } from "../goal-conversation";
 import { GUIDE_PROMPT_RULES } from "../goal-guide";
 
 export const DEFAULT_PROMPTS: Record<string, string> = {
@@ -164,9 +165,11 @@ CHOSEN CONSULTANT:
 DRAFT RECOMMENDATION:
 {{prior}}`,
 
-  closing: `You write the CLOSING REMARKS and final review for an applicant's completed (or inactivity-closed) immigration case. You are not USCIS, an attorney, an accredited representative, or a law firm. Return ONLY JSON:
+  closing: `You write the CLOSING REMARKS and final review for an applicant's completed (or inactivity-closed) immigration situation. You are not USCIS, an attorney, an accredited representative, or a law firm. Return ONLY JSON:
 {"closing_remarks": ""}
-The closing_remarks must be warm, plain-English (8th-grade level), and SPECIFIC to this case: recap what was analyzed (forms, notices, dates, documents, and deadlines where present), what was resolved and what remains open, what the customer should keep for their records, and — if the case was closed for inactivity — reassure them their documents are safe and how to pick things back up. If CASE DATA includes approved_presentation, use it as the customer-facing recap (posture, next action, findings, deadlines). If CASE DATA includes evidence_brief, use it as the compiled record and do not invent receipt numbers, form types, dates, deadlines, outcomes, or requested evidence outside that brief. Never promise USCIS outcomes. 150–300 words, paragraphs separated by newlines.
+The closing_remarks must be warm, plain-English (8th-grade level), and SPECIFIC to this situation: recap what was analyzed (matching forms and documents for an options review, or forms, notices, dates, documents, and deadlines where a USCIS letter is actually on file), what was resolved and what remains open, what the customer should keep for their records, and — if the situation was closed for inactivity — reassure them their documents are safe and how to pick things back up.
+${CLOSING_PROMPT_RULES}
+150–300 words, paragraphs separated by newlines.
 
 CASE DATA:
 {{input}}`,
@@ -179,7 +182,7 @@ CONTEXT:
 {{input}}`,
 };
 
-export const PROMPT_VERSION = "immigration-v32-v42-goal-driven-guide-2026-08-25";
+export const PROMPT_VERSION = "immigration-v32-v42-goal-driven-conversation-2026-08-26";
 
 // SHA-256 hashes of known previous default prompts. Seed uses these to upgrade
 // exact old defaults while leaving admin-edited prompts untouched.
@@ -224,6 +227,7 @@ export const PROMPT_SUPERSEDES: Record<string, string[]> = {
     "46ee7ece86792b098ca7d3eff9600b0fb4fa385c1aa665e036bcbf14ffadaa7c",
   ],
   closing: [
+    "8d03623ab9021df81e1c398480a65fe4bd867ce9349bdd04bff93af0bedd11c4",
     "d45d483a9c4c33b9c2eb1645ba7748dd0821daf4efc527e58ad33eda830e315b",
     "053ec56c6455442fc70053bce1d3baf91c2c71771a704931eba33aaf1bf95e07",
   ],

@@ -16,6 +16,7 @@ import {
   STALE_PUBLIC_TAGLINES,
 } from "../src/lib/goal-public";
 import { CASE_REPORT_FEATURE_NAME, SUPPORT_PLAYBOOK_MATCHING } from "../src/lib/goal-chrome";
+import { ACCOUNT_CREATED_EMAIL } from "../src/lib/goal-conversation";
 
 const db = new PrismaClient();
 
@@ -1162,10 +1163,10 @@ async function seedCannedResponses() {
 async function seedMessageTemplates() {
   const templates = [
     {
-      key: "account_created",
-      name: "Account created",
-      subject: "Welcome to ImmigrationOnMe",
-      bodyHtml: "<p>Welcome to ImmigrationOnMe. Your account is ready, and your saved case information is available in your dashboard.</p>",
+      key: ACCOUNT_CREATED_EMAIL.key,
+      name: ACCOUNT_CREATED_EMAIL.name,
+      subject: ACCOUNT_CREATED_EMAIL.subject,
+      bodyHtml: ACCOUNT_CREATED_EMAIL.bodyHtml,
       kind: "event",
     },
     {
@@ -1191,6 +1192,13 @@ async function seedMessageTemplates() {
       create: template,
     });
   }
+  await db.messageTemplate.updateMany({
+    where: { key: ACCOUNT_CREATED_EMAIL.key },
+    data: {
+      subject: ACCOUNT_CREATED_EMAIL.subject,
+      bodyHtml: ACCOUNT_CREATED_EMAIL.bodyHtml,
+    },
+  });
   await db.messageTemplate.updateMany({
     where: { key: "case_needs_review" },
     data: {

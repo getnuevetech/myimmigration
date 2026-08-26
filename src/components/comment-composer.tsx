@@ -5,7 +5,17 @@ import { useRouter } from "next/navigation";
 import { addCaseCommentAction } from "@/actions/comments";
 import { inputClass } from "./ui";
 
-export function CommentComposer({ caseId, checkboxLabel }: { caseId: string; checkboxLabel: string | null }) {
+export function CommentComposer({
+  caseId,
+  checkboxLabel,
+  placeholder,
+  attachHint,
+}: {
+  caseId: string;
+  checkboxLabel: string | null;
+  placeholder: string;
+  attachHint: string;
+}) {
   const [state, formAction, pending] = useActionState(addCaseCommentAction, null);
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
@@ -22,7 +32,7 @@ export function CommentComposer({ caseId, checkboxLabel }: { caseId: string; che
       {state?.error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>}
       <input type="hidden" name="caseId" value={caseId} />
       <div className="flex items-start gap-2">
-        <textarea name="body" rows={2} placeholder="Ask about this USCIS case, receipt number, deadline, notice, or evidence…" className={inputClass} />
+        <textarea name="body" rows={2} placeholder={placeholder} className={inputClass} />
         <button
           type="submit"
           disabled={pending}
@@ -40,7 +50,7 @@ export function CommentComposer({ caseId, checkboxLabel }: { caseId: string; che
           className="text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-lime-50 file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-lime-700"
         />
         <span className="text-[11px] text-slate-400">
-          Attach USCIS notices, receipts, forms, or evidence. Files join the case documents and are analyzed automatically.
+          {attachHint}
         </span>
       </div>
       {checkboxLabel && (

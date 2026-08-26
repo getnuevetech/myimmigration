@@ -7,6 +7,7 @@ import {
   INQUIRY_MODES,
 } from "../immigration-inquiry";
 import { retrieveUnifiedAuthority } from "../authority-retrieval";
+import { fallbackEvidenceLine, resolveFallbackPathSteps } from "../goal-conversation";
 import { loadBoostsForNarrative, recordSuggestionEvent } from "../goal-suggestion-store";
 import type { KnowledgeRecord } from "../knowledge-retrieval";
 
@@ -47,14 +48,8 @@ function detectDeadlines(text: string): string[] {
   return uniq(out);
 }
 
-function evidenceLine(docs: DocInfo[], unreadableCount: number, openOptions = false): string {
-  if (docs.length === 0) {
-    return openOptions
-      ? "This review uses the situation you described and matching official USCIS or DOJ material."
-      : "No documents are on file yet. Upload notices, receipts, forms, and identity records so each finding can be checked against evidence.";
-  }
-  const kinds = uniq(docs.map((doc) => doc.docKind));
-  return `${docs.length} document${docs.length === 1 ? "" : "s"} uploaded (${kinds.join(", ") || "mixed documents"}).${unreadableCount ? ` ${unreadableCount} document${unreadableCount === 1 ? "" : "s"} still require manual review.` : ""}`;
+function evidenceLine(docs: DocInfo[], inquiryMode: string): string {
+  return fallbackEvidenceLine(docs, { inquiryMode });
 }
 
 async function loadRankedKnowledge(query: string, inquiry: ReturnType<typeof classifyImmigrationInquiry>, caseId?: string): Promise<KnowledgeRecord[]> {
@@ -85,7 +80,6 @@ export async function fallbackAnalyze(
   const notices = uniq((text.match(NOTICE_RE) ?? []).map((item) => item.toUpperCase().replace(/\s+/g, "")));
   const deadlines = detectDeadlines(text);
   const years = yearsFrom(text);
-  const unreadableCount = docs.filter((doc) => !doc.readable).length;
   const hasDocs = docs.length > 0;
   const inquiry = classifyImmigrationInquiry({
     situation,
@@ -103,7 +97,7 @@ export async function fallbackAnalyze(
   const referral = evaluateConsultantReferral({ text, inquiry, notices, sources: ranked });
   const issues: Json[] = [];
   const conflicts: FallbackConflict[] = [];
-  const evidence = evidenceLine(docs, unreadableCount, inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS);
+  const evidence = evidenceLine(docs, inquiry.mode);
 
   if (options) {
     await recordSuggestionEvent(queryKeys, options.suggestionKeys ?? options.pathSteps.map((step) => step.action_key), "recommended");
@@ -261,11 +255,10 @@ export async function fallbackAnalyze(
     });
   }
 
-  const pathSteps: FallbackResult["pathSteps"] = [
-    { title: "Upload the latest USCIS document", description: "Add the most recent notice, receipt, approval, RFE, denial, or interview letter so the case posture can be verified.", action_key: "UPLOAD_DOCUMENTS" },
-    { title: "Upload or confirm the USCIS case record", description: "Add receipt notices, online case status records, filing dates, approvals, denials, and deadlines so the timeline can be verified.", action_key: "GET_CASE_RECORD" },
-    { title: "Check the updated case review", description: "Once records are uploaded, the case review updates as the evidence is processed so the next-step plan reflects the newest USCIS evidence.", action_key: "REVIEW_ANALYSIS" },
-  ];
+  const pathSteps: FallbackResult["pathSteps"] = resolveFallbackPathSteps({
+    inquiryMode: inquiry.mode,
+    query: narrative,
+  });
 
   return {
     facts: {

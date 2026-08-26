@@ -10,6 +10,7 @@ import { getCasePresentationBrief } from "./case-presentation";
 import { mergeSupportedText } from "./case-presentation-brief";
 import { guardLetterDraftWithEvidence } from "./evidence/letter-guard";
 import { classifyImmigrationInquiry } from "./immigration-inquiry";
+import { resolveClosingCopy } from "./goal-conversation";
 import { resolveReadinessCopy } from "./goal-readiness";
 
 // Closing remarks & final review: a dedicated AI stage (admin-configurable
@@ -37,11 +38,13 @@ async function deterministicClosing(caseId: string, reason: "completed" | "aband
   const presentation = await getCasePresentationBrief(caseId).catch(() => null);
   const guardBrief = { supportedText: mergeSupportedText(presentation?.supportedText, evidenceBrief?.supportedText) };
 
+  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const closing = resolveClosingCopy({ inquiryMode: inquiry.mode, query: `${c.situation} ${c.goal}` });
   const lines: string[] = [];
   lines.push(
     reason === "abandoned"
-      ? `This case was opened on ${opened} and has had no activity since ${lastActivity}, so we're closing it to keep your account tidy. Nothing is lost — every document and finding stays in your account, and you can start a new case (or ask us to continue this one) at any time.`
-      : `Final review of your case, opened ${opened} and closed ${new Date().toLocaleDateString("en-US")}.`,
+      ? closing.abandonedLead(opened, lastActivity)
+      : closing.completedLead(opened, new Date().toLocaleDateString("en-US")),
   );
   lines.push("");
   if (presentation) {
@@ -55,7 +58,7 @@ async function deterministicClosing(caseId: string, reason: "completed" | "aband
     }
   } else {
     lines.push(`What was covered: ${c.issues.length} item${c.issues.length === 1 ? "" : "s"} were identified and analyzed${resolved ? `, ${resolved} resolved` : ""}${open ? `, ${open} still open` : ""}. You completed ${done} of ${c.pathSteps.length} path steps and provided ${c.documents.length} document${c.documents.length === 1 ? "" : "s"}. ${resolveReadinessCopy({
-      inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
+      inquiryMode: inquiry.mode,
       query: `${c.situation} ${c.goal}`,
     }).closingReached(c.readinessScore)}`);
     if (evidenceBrief) {
@@ -72,11 +75,7 @@ async function deterministicClosing(caseId: string, reason: "completed" | "aband
     lines.push(`If you pick this back up, the next step was: ${openSteps[0].title}.`);
   }
   lines.push("");
-  lines.push(
-    reason === "completed"
-      ? "Keep your documents and any USCIS confirmation letters safe — they're your proof of what was filed, decided, or requested. If a new notice arrives, start a new case and we'll pick up with everything we already know."
-      : "Your documents remain in your vault. When you're ready to continue, re-run the analysis or start a fresh case — everything you've provided carries over.",
-  );
+  lines.push(reason === "completed" ? closing.completedKeep : closing.abandonedKeep);
   return guardLetterDraftWithEvidence(lines.join("\n"), guardBrief.supportedText ? guardBrief : null).text;
 }
 
@@ -91,6 +90,8 @@ export async function closeCase(caseId: string, reason: "completed" | "abandoned
   const presentation = await getCasePresentationBrief(caseId).catch(() => null);
   const guardBrief = { supportedText: mergeSupportedText(presentation?.supportedText, evidenceBrief?.supportedText) };
 
+  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const closing = resolveClosingCopy({ inquiryMode: inquiry.mode, query: `${c.situation} ${c.goal}` });
   let remarks = "";
   try {
     const outcome = await runStage(STAGE_KEYS.CLOSING, {
@@ -98,6 +99,7 @@ export async function closeCase(caseId: string, reason: "completed" | "abandoned
         reason,
         situation: c.situation,
         goal: c.goal,
+        inquiry_mode: inquiry.mode,
         readiness: c.readinessScore,
         approved_presentation: presentation
           ? {
@@ -150,10 +152,8 @@ export async function closeCase(caseId: string, reason: "completed" | "abandoned
       data: {
         userId: c.userId,
         kind: "case_closed",
-        title: `Case ${formatCaseNumber(c.number)} closed — final review inside`,
-        body: reason === "abandoned"
-          ? "We closed this case after a period of inactivity. Your documents are safe and you can pick it back up anytime."
-          : "Your case is complete. Read your closing remarks and final review on the case page.",
+        title: closing.notificationTitle(formatCaseNumber(c.number)),
+        body: reason === "abandoned" ? closing.notificationAbandonedBody : closing.notificationCompletedBody,
         link: `/app/cases/${caseId}`,
       },
     });

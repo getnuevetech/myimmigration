@@ -156,6 +156,17 @@ import {
   UPDATES_CHROME,
 } from "../src/lib/goal-chrome";
 import {
+  ACCOUNT_CREATED_EMAIL,
+  CLOSING_PROMPT_RULES,
+  STALE_ACCOUNT_CREATED_BODIES,
+  commentNotificationTitle,
+  consultantMatchNotificationTitle,
+  fallbackEvidenceLine,
+  resolveClosingCopy,
+  resolveDiscussionChrome,
+  resolveFallbackPathSteps,
+} from "../src/lib/goal-conversation";
+import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
   conversationNarrative,
@@ -1648,6 +1659,69 @@ assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven chrome mus
 assert(requested.autoAssigned === false, "goal-driven chrome must not auto-assign consultants");
 assert(!/receipt number detected/i.test(openChrome.evidenceLabel + resolveReportChrome(familyGuideInput).footerVerify), "chrome copy must not invent a detected receipt number");
 
+const openDiscussion = resolveDiscussionChrome(familyGuideInput);
+const rfeDiscussion = resolveDiscussionChrome(rfeGuideInput);
+assert(openDiscussion.heading === "Situation discussion", "open-options discussion heading must not be Case discussion");
+assert(!/receipt number/.test(openDiscussion.placeholder), "open-options composer must not ask for a receipt number");
+assert(/identity|relationship|matching/i.test(openDiscussion.attachHint), "open-options attach hint must lead with matching evidence");
+assert(!/USCIS notices, receipts/.test(openDiscussion.attachHint), "open-options attach hint must not lead with notices");
+assert(/situation/.test(openDiscussion.emptyCustomer), "open-options empty comments must talk about the situation");
+assert(rfeDiscussion.heading === "Case discussion", "filed RFE discussion heading stays Case discussion");
+assert(/receipt number/.test(rfeDiscussion.placeholder), "filed RFE composer may still ask about a receipt");
+assert(/USCIS notices, receipts/.test(rfeDiscussion.attachHint), "filed RFE attach hint still names notices");
+assert(commentNotificationTitle("IMM-1", familyGuideInput, "customer").includes("situation"), "open-options comment notice is about the situation");
+assert(!/your case/.test(commentNotificationTitle("IMM-1", familyGuideInput, "customer")), "open-options comment notice must not say your case");
+assert(commentNotificationTitle("IMM-1", rfeGuideInput, "customer").includes("your case"), "filed RFE comment notice stays on the case");
+assert(/situation/.test(consultantMatchNotificationTitle(familyGuideInput)), "open-options match notice must not be case-only");
+assert(/your case/.test(consultantMatchNotificationTitle(rfeGuideInput)), "filed RFE match notice stays case-fit");
+const openClosing = resolveClosingCopy(familyGuideInput);
+const rfeClosing = resolveClosingCopy(rfeGuideInput);
+assert(/receipt is not required/.test(openClosing.completedKeep), "open-options closing must not require a confirmation letter");
+assert(!/start a new case/.test(openClosing.completedKeep), "open-options closing must not send people to start a new case");
+assert(/confirmation letters/.test(rfeClosing.completedKeep), "filed RFE closing may keep confirmation letters");
+assert(openClosing.notificationTitle("IMM-1").includes("Situation"), "open-options close notice is a situation review");
+assert(rfeClosing.notificationTitle("IMM-1").startsWith("Case "), "filed RFE close notice stays a case review");
+assert(/receipt is not required/.test(openClosing.abandonedKeep), "open-options abandoned closing must not require a receipt");
+assert(!STALE_ACCOUNT_CREATED_BODIES.some((body) => ACCOUNT_CREATED_EMAIL.bodyHtml.toLowerCase().includes(body)), "welcome email must not only mention saved case information");
+assert(/options before a filing/.test(ACCOUNT_CREATED_EMAIL.bodyHtml), "welcome email must cover options before a filing");
+const openFallbackLine = fallbackEvidenceLine([], familyGuideInput);
+const rfeFallbackLine = fallbackEvidenceLine([], rfeGuideInput);
+assert(/receipt is not required/.test(openFallbackLine), "open-options fallback evidence must not require a receipt");
+assert(!/Upload notices, receipts/.test(openFallbackLine), "open-options fallback must not tell people to upload notices first");
+assert(/Upload notices, receipts/.test(rfeFallbackLine), "filed RFE fallback may still ask for notices");
+const openFallbackSteps = resolveFallbackPathSteps(familyGuideInput);
+const rfeFallbackSteps = resolveFallbackPathSteps(rfeGuideInput);
+assert(openFallbackSteps[0]?.action_key === "UPLOAD_DOCUMENTS", "open-options fallback still starts with documents");
+assert(/identity|relationship/i.test(openFallbackSteps[0]?.description ?? ""), "open-options fallback documents are matching evidence");
+assert(!openFallbackSteps.some((step) => step.action_key === "GET_CASE_RECORD"), "open-options fallback must not require a USCIS case record");
+assert(openFallbackSteps.some((step) => step.action_key === "PREPARE_FORM"), "open-options fallback may start the matching form");
+assert(!/I-485/.test(openFallbackSteps.map((step) => `${step.title} ${step.description}`).join(" ")) || /I-130/.test(openFallbackSteps.map((step) => `${step.title} ${step.description}`).join(" ")), "open-options fallback must not rank I-485 ahead of I-130");
+assert(rfeFallbackSteps.some((step) => step.action_key === "GET_CASE_RECORD"), "filed RFE fallback may still ask for the case record");
+assert(/RFE/.test(rfeFallbackSteps[0]?.description ?? ""), "filed RFE fallback still names the notice");
+assert(DEFAULT_PROMPTS.closing.includes("open_options"), "closing prompt must lead with the options path");
+assert(DEFAULT_PROMPTS.closing.includes("Do not invent a receipt number"), "closing prompt must not invent a receipt");
+assert(CLOSING_PROMPT_RULES.includes("open_options"), "closing prompt rules must name open_options");
+assert(PROMPT_SUPERSEDES.closing.includes("8d03623ab9021df81e1c398480a65fe4bd867ce9349bdd04bff93af0bedd11c4"), "seed must supersede the filed-case closing prompt");
+const commentsSrc = readFileSync(join(process.cwd(), "src/components/case-comments.tsx"), "utf8");
+assert(commentsSrc.includes("resolveDiscussionChrome"), "case discussion must use goal-driven conversation chrome");
+assert(!commentsSrc.includes("Case discussion"), "case comments must not hardcode Case discussion");
+const composerSrc = readFileSync(join(process.cwd(), "src/components/comment-composer.tsx"), "utf8");
+assert(composerSrc.includes("placeholder") && composerSrc.includes("attachHint"), "comment composer must take dual-path copy");
+assert(!composerSrc.includes("Ask about this USCIS case, receipt number"), "comment composer must not hardcode a receipt placeholder");
+const closingSrc = readFileSync(join(process.cwd(), "src/lib/case-closing.ts"), "utf8");
+assert(closingSrc.includes("resolveClosingCopy"), "closing remarks must use goal-driven closing copy");
+assert(!closingSrc.includes("Keep your documents and any USCIS confirmation letters"), "closing runtime must not hardcode confirmation-letter keep copy");
+const fallbackSrc = readFileSync(join(process.cwd(), "src/lib/ai/fallback.ts"), "utf8");
+assert(fallbackSrc.includes("resolveFallbackPathSteps") && fallbackSrc.includes("fallbackEvidenceLine"), "analysis fallback must use goal-driven conversation copy");
+assert(!fallbackSrc.includes("Upload notices, receipts, forms, and identity records"), "fallback runtime must not hardcode notice-first empty evidence");
+const seedConversationSrc = readFileSync(join(process.cwd(), "prisma/seed.ts"), "utf8");
+assert(seedConversationSrc.includes("ACCOUNT_CREATED_EMAIL"), "seed must apply the dual-path welcome email");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven conversation must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven conversation must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven conversation must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven conversation must not auto-assign consultants");
+assert(!/receipt number detected/i.test(openDiscussion.placeholder + openClosing.completedKeep + openFallbackLine), "conversation copy must not invent a detected receipt number");
+
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
@@ -1685,3 +1759,4 @@ console.log(`- v4 C15: hero ${PUBLIC_HOME_FEATURES[0]?.title}, catalog ${feature
 console.log(`- v4 C16: options ${optionsReadinessCopy.overallLabel} expected=${optionsReadinessPolicy.documentsExpected} empty=${optionsEmptyReadiness.actionReadinessScore} identity=${optionsIdentityReadiness.actionReadinessScore}, RFE action=${readiness.actionReadinessScore}`);
 console.log(`- v4 C17: open tip ${openRecordTip.includes("I-130") ? "I-130" : "missing"}, chase receipt=${shouldChaseNoticeInGuide("receipt status", familyGuideInput)}, RFE chrome ${guideWidgetChrome(rfeGuideInput).title}`);
 console.log(`- v4 C18: nav docs-before-notices=${navHrefsBefore(openNav, "/app/notices").includes("/app/documents")}, options report=${openChrome.reportTitle}, RFE notice=${rfeChrome.evidenceLabel}`);
+console.log(`- v4 C19: discussion ${openDiscussion.heading}, closing ${openClosing.notificationTitle("IMM-1").split(" ")[0]}, fallback ${openFallbackSteps[0]?.action_key}`);
