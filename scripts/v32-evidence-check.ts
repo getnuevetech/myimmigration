@@ -203,7 +203,7 @@ import {
   usesMatchingEvidenceProgress,
   verifiableActionCopy,
 } from "../src/lib/goal-versions";
-import { resolveIntakeChrome } from "../src/lib/goal-intake";
+import { resolveClarifyChrome, resolveIntakeChrome } from "../src/lib/goal-intake";
 import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
@@ -1965,6 +1965,26 @@ assert(!knownFactsSrc.includes("From your profile and case analysis."), "known-f
 assert(familyForms[0]?.formNumber === "I-130", "goal-driven record labels must not rerank I-485 ahead of I-130");
 assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven record labels must not convert the RFE fixture into open-options");
 assert(requested.autoAssigned === false, "goal-driven record labels must not auto-assign consultants");
+
+const openClarify = resolveClarifyChrome(familyGuideInput);
+const rfeClarify = resolveClarifyChrome(rfeGuideInput);
+assert(!/receipt numbers/.test(openClarify.placeholder), "open-options clarify placeholder must not hunt a receipt number");
+assert(/A receipt is not required/.test(openClarify.placeholder), "open-options clarify placeholder must say a receipt is not required");
+assert(/receipt numbers/.test(rfeClarify.placeholder), "filed RFE clarify placeholder still asks for receipt numbers");
+assert(/USCIS notice is optional/.test(openClarify.attachHint), "open-options clarify attach must not require a USCIS notice");
+assert(/USCIS notices, receipts/.test(rfeClarify.attachHint), "filed RFE clarify attach still takes notices and receipts");
+assert(/do not need a receipt number/.test(openClarify.helperWithQuestion), "open-options clarify helper must not stay case details");
+assert(/case details/.test(rfeClarify.helperWithQuestion), "filed RFE clarify helper stays case details");
+assert(!/receipt numbers/.test(resolveClarifyChrome().placeholder), "unlabeled clarify placeholder defaults off a receipt hunt");
+const clarifyFormSrc = readFileSync(join(process.cwd(), "src/components/clarify-answer-form.tsx"), "utf8");
+assert(clarifyFormSrc.includes("placeholder") && clarifyFormSrc.includes("attachHint"), "clarify form must take dual-path chrome");
+assert(!clarifyFormSrc.includes("receipt numbers, form names, dates, and evidence details help most"), "clarify form must not hardcode the receipt-number placeholder");
+const caseClarifySrc = readFileSync(join(process.cwd(), "src/components/case-clarify.tsx"), "utf8");
+assert(caseClarifySrc.includes("resolveClarifyChrome"), "case clarify must use dual-path clarify chrome");
+assert(!caseClarifySrc.includes("INQUIRY_MODES.OPEN_OPTIONS"), "case clarify must classify with isFiledCaseSurface via resolveClarifyChrome");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven clarify chrome must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven clarify chrome must not convert the RFE fixture into open-options");
+assert(requested.autoAssigned === false, "goal-driven clarify chrome must not auto-assign consultants");
 const progressSrc = readFileSync(join(process.cwd(), "src/lib/case-progress.ts"), "utf8");
 assert(progressSrc.includes("matchingProgressKinds") && progressSrc.includes("usesMatchingEvidenceProgress"), "progress verification must count matching kinds on open-options");
 assert(progressSrc.includes("FILED_VERIFIABLE_ACTIONS"), "progress key table stays the filed keys so verification still runs");
@@ -2248,3 +2268,4 @@ console.log(`- v4 C24: open ${presentationOrganizingSummary(familyGuideInput).sl
 console.log(`- v4 C25: open ${analysisTaskLabel("PRESENT_APPROVED_STATE", familyGuideInput)}, RFE ${analysisTaskLabel("PRESENT_APPROVED_STATE", rfeGuideInput)}`);
 console.log(`- v4 C26: open ${openGuideItem.slice(0, 10)}, empty ${guideAccountEmptyLine(familyGuideInput).slice(0, 18)}, RFE ${rfeGuideItem.slice(0, 5)}`);
 console.log(`- v4 C27: open ${recordRefLabel(familyGuideInput, 11)}, RFE ${recordRefLabel(rfeGuideInput, 1)}`);
+console.log(`- v4 C28: open ${openClarify.placeholder.includes("receipt is not required") ? "no receipt" : "missing"}, RFE ${rfeClarify.placeholder.includes("receipt numbers") ? "receipts" : "missing"}`);

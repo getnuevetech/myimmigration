@@ -1,22 +1,30 @@
 import { db } from "@/lib/db";
 import { nextClarifyQuestion } from "@/lib/clarify";
-import { classifyImmigrationInquiry, INQUIRY_MODES } from "@/lib/immigration-inquiry";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { ClarifyAnswerForm } from "./clarify-answer-form";
 import { AutoRefresh } from "./auto-refresh";
 import Link from "next/link";
 import type { SuggestionChatAccess } from "@/lib/suggestion-access";
+import { resolveClarifyChrome } from "@/lib/goal-intake";
+import { matchInputFromCase } from "@/lib/goal-versions";
 
 export async function CaseClarify({ caseId, access }: { caseId: string; access?: SuggestionChatAccess }) {
   const [c, messages] = await Promise.all([
     db.case.findUnique({
       where: { id: caseId },
-      select: { status: true, situation: true, goal: true },
+      select: { status: true, situation: true, goal: true, notices: { select: { noticeType: true } } },
     }),
     db.caseClarifyMessage.findMany({ where: { caseId }, orderBy: { createdAt: "asc" } }),
   ]);
   const analyzing = c?.status === "analyzing";
   const inquiry = classifyImmigrationInquiry({ situation: c?.situation, goal: c?.goal });
-  const openOptions = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS;
+  const match = matchInputFromCase({
+    situation: c?.situation,
+    goal: c?.goal,
+    notices: c?.notices,
+    inquiryMode: inquiry.mode,
+  });
+  const clarify = resolveClarifyChrome(match);
   const question = analyzing ? null : await nextClarifyQuestion(caseId);
   if (!analyzing && !question && messages.length === 0) return null;
 
@@ -31,9 +39,7 @@ export async function CaseClarify({ caseId, access }: { caseId: string; access?:
             {analyzing
               ? "Your answer is saved and the analysis is re-running with it — the next question appears here when it finishes."
               : question
-                ? openOptions
-                  ? "These follow-ups come from the official USCIS/DOJ material that matched your goal. You do not need a receipt number to answer."
-                  : "Your answers feed straight into the analysis: receipt numbers, dates, notices, evidence, and case details update the findings above automatically."
+                ? clarify.helperWithQuestion
                 : "Every answer has been folded into your analysis. Add documents anytime to strengthen it further."}
           </p>
         </div>
@@ -95,7 +101,7 @@ export async function CaseClarify({ caseId, access }: { caseId: string; access?:
             </p>
           </div>
           <div className="mt-3">
-            <ClarifyAnswerForm caseId={caseId} />
+            <ClarifyAnswerForm caseId={caseId} placeholder={clarify.placeholder} attachHint={clarify.attachHint} />
           </div>
         </div>
       ) : (
