@@ -2,7 +2,8 @@ import { presentationStepCta } from "./case-presentation-ui";
 import { matchingFormNumber } from "./goal-forms";
 import { documentCatalogHref, documentStartLabel, matchingDocumentKind } from "./goal-documents";
 import { matchingLetterKind } from "./goal-letters";
-import { isFiledCaseSurface, type FiledSurfaceInput } from "./goal-notices";
+import { consultantRecordLabel, resolveCasesListCopy } from "./goal-chrome";
+import { isFiledCaseSurface, surfaceNoun, type FiledSurfaceInput } from "./goal-notices";
 import { resolveReadinessCopy } from "./goal-readiness";
 import { resolveIntakeChrome } from "./goal-intake";
 
@@ -86,6 +87,39 @@ export function guideWidgetChrome(input: GuideMatchInput = {}): GuideChrome {
     };
   }
   return GUIDE_WIDGET_CHROME_DEFAULT;
+}
+
+export function guideAccountItemLine(input: {
+  title: string;
+  posture: string;
+  inquiryMode: string | null | undefined;
+  actionLine: string;
+  evidenceLine: string;
+  versionLine?: string | null;
+  surface?: GuideMatchInput;
+}): string {
+  const label = consultantRecordLabel(input.surface ?? {});
+  const version = input.versionLine ? `; ${input.versionLine}` : "";
+  return `${label} "${input.title.slice(0, 60)}": approved posture ${input.posture}; inquiry ${input.inquiryMode}; ${input.actionLine}; ${input.evidenceLine}${version}`;
+}
+
+export function guideAccountEmptyLine(input: GuideMatchInput = {}): string {
+  return `${resolveCasesListCopy(input).emptyTitle} — the user hasn't started a ${surfaceNoun(input)}.`;
+}
+
+export function isGuideOpeningSnapshotLine(line: string): boolean {
+  return (
+    line.startsWith("Case") ||
+    line.startsWith("Situation") ||
+    line.startsWith("Deadline") ||
+    line.startsWith("No cases") ||
+    line.startsWith("No situations") ||
+    line.startsWith("Matching ")
+  );
+}
+
+export function guideOpeningSnapshotBody(snapshotText: string): string {
+  return snapshotText.split("\n").filter(isGuideOpeningSnapshotLine).join("\n");
 }
 
 export function formatGuideSnapshot(input: GuideMatchInput = {}): string[] {
