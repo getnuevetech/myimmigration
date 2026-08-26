@@ -148,9 +148,12 @@ import {
 } from "../src/lib/goal-readiness";
 import {
   formatGuideSnapshot,
+  guideAccountEmptyLine,
+  guideAccountItemLine,
   guideDefaultActionKey,
   guideFallbackCopy,
   guideOpeningCloser,
+  guideOpeningSnapshotBody,
   guidePrimaryAction,
   guideStatusHint,
   guideTipForStep,
@@ -1876,6 +1879,59 @@ const planCardSrc = readFileSync(join(process.cwd(), "src/components/case-analys
 assert(planCardSrc.includes("resolveVersionChrome") && planCardSrc.includes("analysisTaskLabel"), "analysis plan card must use goal-driven task labels");
 assert(planCardSrc.includes("analysisTaskLabel(task, match)"), "analysis plan card skipped labels must use dual-path task labels");
 assert(!planCardSrc.includes("How this case was analyzed"), "analysis plan card must not hardcode How this case was analyzed");
+
+const openGuideItem = guideAccountItemLine({
+  title: "Priya Shah marriage options",
+  posture: OPEN_OPTIONS_POSTURE,
+  inquiryMode: "open_options",
+  actionLine: "Next: upload identity",
+  evidenceLine: "Evidence: identity pending",
+  surface: familyGuideInput,
+});
+const rfeGuideItem = guideAccountItemLine({
+  title: "I-485 RFE response",
+  posture: "RFE notice needs review",
+  inquiryMode: "existing_case",
+  actionLine: "Next: upload the RFE",
+  evidenceLine: "Evidence: notice on file",
+  versionLine: "Version 2 · Full case review",
+  surface: rfeGuideInput,
+});
+assert(openGuideItem.startsWith('Situation "Priya Shah marriage options"'), "open-options guide snapshot must not stay Case \"…\"");
+assert(!openGuideItem.startsWith("Case "), "open-options guide snapshot must not prefix Case");
+assert(rfeGuideItem.startsWith('Case "I-485 RFE response"'), "filed RFE guide snapshot stays Case \"…\"");
+assert(rfeGuideItem.includes("Version 2 · Full case review"), "filed RFE guide snapshot keeps the version line");
+assert(guideAccountEmptyLine(familyGuideInput) === "No situations yet — the user hasn't started a situation.", "open-options empty guide snapshot must not stay hasn't started a case");
+assert(guideAccountEmptyLine(rfeGuideInput) === "No cases yet — the user hasn't started a case.", "filed empty guide snapshot stays hasn't started a case");
+assert(guideAccountEmptyLine() === "No situations yet — the user hasn't started a situation.", "unlabeled empty guide snapshot defaults to a situation");
+const mixedGuideOpening = guideOpeningSnapshotBody(
+  [
+    "User first name: Priya",
+    "Plan: Pro",
+    openGuideItem,
+    rfeGuideItem,
+    "Situation: open_options",
+    "Matching form: I-130",
+    "Current situation: married to a US citizen",
+    "No situations yet — the user hasn't started a situation.",
+    "Deadline: \"RFE respond-by\" due 9/1/2026",
+  ].join("\n"),
+);
+assert(mixedGuideOpening.includes('Situation "Priya Shah marriage options"'), "opening filter must keep Situation \"…\" item lines");
+assert(mixedGuideOpening.includes('Case "I-485 RFE response"'), "opening filter must keep Case \"…\" item lines");
+assert(mixedGuideOpening.includes("Situation: open_options"), "opening filter must keep Situation: mode lines");
+assert(mixedGuideOpening.includes("Matching form: I-130"), "opening filter must keep Matching lines");
+assert(mixedGuideOpening.includes("No situations yet"), "opening filter must keep No situations yet");
+assert(mixedGuideOpening.includes("Deadline:"), "opening filter must keep Deadline lines");
+assert(!mixedGuideOpening.includes("User first name"), "opening filter must still hide account metadata");
+assert(!mixedGuideOpening.includes("Current situation:"), "opening filter must still hide the raw situation paragraph");
+assert(guideSrc.includes("guideAccountItemLine") && guideSrc.includes("guideAccountEmptyLine"), "guide runtime must use dual-path snapshot lines");
+assert(guideSrc.includes("guideOpeningSnapshotBody"), "guide opening must filter snapshot lines through the dual-path helper");
+assert(!guideSrc.includes('Case "${c.title'), "guide runtime must not hardcode Case \"title\" snapshot lines");
+assert(!guideSrc.includes("No cases yet — the user hasn't started a case."), "guide runtime must not hardcode No cases yet snapshot copy");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven guide snapshot must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven guide snapshot must not convert the RFE fixture into open-options");
+assert(requested.autoAssigned === false, "goal-driven guide snapshot must not auto-assign consultants");
 const progressSrc = readFileSync(join(process.cwd(), "src/lib/case-progress.ts"), "utf8");
 assert(progressSrc.includes("matchingProgressKinds") && progressSrc.includes("usesMatchingEvidenceProgress"), "progress verification must count matching kinds on open-options");
 assert(progressSrc.includes("FILED_VERIFIABLE_ACTIONS"), "progress key table stays the filed keys so verification still runs");
@@ -2157,3 +2213,4 @@ console.log(`- v4 C22: open ${resolveCasesListCopy(familyGuideInput).pageTitle}/
 console.log(`- v4 C23: open ${thisSurfacePhrase(familyGuideInput)}/${resolveConsultantWorkspaceCopy([familyGuideInput]).heading}, RFE ${thisSurfacePhrase(rfeGuideInput)}/${resolveConsultantWorkspaceCopy([rfeGuideInput]).heading}`);
 console.log(`- v4 C24: open ${presentationOrganizingSummary(familyGuideInput).slice(0, 24)}, RFE ${presentationOrganizingSummary(rfeGuideInput).slice(0, 18)}`);
 console.log(`- v4 C25: open ${analysisTaskLabel("PRESENT_APPROVED_STATE", familyGuideInput)}, RFE ${analysisTaskLabel("PRESENT_APPROVED_STATE", rfeGuideInput)}`);
+console.log(`- v4 C26: open ${openGuideItem.slice(0, 10)}, empty ${guideAccountEmptyLine(familyGuideInput).slice(0, 18)}, RFE ${rfeGuideItem.slice(0, 5)}`);

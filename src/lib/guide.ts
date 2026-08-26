@@ -10,9 +10,12 @@ import { matchInputFromCase } from "./goal-versions";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "./immigration-inquiry";
 import {
   formatGuideSnapshot,
+  guideAccountEmptyLine,
+  guideAccountItemLine,
   guideDefaultActionKey,
   guideFallbackCopy,
   guideOpeningCloser,
+  guideOpeningSnapshotBody,
   guidePrimaryAction,
   guideTipForStep,
   guideUpgradeCopy,
@@ -120,7 +123,15 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
     });
     surfaces.set(c.id, surface);
     lines.push(
-      `Case "${c.title.slice(0, 60)}": approved posture ${summary.posture}; inquiry ${surface.inquiryMode}; ${caseListActionLine(summary)}; ${caseListEvidenceLine(summary)}${version ? `; ${version}` : ""}`,
+      guideAccountItemLine({
+        title: c.title,
+        posture: summary.posture,
+        inquiryMode: surface.inquiryMode,
+        actionLine: caseListActionLine(summary),
+        evidenceLine: caseListEvidenceLine(summary),
+        versionLine: version,
+        surface,
+      }),
     );
   }
   const primary = (currentStep && cases.find((c) => c.id === currentStep.caseId)) || cases[0] || null;
@@ -152,7 +163,7 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
       if (brief.unknowns.length) lines.push(`Evidence still needs: ${brief.unknowns.slice(0, 3).map((u) => u.question).join(" | ")}`);
     }
   }
-  if (cases.length === 0) lines.push("No cases yet — the user hasn't started a case.");
+  if (cases.length === 0) lines.push(guideAccountEmptyLine(surface));
   for (const d of deadlines) {
     lines.push(`Deadline: "${d.title}" due ${d.dueDate.toLocaleDateString("en-US")}`);
   }
@@ -210,10 +221,7 @@ export async function guideRespond(
         ? resolveIntakeChrome(snapshot.surface).guideOpenStep
         : resolveIntakeChrome(snapshot.surface).guideNoCaseYet);
     return withChrome(snapshot, {
-      message: `Here's where you stand:\n\n${snapshot.text
-        .split("\n")
-        .filter((l) => l.startsWith("Case") || l.startsWith("Deadline") || l.startsWith("No cases") || l.startsWith("Situation:") || l.startsWith("Matching "))
-        .join("\n")}\n\nNext up: ${tip}\n\n${guideOpeningCloser(snapshot.surface)}`,
+      message: `Here's where you stand:\n\n${guideOpeningSnapshotBody(snapshot.text)}\n\nNext up: ${tip}\n\n${guideOpeningCloser(snapshot.surface)}`,
       actions: primaryActions(snapshot),
     });
   }
