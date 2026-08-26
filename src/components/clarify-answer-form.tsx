@@ -18,7 +18,15 @@ function Submit() {
   );
 }
 
-export function ClarifyAnswerForm({ caseId }: { caseId: string }) {
+export function ClarifyAnswerForm({
+  caseId,
+  placeholder = "Type your answer… (matching documents, dates, and facts from official material help most. A receipt is not required.)",
+  attachHint = "Attach identity, relationship, or other matching evidence — a USCIS notice is optional. Files join this situation and the analysis automatically.",
+}: {
+  caseId: string;
+  placeholder?: string;
+  attachHint?: string;
+}) {
   const [state, formAction] = useActionState(clarifyAnswerAction, null);
   return (
     <form action={formAction} key={state?.ok ? Date.now() : "form"}>
@@ -28,7 +36,7 @@ export function ClarifyAnswerForm({ caseId }: { caseId: string }) {
         <textarea
           name="answer"
           rows={2}
-          placeholder="Type your answer… (receipt numbers, form names, dates, and evidence details help most)"
+          placeholder={placeholder}
           className={`${inputClass} flex-1`}
         />
         <Submit />
@@ -41,9 +49,7 @@ export function ClarifyAnswerForm({ caseId }: { caseId: string }) {
           accept="image/*,.pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.heic,.webp"
           className="text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-white file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-lime-700 file:ring-1 file:ring-lime-200"
         />
-        <span className="text-[11px] text-slate-400">
-          Attach documents or photos — they join your document vault and the analysis automatically.
-        </span>
+        <span className="text-[11px] text-slate-400">{attachHint}</span>
       </div>
       <p className="mt-1.5 text-[11px] text-slate-400">
         Sending re-runs your analysis with this answer included — findings above update immediately.

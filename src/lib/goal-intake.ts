@@ -31,6 +31,12 @@ export type IntakeChrome = {
   guideFallbackNoCase: string;
 };
 
+export type ClarifyChrome = {
+  placeholder: string;
+  attachHint: string;
+  helperWithQuestion: string;
+};
+
 export function resolveIntakeChrome(input: IntakeMatchInput = {}): IntakeChrome {
   if (isFiledCaseSurface(input)) {
     return {
@@ -97,5 +103,23 @@ export function resolveIntakeChrome(input: IntakeMatchInput = {}): IntakeChrome 
     guideOpenStep: "Open your situation and follow the next matching step. A USCIS receipt is not required.",
     guideNoCaseYet: "You haven't started a situation yet — tell us what's going on, even if you have not filed anything with USCIS, and we'll map options and next steps.",
     guideFallbackNoCase: "Start by describing your situation and goal, even if you have not filed anything with USCIS, and we'll map options and next steps. A USCIS receipt is not required.",
+  };
+}
+
+export function resolveClarifyChrome(input: IntakeMatchInput = {}): ClarifyChrome {
+  if (isFiledCaseSurface(input)) {
+    return {
+      placeholder: "Type your answer… (receipt numbers, form names, dates, and evidence details help most)",
+      attachHint: "Attach USCIS notices, receipts, forms, or evidence — they join your document vault and the analysis automatically.",
+      helperWithQuestion:
+        "Your answers feed straight into the analysis: receipt numbers, dates, notices, evidence, and case details update the findings above automatically.",
+    };
+  }
+  return {
+    placeholder: "Type your answer… (matching documents, dates, and facts from official material help most. A receipt is not required.)",
+    attachHint:
+      "Attach identity, relationship, or other matching evidence — a USCIS notice is optional. Files join this situation and the analysis automatically.",
+    helperWithQuestion:
+      "These follow-ups come from the official USCIS/DOJ material that matched your goal. You do not need a receipt number to answer.",
   };
 }
