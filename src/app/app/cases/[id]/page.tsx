@@ -4,21 +4,21 @@ import { requireUser } from "@/lib/auth";
 import { hasFeature } from "@/lib/access";
 import { FEATURE_KEYS } from "@/lib/constants";
 import { PageHeader } from "@/components/ui";
-import { formatCaseNumber } from "@/lib/case-number";
 import { CaseAnalysisView } from "@/components/case-analysis-view";
 import { CaseComments } from "@/components/case-comments";
 import { CaseClarify } from "@/components/case-clarify";
 import { loadSuggestionAccess, toCaseSuggestionAccess } from "@/lib/suggestion-quota";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { previewBestConsultantForThemes } from "@/lib/matching";
-import { resolveCaseChrome } from "@/lib/goal-chrome";
+import { recordRefLabel, resolveCaseChrome } from "@/lib/goal-chrome";
+import { matchInputFromCase } from "@/lib/goal-versions";
 
 export default async function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
   const c = await db.case.findFirst({
     where: { id, userId: user.id },
-    select: { id: true, title: true, number: true, createdAt: true, situation: true, goal: true, _count: { select: { issues: true } } },
+    select: { id: true, title: true, number: true, createdAt: true, situation: true, goal: true, notices: { select: { noticeType: true } }, _count: { select: { issues: true } } },
   });
   if (!c) notFound();
 
@@ -27,11 +27,13 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
   const suggestionLoaded = await loadSuggestionAccess({ userId: user.id, caseId: c.id });
   let consultantName: string | null = null;
   const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const match = matchInputFromCase(c);
   const chrome = resolveCaseChrome({
     caseId: c.id,
     inquiryMode: inquiry.mode,
     themes: inquiry.themes,
     query: `${c.situation} ${c.goal}`,
+    noticeTypes: match.noticeTypes,
     hasReportAccess,
   });
   if (suggestionLoaded.entitlement.consultantReferral) {
@@ -44,7 +46,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
     <div>
       <PageHeader
         title={c.title}
-        subtitle={`Case ${formatCaseNumber(c.number)} · Opened ${c.createdAt.toLocaleDateString("en-US")} · ${c._count.issues} finding${c._count.issues === 1 ? "" : "s"}`}
+        subtitle={`${recordRefLabel(match, c.number)} · Opened ${c.createdAt.toLocaleDateString("en-US")} · ${c._count.issues} finding${c._count.issues === 1 ? "" : "s"}`}
         actions={
           <div className="flex gap-2">
             <a

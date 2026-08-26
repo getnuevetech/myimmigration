@@ -168,7 +168,11 @@ import {
   CONSULTANT_EMPTY_BODY,
   billingReportReturn,
   consultantRecordLabel,
+  formPrefillRecordHint,
+  knownFactsSourceHint,
+  knownFactsVerifyHint,
   navHrefsBefore,
+  recordRefLabel,
   reportFileName,
   resolveAccountNav,
   resolveCaseChrome,
@@ -1932,6 +1936,35 @@ assert(!guideSrc.includes("No cases yet — the user hasn't started a case."), "
 assert(familyForms[0]?.formNumber === "I-130", "goal-driven guide snapshot must not rerank I-485 ahead of I-130");
 assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven guide snapshot must not convert the RFE fixture into open-options");
 assert(requested.autoAssigned === false, "goal-driven guide snapshot must not auto-assign consultants");
+
+assert(recordRefLabel(familyGuideInput, 11) === "Situation IMM-000011", "open-options record ref must not stay Case IMM");
+assert(recordRefLabel(rfeGuideInput, 1) === "Case IMM-000001", "filed RFE record ref stays Case IMM");
+assert(recordRefLabel({}, 7) === "Situation IMM-000007", "unlabeled record ref defaults to Situation");
+assert(formPrefillRecordHint(familyGuideInput, 11) === " and situation IMM-000011", "open-options form prefill must not say and case IMM");
+assert(formPrefillRecordHint(rfeGuideInput, 1) === " and case IMM-000001", "filed RFE form prefill stays and case IMM");
+assert(formPrefillRecordHint(familyGuideInput, null) === "", "form prefill hint is empty when no record is linked");
+assert(/options analysis/.test(knownFactsSourceHint(familyGuideInput)), "open-options known-facts source must not stay case analysis");
+assert(/case analysis/.test(knownFactsSourceHint(rfeGuideInput)), "filed RFE known-facts source stays case analysis");
+assert(/A receipt is not required/.test(knownFactsVerifyHint(familyGuideInput)), "open-options known-facts verify must not require a USCIS notice or case record");
+assert(/USCIS notice or case record/.test(knownFactsVerifyHint(rfeGuideInput)), "filed RFE known-facts verify stays a notice or case record");
+const customerCaseSrc = readFileSync(join(process.cwd(), "src/app/app/cases/[id]/page.tsx"), "utf8");
+assert(customerCaseSrc.includes("recordRefLabel"), "customer case page must use dual-path record labels");
+assert(!customerCaseSrc.includes("Case ${formatCaseNumber"), "customer case page must not hardcode Case IMM");
+const adminCaseSrc = readFileSync(join(process.cwd(), "src/app/admin/cases/[id]/page.tsx"), "utf8");
+assert(adminCaseSrc.includes("recordRefLabel"), "admin case page must use the same dual-path record labels as the customer");
+assert(!adminCaseSrc.includes("Case ${formatCaseNumber"), "admin case page must not hardcode Case IMM");
+const formPrefillSrc = readFileSync(join(process.cwd(), "src/lib/form-prefill.ts"), "utf8");
+assert(formPrefillSrc.includes("consultantRecordLabel") && formPrefillSrc.includes("formPrefillRecordHint"), "form prefill must use dual-path record labels");
+assert(!formPrefillSrc.includes('add("Case"'), "form prefill must not hardcode the Case fact label");
+const fillFormSrc = readFileSync(join(process.cwd(), "src/app/app/forms/fill/[id]/page.tsx"), "utf8");
+assert(fillFormSrc.includes("prefill.recordHint"), "form wizard must use the dual-path record hint");
+assert(!fillFormSrc.includes("and case ${prefill.caseNumber}"), "form wizard must not hardcode and case IMM");
+const knownFactsSrc = readFileSync(join(process.cwd(), "src/components/known-facts-panel.tsx"), "utf8");
+assert(knownFactsSrc.includes("sourceHint") && knownFactsSrc.includes("verifyHint"), "known-facts panel must take dual-path hints");
+assert(!knownFactsSrc.includes("From your profile and case analysis."), "known-facts panel must not hardcode case analysis as the default");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven record labels must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven record labels must not convert the RFE fixture into open-options");
+assert(requested.autoAssigned === false, "goal-driven record labels must not auto-assign consultants");
 const progressSrc = readFileSync(join(process.cwd(), "src/lib/case-progress.ts"), "utf8");
 assert(progressSrc.includes("matchingProgressKinds") && progressSrc.includes("usesMatchingEvidenceProgress"), "progress verification must count matching kinds on open-options");
 assert(progressSrc.includes("FILED_VERIFIABLE_ACTIONS"), "progress key table stays the filed keys so verification still runs");
@@ -2117,7 +2150,7 @@ const consultantClientSrc = readFileSync(join(process.cwd(), "src/app/consultant
 assert(consultantClientSrc.includes("resolveConsultantWorkspaceCopy"), "consultant client workspace must use dual-path list chrome");
 assert(!consultantClientSrc.includes('title="No cases"'), "consultant client workspace must not hardcode No cases");
 const consultantCaseSrc = readFileSync(join(process.cwd(), "src/app/consultant/clients/[id]/cases/[caseId]/page.tsx"), "utf8");
-assert(consultantCaseSrc.includes("consultantRecordLabel"), "consultant case view must use dual-path record labels");
+assert(consultantCaseSrc.includes("recordRefLabel"), "consultant case view must use dual-path record labels");
 assert(!consultantCaseSrc.includes("Case ${formatCaseNumber"), "consultant case view must not hardcode Case IMM");
 assert(consultantDashSrc.includes("workspace.dashboardEmpty"), "consultant dashboard empty must use dual-path copy");
 assert(!consultantDashSrc.includes("hasn't started a case yet"), "consultant dashboard empty must not hardcode hasn't started a case");
@@ -2214,3 +2247,4 @@ console.log(`- v4 C23: open ${thisSurfacePhrase(familyGuideInput)}/${resolveCons
 console.log(`- v4 C24: open ${presentationOrganizingSummary(familyGuideInput).slice(0, 24)}, RFE ${presentationOrganizingSummary(rfeGuideInput).slice(0, 18)}`);
 console.log(`- v4 C25: open ${analysisTaskLabel("PRESENT_APPROVED_STATE", familyGuideInput)}, RFE ${analysisTaskLabel("PRESENT_APPROVED_STATE", rfeGuideInput)}`);
 console.log(`- v4 C26: open ${openGuideItem.slice(0, 10)}, empty ${guideAccountEmptyLine(familyGuideInput).slice(0, 18)}, RFE ${rfeGuideItem.slice(0, 5)}`);
+console.log(`- v4 C27: open ${recordRefLabel(familyGuideInput, 11)}, RFE ${recordRefLabel(rfeGuideInput, 1)}`);

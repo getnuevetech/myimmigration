@@ -4,6 +4,7 @@ import { matchingDocumentKind } from "./goal-documents";
 import { matchingLetterKind } from "./goal-letters";
 import { isFiledCaseSurface, surfaceNoun, thisSurfacePhrase, type FiledSurfaceInput } from "./goal-notices";
 import { resolveIntakeChrome } from "./goal-intake";
+import { formatCaseNumber } from "./case-number";
 
 export type ChromeMatchInput = FiledSurfaceInput & {
   caseId?: string | null;
@@ -96,6 +97,26 @@ export function updatesImpactReason(matched: string[], input: ChromeMatchInput =
 
 export function consultantRecordLabel(input: ChromeMatchInput = {}): string {
   return isFiledCaseSurface(input) ? "Case" : "Situation";
+}
+
+export function recordRefLabel(input: ChromeMatchInput = {}, number: number): string {
+  return `${consultantRecordLabel(input)} ${formatCaseNumber(number)}`;
+}
+
+export function formPrefillRecordHint(input: ChromeMatchInput = {}, number?: number | null): string {
+  return number ? ` and ${surfaceNoun(input)} ${formatCaseNumber(number)}` : "";
+}
+
+export function knownFactsSourceHint(input: ChromeMatchInput = {}): string {
+  return isFiledCaseSurface(input)
+    ? "From your profile and case analysis. Copy anything you need while completing this form."
+    : "From your profile and options analysis. Copy anything you need while completing this form.";
+}
+
+export function knownFactsVerifyHint(input: ChromeMatchInput = {}): string {
+  return isFiledCaseSurface(input)
+    ? "Always double-check names, receipt numbers, dates, deadlines, and filing requirements against your USCIS notice or case record before filing."
+    : "Always double-check names, dates, and matching evidence against official USCIS form instructions before filing. A receipt is not required.";
 }
 
 export function resolveConsultantWorkspaceCopy(inputs: ChromeMatchInput[] = []): ConsultantWorkspaceCopy {

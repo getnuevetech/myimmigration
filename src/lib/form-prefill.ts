@@ -2,6 +2,13 @@ import "server-only";
 import { db } from "./db";
 import { formatCaseNumber } from "./case-number";
 import type { WizardStep } from "@/actions/forms";
+import {
+  consultantRecordLabel,
+  formPrefillRecordHint,
+  knownFactsSourceHint,
+  knownFactsVerifyHint,
+} from "./goal-chrome";
+import { matchInputFromCase } from "./goal-versions";
 
 export type KnownFact = { label: string; value: string };
 export type FormPrefill = {
@@ -10,6 +17,9 @@ export type FormPrefill = {
   // Everything we know, for the copy-panel next to the form.
   facts: KnownFact[];
   caseNumber: string | null;
+  recordHint: string;
+  sourceHint: string;
+  verifyHint: string;
 };
 
 /**
@@ -130,8 +140,9 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
   add("Phone", user?.phone);
   add("Email", user?.email);
   add("ID number on file", user?.idNumber);
+  const match = kase ? matchInputFromCase(kase) : {};
   if (kase) {
-    add("Case", `${formatCaseNumber(kase.number)} — ${kase.title.slice(0, 60)}`);
+    add(consultantRecordLabel(match), `${formatCaseNumber(kase.number)} — ${kase.title.slice(0, 60)}`);
     add("Timeline year(s)", yearsText);
     add("Forms filed", forms.join(", "));
     add("Receipt number(s)", receipts.join(", "));
@@ -141,5 +152,12 @@ export async function buildFormPrefill(userId: string, steps: WizardStep[]): Pro
     add("Your goal", kase.goal?.slice(0, 120));
   }
 
-  return { values, facts, caseNumber: kase ? formatCaseNumber(kase.number) : null };
+  return {
+    values,
+    facts,
+    caseNumber: kase ? formatCaseNumber(kase.number) : null,
+    recordHint: kase ? formPrefillRecordHint(match, kase.number) : "",
+    sourceHint: knownFactsSourceHint(match),
+    verifyHint: knownFactsVerifyHint(match),
+  };
 }
