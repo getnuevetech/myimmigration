@@ -5,7 +5,7 @@ import { analysisTaskLabel, resolveVersionChrome, type VersionMatchInput } from 
 export function CaseAnalysisPlanCard({ planJson, match }: { planJson: string; match?: VersionMatchInput }) {
   const plan = parseAnalysisPlan(planJson);
   if (!plan) return null;
-  const summary = analysisPlanSummary(plan);
+  const summary = analysisPlanSummary(plan, (task) => analysisTaskLabel(task, match));
   const executed = plan.execution?.tasks_executed ?? plan.tasks_required;
   const chrome = resolveVersionChrome(match);
   return (

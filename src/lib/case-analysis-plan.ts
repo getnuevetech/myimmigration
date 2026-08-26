@@ -274,7 +274,10 @@ export function withPlanExecution(plan: AnalysisPlan, execution: AnalysisPlanExe
   return { ...plan, execution };
 }
 
-export function analysisPlanSummary(plan: AnalysisPlan): {
+export function analysisPlanSummary(
+  plan: AnalysisPlan,
+  labelTask: (task: string) => string = (task) => ANALYSIS_TASK_LABELS[task] ?? task,
+): {
   complexityLabel: string;
   executedLabels: string[];
   skippedLabels: { label: string; reason: string }[];
@@ -287,13 +290,13 @@ export function analysisPlanSummary(plan: AnalysisPlan): {
   const skipped = execution?.tasks_skipped ?? plan.tasks_skipped;
   return {
     complexityLabel: ANALYSIS_COMPLEXITY_LABELS[plan.case_complexity] ?? plan.case_complexity,
-    executedLabels: executed.map((task) => ANALYSIS_TASK_LABELS[task] ?? task),
+    executedLabels: executed.map((task) => labelTask(task)),
     skippedLabels: skipped.map((item) => ({
-      label: ANALYSIS_TASK_LABELS[item.task] ?? item.task,
+      label: labelTask(item.task),
       reason: item.reason,
     })),
     runtimeLabels: (execution?.runtime_additions ?? []).map((item) => ({
-      label: ANALYSIS_TASK_LABELS[item.task] ?? item.task,
+      label: labelTask(item.task),
       reason: item.reason,
     })),
     stopped: execution?.stopped ?? plan.stop_conditions.length > 0,

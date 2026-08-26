@@ -1833,6 +1833,20 @@ assert(!/receipt numbers/.test(analysisDocumentWalkthrough(2, familyGuideInput))
 assert(/receipt numbers/.test(analysisDocumentWalkthrough(2, rfeGuideInput)), "filed RFE document walkthrough still compares receipt numbers");
 assert(analysisTaskLabel("PRESENT_APPROVED_STATE", familyGuideInput) === "Approved options presentation", "open-options plan must not say Approved case presentation");
 assert(analysisTaskLabel("PRESENT_APPROVED_STATE", rfeGuideInput) === "Approved case presentation", "filed RFE plan stays Approved case presentation");
+assert(
+  analysisPlanSummary(
+    { ...lowPlan, tasks_skipped: [{ task: ANALYSIS_TASKS.PRESENT_APPROVED_STATE, reason: "Presentation already assembled." }] },
+    (task) => analysisTaskLabel(task, familyGuideInput),
+  ).skippedLabels.some((item) => item.label === "Approved options presentation"),
+  "open-options skipped plan rows must not stay Approved case presentation",
+);
+assert(
+  analysisPlanSummary(
+    { ...lowPlan, tasks_skipped: [{ task: ANALYSIS_TASKS.PRESENT_APPROVED_STATE, reason: "Presentation already assembled." }] },
+    (task) => analysisTaskLabel(task, rfeGuideInput),
+  ).skippedLabels.some((item) => item.label === "Approved case presentation"),
+  "filed RFE skipped plan rows stay Approved case presentation",
+);
 assert(analysisTaskLabel("PRIMARY_REASONING", familyGuideInput) === "Situation analysis", "non-presentation tasks stay the shared labels");
 assert(/receipt is not required/.test(verifiableActionCopy("GET_CASE_RECORD", familyGuideInput)), "open-options GET_CASE_RECORD copy must not require a USCIS case record");
 assert(/identity or relationship/.test(verifiableActionCopy("GET_CASE_RECORD", familyGuideInput)), "open-options GET_CASE_RECORD copy must name matching evidence");
@@ -1860,6 +1874,7 @@ assert(versionCardSrc.includes("resolveVersionChrome"), "version card must use g
 assert(!versionCardSrc.includes("Case record version"), "version card must not hardcode Case record version");
 const planCardSrc = readFileSync(join(process.cwd(), "src/components/case-analysis-plan-card.tsx"), "utf8");
 assert(planCardSrc.includes("resolveVersionChrome") && planCardSrc.includes("analysisTaskLabel"), "analysis plan card must use goal-driven task labels");
+assert(planCardSrc.includes("analysisTaskLabel(task, match)"), "analysis plan card skipped labels must use dual-path task labels");
 assert(!planCardSrc.includes("How this case was analyzed"), "analysis plan card must not hardcode How this case was analyzed");
 const progressSrc = readFileSync(join(process.cwd(), "src/lib/case-progress.ts"), "utf8");
 assert(progressSrc.includes("matchingProgressKinds") && progressSrc.includes("usesMatchingEvidenceProgress"), "progress verification must count matching kinds on open-options");
@@ -2141,3 +2156,4 @@ console.log(`- v4 C21: open ${openIntake.pageTitle}/${openIntake.listCta}, RFE $
 console.log(`- v4 C22: open ${resolveCasesListCopy(familyGuideInput).pageTitle}/${surfaceNoun(familyGuideInput)}, RFE ${resolveCasesListCopy(rfeGuideInput).pageTitle}/${surfaceNoun(rfeGuideInput)}`);
 console.log(`- v4 C23: open ${thisSurfacePhrase(familyGuideInput)}/${resolveConsultantWorkspaceCopy([familyGuideInput]).heading}, RFE ${thisSurfacePhrase(rfeGuideInput)}/${resolveConsultantWorkspaceCopy([rfeGuideInput]).heading}`);
 console.log(`- v4 C24: open ${presentationOrganizingSummary(familyGuideInput).slice(0, 24)}, RFE ${presentationOrganizingSummary(rfeGuideInput).slice(0, 18)}`);
+console.log(`- v4 C25: open ${analysisTaskLabel("PRESENT_APPROVED_STATE", familyGuideInput)}, RFE ${analysisTaskLabel("PRESENT_APPROVED_STATE", rfeGuideInput)}`);
