@@ -7,6 +7,7 @@ import { CaseListCard } from "@/components/case-list-card";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { resolveCasesListCopy } from "@/lib/goal-chrome";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
+import { matchInputFromCase } from "@/lib/goal-versions";
 
 export const metadata = { title: "My cases" };
 
@@ -58,6 +59,7 @@ export default async function CasesPage() {
                   reconstructionPosition: c.reconstruction?.currentPosition,
                 },
                 views.get(c.id),
+                matchInputFromCase(c),
               )}
             />
           ))}

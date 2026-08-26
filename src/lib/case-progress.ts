@@ -2,27 +2,23 @@ import "server-only";
 import { db } from "./db";
 import { getEvidenceActionState } from "./evidence/case-action-state";
 import { formNumberForStep } from "./goal-forms";
+import { classifyImmigrationInquiry } from "./immigration-inquiry";
+import { FILED_VERIFIABLE_ACTIONS, matchingProgressKinds, usesMatchingEvidenceProgress } from "./goal-versions";
 
 // Evidence-based path-step verification. Steps with a recognized action key
 // are completed only when the system can actually observe the required
 // artifact — never by an unchecked checkbox.
 
-export const VERIFIABLE_ACTIONS: Record<string, string> = {
-  UPLOAD_DOCUMENTS: "Completes when your case has at least one document",
-  UPLOAD_NOTICE: "Completes when a USCIS notice is extracted into the evidence record",
-  GET_CASE_RECORD: "Completes when a USCIS case record is uploaded to your case",
-  GET_ACCOUNT_RECORD: "Completes when a USCIS online account record is uploaded to your case",
-  REVIEW_ANALYSIS: "Completes when the analysis has been re-run after documents were added",
-  RERUN_ANALYSIS: "Completes when the analysis has been re-run after documents were added",
-  DRAFT_LETTER: "Completes when a response letter has been drafted",
-  COMPLETE_FORM_I485: "Completes when the matching Form I-485 wizard is finished",
-  PREPARE_FORM: "Completes when the matching USCIS form wizard is finished",
-  ADD_DEADLINE: "Completes when a deadline is tracked for this case",
-  PREPARE_APPOINTMENT: "Completes when an appointment or interview event is extracted into evidence",
-};
+export const VERIFIABLE_ACTIONS: Record<string, string> = FILED_VERIFIABLE_ACTIONS;
 
 export function isVerifiable(actionKey: string): boolean {
   return actionKey.toUpperCase() in VERIFIABLE_ACTIONS;
+}
+
+async function matchingEvidenceCount(caseId: string): Promise<number> {
+  return db.document.count({
+    where: { caseId, deletedAt: null, docKind: { in: matchingProgressKinds() } },
+  });
 }
 
 async function stepSatisfied(
@@ -31,6 +27,7 @@ async function stepSatisfied(
     caseId: string;
     userId: string | null;
     caseCreatedAt: Date;
+    matchingEvidence?: boolean;
   },
   title = "",
 ): Promise<boolean> {
@@ -44,10 +41,16 @@ async function stepSatisfied(
       return count > 0 || evidenceState?.satisfied === true;
     }
     case "UPLOAD_NOTICE": {
+      if (ctx.matchingEvidence) {
+        return (await matchingEvidenceCount(ctx.caseId)) > 0 || evidenceState?.satisfied === true;
+      }
       return evidenceState?.satisfied === true;
     }
     case "GET_CASE_RECORD":
     case "GET_ACCOUNT_RECORD": {
+      if (ctx.matchingEvidence) {
+        return (await matchingEvidenceCount(ctx.caseId)) > 0 || evidenceState?.satisfied === true;
+      }
       const where = ctx.userId
         ? { userId: ctx.userId, deletedAt: null, docKind: { in: ["case_record", "case record", "receipt"] } }
         : { caseId: ctx.caseId, deletedAt: null, docKind: { in: ["case_record", "case record", "receipt"] } };
@@ -116,7 +119,13 @@ export async function verifyCaseProgress(caseId: string): Promise<number> {
   if (!c || c.pathSteps.length === 0) return 0;
 
   let changed = 0;
-  const ctx = { caseId, userId: c.userId, caseCreatedAt: c.createdAt };
+  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const ctx = {
+    caseId,
+    userId: c.userId,
+    caseCreatedAt: c.createdAt,
+    matchingEvidence: usesMatchingEvidenceProgress({ inquiryMode: inquiry.mode, query: `${c.situation} ${c.goal}` }),
+  };
 
   for (const step of c.pathSteps) {
     if (!isVerifiable(step.actionKey)) continue;

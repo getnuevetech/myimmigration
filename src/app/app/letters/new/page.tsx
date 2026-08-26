@@ -8,6 +8,7 @@ import { NewLetterForm } from "@/components/letter-forms";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
+import { matchInputFromCase } from "@/lib/goal-versions";
 import { formatCaseNumber } from "@/lib/case-number";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import {
@@ -83,6 +84,7 @@ export default async function NewLetterPage({
           actionReadinessScore: selected.actionReadinessScore,
         },
         views.get(selected.id),
+        matchInputFromCase(selected),
       )
     : null;
   const inquiry = selected

@@ -2,6 +2,7 @@ import type { PresentationContract, PresentationEvidenceStrength } from "./case-
 import { evidenceStrengthFromScores } from "./case-presentation-contract";
 import { formatPresentationDate } from "./case-presentation-ui";
 import { versionReasonLabel, type ApprovedCaseView } from "./canonical-case-state";
+import type { VersionMatchInput } from "./goal-versions";
 
 export type CaseListSummary = {
   posture: string;
@@ -85,6 +86,7 @@ export function caseListSummaryFromView(
     reconstructionPosition?: string | null;
   },
   view?: ApprovedCaseView | null,
+  match?: VersionMatchInput,
 ): CaseListSummary {
   return caseListSummary({
     status: input.status,
@@ -92,6 +94,6 @@ export function caseListSummaryFromView(
     presentation: view?.presentation ?? null,
     reconstructionPosition: view?.presentation ? undefined : input.reconstructionPosition,
     version: view?.version ?? null,
-    reasonLabel: view?.reason ? versionReasonLabel(view.reason) : null,
+    reasonLabel: view?.reason ? versionReasonLabel(view.reason, match) : null,
   });
 }

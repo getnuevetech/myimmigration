@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { Card, CardBody, StateMark, ProgressBar, Badge, EvidenceStatusBadge, EvidenceStrengthLine, ItemKindBadge } from "@/components/ui";
-import { isVerifiable, VERIFIABLE_ACTIONS } from "@/lib/case-progress";
+import { isVerifiable } from "@/lib/case-progress";
 import { completePathStepAction, checkCaseProgressAction } from "@/actions/case";
 import { startFormAction } from "@/actions/forms";
 import { InlineUpload } from "@/components/inline-upload";
@@ -26,6 +26,13 @@ import {
 import { shouldShowUscisAccountGuide } from "@/lib/goal-notices";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { presentationStepCta } from "@/lib/case-presentation-ui";
+import {
+  analysisDocumentWalkthrough,
+  closedReasonLabel,
+  matchInputFromCase,
+  resolveVersionChrome,
+  verifiableActionCopy,
+} from "@/lib/goal-versions";
 
 export type CaseViewer = {
   role: "customer" | "consultant" | "admin";
@@ -73,11 +80,20 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const presentation = await resolveCasePresentation(caseId).catch(() => null);
   const latestVersion = await getLatestCaseVersion(caseId).catch(() => null);
   const versionHistory = viewer.role === "admin" ? await listCaseVersions(caseId, 8).catch(() => []) : [];
+  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const versionMatch = matchInputFromCase({
+    situation: c.situation,
+    goal: c.goal,
+    notices: c.notices,
+    inquiryMode: inquiry.mode,
+  });
+  const versionChrome = resolveVersionChrome(versionMatch);
   const versionCard = (
     <CaseVersionCard
       version={latestVersion}
       versions={viewer.role === "admin" ? versionHistory : []}
       approvedStateJson={viewer.role === "admin" ? canonicalState?.approvedStateJson : null}
+      match={versionMatch}
     />
   );
   const analysisPlanRow = await db.caseAnalysisPlan.findFirst({
@@ -115,12 +131,12 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     } catch { /* no pending evidence actions yet */ }
   }
   const currentPosition =
-    presentation?.hero.current_posture || c.reconstruction?.currentPosition || "Case posture needs verification";
+    presentation?.hero.current_posture || c.reconstruction?.currentPosition || versionChrome.defaultPosture;
   const evidenceSummary =
     presentation?.what_this_means.summary ||
     c.reconstruction?.summary ||
     latestEvidenceAudit?.summary ||
-    "Upload USCIS records so the case timeline can be reconstructed from evidence.";
+    versionChrome.emptyEvidenceSummary;
   const evidenceGateStatus = presentation?.what_this_means.evidence_gate_status || latestEvidenceAudit?.status || null;
   const unknownQuestions = presentation?.what_this_means.unknowns.length
     ? presentation.what_this_means.unknowns
@@ -131,7 +147,6 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const nearestDeadline = presentation?.hero.nearest_deadline ?? null;
 
   const haveKinds = new Set(c.documents.map((d) => d.docKind));
-  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
   const readinessCopy = resolveReadinessCopy({
     themes: inquiry.themes,
     inquiryMode: inquiry.mode,
@@ -217,10 +232,13 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
         {c.status === "closed" && (
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-100">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Case closed {c.closedAt ? c.closedAt.toLocaleDateString("en-US") : ""} · {c.closedReason === "abandoned" ? "closed for inactivity" : c.closedReason === "completed" ? "completed" : "closed"}
+              {versionChrome.closedEyebrow(
+                c.closedAt ? c.closedAt.toLocaleDateString("en-US") : "",
+                closedReasonLabel(c.closedReason),
+              )}
             </p>
             <h2 className="mt-1 text-lg font-semibold text-white">Final review & closing remarks</h2>
-            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-200">{c.closingRemarks || "This case has been closed."}</p>
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-200">{c.closingRemarks || versionChrome.closedEmpty}</p>
           </div>
         )}
         <CasePresentationView
@@ -248,7 +266,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           inquiryMode={inquiry.mode}
           suggestionAccess={viewer.suggestionAccess}
         />
-        {analysisPlanJson && (viewer.role !== "customer" || viewer.suggestionAccess?.personalized !== false) ? <CaseAnalysisPlanCard planJson={analysisPlanJson} /> : null}
+        {analysisPlanJson && (viewer.role !== "customer" || viewer.suggestionAccess?.personalized !== false) ? <CaseAnalysisPlanCard planJson={analysisPlanJson} match={versionMatch} /> : null}
         {versionCard}
       </div>
     );
@@ -292,7 +310,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       case "goal":
         return "Interpreted the goal so every recommendation points at the requested outcome.";
       case "document":
-        return `Cross-checked ${c.documents.length} document${c.documents.length === 1 ? "" : "s"} against the story, comparing forms, receipt numbers, dates, and deadlines.`;
+        return analysisDocumentWalkthrough(c.documents.length, versionMatch);
       case "situation":
         return "Weighed the verified facts against USCIS rules and procedures from the knowledge base.";
       case "presenter":
@@ -318,13 +336,16 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
         {c.status === "closed" && (
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-100">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Case closed {c.closedAt ? c.closedAt.toLocaleDateString("en-US") : ""} · {c.closedReason === "abandoned" ? "closed for inactivity" : c.closedReason === "completed" ? "completed" : "closed"}
+              {versionChrome.closedEyebrow(
+                c.closedAt ? c.closedAt.toLocaleDateString("en-US") : "",
+                closedReasonLabel(c.closedReason),
+              )}
             </p>
             <h2 className="mt-1 text-lg font-semibold text-white">Final review & closing remarks</h2>
-            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-200">{c.closingRemarks || "This case has been closed."}</p>
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-200">{c.closingRemarks || versionChrome.closedEmpty}</p>
           </div>
         )}
-        {analysisPlanJson ? <CaseAnalysisPlanCard planJson={analysisPlanJson} /> : null}
+        {analysisPlanJson ? <CaseAnalysisPlanCard planJson={analysisPlanJson} match={versionMatch} /> : null}
         {versionCard}
         {professionalReviewRecommended && (
           <div className="rounded-xl border border-lime-300 bg-lime-50 px-4 py-3 text-sm text-lime-900">
@@ -440,7 +461,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
 
         {latestBatch.length > 0 && (
           <section>
-            <h2 className="mb-3 text-base font-semibold text-slate-900">How we analyzed this case</h2>
+            <h2 className="mb-3 text-base font-semibold text-slate-900">{versionChrome.howAnalyzedHeading}</h2>
             <Card>
               <CardBody>
                 <p className="mb-3 text-xs text-slate-500">
@@ -664,11 +685,11 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                       <p className="text-sm text-slate-500">{step.description}</p>
                       {verifiable && step.status !== "done" && (
                         <p className="mt-1 text-xs font-medium text-lime-600">
-                          ◐ Verified automatically — {VERIFIABLE_ACTIONS[step.actionKey.toUpperCase()].toLowerCase()}
+                          ◐ Verified automatically — {verifiableActionCopy(step.actionKey, versionMatch).toLowerCase()}
                         </p>
                       )}
                       {verifiable && step.status === "done" && (
-                        <p className="mt-1 text-xs font-medium text-emerald-600">✓ Verified from case evidence</p>
+                        <p className="mt-1 text-xs font-medium text-emerald-600">✓ {versionChrome.verifiedDone}</p>
                       )}
                       {interactive && step.status !== "done" && (
                         <div className="mt-2 flex flex-wrap gap-2">

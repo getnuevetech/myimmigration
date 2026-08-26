@@ -11,6 +11,7 @@ import { formatTicketNumber, formatTransactionNumber } from "@/lib/ticket-number
 import { CONSULTANT_SPECIALTIES } from "@/lib/constants";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
+import { matchInputFromCase } from "@/lib/goal-versions";
 
 // Full detail page for any customer or consultant account.
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -184,6 +185,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                         actionReadinessScore: c.actionReadinessScore,
                       },
                       views.get(c.id),
+                      matchInputFromCase(c),
                     );
                     return (
                     <Link key={c.id} href={`/admin/cases/${c.id}`} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm hover:border-lime-300">

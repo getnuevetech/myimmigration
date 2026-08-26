@@ -6,13 +6,14 @@ import { EditLetterForm } from "@/components/letter-forms";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
+import { matchInputFromCase } from "@/lib/goal-versions";
 
 export default async function LetterPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
   const letter = await db.responseLetter.findFirst({
     where: { id, userId: user.id },
-    include: { case: { select: { id: true, status: true, actionReadinessScore: true } } },
+    include: { case: { select: { id: true, status: true, actionReadinessScore: true, situation: true, goal: true } } },
   });
   if (!letter) notFound();
   const views = letter.caseId ? await loadApprovedViewsByCaseIds([letter.caseId]) : new Map();
@@ -23,6 +24,7 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
           actionReadinessScore: letter.case.actionReadinessScore,
         },
         views.get(letter.case.id),
+        matchInputFromCase(letter.case),
       )
     : null;
 

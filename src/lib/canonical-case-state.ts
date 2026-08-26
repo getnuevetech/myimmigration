@@ -1,6 +1,7 @@
 import type { PresentationContract } from "./case-presentation-contract";
 import type { AnalysisPlan } from "./case-analysis-plan";
 import { analysisPlanSummary } from "./case-analysis-plan";
+import { resolveVersionChrome, versionReasonLabel as versionReasonLabelForSurface, FILED_VERSION_REASON_LABELS, type VersionMatchInput } from "./goal-versions";
 
 export type CanonicalApprovedState = {
   version: number;
@@ -16,15 +17,10 @@ export type CanonicalApprovedState = {
   analysis_plan: AnalysisPlan | null;
 };
 
-export const VERSION_REASON_LABELS: Record<string, string> = {
-  analysis: "Full case review",
-  document: "New documents on file",
-  clarify: "Answers added to the case",
-  reprocess: "Evidence reprocessed",
-};
+export const VERSION_REASON_LABELS: Record<string, string> = FILED_VERSION_REASON_LABELS;
 
-export function versionReasonLabel(reason: string): string {
-  return VERSION_REASON_LABELS[reason] ?? "Case review";
+export function versionReasonLabel(reason: string, input?: VersionMatchInput): string {
+  return versionReasonLabelForSurface(reason, input);
 }
 
 export function parseCanonicalApprovedState(value: string | CanonicalApprovedState | null | undefined): CanonicalApprovedState | null {
@@ -69,7 +65,7 @@ export function buildCanonicalApprovedState(input: {
   };
 }
 
-export function canonicalStateSummary(state: CanonicalApprovedState): {
+export function canonicalStateSummary(state: CanonicalApprovedState, input?: VersionMatchInput): {
   versionLabel: string;
   reasonLabel: string;
   posture: string | null;
@@ -78,8 +74,8 @@ export function canonicalStateSummary(state: CanonicalApprovedState): {
 } {
   const planSummary = state.analysis_plan ? analysisPlanSummary(state.analysis_plan) : null;
   return {
-    versionLabel: `Case record version ${state.version}`,
-    reasonLabel: versionReasonLabel(state.reason),
+    versionLabel: resolveVersionChrome(input).versionLabel(state.version),
+    reasonLabel: versionReasonLabel(state.reason, input),
     posture: state.presentation?.hero.current_posture ?? null,
     nextAction: state.presentation?.hero.next_best_action?.title ?? null,
     complexityLabel: planSummary?.complexityLabel ?? null,

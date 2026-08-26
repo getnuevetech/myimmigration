@@ -9,6 +9,7 @@ import { CasePresentationContextCard } from "@/components/case-list-card";
 import { loadQaAccess } from "@/lib/qa-quota";
 import { toQaChatAccess } from "@/lib/qa-access";
 import { conversationNarrative } from "@/lib/goal-suggestions";
+import { matchInputFromCase } from "@/lib/goal-versions";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { previewBestConsultantForThemes } from "@/lib/matching";
 
@@ -18,7 +19,7 @@ export default async function QaThreadPage({ params }: { params: Promise<{ id: s
   const thread = await db.qaThread.findFirst({
     where: { id, userId: user.id },
     include: {
-      case: { select: { id: true, title: true, status: true, actionReadinessScore: true } },
+      case: { select: { id: true, title: true, status: true, actionReadinessScore: true, situation: true, goal: true } },
       messages: { orderBy: { createdAt: "asc" } },
     },
   });
@@ -39,6 +40,7 @@ export default async function QaThreadPage({ params }: { params: Promise<{ id: s
           actionReadinessScore: thread.case.actionReadinessScore,
         },
         views.get(thread.case.id),
+        matchInputFromCase(thread.case),
       )
     : null;
 

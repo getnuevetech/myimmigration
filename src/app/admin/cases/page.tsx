@@ -5,6 +5,7 @@ import { PageHeader, Badge } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView, caseListVersionLine } from "@/lib/case-presentation-list";
+import { matchInputFromCase } from "@/lib/goal-versions";
 
 export const metadata = { title: "Cases" };
 
@@ -20,6 +21,8 @@ export default async function AdminCasesPage() {
       status: true,
       readinessScore: true,
       actionReadinessScore: true,
+      situation: true,
+      goal: true,
       updatedAt: true,
       user: { select: { email: true, firstName: true, lastName: true } },
       issues: { select: { id: true } },
@@ -68,6 +71,7 @@ export default async function AdminCasesPage() {
                   actionReadinessScore: c.actionReadinessScore,
                 },
                 views.get(c.id),
+                matchInputFromCase(c),
               );
               return (
                 <tr key={c.id} className="hover:bg-slate-50">

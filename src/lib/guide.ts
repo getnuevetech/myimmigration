@@ -6,6 +6,7 @@ import { callProvider } from "./ai/adapters";
 import { getCaseEvidenceBrief } from "./evidence/brief";
 import { loadApprovedViewsByCaseIds } from "./case-presentation";
 import { caseListActionLine, caseListEvidenceLine, caseListSummaryFromView, caseListVersionLine } from "./case-presentation-list";
+import { matchInputFromCase } from "./goal-versions";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "./immigration-inquiry";
 import {
   formatGuideSnapshot,
@@ -97,6 +98,7 @@ export async function buildAccountSnapshot(userId: string): Promise<Snapshot> {
         actionReadinessScore: c.actionReadinessScore,
       },
       view,
+      matchInputFromCase(c),
     );
     const version = caseListVersionLine(summary);
     const readyAction = presentation?.hero.next_best_action;

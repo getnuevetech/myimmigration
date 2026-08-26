@@ -10,6 +10,7 @@ import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { resolveDashboardFiledCopy } from "@/lib/goal-notices";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
+import { matchInputFromCase } from "@/lib/goal-versions";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -147,6 +148,7 @@ export default async function DashboardPage() {
                       reconstructionPosition: c.reconstruction?.currentPosition,
                     },
                     views.get(c.id),
+                    matchInputFromCase(c),
                   )}
                 />
               ))}
