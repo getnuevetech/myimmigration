@@ -10,12 +10,16 @@ import {
 import {
   assemblePresentationContract,
   approvedPresentationHeading,
+  approvedPresentationPhrase,
   evidenceStrengthFromScores,
   FILED_ORGANIZING_SUMMARY,
+  letterComposerGroundingCopy,
+  letterReviewGroundingCopy,
   OPTIONS_ORGANIZING_SUMMARY,
   parsePresentationRecord,
   presentationOrganizingSummary,
   presentationWhatThisMeansSummary,
+  qaGroundedConversationCopy,
   withPresentationSurfaceCopy,
 } from "../src/lib/case-presentation-contract";
 import { caseListActionLine, caseListEvidenceLine, caseListSummary, caseListSummaryFromView, caseListVersionLine } from "../src/lib/case-presentation-list";
@@ -2252,6 +2256,32 @@ assert(presentation.hero.current_posture === "RFE notice needs review", "goal-dr
 assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven presentation copy must keep the approved open-options posture");
 assert(requested.autoAssigned === false, "goal-driven presentation copy must not auto-assign consultants");
 
+assert(approvedPresentationPhrase(familyGuideInput) === "approved options presentation", "open-options inline copy must not stay approved case presentation");
+assert(approvedPresentationPhrase(rfeGuideInput) === "approved case presentation", "filed RFE inline copy stays approved case presentation");
+assert(approvedPresentationPhrase() === "approved options presentation", "unlabeled inline presentation copy defaults to options");
+assert(approvedPresentationHeading(familyGuideInput) === "Approved options presentation", "open-options heading still title-cases the options phrase");
+assert(approvedPresentationHeading(rfeGuideInput) === "Approved case presentation", "filed RFE heading still title-cases the case phrase");
+assert(/approved options presentation/.test(letterComposerGroundingCopy(familyGuideInput)), "open-options letter composer must not draft from the approved case presentation");
+assert(/approved case presentation/.test(letterComposerGroundingCopy(rfeGuideInput)), "filed RFE letter composer stays the approved case presentation");
+assert(/Cover letters do not invent a receipt number/.test(letterComposerGroundingCopy(familyGuideInput)), "open-options letter composer still refuses to invent a receipt");
+assert(/approved options presentation/.test(letterReviewGroundingCopy(familyGuideInput)), "open-options letter review must not stay the approved case presentation");
+assert(/approved case presentation/.test(letterReviewGroundingCopy(rfeGuideInput)), "filed RFE letter review stays the approved case presentation");
+assert(/approved options presentation/.test(qaGroundedConversationCopy(familyGuideInput)), "open-options Q&A must not stay grounded in the approved case presentation");
+assert(/approved case presentation/.test(qaGroundedConversationCopy(rfeGuideInput)), "filed RFE Q&A stays grounded in the approved case presentation");
+assert(!/approved case presentation/.test(qaGroundedConversationCopy()), "unlabeled Q&A grounding defaults off the filed phrase");
+assert(lettersNewSrcC24.includes("letterComposerGroundingCopy"), "letter composer subtitle must use dual-path presentation copy");
+assert(!lettersNewSrcC24.includes("We'll produce a professional draft from the approved case presentation"), "letter composer must not hardcode approved case presentation");
+const lettersIdSrc = readFileSync(join(process.cwd(), "src/app/app/letters/[id]/page.tsx"), "utf8");
+assert(lettersIdSrc.includes("letterReviewGroundingCopy"), "letter review subtitle must use dual-path presentation copy");
+assert(!lettersIdSrc.includes("Review every word against the approved case presentation"), "letter review must not hardcode approved case presentation");
+assert(qaPageSrc.includes("qaGroundedConversationCopy"), "Q&A subtitle must use dual-path presentation copy");
+assert(!qaPageSrc.includes("grounded in the approved case presentation"), "Q&A page must not hardcode approved case presentation");
+assert(DEFAULT_PROMPTS.letter_writer.includes("APPROVED CASE PRESENTATION"), "letter writer prompt token stays APPROVED CASE PRESENTATION");
+assert(DEFAULT_PROMPTS.assistant.includes("APPROVED CASE PRESENTATION"), "assistant prompt token stays APPROVED CASE PRESENTATION");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven presentation grounding copy must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven presentation grounding copy must not convert the RFE fixture into open-options");
+assert(requested.autoAssigned === false, "goal-driven presentation grounding copy must not auto-assign consultants");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -2299,3 +2329,4 @@ console.log(`- v4 C26: open ${openGuideItem.slice(0, 10)}, empty ${guideAccountE
 console.log(`- v4 C27: open ${recordRefLabel(familyGuideInput, 11)}, RFE ${recordRefLabel(rfeGuideInput, 1)}`);
 console.log(`- v4 C28: open ${openClarify.placeholder.includes("receipt is not required") ? "no receipt" : "missing"}, RFE ${rfeClarify.placeholder.includes("receipt numbers") ? "receipts" : "missing"}`);
 console.log(`- v4 C29: empty ${guidePrimaryAction(emptyOpenGuide).label}, hint ${guideStatusHint("receipt status", familyGuideInput).includes("This situation") ? "situation" : "missing"}, RFE ${guidePrimaryAction(emptyRfeGuide).label}`);
+console.log(`- v4 C30: open ${approvedPresentationPhrase(familyGuideInput)}, RFE ${approvedPresentationPhrase(rfeGuideInput)}`);

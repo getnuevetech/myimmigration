@@ -34,8 +34,25 @@ export function withPresentationSurfaceCopy(
   };
 }
 
+export function approvedPresentationPhrase(input: FiledSurfaceInput = {}): string {
+  return isFiledCaseSurface(input) ? "approved case presentation" : "approved options presentation";
+}
+
 export function approvedPresentationHeading(input: FiledSurfaceInput = {}): string {
-  return isFiledCaseSurface(input) ? "Approved case presentation" : "Approved options presentation";
+  const phrase = approvedPresentationPhrase(input);
+  return `${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}`;
+}
+
+export function letterComposerGroundingCopy(input: FiledSurfaceInput = {}): string {
+  return `We'll produce a professional draft from the ${approvedPresentationPhrase(input)} that you can edit before mailing it yourself. Cover letters do not invent a receipt number.`;
+}
+
+export function letterReviewGroundingCopy(input: FiledSurfaceInput = {}): string {
+  return `Review every word against the ${approvedPresentationPhrase(input)}. You are the sender — mail it when you're confident it's right.`;
+}
+
+export function qaGroundedConversationCopy(input: FiledSurfaceInput = {}): string {
+  return `This conversation is grounded in the ${approvedPresentationPhrase(input)} and compiled evidence.`;
 }
 
 export type PresentationHero = {
