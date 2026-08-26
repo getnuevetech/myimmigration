@@ -1,6 +1,9 @@
 import { Card, CardBody, Badge } from "@/components/ui";
 import { getVisibleComments, getComposerCheckbox, type ViewerRole } from "@/lib/case-comments";
 import { CommentComposer } from "./comment-composer";
+import { db } from "@/lib/db";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { resolveDiscussionChrome } from "@/lib/goal-conversation";
 
 const roleBadge: Record<string, { label: string; color: string }> = {
   customer: { label: "Customer", color: "lime" },
@@ -11,20 +14,26 @@ const roleBadge: Record<string, { label: string; color: string }> = {
 // Shared case discussion thread — same content model for all three portals,
 // with role-appropriate visibility (enforced server-side).
 export async function CaseComments({ caseId, viewer }: { caseId: string; viewer: { role: ViewerRole; userId: string } }) {
-  const [comments, checkboxLabel] = await Promise.all([
+  const [comments, checkboxLabel, record] = await Promise.all([
     getVisibleComments(caseId, viewer.role, viewer.userId),
     getComposerCheckbox(viewer.role),
+    db.case.findUnique({ where: { id: caseId }, select: { situation: true, goal: true } }),
   ]);
+  const inquiry = classifyImmigrationInquiry({ situation: record?.situation, goal: record?.goal });
+  const discussion = resolveDiscussionChrome({
+    inquiryMode: inquiry.mode,
+    query: `${record?.situation ?? ""} ${record?.goal ?? ""}`,
+  });
 
   return (
     <section className="mt-6">
-      <h2 className="mb-3 text-base font-semibold text-slate-900">Case discussion</h2>
+      <h2 className="mb-3 text-base font-semibold text-slate-900">{discussion.heading}</h2>
       <Card>
         <CardBody>
           <div className="space-y-4">
             {comments.length === 0 && (
               <p className="text-sm text-slate-400">
-                No comments yet. {viewer.role === "customer" ? "Ask a question about your case, or leave a note." : "Add a review comment for this case."}
+                No comments yet. {viewer.role === "customer" ? discussion.emptyCustomer : discussion.emptyStaff}
               </p>
             )}
             {comments.map((cm) => (
@@ -66,7 +75,12 @@ export async function CaseComments({ caseId, viewer }: { caseId: string; viewer:
             ))}
           </div>
           <div className="mt-4 border-t border-slate-100 pt-4">
-            <CommentComposer caseId={caseId} checkboxLabel={checkboxLabel} />
+            <CommentComposer
+              caseId={caseId}
+              checkboxLabel={checkboxLabel}
+              placeholder={discussion.placeholder}
+              attachHint={discussion.attachHint}
+            />
           </div>
         </CardBody>
       </Card>

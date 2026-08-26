@@ -4,6 +4,8 @@ import { getBoolSetting } from "./settings";
 import { STAGE_KEYS, CONSULTANT_SPECIALTIES } from "./constants";
 import { callProvider, extractJson } from "./ai/adapters";
 import { consultantSpecialtiesForThemes } from "./qa-access";
+import { classifyImmigrationInquiry } from "./immigration-inquiry";
+import { consultantMatchNotificationTitle } from "./goal-conversation";
 
 // Consultant matching engine: deterministic scoring over specialty fit,
 // experience, and past cases handled, optionally re-ranked by an AI model,
@@ -288,11 +290,12 @@ export async function autoAssignConsultant(caseId: string): Promise<boolean> {
       assignedById: "auto",
     },
   });
+  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
   await db.notification.create({
     data: {
       userId: c.userId,
       kind: "assignment",
-      title: "We found a consultant who fits your case",
+      title: consultantMatchNotificationTitle({ inquiryMode: inquiry.mode, query: `${c.situation} ${c.goal}` }),
       body: reason.summary,
       link: "/app/consultants",
     },

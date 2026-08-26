@@ -119,14 +119,18 @@ export async function addCaseCommentAction(_prev: ActionState, formData: FormDat
 
   // Notify the people who can see it.
   const { formatCaseNumber } = await import("@/lib/case-number");
+  const { classifyImmigrationInquiry } = await import("@/lib/immigration-inquiry");
+  const { commentNotificationTitle } = await import("@/lib/goal-conversation");
   const ref = formatCaseNumber(c.number);
+  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const discussionInput = { inquiryMode: inquiry.mode, query: `${c.situation} ${c.goal}` };
   if (visibility !== "private") {
     if (authorRole !== "customer" && c.userId && visibility === "all") {
       await db.notification.create({
         data: {
           userId: c.userId,
           kind: "info",
-          title: `New comment on your case ${ref}`,
+          title: commentNotificationTitle(ref, discussionInput, "customer"),
           body: body.slice(0, 120),
           link: `/app/cases/${caseId}`,
         },
@@ -141,7 +145,7 @@ export async function addCaseCommentAction(_prev: ActionState, formData: FormDat
           data: {
             userId: assignment.consultantId,
             kind: "info",
-            title: `Client commented on case ${ref}`,
+            title: commentNotificationTitle(ref, discussionInput, "consultant"),
             body: body.slice(0, 120),
             link: `/consultant/clients/${assignment.id}/cases/${caseId}`,
           },
