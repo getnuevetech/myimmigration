@@ -1823,6 +1823,7 @@ const rfeIntake = resolveIntakeChrome(rfeGuideInput);
 const unlabeledIntake = resolveIntakeChrome();
 assert(openIntake.pageTitle === "Start a new situation", "open-options intake title must not be Start a new case");
 assert(/receipt is not required/.test(openIntake.prefillBanner), "open-options prefill must not require a receipt");
+assert(openIntake.submitLabel === "Analyze my situation →", "open-options intake submit must not say Analyze my case");
 assert(openIntake.listCta === "New situation →", "open-options dashboard CTA must not say New case");
 assert(openIntake.firstCta === "Start your first situation", "open-options empty dashboard must not say Start your first case");
 assert(openIntake.startLabel === "Start a situation", "open-options list start must not say Start a case");
@@ -1841,6 +1842,7 @@ assert(openIntake.guideNewCaseLabel === "Yes — start this as a new situation",
 assert(/receipt is not required/.test(openIntake.guideNewCaseMessage), "open-options guide handoff must not require a receipt");
 assert(/Open your situation/.test(openIntake.guideOpenStep), "open-options guide must not say Open your case");
 assert(rfeIntake.pageTitle === "Start a new case", "filed RFE intake title stays Start a new case");
+assert(rfeIntake.submitLabel === "Analyze my case →", "filed RFE intake submit stays Analyze my case");
 assert(rfeIntake.listCta === "New case →", "filed RFE dashboard CTA stays New case");
 assert(rfeIntake.startLabel === "Start a case", "filed RFE list start stays Start a case");
 assert(resolveCasesListCopy(rfeGuideInput).startLabel === "Start a case", "filed RFE cases list stays Start a case");
@@ -1854,6 +1856,7 @@ assert(!/Start a case review/.test(openIntake.pageTitle + openIntake.listCta), "
 const newCaseSrc = readFileSync(join(process.cwd(), "src/app/app/cases/new/page.tsx"), "utf8");
 assert(newCaseSrc.includes("resolveIntakeChrome"), "new-case page must use goal-driven intake chrome");
 assert(!newCaseSrc.includes("Start a new case"), "new-case page must not hardcode Start a new case");
+assert(!newCaseSrc.includes("Analyze my situation"), "new-case page must not hardcode Analyze my situation");
 const dashboardSrc = readFileSync(join(process.cwd(), "src/app/app/page.tsx"), "utf8");
 assert(dashboardSrc.includes("resolveIntakeChrome") && dashboardSrc.includes("listCta"), "dashboard must use goal-driven new-situation CTA");
 assert(!dashboardSrc.includes("New case →"), "dashboard must not hardcode New case");

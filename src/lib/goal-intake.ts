@@ -6,6 +6,7 @@ export type IntakeChrome = {
   pageTitle: string;
   pageSubtitle: string;
   prefillBanner: string;
+  submitLabel: string;
   listCta: string;
   firstCta: string;
   startLabel: string;
@@ -32,6 +33,7 @@ export function resolveIntakeChrome(input: IntakeMatchInput = {}): IntakeChrome 
       pageTitle: "Start a new case",
       pageSubtitle: "Tell us what is going on with this USCIS case, letter, or notice. We'll map the next official steps.",
       prefillBanner: "We carried over what you told the guide — review it, add anything missing, and confirm to open this as a new case.",
+      submitLabel: "Analyze my case →",
       listCta: "New case →",
       firstCta: "Start your first case",
       startLabel: "Start a case",
@@ -60,6 +62,7 @@ export function resolveIntakeChrome(input: IntakeMatchInput = {}): IntakeChrome 
     pageTitle: "Start a new situation",
     pageSubtitle: "Tell us what is going on — a life situation with no filing yet, or a USCIS letter if you already have one. We'll map options and next steps.",
     prefillBanner: "We carried over what you told the guide — review it, add anything missing, and confirm to open this as a new situation. A USCIS receipt is not required.",
+    submitLabel: "Analyze my situation →",
     listCta: "New situation →",
     firstCta: "Start your first situation",
     startLabel: "Start a situation",

@@ -32,7 +32,7 @@ function NewCaseForm() {
           <Field label="What do you want to achieve?" hint="Your goal shapes the options and plan we build.">
             <textarea name="goal" rows={3} className={inputClass} placeholder="Show me what options I have and what I can do next." />
           </Field>
-          <SubmitButton className="w-full py-3">Analyze my situation →</SubmitButton>
+          <SubmitButton className="w-full py-3">{intake.submitLabel}</SubmitButton>
         </div>
       </ActionForm>
     </div>
