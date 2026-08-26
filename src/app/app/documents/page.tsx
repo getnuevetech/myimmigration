@@ -17,6 +17,7 @@ import {
   rankMatchingDocuments,
   resolveDocumentCatalogEntitlement,
 } from "@/lib/goal-documents";
+import { resolveIntakeChrome } from "@/lib/goal-intake";
 
 export const metadata = { title: "Document vault" };
 
@@ -74,6 +75,12 @@ export default async function DocumentsPage({
   const inquiry = scopedCase
     ? classifyImmigrationInquiry({ situation: scopedCase.situation, goal: scopedCase.goal })
     : null;
+  const intake = resolveIntakeChrome({
+    themes: inquiry?.themes,
+    inquiryMode: inquiry?.mode,
+    query: `${scopedCase?.situation ?? ""} ${scopedCase?.goal ?? ""}`,
+    noticeTypes: (scopedCase?.notices ?? []).map((notice) => notice.noticeType),
+  });
   const ranked = inquiry
     ? rankMatchingDocuments({
         themes: inquiry.themes,
@@ -96,7 +103,7 @@ export default async function DocumentsPage({
   return (
     <div>
       <PageHeader
-        title="Documents matched to your case"
+        title={intake.documentsTitle}
         subtitle="Upload the evidence the matching official form actually lists. Family options start with identity and relationship records, not a USCIS receipt you do not have."
       />
 
@@ -164,7 +171,7 @@ export default async function DocumentsPage({
         <EmptyState
           title="Your vault is empty"
           body={bestMatch === "identity" || bestMatch === "relationship"
-            ? "Start with identity documents and relationship evidence for this case. Skip USCIS receipts until you have a filed case."
+            ? intake.documentsEmptyIdentity
             : "Upload the matching evidence listed above. You can delete anything at any time."}
         />
       ) : (

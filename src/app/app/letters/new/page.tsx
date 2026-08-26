@@ -9,6 +9,7 @@ import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
 import { matchInputFromCase } from "@/lib/goal-versions";
+import { resolveIntakeChrome } from "@/lib/goal-intake";
 import { formatCaseNumber } from "@/lib/case-number";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import {
@@ -136,7 +137,7 @@ export default async function NewLetterPage({
               ))}
             </select>
           </label>
-          <p className="mt-1 text-xs text-slate-500">The draft uses the approved posture, next action, and deadlines from this case.</p>
+          <p className="mt-1 text-xs text-slate-500">{resolveIntakeChrome(selected ? matchInputFromCase(selected) : undefined).letterGroundHint}</p>
           <button className="mt-2 text-sm font-medium text-lime-700 hover:text-lime-800">Apply →</button>
         </form>
       )}

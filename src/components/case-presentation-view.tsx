@@ -13,6 +13,7 @@ import { letterCatalogHref, letterComposerHref, letterKindDef, letterKindForStep
 import { documentCatalogHref, documentKindDef, documentStartLabel } from "@/lib/goal-documents";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { resolveVersionChrome, verifiableActionCopy } from "@/lib/goal-versions";
+import { resolveIntakeChrome } from "@/lib/goal-intake";
 
 type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
 
@@ -103,6 +104,7 @@ export function CasePresentationView({
 }) {
   const readinessCopy = resolveReadinessCopy({ inquiryMode: inquiryMode ?? undefined });
   const versionChrome = resolveVersionChrome({ inquiryMode: inquiryMode ?? undefined });
+  const intake = resolveIntakeChrome({ inquiryMode: inquiryMode ?? undefined });
   const issueById = new Map(issues.map((issue) => [issue.id, issue]));
   const stepByAction = new Map(pathSteps.map((step) => [step.actionKey.toUpperCase(), step]));
   const visibleFindings = fullAccess ? presentation.findings : presentation.findings.slice(0, 1);
@@ -174,7 +176,7 @@ export function CasePresentationView({
         </div>
         {presentation.hero.professional_review_recommended && !consultantCopy && (
           <p className="mt-3 rounded-xl border border-lime-300 bg-white px-4 py-3 text-sm text-lime-900">
-            <span className="font-semibold">Professional review recommended.</span> A licensed professional should look at this case
+            <span className="font-semibold">Professional review recommended.</span> {intake.professionalReview}
             {interactive && (
               <>
                 {" "}
@@ -236,7 +238,7 @@ export function CasePresentationView({
           <div className="mt-3 rounded-xl border border-lime-200 bg-white px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Matching USCIS form</p>
             <p className="mt-1 text-sm text-slate-700">
-              Official material for this case points to Form {matchingFormNumber} first
+              {intake.officialMaterialLead} Form {matchingFormNumber} first
               {matchingFormNumber !== "I-485" ? ", not Form I-485." : "."}
             </p>
             {canStartForm && matchingFormId ? (
@@ -259,7 +261,7 @@ export function CasePresentationView({
           <div className="mt-3 rounded-xl border border-lime-200 bg-white px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Matching USCIS letter</p>
             <p className="mt-1 text-sm text-slate-700">
-              Official material for this case points to {letterKindDef(matchingLetterKind)?.title ?? "a matching letter"} first
+              {intake.officialMaterialLead} {letterKindDef(matchingLetterKind)?.title ?? "a matching letter"} first
               {matchingLetterKind !== "rfe_response" ? ", not an RFE response." : "."}
             </p>
             <a
@@ -274,7 +276,7 @@ export function CasePresentationView({
           <div className="mt-3 rounded-xl border border-lime-200 bg-white px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Matching evidence</p>
             <p className="mt-1 text-sm text-slate-700">
-              Official material for this case points to {documentKindDef(matchingDocumentKind)?.name ?? "matching documents"} first
+              {intake.officialMaterialLead} {documentKindDef(matchingDocumentKind)?.name ?? "matching documents"} first
               {documentKindDef(matchingDocumentKind)?.isFiledCase ? "." : ", not a USCIS receipt."}
             </p>
             <a

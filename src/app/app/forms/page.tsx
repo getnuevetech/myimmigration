@@ -11,6 +11,7 @@ import {
   rankMatchingForms,
   resolveFormCatalogEntitlement,
 } from "@/lib/goal-forms";
+import { resolveIntakeChrome } from "@/lib/goal-intake";
 
 export const metadata = { title: "USCIS forms" };
 
@@ -52,6 +53,11 @@ export default async function FormsPage({
   const inquiry = scopedCase
     ? classifyImmigrationInquiry({ situation: scopedCase.situation, goal: scopedCase.goal })
     : null;
+  const intake = resolveIntakeChrome({
+    themes: inquiry?.themes,
+    inquiryMode: inquiry?.mode,
+    query: `${scopedCase?.situation ?? ""} ${scopedCase?.goal ?? ""}`,
+  });
   const ranked = inquiry
     ? rankMatchingForms({
         themes: inquiry.themes,
@@ -72,7 +78,7 @@ export default async function FormsPage({
     <div>
       <PageHeader
         title="USCIS forms, minus the headache"
-        subtitle="Answer simple questions one at a time — like a quiz — and we assemble the real form for you. Matching forms come from the official material on your latest case, not a generic I-485 default."
+        subtitle={intake.formsSubtitle}
       />
 
       {entitlement.showUpgradeCta && (

@@ -4,6 +4,7 @@ import { documentCatalogHref, documentStartLabel, matchingDocumentKind } from ".
 import { matchingLetterKind } from "./goal-letters";
 import { isFiledCaseSurface, type FiledSurfaceInput } from "./goal-notices";
 import { resolveReadinessCopy } from "./goal-readiness";
+import { resolveIntakeChrome } from "./goal-intake";
 
 export type GuideMatchInput = FiledSurfaceInput & {
   caseId?: string | null;
@@ -189,8 +190,8 @@ export function guideUpgradeCopy(planName: string): string {
 export function guideFallbackCopy(input: GuideMatchInput, question: string): string {
   const tip = guideTipForStep(guideDefaultActionKey(input), { ...input, actionKey: guideDefaultActionKey(input) })
     ?? (input.caseId
-      ? `Open your case and follow the next matching step — a USCIS receipt is not required unless a notice is actually on file.`
-      : "Start by creating a case — describe what happened and your goal, even if you have not filed anything with USCIS, and we'll map options and next steps.");
+      ? resolveIntakeChrome(input).guideOpenStep
+      : resolveIntakeChrome(input).guideFallbackNoCase);
   return `Here's what I can tell you right now: ${tip}${guideStatusHint(question, input)}\n\nIf that doesn't answer your question, the FAQ covers the most common ones, or I can connect you with our customer service team.`;
 }
 

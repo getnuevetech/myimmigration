@@ -15,6 +15,7 @@ import {
   resolveMatchRequestEntitlement,
 } from "@/lib/consultant-match";
 import { CONSULTANT_EMPTY_BODY } from "@/lib/goal-chrome";
+import { resolveIntakeChrome } from "@/lib/goal-intake";
 
 export const metadata = { title: "My consultant" };
 
@@ -28,7 +29,10 @@ export default async function MyConsultantsPage({
   const assignments = await db.consultantAssignment.findMany({
     where: { userId: user.id, status: { not: "revoked" } },
     orderBy: { createdAt: "desc" },
-    include: { consultant: { include: { consultantProfile: true } } },
+    include: {
+      consultant: { include: { consultantProfile: true } },
+      case: { select: { situation: true, goal: true } },
+    },
   });
   const agreement = await db.contentPage.findFirst({
     where: { kind: "agreement_connection", isPublished: true },
@@ -159,7 +163,12 @@ export default async function MyConsultantsPage({
                   {a.status === "proposed" && (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <p className="text-sm text-slate-600">
-                        By accepting, you authorize this consultant to view your case details and the documents you&apos;ve shared,
+                        By accepting, you authorize this consultant to {resolveIntakeChrome({
+                          inquiryMode: a.case
+                            ? classifyImmigrationInquiry({ situation: a.case.situation, goal: a.case.goal }).mode
+                            : inquiry?.mode,
+                          query: a.case ? `${a.case.situation} ${a.case.goal}` : `${ownedCase?.situation ?? ""} ${ownedCase?.goal ?? ""}`,
+                        }).consultantConsent},
                         under the{" "}
                         {agreement ? (
                           <a href={`/p/${agreement.slug}`} target="_blank" className="font-medium text-lime-600 underline">

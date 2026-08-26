@@ -11,6 +11,7 @@ import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/im
 import { resolveDashboardFiledCopy } from "@/lib/goal-notices";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { matchInputFromCase } from "@/lib/goal-versions";
+import { resolveIntakeChrome } from "@/lib/goal-intake";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -64,13 +65,19 @@ export default async function DashboardPage() {
     query: `${latest?.situation ?? ""} ${latest?.goal ?? ""}`,
     noticeTypes: (latest?.notices ?? []).map((notice) => notice.noticeType),
   });
+  const intake = resolveIntakeChrome({
+    themes: inquiry?.themes,
+    inquiryMode: inquiry?.mode,
+    query: `${latest?.situation ?? ""} ${latest?.goal ?? ""}`,
+    noticeTypes: (latest?.notices ?? []).map((notice) => notice.noticeType),
+  });
 
   return (
     <div>
       <PageHeader
         title={`Hi${user.firstName ? ` ${user.firstName}` : ""}, here's your immigration picture`}
         subtitle={plan ? `You're on the ${plan.name} plan` : undefined}
-        actions={<ButtonLink href="/app/cases/new">New case →</ButtonLink>}
+        actions={<ButtonLink href="/app/cases/new">{intake.listCta}</ButtonLink>}
       />
 
       {latest && (
@@ -123,7 +130,7 @@ export default async function DashboardPage() {
             <EmptyState
               title="No cases yet"
               body="Tell us about your immigration situation — with a USCIS case, a letter, or with no filing yet — and we'll break it into clear options and next steps."
-              action={<ButtonLink href="/app/cases/new">Start your first case</ButtonLink>}
+              action={<ButtonLink href="/app/cases/new">{intake.firstCta}</ButtonLink>}
             />
           ) : (
             <div className="space-y-3">
