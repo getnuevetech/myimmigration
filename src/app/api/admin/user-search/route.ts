@@ -11,7 +11,9 @@ export async function GET(request: Request) {
     (hasAdminArea(user, "admin.tickets") ||
       hasAdminArea(user, "admin.users") ||
       hasAdminArea(user, "admin.consultants") ||
-      hasAdminArea(user, "admin.assignments"));
+      hasAdminArea(user, "admin.assignments") ||
+      hasAdminArea(user, "admin.cases") ||
+      hasAdminArea(user, "admin.ai"));
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";

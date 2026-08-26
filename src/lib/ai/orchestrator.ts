@@ -86,7 +86,12 @@ function fill(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");
 }
 
-async function getRunnableSteps(stageKey: string) {
+export type RunCaseAnalysisOptions = {
+  persistMode?: "live" | "draft";
+  providerIds?: string[];
+};
+
+async function getRunnableSteps(stageKey: string, providerIds?: string[]) {
   const stage = await db.pipelineStage.findUnique({
     where: { key: stageKey },
     include: {
@@ -98,7 +103,31 @@ async function getRunnableSteps(stageKey: string) {
     },
   });
   if (!stage?.isEnabled) return [];
-  return stage.steps.filter((s) => s.provider.isEnabled && s.provider.apiKey.length > 0);
+  const withKeys = stage.steps.filter((s) => s.provider.isEnabled && s.provider.apiKey.length > 0);
+  const selected = (providerIds ?? []).map(String).filter(Boolean);
+  if (selected.length === 0) return withKeys;
+
+  const matched = withKeys.filter((s) => selected.includes(s.providerId));
+  const matchedIds = new Set(matched.map((s) => s.providerId));
+  const missing = selected.filter((id) => !matchedIds.has(id));
+  if (missing.length === 0) return matched;
+
+  const template = stage.steps[0];
+  if (!template) return matched;
+  const extraProviders = await db.aiProvider.findMany({
+    where: { id: { in: missing }, isEnabled: true },
+  });
+  return [
+    ...matched,
+    ...extraProviders
+      .filter((provider) => provider.apiKey.length > 0)
+      .map((provider) => ({
+        ...template,
+        id: `${template.id}:${provider.id}`,
+        providerId: provider.id,
+        provider,
+      })),
+  ];
 }
 
 // Ranked retrieval over the unified authority path (registry + knowledge + match stats).
@@ -137,10 +166,10 @@ const EMPTY_STAGE: StageOutcome = { stepOutputs: [], merged: {}, conflicts: [], 
 export async function runStage(
   stageKey: string,
   vars: Record<string, string>,
-  opts?: { runId?: string; sequentialContext?: boolean; media?: MediaAttachment[]; roles?: string[] },
+  opts?: { runId?: string; sequentialContext?: boolean; media?: MediaAttachment[]; roles?: string[]; providerIds?: string[] },
 ): Promise<StageOutcome> {
   const allowedRoles = opts?.roles ? new Set(opts.roles) : null;
-  const steps = (await getRunnableSteps(stageKey)).filter((step) => !allowedRoles || allowedRoles.has(step.role));
+  const steps = (await getRunnableSteps(stageKey, opts?.providerIds)).filter((step) => !allowedRoles || allowedRoles.has(step.role));
   const stepOutputs: StageOutcome["stepOutputs"] = [];
   let prior = "";
 
@@ -258,21 +287,25 @@ async function getDocumentText(doc: { filePath: string; fileName: string; mimeTy
   return "";
 }
 
-export async function runCaseAnalysis(caseId: string): Promise<void> {
+export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisOptions): Promise<void> {
+  const draft = options?.persistMode === "draft";
+  const providerIds = (options?.providerIds ?? []).map(String).filter(Boolean);
   const c = await db.case.findUnique({
     where: { id: caseId },
     include: { documents: { where: { deletedAt: null } } },
   });
   if (!c) return;
   const previousStatus = c.status === "analyzing" ? "needs_info" : c.status;
-  await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
+  if (!draft) {
+    await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
+  }
   let caseVersionId: string | null = null;
   let caseVersion: Awaited<ReturnType<typeof ensureCaseVersion>> | null = null;
   try {
   let analysisPlanId: string | null = null;
   let parsedPlan: AnalysisPlan | null = null;
   try {
-    caseVersion = await ensureCaseVersion(caseId, "analysis");
+    caseVersion = await ensureCaseVersion(caseId, draft ? "admin_reanalysis" : "analysis");
     caseVersionId = caseVersion.id;
     const analysisPlan = await createCaseAnalysisPlan(caseId, caseVersionId);
     analysisPlanId = analysisPlan?.id ?? null;
@@ -368,7 +401,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
 
   async function stageRun(stageKey: string, vars: Record<string, string>, sequentialContext = false, stageMedia?: MediaAttachment[], roles?: string[]) {
     const run = await db.analysisRun.create({ data: { caseId, stageKey, status: "running" } });
-    const outcome = await runStage(stageKey, vars, { runId: run.id, sequentialContext, media: stageMedia, roles });
+    const outcome = await runStage(stageKey, vars, { runId: run.id, sequentialContext, media: stageMedia, roles, providerIds });
     await db.analysisRun.update({
       where: { id: run.id },
       data: { status: "complete", finishedAt: new Date() },
@@ -576,11 +609,13 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       },
     });
   }
-  await recordSuggestionsForCase(
-    caseId,
-    pathSteps.map((step) => normalizeActionKey(step.action_key)).filter(Boolean),
-    "recommended",
-  );
+  if (!draft) {
+    await recordSuggestionsForCase(
+      caseId,
+      pathSteps.map((step) => normalizeActionKey(step.action_key)).filter(Boolean),
+      "recommended",
+    );
+  }
 
   // Deterministic readiness score (our formula, not an AI's opinion).
   const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
@@ -638,7 +673,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
       conflictsJson: JSON.stringify(displayConflicts),
     },
   });
-  if (needsConsultant) {
+  if (needsConsultant && !draft) {
     const admins = await db.user.findMany({ where: { role: { in: ["super_admin", "admin"] }, status: "active" } });
     for (const admin of admins) {
       await db.notification.create({
@@ -689,7 +724,7 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
     runtimeAdditions.push(questionAdd);
     if (parsedPlan) decisions = analysisRunDecisions(parsedPlan, { openUnknownCount });
   }
-  if (decisions.questionPlanning) {
+  if (decisions.questionPlanning && !draft) {
     await planCaseQuestions(caseId).catch(async (err) => {
       const { logSystem } = await import("../syslog");
       await logSystem("warning", "question_planner", "Could not plan follow-up questions", String(err));
@@ -734,7 +769,9 @@ export async function runCaseAnalysis(caseId: string): Promise<void> {
   }
   } catch (err) {
     if (caseVersionId) await failCaseVersion(caseVersionId);
-    await db.case.update({ where: { id: caseId }, data: { status: previousStatus } }).catch(() => null);
+    if (!draft) {
+      await db.case.update({ where: { id: caseId }, data: { status: previousStatus } }).catch(() => null);
+    }
     throw err;
   }
 }

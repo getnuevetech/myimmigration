@@ -91,6 +91,11 @@ import {
   rankMatchingForms,
   resolveFormCatalogEntitlement,
 } from "../src/lib/goal-forms";
+import {
+  compareCustomerSnapshots,
+  reanalysisVisibleTo,
+} from "../src/lib/admin-reanalysis-compare";
+import type { CustomerFacingSnapshot } from "../src/lib/admin-reanalysis-types";
 import { parseWizardSteps } from "../src/lib/form-wizard-steps";
 import {
   fallbackLetterDraft,
@@ -2282,6 +2287,149 @@ assert(familyForms[0]?.formNumber === "I-130", "goal-driven presentation groundi
 assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven presentation grounding copy must not convert the RFE fixture into open-options");
 assert(requested.autoAssigned === false, "goal-driven presentation grounding copy must not auto-assign consultants");
 
+const emptyReanalysisSnapshot = (overrides: Partial<CustomerFacingSnapshot["case"]> & { posture?: string; finding?: string; step?: string }): CustomerFacingSnapshot => ({
+  capturedAt: "2026-08-26T00:00:00.000Z",
+  case: {
+    status: overrides.status ?? "analyzed",
+    readinessScore: overrides.readinessScore ?? 40,
+    evidenceAvailableScore: overrides.evidenceAvailableScore ?? 40,
+    evidenceProcessedScore: overrides.evidenceProcessedScore ?? 40,
+    actionReadinessScore: overrides.actionReadinessScore ?? 40,
+    conflictsJson: overrides.conflictsJson ?? "[]",
+  },
+  issues: overrides.finding
+    ? [{
+        id: "issue-1",
+        issueType: "other",
+        caseYear: null,
+        title: overrides.finding,
+        description: "",
+        expectedCents: null,
+        receivedCents: null,
+        differenceCents: null,
+        confidence: "medium",
+        priority: "medium",
+        state: "review",
+        nextAction: "REVIEW_ANALYSIS",
+        uscisBasis: "",
+        evidenceJson: "[]",
+        itemKind: "issue",
+        evidenceStatus: "needs_verification",
+        evidenceStrength: "limited",
+        conclusion: "",
+        unclearJson: "[]",
+        explanationsJson: "[]",
+        altAction: "",
+      }]
+    : [],
+  pathSteps: overrides.step
+    ? [{ id: "step-1", sortOrder: 0, title: overrides.step, description: "", actionKey: "REVIEW_ANALYSIS", status: "current" }]
+    : [],
+  actionNodes: [],
+  reconstruction: {
+    summary: "Summary",
+    currentPosition: overrides.posture ?? "RFE notice needs review",
+    timelineJson: "[]",
+    pendingActionsJson: "[]",
+    confidence: "needs_verification",
+  },
+  canonical: {
+    approvedStateJson: JSON.stringify({
+      version: 1,
+      reason: "analysis",
+      pipeline_config_version: "test",
+      evidence_snapshot_hash: "",
+      status: "analyzed",
+      readiness_score: overrides.readinessScore ?? 40,
+      evidence_available_score: 40,
+      evidence_processed_score: 40,
+      action_readiness_score: 40,
+      presentation: {
+        hero: {
+          current_posture: overrides.posture ?? "RFE notice needs review",
+          status: "analyzed",
+          next_best_action: { title: "Upload the USCIS notice", action_key: "UPLOAD_NOTICE" },
+          nearest_deadline: null,
+          evidence_strength: "Limited",
+          professional_review_recommended: false,
+        },
+        what_this_means: { summary: "Summary", unresolved_count: 0, pending_actions: [], unknowns: [], evidence_gate_status: null, conflicts: [] },
+        timeline: [],
+        findings: overrides.finding ? [{ id: "issue-1", title: overrides.finding, group: "issue", state: "review", evidence_status: "needs_verification", evidence_strength: "limited", conclusion: "", next_action: "REVIEW_ANALYSIS" }] : [],
+        deadlines: [],
+        actions: [],
+        evidence: [],
+        professional_review: null,
+      },
+      analysis_plan: null,
+    }),
+    stateJson: "{}",
+    versionId: "v1",
+    evidenceSnapshotHash: "",
+  },
+  presentation: null,
+  presentationIds: [],
+  latestVersion: null,
+});
+const currentReanalysisSnap = emptyReanalysisSnapshot({ finding: "Respond to the RFE", step: "Upload the notice" });
+const proposedReanalysisSnap = emptyReanalysisSnapshot({
+  posture: "RFE response in progress",
+  finding: "Add the missing civil documents",
+  step: "Draft the RFE response",
+  readinessScore: 55,
+});
+const reanalysisDiff = compareCustomerSnapshots(currentReanalysisSnap, proposedReanalysisSnap);
+assert(reanalysisDiff.changed, "admin re-analysis compare must detect a changed staff snapshot");
+assert(reanalysisDiff.posture.current === "RFE notice needs review", "admin re-analysis compare must keep the current RFE posture");
+assert(reanalysisDiff.posture.proposed === "RFE response in progress", "admin re-analysis compare must show the proposed posture");
+assert(reanalysisDiff.findingsAdded.includes("Add the missing civil documents"), "admin re-analysis compare must list added findings");
+assert(!reanalysisVisibleTo({ visibleToCustomer: false, visibleToConsultant: false, status: "completed" }, "customer"), "completed hidden drafts are not customer-visible");
+assert(reanalysisVisibleTo({ visibleToCustomer: true, visibleToConsultant: false, status: "shared" }, "customer"), "shared customer visibility is on after share");
+assert(!reanalysisVisibleTo({ visibleToCustomer: true, visibleToConsultant: true, status: "shared", overriddenAt: "2026-08-26" }, "customer"), "override hides the shared staff preview");
+assert(!reanalysisVisibleTo({ visibleToCustomer: true, visibleToConsultant: false, status: "completed" }, "consultant"), "consultant does not see a customer-only share");
+const v2Plan = readFileSync(join(process.cwd(), "ImmigrationonmeV2.md"), "utf8");
+assert(v2Plan.includes("Mailing packet without filing"), "ImmigrationonmeV2 must plan the mailing-packet track");
+assert(v2Plan.includes("Prompt dual-path"), "ImmigrationonmeV2 must plan the prompt dual-path track");
+assert(v2Plan.includes("Admin case re-analysis"), "ImmigrationonmeV2 must plan the admin re-analysis track");
+assert(v2Plan.includes("Do not start"), "ImmigrationonmeV2 must keep USCIS filing and legal representation parked");
+const adminNavSrc = readFileSync(join(process.cwd(), "src/app/admin/layout.tsx"), "utf8");
+assert(adminNavSrc.includes("/admin/reanalysis"), "admin nav must include the case re-analysis section");
+assert(adminCaseSrc.includes("Re-run analysis"), "admin case page must restore the Re-run analysis CTA");
+assert(adminCaseSrc.includes("startAdminReanalysisFromCaseAction"), "admin Re-run analysis CTA must start the staff draft flow");
+assert(!customerCaseSrc.includes("Re-run analysis"), "customer case page must not show Re-run analysis");
+assert(!customerCaseSrc.includes("reanalyzeCaseAction"), "customer case page must not call reanalyzeCaseAction");
+assert(!customerCaseSrc.includes("startAdminReanalysis"), "customer case page must not start admin re-analysis");
+const consultantCaseViewSrc = readFileSync(join(process.cwd(), "src/app/consultant/clients/[id]/cases/[caseId]/page.tsx"), "utf8");
+assert(!consultantCaseViewSrc.includes("Re-run analysis"), "consultant case page must not show Re-run analysis");
+assert(!consultantCaseViewSrc.includes("reanalyzeCaseAction"), "consultant case page must not call reanalyzeCaseAction");
+const reanalyzeSrc = readFileSync(join(process.cwd(), "src/actions/case.ts"), "utf8");
+const reanalyzeFnSrc = reanalyzeSrc.slice(
+  reanalyzeSrc.indexOf("export async function reanalyzeCaseAction"),
+  reanalyzeSrc.indexOf("export async function clarifyAnswerAction"),
+);
+assert(reanalyzeFnSrc.includes('hasAdminArea(user, "admin.cases")'), "reanalyzeCaseAction must be admin-only");
+assert(!reanalyzeFnSrc.includes("userId !== user.id"), "reanalyzeCaseAction must not stay owner-gated for customers");
+assert(reanalyzeFnSrc.includes("/admin/reanalysis"), "reanalyzeCaseAction must open the admin re-analysis lab");
+const adminReanalysisActionSrc = readFileSync(join(process.cwd(), "src/actions/admin-reanalysis.ts"), "utf8");
+const shareFnSrc = adminReanalysisActionSrc.slice(
+  adminReanalysisActionSrc.indexOf("shareAdminReanalysisAction"),
+  adminReanalysisActionSrc.indexOf("overrideAdminReanalysisAction"),
+);
+assert(!shareFnSrc.includes("overrideCustomerOutputWithSnapshot"), "share must not override the customer output");
+assert(!shareFnSrc.includes("finalizeCaseVersion"), "share must not write canonical approved state");
+assert(adminReanalysisActionSrc.includes("overrideCustomerOutputWithSnapshot"), "override must write the proposed snapshot as the customer output");
+const orchSrc = readFileSync(join(process.cwd(), "src/lib/ai/orchestrator.ts"), "utf8");
+assert(orchSrc.includes('persistMode?: "live" | "draft"'), "analysis pipeline must support a draft persist mode");
+assert(orchSrc.includes("if (needsConsultant && !draft)"), "draft re-analysis must not notify or auto-assign consultants");
+assert(orchSrc.includes("providerIds"), "draft re-analysis must accept selected AI providers");
+assert(presentationStepCta("RERUN_ANALYSIS", "case-1") === null, "path-step CTAs must not restore re-run analysis for customers");
+assert(versionReasonLabel("admin_override", rfeGuideInput) === "Admin replaced the customer output", "filed override version reason is labeled");
+assert(versionReasonLabel("admin_override", familyGuideInput) === "Admin replaced the options output", "open-options override version reason is labeled");
+assert(versionReasonLabel("analysis") === "Full case review", "admin re-analysis must not change unlabeled analysis version labels");
+assert(familyForms[0]?.formNumber === "I-130", "admin re-analysis must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "admin re-analysis must not convert the RFE fixture into open-options");
+assert(requested.autoAssigned === false, "admin re-analysis must not auto-assign consultants");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -2330,3 +2478,4 @@ console.log(`- v4 C27: open ${recordRefLabel(familyGuideInput, 11)}, RFE ${recor
 console.log(`- v4 C28: open ${openClarify.placeholder.includes("receipt is not required") ? "no receipt" : "missing"}, RFE ${rfeClarify.placeholder.includes("receipt numbers") ? "receipts" : "missing"}`);
 console.log(`- v4 C29: empty ${guidePrimaryAction(emptyOpenGuide).label}, hint ${guideStatusHint("receipt status", familyGuideInput).includes("This situation") ? "situation" : "missing"}, RFE ${guidePrimaryAction(emptyRfeGuide).label}`);
 console.log(`- v4 C30: open ${approvedPresentationPhrase(familyGuideInput)}, RFE ${approvedPresentationPhrase(rfeGuideInput)}`);
+console.log(`- admin re-analysis: compare changed=${reanalysisDiff.changed}, share hidden=${!reanalysisVisibleTo({ visibleToCustomer: false, visibleToConsultant: false, status: "completed" }, "customer")}`);

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUser, requireUser } from "@/lib/auth";
+import { getCurrentUser, requireUser, isAdmin, hasAdminArea } from "@/lib/auth";
 import { getOrCreateGuestSession } from "@/lib/guest";
 import { runCaseAnalysis } from "@/lib/ai/orchestrator";
 import { verifyCaseProgress, isVerifiable } from "@/lib/case-progress";
@@ -117,19 +117,10 @@ export async function createCaseAction(_prev: ActionState, formData: FormData): 
 
 export async function reanalyzeCaseAction(caseId: string) {
   const user = await requireUser();
-  const c = await db.case.findUnique({ where: { id: caseId } });
-  if (!c || c.userId !== user.id) return;
-  await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
-  after(async () => {
-    try {
-      await runCaseAnalysis(caseId);
-    } catch (err) {
-      const { logSystem } = await import("@/lib/syslog");
-      await logSystem("error", "analysis", "Background re-analysis failed", String(err));
-      await db.case.update({ where: { id: caseId }, data: { status: "analyzed" } }).catch(() => null);
-    }
-  });
-  revalidatePath(`/app/cases/${caseId}`);
+  if (!isAdmin(user) || !hasAdminArea(user, "admin.cases")) return;
+  const c = await db.case.findUnique({ where: { id: caseId }, select: { id: true } });
+  if (!c) return;
+  redirect(`/admin/reanalysis?caseId=${encodeURIComponent(caseId)}`);
 }
 
 // Clarifying interview: store the Q&A, fold the answer into the case

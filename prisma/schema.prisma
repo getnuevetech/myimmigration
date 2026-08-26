@@ -243,6 +243,7 @@ model User {
   notices             Notice[]
   tickets             Ticket[]
   assignedTickets     Ticket[] @relation("ticketAssignee")
+  adminReanalyses     AdminCaseReanalysis[]
 }
 
 model AdminPermission {
@@ -416,6 +417,7 @@ model Case {
   reconstruction CaseReconstruction?
   unknowns       CaseUnknown[]
   suppressedQuestions SuppressedQuestion[]
+  adminReanalyses AdminCaseReanalysis[]
 }
 
 model CaseQuestionPlan {
@@ -791,6 +793,32 @@ model CasePresentation {
 
   @@index([caseId, createdAt])
   @@index([versionId])
+}
+
+// Staff re-analysis drafts: compare current customer output to a new run
+// without replacing the live approved state until admin explicitly overrides.
+model AdminCaseReanalysis {
+  id                   String    @id @default(cuid())
+  caseId               String
+  adminUserId          String
+  status               String    @default("pending") // pending | running | completed | failed | shared | overridden
+  visibleToCustomer    Boolean   @default(false)
+  visibleToConsultant  Boolean   @default(false)
+  providerIdsJson      String    @default("[]")
+  currentSnapshotJson  String    @default("{}")
+  proposedSnapshotJson String    @default("{}")
+  comparisonJson       String    @default("{}")
+  error                String    @default("")
+  sharedAt             DateTime?
+  overriddenAt         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  case                 Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  admin                User      @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@index([adminUserId, createdAt])
+  @@index([status])
 }
 
 // ---------- Notices, deadlines, letters ----------

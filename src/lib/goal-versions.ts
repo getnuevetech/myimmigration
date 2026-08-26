@@ -24,6 +24,8 @@ export const FILED_VERSION_REASON_LABELS: Record<string, string> = {
   document: "New documents on file",
   clarify: "Answers added to the case",
   reprocess: "Evidence reprocessed",
+  admin_reanalysis: "Admin comparison review",
+  admin_override: "Admin replaced the customer output",
 };
 
 export const OPTIONS_VERSION_REASON_LABELS: Record<string, string> = {
@@ -31,6 +33,8 @@ export const OPTIONS_VERSION_REASON_LABELS: Record<string, string> = {
   document: "New matching documents on file",
   clarify: "Answers added to this situation",
   reprocess: "Evidence reprocessed",
+  admin_reanalysis: "Admin comparison review",
+  admin_override: "Admin replaced the options output",
 };
 
 export const FILED_VERIFIABLE_ACTIONS: Record<string, string> = {
