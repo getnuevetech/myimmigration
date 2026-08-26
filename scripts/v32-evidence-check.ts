@@ -167,6 +167,14 @@ import {
   resolveFallbackPathSteps,
 } from "../src/lib/goal-conversation";
 import {
+  analysisDocumentWalkthrough,
+  analysisTaskLabel,
+  matchingProgressKinds,
+  resolveVersionChrome,
+  usesMatchingEvidenceProgress,
+  verifiableActionCopy,
+} from "../src/lib/goal-versions";
+import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
   conversationNarrative,
@@ -1722,6 +1730,92 @@ assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven conversati
 assert(requested.autoAssigned === false, "goal-driven conversation must not auto-assign consultants");
 assert(!/receipt number detected/i.test(openDiscussion.placeholder + openClosing.completedKeep + openFallbackLine), "conversation copy must not invent a detected receipt number");
 
+const openVersion = resolveVersionChrome(familyGuideInput);
+const rfeVersion = resolveVersionChrome(rfeGuideInput);
+const unlabeledVersion = resolveVersionChrome();
+assert(openVersion.recordHeading === "Approved record", "open-options version card must not say Case record version");
+assert(openVersion.recordListHeading === "Approved record versions", "open-options version list must not say Case record versions");
+assert(openVersion.versionLabel(2) === "Approved record version 2", "open-options canonical label must be Approved record version");
+assert(openVersion.howAnalyzedHeading === "How this situation was analyzed", "open-options analysis plan must not say How this case was analyzed");
+assert(/receipt is not required/.test(openVersion.laterVersions), "open-options later-versions copy must not require a receipt");
+assert(openVersion.closedEyebrow("Aug 26, 2026", "completed").startsWith("Situation closed"), "open-options closed banner is Situation closed");
+assert(openVersion.closedEmpty === "This situation has been closed.", "open-options closed empty must not say This case has been closed");
+assert(openVersion.verifiedDone === "Verified from matching evidence", "open-options verified steps must not say case evidence");
+assert(openVersion.fitsHeading === "How this fits your situation", "open-options notices fit heading must not say your case");
+assert(/receipt is not required/.test(openVersion.emptyEvidenceSummary), "open-options empty evidence must not require a USCIS record");
+assert(openVersion.defaultPosture === OPEN_OPTIONS_POSTURE, "open-options default posture stays Exploring immigration options");
+assert(rfeVersion.recordHeading === "Case record version", "filed RFE version card stays Case record version");
+assert(rfeVersion.versionLabel(2) === "Case record version 2", "filed RFE canonical label stays Case record version");
+assert(rfeVersion.howAnalyzedHeading === "How this case was analyzed", "filed RFE analysis plan stays How this case was analyzed");
+assert(rfeVersion.closedEyebrow("Aug 26, 2026", "completed").startsWith("Case closed"), "filed RFE closed banner stays Case closed");
+assert(rfeVersion.closedEmpty === "This case has been closed.", "filed RFE closed empty stays This case has been closed");
+assert(rfeVersion.verifiedDone === "Verified from case evidence", "filed RFE verified steps stay case evidence");
+assert(rfeVersion.fitsHeading === "How this fits your case", "filed RFE notices fit heading stays your case");
+assert(/USCIS records/.test(rfeVersion.emptyEvidenceSummary), "filed RFE empty evidence still asks for USCIS records");
+assert(rfeVersion.defaultPosture === "Case posture needs verification", "filed RFE default posture stays case verification");
+assert(unlabeledVersion.recordHeading === "Case record version", "unlabeled version chrome must stay filed so A11 labels do not flip");
+assert(versionReasonLabel("analysis") === "Full case review", "unlabeled analysis reason must stay Full case review");
+assert(versionReasonLabel("analysis", familyGuideInput) === "Options review", "open-options analysis reason must be Options review");
+assert(versionReasonLabel("clarify", familyGuideInput) === "Answers added to this situation", "open-options clarify reason must not say the case");
+assert(versionReasonLabel("document", familyGuideInput) === "New matching documents on file", "open-options document reason must name matching documents");
+assert(versionReasonLabel("analysis", rfeGuideInput) === "Full case review", "filed RFE analysis reason stays Full case review");
+assert(versionReasonLabel("clarify", rfeGuideInput) === "Answers added to the case", "filed RFE clarify reason stays Answers added to the case");
+assert(canonicalStateSummary(approvedState, familyGuideInput).versionLabel === "Approved record version 2", "open-options canonical summary must not say Case record version");
+assert(canonicalStateSummary(approvedState, rfeGuideInput).versionLabel === "Case record version 2", "filed RFE canonical summary stays Case record version");
+assert(canonicalStateSummary(approvedState).reasonLabel === "Full case review", "unlabeled canonical reason must stay Full case review");
+const listFromOptionsVersion = caseListSummaryFromView(
+  { status: "analyzed", reconstructionPosition: "STALE reconstruction posture" },
+  approvedView,
+  familyGuideInput,
+);
+assert(caseListVersionLine(listFromOptionsVersion) === "Version 2 · Options review", "open-options lists must not say Full case review");
+assert(caseListVersionLine(listFromCanonical) === "Version 2 · Full case review", "unlabeled lists stay Full case review");
+assert(/receipt is not required/.test(analysisDocumentWalkthrough(0, familyGuideInput)), "open-options empty walkthrough must not require a receipt");
+assert(/matching evidence/.test(analysisDocumentWalkthrough(2, familyGuideInput)), "open-options document walkthrough must name matching evidence");
+assert(!/receipt numbers/.test(analysisDocumentWalkthrough(2, familyGuideInput)), "open-options document walkthrough must not compare receipt numbers");
+assert(/receipt numbers/.test(analysisDocumentWalkthrough(2, rfeGuideInput)), "filed RFE document walkthrough still compares receipt numbers");
+assert(analysisTaskLabel("PRESENT_APPROVED_STATE", familyGuideInput) === "Approved options presentation", "open-options plan must not say Approved case presentation");
+assert(analysisTaskLabel("PRESENT_APPROVED_STATE", rfeGuideInput) === "Approved case presentation", "filed RFE plan stays Approved case presentation");
+assert(analysisTaskLabel("PRIMARY_REASONING", familyGuideInput) === "Situation analysis", "non-presentation tasks stay the shared labels");
+assert(/receipt is not required/.test(verifiableActionCopy("GET_CASE_RECORD", familyGuideInput)), "open-options GET_CASE_RECORD copy must not require a USCIS case record");
+assert(/identity or relationship/.test(verifiableActionCopy("GET_CASE_RECORD", familyGuideInput)), "open-options GET_CASE_RECORD copy must name matching evidence");
+assert(/USCIS case record/.test(verifiableActionCopy("GET_CASE_RECORD", rfeGuideInput)), "filed RFE GET_CASE_RECORD copy stays a USCIS case record");
+assert(/notice is optional/.test(verifiableActionCopy("UPLOAD_NOTICE", familyGuideInput)), "open-options UPLOAD_NOTICE copy must not require a USCIS notice");
+assert(/USCIS notice is extracted/.test(verifiableActionCopy("UPLOAD_NOTICE", rfeGuideInput)), "filed RFE UPLOAD_NOTICE copy stays notice extraction");
+assert(/my.uscis.gov record is not required/.test(verifiableActionCopy("GET_ACCOUNT_RECORD", familyGuideInput)), "open-options GET_ACCOUNT_RECORD copy must not require an online account record");
+assert(usesMatchingEvidenceProgress(familyGuideInput) === true, "open-options progress must count matching document kinds");
+assert(usesMatchingEvidenceProgress(rfeGuideInput) === false, "filed RFE progress must not count matching kinds as a case record");
+assert(usesMatchingEvidenceProgress() === false, "unlabeled progress stays filed-case evidence");
+assert(matchingProgressKinds().includes("identity"), "matching progress kinds include identity");
+assert(matchingProgressKinds().includes("relationship"), "matching progress kinds include relationship");
+assert(!matchingProgressKinds().includes("case_record"), "matching progress kinds must not include a USCIS case record");
+assert(!matchingProgressKinds().includes("receipt"), "matching progress kinds must not include a receipt");
+assert(!matchingProgressKinds().includes("notice"), "matching progress kinds must not include a USCIS notice");
+const versionSrc = readFileSync(join(process.cwd(), "src/lib/goal-versions.ts"), "utf8");
+assert(versionSrc.includes("OPTIONS_VERSION_REASON_LABELS") && versionSrc.includes("OPTIONS_VERIFIABLE_ACTIONS"), "version chrome must keep a complete options table");
+assert(versionSrc.includes("versionSurfaceIsFiled"), "version chrome must default unlabeled calls to the filed path");
+const analysisViewSrc = readFileSync(join(process.cwd(), "src/components/case-analysis-view.tsx"), "utf8");
+assert(analysisViewSrc.includes("resolveVersionChrome") && analysisViewSrc.includes("verifiableActionCopy"), "analysis view must use goal-driven version chrome");
+assert(!analysisViewSrc.includes("How we analyzed this case"), "analysis view must not hardcode How we analyzed this case");
+assert(!analysisViewSrc.includes("Verified from case evidence"), "analysis view must not hardcode Verified from case evidence");
+const versionCardSrc = readFileSync(join(process.cwd(), "src/components/case-version-card.tsx"), "utf8");
+assert(versionCardSrc.includes("resolveVersionChrome"), "version card must use goal-driven version chrome");
+assert(!versionCardSrc.includes("Case record version"), "version card must not hardcode Case record version");
+const planCardSrc = readFileSync(join(process.cwd(), "src/components/case-analysis-plan-card.tsx"), "utf8");
+assert(planCardSrc.includes("resolveVersionChrome") && planCardSrc.includes("analysisTaskLabel"), "analysis plan card must use goal-driven task labels");
+assert(!planCardSrc.includes("How this case was analyzed"), "analysis plan card must not hardcode How this case was analyzed");
+const progressSrc = readFileSync(join(process.cwd(), "src/lib/case-progress.ts"), "utf8");
+assert(progressSrc.includes("matchingProgressKinds") && progressSrc.includes("usesMatchingEvidenceProgress"), "progress verification must count matching kinds on open-options");
+assert(progressSrc.includes("FILED_VERIFIABLE_ACTIONS"), "progress key table stays the filed keys so verification still runs");
+const presentationViewSrc = readFileSync(join(process.cwd(), "src/components/case-presentation-view.tsx"), "utf8");
+assert(presentationViewSrc.includes("verifiableActionCopy") && presentationViewSrc.includes("resolveVersionChrome"), "presentation path steps must use goal-driven progress copy");
+const noticesSrc = readFileSync(join(process.cwd(), "src/app/app/notices/page.tsx"), "utf8");
+assert(noticesSrc.includes("resolveVersionChrome") && noticesSrc.includes("fitsHeading"), "notices page must use dual-path fit headings");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven versions must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven versions must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven versions must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven versions must not auto-assign consultants");
+assert(!/receipt number detected/i.test(openVersion.emptyEvidenceSummary + verifiableActionCopy("GET_CASE_RECORD", familyGuideInput)), "version copy must not invent a detected receipt number");
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
@@ -1760,3 +1854,4 @@ console.log(`- v4 C16: options ${optionsReadinessCopy.overallLabel} expected=${o
 console.log(`- v4 C17: open tip ${openRecordTip.includes("I-130") ? "I-130" : "missing"}, chase receipt=${shouldChaseNoticeInGuide("receipt status", familyGuideInput)}, RFE chrome ${guideWidgetChrome(rfeGuideInput).title}`);
 console.log(`- v4 C18: nav docs-before-notices=${navHrefsBefore(openNav, "/app/notices").includes("/app/documents")}, options report=${openChrome.reportTitle}, RFE notice=${rfeChrome.evidenceLabel}`);
 console.log(`- v4 C19: discussion ${openDiscussion.heading}, closing ${openClosing.notificationTitle("IMM-1").split(" ")[0]}, fallback ${openFallbackSteps[0]?.action_key}`);
+console.log(`- v4 C20: open ${openVersion.recordHeading}/${versionReasonLabel("analysis", familyGuideInput)}, RFE ${rfeVersion.recordHeading}/${versionReasonLabel("analysis", rfeGuideInput)}`);

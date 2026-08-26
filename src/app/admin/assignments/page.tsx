@@ -7,6 +7,7 @@ import { CONSULTANT_SPECIALTIES } from "@/lib/constants";
 import { getBoolSetting } from "@/lib/settings";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
+import { matchInputFromCase } from "@/lib/goal-versions";
 
 export const metadata = { title: "Assignments" };
 
@@ -25,7 +26,7 @@ export default async function AdminAssignmentsPage({
       include: {
         user: { select: { firstName: true, lastName: true, email: true } },
         consultant: { select: { firstName: true, lastName: true, email: true } },
-        case: { select: { id: true, title: true, status: true, actionReadinessScore: true } },
+        case: { select: { id: true, title: true, status: true, actionReadinessScore: true, situation: true, goal: true } },
       },
     }),
     db.user.findMany({ where: { role: "user", status: "active" }, orderBy: { createdAt: "desc" }, select: { id: true, firstName: true, lastName: true, email: true } }),
@@ -83,6 +84,7 @@ export default async function AdminAssignmentsPage({
                     actionReadinessScore: c.actionReadinessScore,
                   },
                   flaggedViews.get(c.id),
+                  matchInputFromCase(c),
                 );
                 return (
                 <li key={c.id} className={c.id === highlightCase ? "rounded bg-lime-50 px-2 py-1" : ""}>
@@ -123,6 +125,7 @@ export default async function AdminAssignmentsPage({
                   actionReadinessScore: a.case.actionReadinessScore,
                 },
                 assignmentViews.get(a.case.id),
+                matchInputFromCase(a.case),
               )
             : null;
           return (

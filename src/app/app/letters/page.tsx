@@ -6,6 +6,7 @@ import { FEATURE_KEYS } from "@/lib/constants";
 import { PageHeader, Card, CardBody, Badge, EmptyState, ButtonLink } from "@/components/ui";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView, caseListActionLine } from "@/lib/case-presentation-list";
+import { matchInputFromCase } from "@/lib/goal-versions";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import {
   LETTER_CATALOG,
@@ -38,7 +39,7 @@ export default async function LettersPage({
     db.responseLetter.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
-      include: { case: { select: { id: true, status: true, actionReadinessScore: true, title: true } } },
+      include: { case: { select: { id: true, status: true, actionReadinessScore: true, title: true, situation: true, goal: true } } },
     }),
     caseId
       ? db.case.findFirst({
@@ -131,6 +132,7 @@ export default async function LettersPage({
                       actionReadinessScore: l.case.actionReadinessScore,
                     },
                     views.get(l.case.id),
+                    matchInputFromCase(l.case),
                   )
                 : null;
               return (

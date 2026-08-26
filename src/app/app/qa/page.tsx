@@ -6,6 +6,7 @@ import { QaChat } from "@/components/qa-chat";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
+import { matchInputFromCase } from "@/lib/goal-versions";
 import { formatCaseNumber } from "@/lib/case-number";
 import { loadQaAccess } from "@/lib/qa-quota";
 import { toQaChatAccess } from "@/lib/qa-access";
@@ -23,7 +24,7 @@ export default async function QaPage({
   const cases = await db.case.findMany({
     where: { userId: user.id, status: { notIn: ["closed"] } },
     orderBy: { updatedAt: "desc" },
-    select: { id: true, title: true, number: true, status: true, actionReadinessScore: true },
+    select: { id: true, title: true, number: true, status: true, actionReadinessScore: true, situation: true, goal: true },
     take: 50,
   });
   const linkedCase = caseId ? cases.find((c) => c.id === caseId) ?? null : null;
@@ -35,6 +36,7 @@ export default async function QaPage({
           actionReadinessScore: linkedCase.actionReadinessScore,
         },
         views.get(linkedCase.id),
+        matchInputFromCase(linkedCase),
       )
     : null;
   const threads = await db.qaThread.findMany({

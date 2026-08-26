@@ -9,6 +9,7 @@ import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CaseListSummaryDetails } from "@/components/case-list-card";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
+import { matchInputFromCase } from "@/lib/goal-versions";
 
 export default async function ClientWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -56,6 +57,7 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
                     reconstructionPosition: c.reconstruction?.currentPosition,
                   },
                   views.get(c.id),
+                  matchInputFromCase(c),
                 );
                 return (
                 <Card key={c.id}>

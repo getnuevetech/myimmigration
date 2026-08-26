@@ -5,10 +5,10 @@ import { PageHeader, Card, CardBody, Badge } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
 import { CaseAnalysisView } from "@/components/case-analysis-view";
 import { CaseComments } from "@/components/case-comments";
-import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { resolveReportChrome } from "@/lib/goal-chrome";
 import { listCaseVersions } from "@/lib/case-versioning";
 import { parseCanonicalApprovedState, versionReasonLabel } from "@/lib/canonical-case-state";
+import { matchInputFromCase, resolveVersionChrome } from "@/lib/goal-versions";
 
 // Admins see EXACTLY what the customer sees, plus the case discussion (with
 // internal comments) and the technical pipeline diagnostics collapsed below.
@@ -38,10 +38,9 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
   }).catch(() => null);
   const approved = parseCanonicalApprovedState(canonical?.approvedStateJson);
 
-  const reportChrome = resolveReportChrome({
-    inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
-    query: `${c.situation} ${c.goal}`,
-  });
+  const versionMatch = matchInputFromCase(c);
+  const reportChrome = resolveReportChrome(versionMatch);
+  const versionChrome = resolveVersionChrome(versionMatch);
 
   return (
     <div>
@@ -80,10 +79,10 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
               <div className="mt-4 space-y-3">
                 {(versions.length > 0 || approved) && (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                    <p className="font-semibold text-slate-800">Approved case record versions</p>
+                    <p className="font-semibold text-slate-800">{versionChrome.recordListHeading}</p>
                     {approved && (
                       <p className="mt-1 text-xs text-slate-500">
-                        v{approved.version} · {versionReasonLabel(approved.reason)} · posture {approved.presentation?.hero.current_posture || "not stored"}
+                        v{approved.version} · {versionReasonLabel(approved.reason, versionMatch)} · posture {approved.presentation?.hero.current_posture || "not stored"}
                         {canonical?.evidenceSnapshotHash ? ` · snapshot ${canonical.evidenceSnapshotHash.slice(0, 12)}` : ""}
                       </p>
                     )}
@@ -91,7 +90,7 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
                       <ol className="mt-2 space-y-1 text-xs text-slate-500">
                         {versions.map((item) => (
                           <li key={item.id}>
-                            v{item.version} · {versionReasonLabel(item.reason)} · {item.status} · {item.createdAt.toLocaleString("en-US")}
+                            v{item.version} · {versionReasonLabel(item.reason, versionMatch)} · {item.status} · {item.createdAt.toLocaleString("en-US")}
                             {item.evidenceSnapshot?.hash ? ` · ${item.evidenceSnapshot.hash.slice(0, 12)}` : ""}
                           </li>
                         ))}

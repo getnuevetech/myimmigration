@@ -11,6 +11,7 @@ import { CaseListSummaryDetails } from "@/components/case-list-card";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { resolveReportChrome } from "@/lib/goal-chrome";
+import { matchInputFromCase } from "@/lib/goal-versions";
 
 export const metadata = { title: "Consultant dashboard" };
 
@@ -147,6 +148,7 @@ export default async function ConsultantDashboard({
                     actionReadinessScore: kase.actionReadinessScore,
                   },
                   view,
+                  matchInputFromCase(kase),
                 )
               : null;
             const routingReason = kase && kase.issues.length > 0

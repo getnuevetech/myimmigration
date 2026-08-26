@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card, CardBody, StateMark, ProgressBar, Badge, EvidenceStatusBadge, EvidenceStrengthLine, ItemKindBadge } from "@/components/ui";
-import { isVerifiable, VERIFIABLE_ACTIONS } from "@/lib/case-progress";
+import { isVerifiable } from "@/lib/case-progress";
 import { completePathStepAction, checkCaseProgressAction } from "@/actions/case";
 import { startFormAction } from "@/actions/forms";
 import { InlineUpload } from "@/components/inline-upload";
@@ -12,6 +12,7 @@ import { formCatalogHref, formNumberForStep, formStartLabel } from "@/lib/goal-f
 import { letterCatalogHref, letterComposerHref, letterKindDef, letterKindForStep, letterStartLabel } from "@/lib/goal-letters";
 import { documentCatalogHref, documentKindDef, documentStartLabel } from "@/lib/goal-documents";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
+import { resolveVersionChrome, verifiableActionCopy } from "@/lib/goal-versions";
 
 type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
 
@@ -101,6 +102,7 @@ export function CasePresentationView({
   suggestionAccess?: SuggestionChatAccess;
 }) {
   const readinessCopy = resolveReadinessCopy({ inquiryMode: inquiryMode ?? undefined });
+  const versionChrome = resolveVersionChrome({ inquiryMode: inquiryMode ?? undefined });
   const issueById = new Map(issues.map((issue) => [issue.id, issue]));
   const stepByAction = new Map(pathSteps.map((step) => [step.actionKey.toUpperCase(), step]));
   const visibleFindings = fullAccess ? presentation.findings : presentation.findings.slice(0, 1);
@@ -542,11 +544,11 @@ export function CasePresentationView({
                         {step?.description && <p className="text-sm text-slate-500">{step.description}</p>}
                         {verifiable && status.tone !== "done" && (
                           <p className="mt-1 text-xs font-medium text-lime-600">
-                            ◐ Verified automatically — {VERIFIABLE_ACTIONS[action.action_key.toUpperCase()].toLowerCase()}
+                            ◐ Verified automatically — {verifiableActionCopy(action.action_key, { inquiryMode }).toLowerCase()}
                           </p>
                         )}
                         {verifiable && status.tone === "done" && (
-                          <p className="mt-1 text-xs font-medium text-emerald-600">✓ Verified from case evidence</p>
+                          <p className="mt-1 text-xs font-medium text-emerald-600">✓ {versionChrome.verifiedDone}</p>
                         )}
                         {interactive && status.tone !== "done" && status.tone !== "muted" && (
                           <div className="mt-2 flex flex-wrap gap-2">

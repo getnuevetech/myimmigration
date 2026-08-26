@@ -8,6 +8,7 @@ import { NoticeUpload } from "@/components/notice-upload";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
 import { formatCaseNumber } from "@/lib/case-number";
+import { matchInputFromCase, resolveVersionChrome } from "@/lib/goal-versions";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { noticeUploadAllowed, resolveNoticeEntitlement, resolveNoticePageCopy } from "@/lib/goal-notices";
 
@@ -39,7 +40,7 @@ export default async function NoticesPage({
     db.notice.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
-      include: { case: { select: { id: true, title: true, status: true, actionReadinessScore: true } } },
+      include: { case: { select: { id: true, title: true, status: true, actionReadinessScore: true, situation: true, goal: true } } },
     }),
     db.case.findMany({
       where: { userId: user.id, status: { notIn: ["closed"] } },
@@ -136,6 +137,7 @@ export default async function NoticesPage({
                     actionReadinessScore: n.case.actionReadinessScore,
                   },
                   views.get(n.case.id),
+                  matchInputFromCase(n.case),
                 )
               : null;
             return (
@@ -155,7 +157,7 @@ export default async function NoticesPage({
                   </div>
                   {summary && (
                     <div className="mt-3 rounded-xl border border-lime-200 bg-lime-50 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-lime-700">How this fits your case</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-lime-700">{resolveVersionChrome(matchInputFromCase(n.case)).fitsHeading}</p>
                       <p className="mt-1 text-sm font-medium text-lime-950">{n.case?.title}: {summary.posture}</p>
                       <p className="mt-0.5 text-sm text-lime-900">{caseListActionLine(summary)}</p>
                       <p className="mt-0.5 text-xs text-lime-800">{caseListEvidenceLine(summary)}</p>
