@@ -7,6 +7,7 @@ import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
 import { matchInputFromCase } from "@/lib/goal-versions";
+import { letterReviewGroundingCopy } from "@/lib/case-presentation-contract";
 
 export default async function LetterPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -32,7 +33,7 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
     <div className="max-w-3xl">
       <PageHeader
         title="Edit your letter"
-        subtitle="Review every word against the approved case presentation. You are the sender — mail it when you're confident it's right."
+        subtitle={letterReviewGroundingCopy(letter.case ? matchInputFromCase(letter.case) : undefined)}
       />
       {summary && <CasePresentationContextCard heading="This letter is grounded in" summary={summary} />}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

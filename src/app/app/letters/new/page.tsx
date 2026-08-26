@@ -10,7 +10,7 @@ import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
 import { matchInputFromCase } from "@/lib/goal-versions";
 import { resolveIntakeChrome } from "@/lib/goal-intake";
-import { approvedPresentationHeading } from "@/lib/case-presentation-contract";
+import { approvedPresentationHeading, letterComposerGroundingCopy } from "@/lib/case-presentation-contract";
 import { formatCaseNumber } from "@/lib/case-number";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import {
@@ -122,7 +122,7 @@ export default async function NewLetterPage({
     <div className="max-w-2xl">
       <PageHeader
         title={letterStartLabel(defaultKind)}
-        subtitle="We'll produce a professional draft from the approved case presentation that you can edit before mailing it yourself. Cover letters do not invent a receipt number."
+        subtitle={letterComposerGroundingCopy(selected ? matchInputFromCase(selected) : undefined)}
       />
       {cases.length > 0 && (
         <form className="mb-4" action="/app/letters/new" method="get">

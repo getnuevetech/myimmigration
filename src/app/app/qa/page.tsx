@@ -13,6 +13,7 @@ import { toQaChatAccess } from "@/lib/qa-access";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { qaGroundSelectLabel } from "@/lib/goal-conversation";
 import { isFiledCaseSurface } from "@/lib/goal-notices";
+import { qaGroundedConversationCopy } from "@/lib/case-presentation-contract";
 
 export const metadata = { title: "Ask the assistant" };
 
@@ -60,7 +61,7 @@ export default async function QaPage({
         title={linkedCase ? `Ask about ${linkedCase.title}` : "Ask the assistant"}
         subtitle={
           linkedCase
-            ? "This conversation is grounded in the approved case presentation and compiled evidence."
+            ? qaGroundedConversationCopy(matchInputFromCase(linkedCase))
             : "Plain-English answers. Your plan controls how many general questions you can ask and how personalized the follow-ups stay."
         }
       />
