@@ -1,4 +1,5 @@
 import type { PresentationContract } from "./case-presentation-contract";
+import { presentationOrganizingSummary, withPresentationSurfaceCopy } from "./case-presentation-contract";
 import { formatPresentationDate, presentationActionStatus } from "./case-presentation-ui";
 import { thisSurfacePhrase, type FiledSurfaceInput } from "./goal-notices";
 
@@ -9,23 +10,24 @@ export type PresentationBrief = {
 
 export type NoticeNextStep = { title: string; description: string };
 
-export function buildPresentationBrief(contract: PresentationContract): PresentationBrief {
-  const nextAction = contract.hero.next_best_action
-    ? `${contract.hero.next_best_action.title} (${contract.hero.next_best_action.action_key})`
+export function buildPresentationBrief(contract: PresentationContract, input: FiledSurfaceInput = {}): PresentationBrief {
+  const presented = withPresentationSurfaceCopy(contract, input);
+  const nextAction = presented.hero.next_best_action
+    ? `${presented.hero.next_best_action.title} (${presented.hero.next_best_action.action_key})`
     : "No action is ready yet";
-  const deadline = contract.hero.nearest_deadline
-    ? `${contract.hero.nearest_deadline.title} (${formatPresentationDate(contract.hero.nearest_deadline.due_date)})`
+  const deadline = presented.hero.nearest_deadline
+    ? `${presented.hero.nearest_deadline.title} (${formatPresentationDate(presented.hero.nearest_deadline.due_date)})`
     : "No open deadline is on file";
   const lines = [
     "Where you stand:",
-    `- Current posture: ${contract.hero.current_posture}`,
+    `- Current posture: ${presented.hero.current_posture}`,
     `- Next best action: ${nextAction}`,
     `- Nearest deadline: ${deadline}`,
-    `- Evidence strength: ${contract.hero.evidence_strength}`,
-    `- Professional review recommended: ${contract.hero.professional_review_recommended ? "yes" : "no"}`,
+    `- Evidence strength: ${presented.hero.evidence_strength}`,
+    `- Professional review recommended: ${presented.hero.professional_review_recommended ? "yes" : "no"}`,
     "",
     "What this means:",
-    contract.what_this_means.summary || "The case is still being organized.",
+    presented.what_this_means.summary || presentationOrganizingSummary(input),
     `- Unresolved items: ${contract.what_this_means.unresolved_count}`,
     ...(contract.what_this_means.pending_actions.length
       ? ["Pending actions:", ...contract.what_this_means.pending_actions.map((item) => `- ${item}`)]
@@ -72,7 +74,7 @@ export function buildPresentationBrief(contract: PresentationContract): Presenta
     contract.hero.next_best_action?.action_key,
     contract.hero.nearest_deadline?.title,
     contract.hero.nearest_deadline?.due_date ? formatPresentationDate(contract.hero.nearest_deadline.due_date) : null,
-    contract.what_this_means.summary,
+    presented.what_this_means.summary,
     ...contract.what_this_means.pending_actions,
     ...contract.what_this_means.unknowns,
     ...contract.findings.flatMap((finding) => [finding.title, finding.conclusion, finding.next_action]),

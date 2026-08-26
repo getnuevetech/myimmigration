@@ -104,7 +104,7 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
   </p>
 </header>
 
-${presentationReportSections(presentation)}
+${presentationReportSections(presentation, chromeInput)}
 
 <h2>Situation as reported</h2>
 <p>${esc(c.situation)}</p>

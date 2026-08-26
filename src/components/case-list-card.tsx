@@ -2,9 +2,10 @@ import Link from "next/link";
 import { Card, CardBody, Badge, ProgressBar } from "@/components/ui";
 import { formatCaseNumber } from "@/lib/case-number";
 import { caseListActionLine, caseListEvidenceLine, caseListVersionLine, type CaseListSummary } from "@/lib/case-presentation-list";
+import { approvedPresentationHeading } from "@/lib/case-presentation-contract";
 
 export function CasePresentationContextCard({
-  heading = "Approved case presentation",
+  heading = approvedPresentationHeading(),
   summary,
 }: {
   heading?: string;

@@ -1,5 +1,7 @@
 import type { PresentationContract } from "./case-presentation-contract";
+import { withPresentationSurfaceCopy } from "./case-presentation-contract";
 import { formatPresentationDate, presentationActionStatus, presentationEvidenceGateLabel } from "./case-presentation-ui";
+import type { FiledSurfaceInput } from "./goal-notices";
 
 const esc = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -9,8 +11,9 @@ function list(items: string[]): string {
   return `<ul>${items.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>`;
 }
 
-export function presentationReportSections(contract: PresentationContract): string {
-  const gate = presentationEvidenceGateLabel(contract.what_this_means.evidence_gate_status);
+export function presentationReportSections(contract: PresentationContract, input: FiledSurfaceInput = {}): string {
+  const presented = withPresentationSurfaceCopy(contract, input);
+  const gate = presentationEvidenceGateLabel(presented.what_this_means.evidence_gate_status);
   const nextAction = contract.hero.next_best_action?.title || "No action is ready yet";
   const deadline = contract.hero.nearest_deadline
     ? `${contract.hero.nearest_deadline.title} (${formatPresentationDate(contract.hero.nearest_deadline.due_date)})`
@@ -59,7 +62,7 @@ ${contract.evidence
 <p><strong>Nearest deadline:</strong> ${esc(deadline)}</p>
 
 <h2>What this means</h2>
-<p>${esc(contract.what_this_means.summary)}</p>
+<p>${esc(presented.what_this_means.summary)}</p>
 <p>${contract.what_this_means.unresolved_count} open item${contract.what_this_means.unresolved_count === 1 ? "" : "s"} still need attention.</p>
 ${contract.what_this_means.pending_actions.length ? `<p><strong>What to do from the records:</strong></p>${list(contract.what_this_means.pending_actions)}` : ""}
 ${contract.what_this_means.unknowns.length ? `<p><strong>Still needs:</strong></p>${list(contract.what_this_means.unknowns)}` : ""}

@@ -1,5 +1,5 @@
 import type { PresentationContract, PresentationEvidenceStrength } from "./case-presentation-contract";
-import { evidenceStrengthFromScores } from "./case-presentation-contract";
+import { evidenceStrengthFromScores, withPresentationSurfaceCopy } from "./case-presentation-contract";
 import { formatPresentationDate } from "./case-presentation-ui";
 import { versionReasonLabel, type ApprovedCaseView } from "./canonical-case-state";
 import type { VersionMatchInput } from "./goal-versions";
@@ -91,7 +91,7 @@ export function caseListSummaryFromView(
   return caseListSummary({
     status: input.status,
     actionReadinessScore: input.actionReadinessScore,
-    presentation: view?.presentation ?? null,
+    presentation: view?.presentation ? withPresentationSurfaceCopy(view.presentation, match ?? {}) : null,
     reconstructionPosition: view?.presentation ? undefined : input.reconstructionPosition,
     version: view?.version ?? null,
     reasonLabel: view?.reason ? versionReasonLabel(view.reason, match) : null,

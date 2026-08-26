@@ -1,4 +1,42 @@
+import { isFiledCaseSurface, type FiledSurfaceInput } from "./goal-notices";
+
 export type PresentationEvidenceStrength = "Strong" | "Moderate" | "Limited";
+
+export const FILED_ORGANIZING_SUMMARY = "The case is still being organized from the available information.";
+export const OPTIONS_ORGANIZING_SUMMARY = "This situation is still being organized from the available information.";
+
+const CANNED_ORGANIZING_RE =
+  /^(the case|this situation) is still being organized(?: from the available information)?\.?$/i;
+
+export function presentationOrganizingSummary(input: FiledSurfaceInput = {}): string {
+  return isFiledCaseSurface(input) ? FILED_ORGANIZING_SUMMARY : OPTIONS_ORGANIZING_SUMMARY;
+}
+
+export function isCannedOrganizingSummary(text?: string | null): boolean {
+  return CANNED_ORGANIZING_RE.test((text ?? "").trim());
+}
+
+export function presentationWhatThisMeansSummary(raw: string | null | undefined, input: FiledSurfaceInput = {}): string {
+  const text = (raw ?? "").trim();
+  if (!text || isCannedOrganizingSummary(text)) return presentationOrganizingSummary(input);
+  return text;
+}
+
+export function withPresentationSurfaceCopy(
+  contract: PresentationContract,
+  input: FiledSurfaceInput = {},
+): PresentationContract {
+  const summary = presentationWhatThisMeansSummary(contract.what_this_means.summary, input);
+  if (summary === contract.what_this_means.summary) return contract;
+  return {
+    ...contract,
+    what_this_means: { ...contract.what_this_means, summary },
+  };
+}
+
+export function approvedPresentationHeading(input: FiledSurfaceInput = {}): string {
+  return isFiledCaseSurface(input) ? "Approved case presentation" : "Approved options presentation";
+}
 
 export type PresentationHero = {
   current_posture: string;
@@ -51,6 +89,11 @@ export function assemblePresentationContract(input: {
   status: string;
   actionReadinessScore: number;
   reconstruction?: { currentPosition?: string | null; summary?: string | null; timeline?: unknown; pendingActions?: unknown } | null;
+  inquiryMode?: FiledSurfaceInput["inquiryMode"];
+  query?: string;
+  noticeTypes?: string[];
+  hasNotices?: boolean;
+  hasDeadlines?: boolean;
   issues: {
     id: string;
     title: string;
@@ -90,7 +133,7 @@ export function assemblePresentationContract(input: {
       professional_review_recommended: Boolean(professionalReview),
     },
     what_this_means: {
-      summary: input.reconstruction?.summary || "The case is still being organized from the available information.",
+      summary: presentationWhatThisMeansSummary(input.reconstruction?.summary, input),
       unresolved_count: input.issues.filter((issue) => issue.state !== "resolved").length,
       pending_actions: pendingActions,
       unknowns: (input.unknowns ?? []).map((item) => item.question).filter(Boolean),

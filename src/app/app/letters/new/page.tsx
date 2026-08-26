@@ -10,6 +10,7 @@ import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CasePresentationContextCard } from "@/components/case-list-card";
 import { matchInputFromCase } from "@/lib/goal-versions";
 import { resolveIntakeChrome } from "@/lib/goal-intake";
+import { approvedPresentationHeading } from "@/lib/case-presentation-contract";
 import { formatCaseNumber } from "@/lib/case-number";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import {
@@ -144,7 +145,12 @@ export default async function NewLetterPage({
           <button className="mt-2 text-sm font-medium text-lime-700 hover:text-lime-800">Apply →</button>
         </form>
       )}
-      {summary && <CasePresentationContextCard summary={summary} />}
+      {summary && (
+        <CasePresentationContextCard
+          heading={approvedPresentationHeading(selected ? matchInputFromCase(selected) : undefined)}
+          summary={summary}
+        />
+      )}
       {!quota.allowed ? (
         <div className="rounded-2xl border border-lime-200 bg-lime-50 p-6 text-sm text-lime-900">
           <p className="font-semibold">
