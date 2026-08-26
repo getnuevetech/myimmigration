@@ -10,7 +10,7 @@ import { caseListSummaryFromView } from "@/lib/case-presentation-list";
 import { CaseListSummaryDetails } from "@/components/case-list-card";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
-import { resolveReportChrome } from "@/lib/goal-chrome";
+import { resolveConsultantWorkspaceCopy, resolveReportChrome } from "@/lib/goal-chrome";
 import { matchInputFromCase } from "@/lib/goal-versions";
 import { resolveIntakeChrome } from "@/lib/goal-intake";
 
@@ -158,6 +158,7 @@ export default async function ConsultantDashboard({
             const intake = kase
               ? resolveIntakeChrome(matchInputFromCase(kase))
               : resolveIntakeChrome();
+            const workspace = resolveConsultantWorkspaceCopy(kase ? [matchInputFromCase(kase)] : []);
             return (
             <Card key={a.id}>
               <CardBody>
@@ -262,7 +263,7 @@ export default async function ConsultantDashboard({
                     </div>
                   </details>
                 ) : a.status === "active" ? (
-                  <p className="mt-3 text-sm text-slate-500">This client hasn&apos;t started a case yet — you&apos;ll see the full analysis briefing here once they do.</p>
+                  <p className="mt-3 text-sm text-slate-500">{workspace.dashboardEmpty}</p>
                 ) : null}
 
                 {!a.consultantAgreedAt && a.status !== "active" && (

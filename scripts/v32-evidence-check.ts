@@ -4,6 +4,7 @@ import { DEFAULT_PROMPTS, PROMPT_SUPERSEDES, PROMPT_VERSION } from "../src/lib/a
 import {
   buildPresentationBrief,
   presentationGroundingBlock,
+  presentationNoticeStepDescription,
   withPresentationNoticeSteps,
 } from "../src/lib/case-presentation-brief";
 import { assemblePresentationContract, evidenceStrengthFromScores, parsePresentationRecord } from "../src/lib/case-presentation-contract";
@@ -111,6 +112,7 @@ import {
   shouldExpectAutomaticDeadlines,
   shouldShowUscisAccountGuide,
   surfaceNoun,
+  thisSurfacePhrase,
 } from "../src/lib/goal-notices";
 import {
   PUBLIC_BILLING_SUBTITLE,
@@ -151,14 +153,18 @@ import {
   BILLING_REPORT_OVERAGE,
   CASE_REPORT_FEATURE_NAME,
   CONSULTANT_EMPTY_BODY,
+  billingReportReturn,
+  consultantRecordLabel,
   navHrefsBefore,
   reportFileName,
   resolveAccountNav,
   resolveCaseChrome,
   resolveCasesListCopy,
+  resolveConsultantWorkspaceCopy,
   resolveReportChrome,
   SUPPORT_PLAYBOOK_MATCHING,
   UPDATES_CHROME,
+  updatesImpactReason,
 } from "../src/lib/goal-chrome";
 import {
   ACCOUNT_CREATED_EMAIL,
@@ -465,12 +471,16 @@ assert(grounded.includes("RFE notice needs review"), "presentation grounding mus
 const noticeSteps = withPresentationNoticeSteps(
   [{ title: "Keep copies of everything", description: "Store the notice." }],
   presentation,
+  { inquiryMode: "existing_case" },
 );
 assert(noticeSteps[0]?.title === "Respond to the RFE", "notice explanations must surface the approved next action first");
 assert(noticeSteps[1]?.title === "Keep copies of everything", "notice explanations must keep the notice-specific steps");
+assert(/this case/.test(noticeSteps[0]?.description ?? ""), "filed notice next-step must stay this case");
+assert(!/this situation/.test(noticeSteps[0]?.description ?? ""), "filed notice next-step must not say this situation");
 const dedupedSteps = withPresentationNoticeSteps(
   [{ title: "Respond to the RFE", description: "Already listed." }],
   presentation,
+  { inquiryMode: "existing_case" },
 );
 assert(dedupedSteps.length === 1, "notice explanations must not duplicate the approved next action");
 
@@ -1963,6 +1973,49 @@ assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven remaining 
 assert(requested.autoAssigned === false, "goal-driven remaining chrome must not auto-assign consultants");
 assert(!/receipt number detected/i.test(openNoticeCopy.skipBanner ?? ""), "remaining chrome must not invent a detected receipt number");
 
+assert(thisSurfacePhrase(familyGuideInput) === "this situation", "open-options surface phrase must not stay this case");
+assert(thisSurfacePhrase(rfeGuideInput) === "this case", "filed RFE surface phrase stays this case");
+assert(/this situation/.test(updatesImpactReason(["I-130"], familyGuideInput)), "open-options updates impact must not say this case");
+assert(/this case/.test(updatesImpactReason(["RFE"], rfeGuideInput)), "filed RFE updates impact stays this case");
+assert(/situation page/.test(billingReportReturn(familyGuideInput)), "open-options billing return must not say the case page");
+assert(/case page/.test(billingReportReturn(rfeGuideInput)), "filed RFE billing return stays the case page");
+assert(/situation page/.test(billingReportReturn()), "unlabeled billing return defaults to the situation page");
+assert(/this situation/.test(presentationNoticeStepDescription(OPEN_OPTIONS_POSTURE, familyGuideInput)), "open-options notice next-step must not say this case");
+assert(/this case/.test(presentationNoticeStepDescription("RFE notice needs review", rfeGuideInput)), "filed RFE notice next-step stays this case");
+assert(consultantRecordLabel(familyGuideInput) === "Situation", "open-options consultant record label must not stay Case");
+assert(consultantRecordLabel(rfeGuideInput) === "Case", "filed RFE consultant record label stays Case");
+assert(resolveConsultantWorkspaceCopy([]).heading === "Situations", "empty consultant workspace defaults to situations");
+assert(resolveConsultantWorkspaceCopy([familyGuideInput]).heading === "Situations", "open-options consultant workspace must not stay Cases");
+assert(resolveConsultantWorkspaceCopy([familyGuideInput]).emptyTitle === "No situations", "open-options consultant empty must not stay No cases");
+assert(/hasn't started a situation/.test(resolveConsultantWorkspaceCopy([]).dashboardEmpty), "empty consultant dashboard must not stay hasn't started a case");
+assert(resolveConsultantWorkspaceCopy([rfeGuideInput]).heading === "Cases", "filed RFE consultant workspace stays Cases");
+assert(/hasn't started a case/.test(resolveConsultantWorkspaceCopy([rfeGuideInput]).dashboardEmpty), "filed RFE consultant dashboard stays hasn't started a case");
+assert(resolveConsultantWorkspaceCopy([familyGuideInput, rfeGuideInput]).heading === "Cases & situations", "mixed consultant workspace must name both paths");
+const billingPageSrc = readFileSync(join(process.cwd(), "src/app/app/billing/page.tsx"), "utf8");
+assert(billingPageSrc.includes("billingReportReturn"), "billing overage return must use dual-path copy");
+assert(!billingPageSrc.includes("from the case page"), "billing overage return must not hardcode the case page");
+const updatesLibSrc = readFileSync(join(process.cwd(), "src/lib/uscis-updates.ts"), "utf8");
+assert(updatesLibSrc.includes("updatesImpactReason"), "USCIS update impacts must use dual-path copy");
+assert(!updatesLibSrc.includes("which also appears in this case"), "USCIS update impacts must not hardcode this case");
+const noticeBriefSrc = readFileSync(join(process.cwd(), "src/lib/case-presentation-brief.ts"), "utf8");
+assert(noticeBriefSrc.includes("presentationNoticeStepDescription"), "notice next-step must use dual-path copy");
+assert(!noticeBriefSrc.includes("Approved next step for this case"), "notice next-step must not hardcode this case");
+const orchestratorSrc = readFileSync(join(process.cwd(), "src/lib/ai/orchestrator.ts"), "utf8");
+assert(orchestratorSrc.includes("matchInputFromCase"), "notice explanations must pass the case surface into next-step copy");
+const consultantClientSrc = readFileSync(join(process.cwd(), "src/app/consultant/clients/[id]/page.tsx"), "utf8");
+assert(consultantClientSrc.includes("resolveConsultantWorkspaceCopy"), "consultant client workspace must use dual-path list chrome");
+assert(!consultantClientSrc.includes('title="No cases"'), "consultant client workspace must not hardcode No cases");
+const consultantCaseSrc = readFileSync(join(process.cwd(), "src/app/consultant/clients/[id]/cases/[caseId]/page.tsx"), "utf8");
+assert(consultantCaseSrc.includes("consultantRecordLabel"), "consultant case view must use dual-path record labels");
+assert(!consultantCaseSrc.includes("Case ${formatCaseNumber"), "consultant case view must not hardcode Case IMM");
+assert(consultantDashSrc.includes("workspace.dashboardEmpty"), "consultant dashboard empty must use dual-path copy");
+assert(!consultantDashSrc.includes("hasn't started a case yet"), "consultant dashboard empty must not hardcode hasn't started a case");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven workspace chrome must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven workspace chrome must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven workspace chrome must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven workspace chrome must not auto-assign consultants");
+assert(!/receipt number detected/i.test(openNoticeCopy.skipBanner ?? ""), "workspace chrome must not invent a detected receipt number");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -2003,3 +2056,4 @@ console.log(`- v4 C19: discussion ${openDiscussion.heading}, closing ${openClosi
 console.log(`- v4 C20: open ${openVersion.recordHeading}/${versionReasonLabel("analysis", familyGuideInput)}, RFE ${rfeVersion.recordHeading}/${versionReasonLabel("analysis", rfeGuideInput)}`);
 console.log(`- v4 C21: open ${openIntake.pageTitle}/${openIntake.listCta}, RFE ${rfeIntake.pageTitle}/${rfeIntake.listCta}`);
 console.log(`- v4 C22: open ${resolveCasesListCopy(familyGuideInput).pageTitle}/${surfaceNoun(familyGuideInput)}, RFE ${resolveCasesListCopy(rfeGuideInput).pageTitle}/${surfaceNoun(rfeGuideInput)}`);
+console.log(`- v4 C23: open ${thisSurfacePhrase(familyGuideInput)}/${resolveConsultantWorkspaceCopy([familyGuideInput]).heading}, RFE ${thisSurfacePhrase(rfeGuideInput)}/${resolveConsultantWorkspaceCopy([rfeGuideInput]).heading}`);

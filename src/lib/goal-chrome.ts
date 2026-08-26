@@ -2,7 +2,7 @@ import { presentationStepCta } from "./case-presentation-ui";
 import { matchingFormNumber } from "./goal-forms";
 import { matchingDocumentKind } from "./goal-documents";
 import { matchingLetterKind } from "./goal-letters";
-import { isFiledCaseSurface, type FiledSurfaceInput } from "./goal-notices";
+import { isFiledCaseSurface, surfaceNoun, thisSurfacePhrase, type FiledSurfaceInput } from "./goal-notices";
 import { resolveIntakeChrome } from "./goal-intake";
 
 export type ChromeMatchInput = FiledSurfaceInput & {
@@ -57,6 +57,12 @@ export type CasesListCopy = {
   navLabel: string;
 };
 
+export type ConsultantWorkspaceCopy = {
+  heading: string;
+  emptyTitle: string;
+  dashboardEmpty: string;
+};
+
 export const SUPPORT_PLAYBOOK_MATCHING = {
   title: "Ask for matching evidence or a notice",
   staleTitle: "Request latest USCIS notice",
@@ -79,7 +85,44 @@ export const UPDATES_CHROME: UpdatesChromeCopy = {
 };
 
 export const BILLING_REPORT_OVERAGE = "Report download limit reached.";
-export const BILLING_REPORT_RETURN = "After checkout, return to the report from the case page.";
+
+export function billingReportReturn(input: ChromeMatchInput = {}): string {
+  return `After checkout, return to the report from the ${surfaceNoun(input)} page.`;
+}
+
+export function updatesImpactReason(matched: string[], input: ChromeMatchInput = {}): string {
+  return `This update mentions ${matched.slice(0, 3).join(", ")}, which also appears in ${thisSurfacePhrase(input)}.`;
+}
+
+export function consultantRecordLabel(input: ChromeMatchInput = {}): string {
+  return isFiledCaseSurface(input) ? "Case" : "Situation";
+}
+
+export function resolveConsultantWorkspaceCopy(inputs: ChromeMatchInput[] = []): ConsultantWorkspaceCopy {
+  const filedCount = inputs.filter((item) => isFiledCaseSurface(item)).length;
+  const openCount = inputs.length - filedCount;
+  if (inputs.length === 0 || (openCount > 0 && filedCount === 0)) {
+    return {
+      heading: "Situations",
+      emptyTitle: "No situations",
+      dashboardEmpty:
+        "This client hasn't started a situation yet — you'll see the full analysis briefing here once they do.",
+    };
+  }
+  if (filedCount > 0 && openCount === 0) {
+    return {
+      heading: "Cases",
+      emptyTitle: "No cases",
+      dashboardEmpty: "This client hasn't started a case yet — you'll see the full analysis briefing here once they do.",
+    };
+  }
+  return {
+    heading: "Cases & situations",
+    emptyTitle: "No work yet",
+    dashboardEmpty:
+      "This client hasn't started a situation or case yet — you'll see the full analysis briefing here once they do.",
+  };
+}
 
 const NAV_TAIL: AccountNavItem[] = [
   { href: "/app/consultants", label: "My consultant", optional: false },

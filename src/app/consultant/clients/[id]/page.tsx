@@ -10,6 +10,7 @@ import { CaseListSummaryDetails } from "@/components/case-list-card";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { matchInputFromCase } from "@/lib/goal-versions";
+import { resolveConsultantWorkspaceCopy } from "@/lib/goal-chrome";
 
 export default async function ClientWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -31,6 +32,7 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
   if (!assignment) notFound();
   const client = assignment.user;
   const views = await loadApprovedViewsByCaseIds(client.cases.map((item) => item.id));
+  const workspace = resolveConsultantWorkspaceCopy(client.cases.map((item) => matchInputFromCase(item)));
 
   return (
     <div>
@@ -44,9 +46,9 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section>
-          <h2 className="mb-3 text-base font-semibold text-slate-900">Cases</h2>
+          <h2 className="mb-3 text-base font-semibold text-slate-900">{workspace.heading}</h2>
           {client.cases.length === 0 ? (
-            <EmptyState title="No cases" />
+            <EmptyState title={workspace.emptyTitle} />
           ) : (
             <div className="space-y-4">
               {client.cases.map((c) => {
