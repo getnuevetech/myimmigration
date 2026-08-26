@@ -10,6 +10,9 @@ import { matchInputFromCase } from "@/lib/goal-versions";
 import { formatCaseNumber } from "@/lib/case-number";
 import { loadQaAccess } from "@/lib/qa-quota";
 import { toQaChatAccess } from "@/lib/qa-access";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { qaGroundSelectLabel } from "@/lib/goal-conversation";
+import { isFiledCaseSurface } from "@/lib/goal-notices";
 
 export const metadata = { title: "Ask the assistant" };
 
@@ -28,6 +31,12 @@ export default async function QaPage({
     take: 50,
   });
   const linkedCase = caseId ? cases.find((c) => c.id === caseId) ?? null : null;
+  const linkedFiled = linkedCase
+    ? isFiledCaseSurface({
+        inquiryMode: classifyImmigrationInquiry({ situation: linkedCase.situation, goal: linkedCase.goal }).mode,
+        query: `${linkedCase.situation} ${linkedCase.goal}`,
+      })
+    : false;
   const views = await loadApprovedViewsByCaseIds(linkedCase ? [linkedCase.id] : []);
   const summary = linkedCase
     ? caseListSummaryFromView(
@@ -61,7 +70,7 @@ export default async function QaPage({
           {cases.length > 0 && (
             <form className="mb-4" action="/app/qa" method="get">
               <label className="block text-sm font-medium text-slate-700">
-                Ground answers in a case
+                {qaGroundSelectLabel({ inquiryMode: linkedCase ? classifyImmigrationInquiry({ situation: linkedCase.situation, goal: linkedCase.goal }).mode : "open_options" })}
                 <select
                   name="case"
                   defaultValue={linkedCase?.id ?? ""}
@@ -76,7 +85,7 @@ export default async function QaPage({
               <button className="mt-2 text-sm font-medium text-lime-700 hover:text-lime-800">Apply →</button>
             </form>
           )}
-          <QaChat threadId="" caseId={linkedCase?.id ?? ""} messages={[]} access={toQaChatAccess(access.entitlement, access.usage, null, Boolean(linkedCase))} />
+          <QaChat threadId="" caseId={linkedCase?.id ?? ""} messages={[]} access={toQaChatAccess(access.entitlement, access.usage, null, Boolean(linkedCase), linkedFiled)} />
         </div>
         <div>
           <h2 className="mb-3 text-sm font-semibold text-slate-900">Recent conversations</h2>

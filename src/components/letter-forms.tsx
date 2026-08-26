@@ -11,12 +11,14 @@ export function NewLetterForm({
   notices,
   defaultNoticeId,
   defaultCaseId = "",
+  kindHint,
 }: {
   kinds: { kind: string; title: string; isNoticeResponse: boolean; placeholder: string }[];
   defaultKind: string;
   notices: { id: string; label: string }[];
   defaultNoticeId: string;
   defaultCaseId?: string;
+  kindHint?: string;
 }) {
   const [kind, setKind] = useState(defaultKind);
   const selected = kinds.find((item) => item.kind === kind) ?? kinds[0];
@@ -27,7 +29,7 @@ export function NewLetterForm({
       <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <input type="hidden" name="caseId" value={defaultCaseId} />
         {kinds.length > 0 && (
-          <Field label="Letter kind" hint="Matching kinds come from official material on this case. Family options start with an I-130 cover letter, not an RFE reply.">
+          <Field label="Letter kind" hint={kindHint ?? "Matching kinds come from official material. Family options start with an I-130 cover letter, not an RFE reply."}>
             <select
               name="kind"
               value={kind}

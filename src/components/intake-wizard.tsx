@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import { startIntakeAction } from "@/actions/case";
 import { resolvePublicStartCopy, type PublicStartCopy } from "@/lib/goal-public";
 
-function Submit() {
+function Submit({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -13,7 +13,7 @@ function Submit() {
       disabled={pending}
       className="rounded-xl bg-lime-600 px-8 py-3 text-base font-semibold text-white shadow-md transition hover:bg-lime-700 disabled:opacity-60"
     >
-      {pending ? "Analyzing your situation…" : "Analyze my situation →"}
+      {pending ? pendingLabel : label}
     </button>
   );
 }
@@ -131,7 +131,7 @@ export function IntakeWizard({ start }: { start?: PublicStartCopy }) {
               Continue →
             </button>
           ) : (
-            <Submit />
+            <Submit label={copy.submitLabel} pendingLabel={copy.submitPendingLabel} />
           )}
         </div>
       </div>

@@ -87,6 +87,8 @@ import {
   rankLetterCatalog,
   rankMatchingLetters,
   resolveLetterCatalogEntitlement,
+  letterKindHint,
+  letterGroundSelectLabel,
 } from "../src/lib/goal-letters";
 import {
   documentKindFromEvidenceItem,
@@ -96,6 +98,7 @@ import {
   rankDocumentCatalog,
   rankMatchingDocuments,
   resolveDocumentCatalogEntitlement,
+  documentCatalogForSurface,
 } from "../src/lib/goal-documents";
 import {
   isFiledCaseSurface,
@@ -107,6 +110,7 @@ import {
   resolveUscisAccountCopy,
   shouldExpectAutomaticDeadlines,
   shouldShowUscisAccountGuide,
+  surfaceNoun,
 } from "../src/lib/goal-notices";
 import {
   PUBLIC_BILLING_SUBTITLE,
@@ -141,6 +145,7 @@ import {
   guideUpgradeCopy,
   guideWidgetChrome,
   shouldChaseNoticeInGuide,
+  GUIDE_PROMPT_RULES,
 } from "../src/lib/goal-guide";
 import {
   BILLING_REPORT_OVERAGE,
@@ -162,6 +167,7 @@ import {
   commentNotificationTitle,
   consultantMatchNotificationTitle,
   fallbackEvidenceLine,
+  qaGroundSelectLabel,
   resolveClosingCopy,
   resolveDiscussionChrome,
   resolveFallbackPathSteps,
@@ -1896,6 +1902,67 @@ assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven intake mus
 assert(requested.autoAssigned === false, "goal-driven intake must not auto-assign consultants");
 assert(!/receipt number detected/i.test(openIntake.prefillBanner + openIntake.guideNewCaseMessage), "intake copy must not invent a detected receipt number");
 
+assert(resolveCasesListCopy(familyGuideInput).pageTitle === "My situations", "open-options list title must not stay My cases");
+assert(resolveCasesListCopy(familyGuideInput).recentHeading === "Recent situations", "open-options dashboard list must not stay Recent cases");
+assert(resolveCasesListCopy(familyGuideInput).navLabel === "My situations", "open-options nav must not stay My cases");
+assert(resolveCasesListCopy(familyGuideInput).emptyTitle === "No situations yet", "open-options empty list must not stay No cases yet");
+assert(resolveCasesListCopy(rfeGuideInput).pageTitle === "My cases", "filed RFE list title stays My cases");
+assert(resolveCasesListCopy(rfeGuideInput).recentHeading === "Recent cases", "filed RFE dashboard list stays Recent cases");
+assert(resolveCasesListCopy().pageTitle === "My situations", "unlabeled list defaults to situations so empty accounts are not sold a filed case");
+assert(surfaceNoun(familyGuideInput) === "situation" && surfaceNoun(rfeGuideInput) === "case", "surface noun must split situation vs case");
+assert(/this situation/.test(openNoticeCopy.skipBanner ?? ""), "open-options notice skip must not say this case");
+assert(!/this case/.test(openNoticeCopy.skipBanner ?? ""), "open-options notice skip must not say this case");
+assert(openNoticeCopy.relatedSelectLabel.includes("situation"), "open-options notice picker must not say Related case");
+assert(openNoticeCopy.unlinkedOption.includes("situation"), "open-options notice picker must not say Not linked to a case");
+assert(rfeNoticeCopy.relatedSelectLabel.includes("case"), "filed RFE notice picker stays Related case");
+assert(/Open-options situations/.test(openDeadlineCopy.emptyBody), "open-options deadlines must not say Open-options cases");
+assert(/this situation/.test(letterKindHint(familyGuideInput)), "open-options letter kind hint must not say this case");
+assert(/this case/.test(letterKindHint(rfeGuideInput)), "filed RFE letter kind hint stays this case");
+assert(letterGroundSelectLabel(familyGuideInput).includes("situation"), "open-options letter ground select must not say a case");
+assert(letterGroundSelectLabel(rfeGuideInput).includes("case"), "filed RFE letter ground select stays a case");
+assert(/this situation/.test(documentCatalogForSurface(familyGuideInput).find((item) => item.kind === "other")?.hint ?? ""), "open-options other-document hint must not say this case");
+assert(/this case/.test(documentCatalogForSurface(rfeGuideInput).find((item) => item.kind === "other")?.hint ?? ""), "filed RFE other-document hint stays this case");
+assert(/this situation's follow-up/.test(suggestionUsageFromCount(3, freeSuggestions, familyGuideInput).blockReason), "open-options Free follow-up cap must not say this case's follow-up");
+assert(/this case's follow-up/.test(suggestionUsageFromCount(3, freeSuggestions, rfeGuideInput).blockReason), "filed RFE Free follow-up cap stays this case's follow-up");
+assert(/this kind of situation/.test(suggestionConsultantCopy(proSuggestions, { name: "Alex Rivera", credentialLabel: "attorney" }, true, familyGuideInput)), "open-options professional review must not say this kind of case");
+assert(/this kind of case/.test(suggestionConsultantCopy(proSuggestions, { name: "Alex Rivera", credentialLabel: "attorney" }, true, rfeGuideInput)), "filed RFE professional review stays this kind of case");
+assert(qaGroundSelectLabel(familyGuideInput).includes("situation"), "open-options Q&A ground select must not say a case");
+assert(qaGroundSelectLabel(rfeGuideInput).includes("case"), "filed RFE Q&A ground select stays a case");
+assert(openIntake.consultantRoutedLead.includes("situation"), "open-options consultant routing must not say this case");
+assert(rfeIntake.consultantRoutedLead.includes("case"), "filed RFE consultant routing stays this case");
+assert(letterStart.submitLabel === "Analyze my case →", "guest letter start submit must not stay Analyze my situation");
+assert(optionsStart.submitLabel === "Analyze my situation →", "guest options start submit stays Analyze my situation");
+assert(/situation or a filed case/.test(PUBLIC_HOW_IT_WORKS_PAGE), "how-it-works must not only say If your case needs");
+assert(!/immigration case assistant/.test(PUBLIC_FAQ_BODY), "FAQ must not introduce the product as a case assistant only");
+assert(GUIDE_PROMPT_RULES.includes("start this as a new situation"), "guide prompt must name the options handoff button");
+assert(!GUIDE_PROMPT_RULES.includes('"Start as a new case"'), "guide prompt must not only name Start as a new case");
+assert(PROMPT_SUPERSEDES.guide.includes("62391e307e8264d1a2ddbfed134edb06dfe52285e60dbbd7f8ad4fa565951832"), "seed must supersede the case-only guide handoff prompt");
+assert(!layoutSrc.includes('"My cases"'), "app layout must not hardcode My cases");
+assert(!dashboardSrc.includes("Recent cases"), "dashboard must not hardcode Recent cases");
+assert(!dashboardSrc.includes("No cases yet"), "dashboard empty state must not hardcode No cases yet");
+const casesPageSrcC22 = readFileSync(join(process.cwd(), "src/app/app/cases/page.tsx"), "utf8");
+assert(casesPageSrcC22.includes("generateMetadata"), "cases list tab title must use goal-driven list chrome");
+assert(!casesPageSrcC22.includes('title: "My cases"'), "cases list must not hardcode My cases metadata");
+const lettersNewSrc = readFileSync(join(process.cwd(), "src/app/app/letters/new/page.tsx"), "utf8");
+assert(lettersNewSrc.includes("letterGroundSelectLabel"), "letter composer must use dual-path ground labels");
+assert(!lettersNewSrc.includes("Ground this letter in a case"), "letter composer must not hardcode Ground this letter in a case");
+const letterFormSrc = readFileSync(join(process.cwd(), "src/components/letter-forms.tsx"), "utf8");
+assert(!letterFormSrc.includes("official material on this case"), "letter kind hint must not hardcode this case");
+const wizardSrc = readFileSync(join(process.cwd(), "src/components/intake-wizard.tsx"), "utf8");
+assert(wizardSrc.includes("submitLabel"), "guest start submit must use dual-path public copy");
+assert(!wizardSrc.includes("Analyze my situation →"), "guest start must not hardcode Analyze my situation");
+const consultantDashSrc = readFileSync(join(process.cwd(), "src/app/consultant/page.tsx"), "utf8");
+assert(consultantDashSrc.includes("consultantRoutedLead"), "consultant dashboard must use dual-path routing copy");
+assert(!consultantDashSrc.includes("Why this case was routed to you"), "consultant dashboard must not hardcode Why this case was routed");
+const qaPageSrc = readFileSync(join(process.cwd(), "src/app/app/qa/page.tsx"), "utf8");
+assert(qaPageSrc.includes("qaGroundSelectLabel"), "Q&A page must use dual-path ground labels");
+assert(!qaPageSrc.includes("Ground answers in a case"), "Q&A page must not hardcode Ground answers in a case");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven remaining chrome must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven remaining chrome must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven remaining chrome must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven remaining chrome must not auto-assign consultants");
+assert(!/receipt number detected/i.test(openNoticeCopy.skipBanner ?? ""), "remaining chrome must not invent a detected receipt number");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -1935,3 +2002,4 @@ console.log(`- v4 C18: nav docs-before-notices=${navHrefsBefore(openNav, "/app/n
 console.log(`- v4 C19: discussion ${openDiscussion.heading}, closing ${openClosing.notificationTitle("IMM-1").split(" ")[0]}, fallback ${openFallbackSteps[0]?.action_key}`);
 console.log(`- v4 C20: open ${openVersion.recordHeading}/${versionReasonLabel("analysis", familyGuideInput)}, RFE ${rfeVersion.recordHeading}/${versionReasonLabel("analysis", rfeGuideInput)}`);
 console.log(`- v4 C21: open ${openIntake.pageTitle}/${openIntake.listCta}, RFE ${rfeIntake.pageTitle}/${rfeIntake.listCta}`);
+console.log(`- v4 C22: open ${resolveCasesListCopy(familyGuideInput).pageTitle}/${surfaceNoun(familyGuideInput)}, RFE ${resolveCasesListCopy(rfeGuideInput).pageTitle}/${surfaceNoun(rfeGuideInput)}`);

@@ -9,7 +9,7 @@ import { VaultUpload } from "@/components/vault-upload";
 import { DOC_KINDS } from "@/lib/constants";
 import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import {
-  DOCUMENT_CATALOG,
+  documentCatalogForSurface,
   documentStartLabel,
   documentUploadAllowed,
   neededDocumentsFromRanked,
@@ -96,7 +96,12 @@ export default async function DocumentsPage({
       })
     : [];
   const bestMatch = requestedKind || ranked[0]?.kind;
-  const catalog = rankDocumentCatalog(DOCUMENT_CATALOG, ranked);
+  const catalog = rankDocumentCatalog(documentCatalogForSurface({
+    themes: inquiry?.themes,
+    inquiryMode: inquiry?.mode,
+    query: `${scopedCase?.situation ?? ""} ${scopedCase?.goal ?? ""}`,
+    noticeTypes: (scopedCase?.notices ?? []).map((notice) => notice.noticeType),
+  }), ranked);
   const checklist = neededDocumentsFromRanked(ranked);
   const kindName = (k: string) => DOC_KINDS.find((d) => d.key === k)?.name ?? k;
 

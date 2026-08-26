@@ -154,6 +154,7 @@ export function CasePresentationView({
         },
         suggestionAccess.consultantName ? { name: suggestionAccess.consultantName, credentialLabel: "" } : null,
         presentation.hero.professional_review_recommended,
+        { inquiryMode: inquiryMode ?? undefined },
       )
     : "";
 

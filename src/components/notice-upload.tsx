@@ -12,12 +12,16 @@ export function NoticeUpload({
   locked = false,
   lockHref = "/app/billing?upgrade=notices",
   lockLabel = "Unlock notice explanations with Plus →",
+  relatedSelectLabel = "Related case (optional)",
+  unlinkedOption = "Not linked to a case",
 }: {
   cases?: { id: string; label: string }[];
   defaultCaseId?: string;
   locked?: boolean;
   lockHref?: string;
   lockLabel?: string;
+  relatedSelectLabel?: string;
+  unlinkedOption?: string;
 }) {
   const [state, formAction] = useActionState(uploadNoticeAction, null);
   const [caseId, setCaseId] = useState(defaultCaseId);
@@ -45,9 +49,9 @@ export function NoticeUpload({
       {state?.ok && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">Notice received — see its explanation below.</p>}
       {cases.length > 0 && (
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">Related case (optional)</span>
+          <span className="mb-1 block text-sm font-medium text-slate-700">{relatedSelectLabel}</span>
           <select name="caseId" value={caseId} onChange={(e) => setCaseId(e.target.value)} className={inputClass}>
-            <option value="">Not linked to a case</option>
+            <option value="">{unlinkedOption}</option>
             {cases.map((c) => (
               <option key={c.id} value={c.id}>{c.label}</option>
             ))}

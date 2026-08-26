@@ -222,6 +222,7 @@ export const PROMPT_SUPERSEDES: Record<string, string[]> = {
     "e2cd0b56b7aad1a0431595e7cb69b3e5e92d832ba76e836a3698242f0596153e",
   ],
   guide: [
+    "62391e307e8264d1a2ddbfed134edb06dfe52285e60dbbd7f8ad4fa565951832",
     "1ad42c5a17fcfbe5b4506f5d50c9b7ece880eb42da2dcaa74f8f6d2d0d1e10a1",
     "1fbbb6bb1fb252ea71e3f8ae2126a0da4c42738a8e92ea3984991f88b9b853b2",
     "46ee7ece86792b098ca7d3eff9600b0fb4fa385c1aa665e036bcbf14ffadaa7c",

@@ -12,6 +12,7 @@ import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { resolveReportChrome } from "@/lib/goal-chrome";
 import { matchInputFromCase } from "@/lib/goal-versions";
+import { resolveIntakeChrome } from "@/lib/goal-intake";
 
 export const metadata = { title: "Consultant dashboard" };
 
@@ -154,6 +155,9 @@ export default async function ConsultantDashboard({
             const routingReason = kase && kase.issues.length > 0
               ? caseRoutingReason(kase.issues.map((i) => i.issueType), mySpecialties)
               : null;
+            const intake = kase
+              ? resolveIntakeChrome(matchInputFromCase(kase))
+              : resolveIntakeChrome();
             return (
             <Card key={a.id}>
               <CardBody>
@@ -188,7 +192,7 @@ export default async function ConsultantDashboard({
 
                 {a.status !== "active" && (
                   <p className="mt-3 text-sm text-slate-600">
-                    {a.reasonSummary || "A customer requested a professional match."} Case files, findings, and contact details stay private until the connection is active.
+                    {a.reasonSummary || "A customer requested a professional match."} {intake.consultantPendingPrivacy}
                   </p>
                 )}
 
@@ -197,9 +201,9 @@ export default async function ConsultantDashboard({
                     <summary className="flex cursor-pointer items-start gap-2 p-4 text-sm text-slate-600 [&::-webkit-details-marker]:hidden">
                       <span className="mt-0.5 text-xs text-lime-500 transition-transform group-open:rotate-90">▶</span>
                       <span>
-                        <span className="font-semibold text-slate-800">Why this case was routed to you: </span>
-                        {routingReason ?? "This client's case is awaiting analysis — open for the case details."}
-                        <span className="ml-1.5 text-xs font-medium text-lime-600">Case details</span>
+                        <span className="font-semibold text-slate-800">{intake.consultantRoutedLead} </span>
+                        {routingReason ?? intake.consultantAwaiting}
+                        <span className="ml-1.5 text-xs font-medium text-lime-600">{intake.consultantDetailsLabel}</span>
                       </span>
                     </summary>
 

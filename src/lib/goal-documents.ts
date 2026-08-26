@@ -105,7 +105,7 @@ export const DOCUMENT_CATALOG: DocumentKindDef[] = [
   {
     kind: "other",
     name: "Other",
-    hint: "Anything else you want stored with this case.",
+    hint: "Anything else you want stored with this situation. A USCIS receipt is not required.",
     isFiledCase: false,
   },
 ];
@@ -277,6 +277,21 @@ export function rankDocumentCatalog<T extends { kind: string }>(items: T[], rank
       return aScore - bScore;
     })
     .map((entry) => entry.item);
+}
+
+export function documentCatalogForSurface(input: DocumentMatchInput = {}): DocumentKindDef[] {
+  const filed = input.inquiryMode === "open_options"
+    ? false
+    : input.inquiryMode === "existing_case" || mentionsRfe(input);
+  return DOCUMENT_CATALOG.map((item) => {
+    if (item.kind !== "other") return item;
+    return {
+      ...item,
+      hint: filed
+        ? "Anything else you want stored with this case."
+        : "Anything else you want stored with this situation. A USCIS receipt is not required.",
+    };
+  });
 }
 
 export function neededDocumentsFromRanked(ranked: RankedDocument[]): RankedDocument[] {

@@ -3,6 +3,7 @@ import { db } from "./db";
 import { getActivePlan, hasFeature } from "./access";
 import { getNumberSetting } from "./settings";
 import { FEATURE_KEYS } from "./constants";
+import { classifyImmigrationInquiry } from "./immigration-inquiry";
 import {
   resolveSuggestionEntitlement,
   suggestionUsageFromCount,
@@ -55,7 +56,24 @@ export async function loadSuggestionAccess(input: {
     freeMaxClarifyAnswers,
   });
   const used = input.caseId ? await countClarifyAnswers(input.caseId) : 0;
-  return { entitlement, usage: suggestionUsageFromCount(used, entitlement), consultant: null };
+  const linked = input.caseId
+    ? await db.case.findUnique({
+        where: { id: input.caseId },
+        select: { situation: true, goal: true, notices: { select: { noticeType: true } } },
+      })
+    : null;
+  const inquiry = linked
+    ? classifyImmigrationInquiry({ situation: linked.situation, goal: linked.goal })
+    : null;
+  return {
+    entitlement,
+    usage: suggestionUsageFromCount(used, entitlement, {
+      inquiryMode: inquiry?.mode,
+      query: linked ? `${linked.situation} ${linked.goal}` : "",
+      noticeTypes: (linked?.notices ?? []).map((notice) => notice.noticeType),
+    }),
+    consultant: null,
+  };
 }
 
 export function toCaseSuggestionAccess(

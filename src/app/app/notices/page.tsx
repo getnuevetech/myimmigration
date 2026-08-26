@@ -116,6 +116,8 @@ export default async function NoticesPage({
             defaultCaseId={defaultCaseId}
             locked={!quota.allowed}
             lockLabel={quota.overLimit ? "Upgrade to Plus for unlimited notices →" : "Unlock notice explanations with Plus →"}
+            relatedSelectLabel={copy.relatedSelectLabel}
+            unlinkedOption={copy.unlinkedOption}
           />
         </CardBody>
       </Card>

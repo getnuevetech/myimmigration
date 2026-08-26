@@ -30,6 +30,8 @@ export type PublicStartCopy = {
   fileHint: string;
   steps: { title: string; subtitle: string }[];
   goalChips: string[];
+  submitLabel: string;
+  submitPendingLabel: string;
 };
 
 export const PUBLIC_FEATURE_SORT_ORDER: Record<string, number> = {
@@ -178,7 +180,7 @@ export const PUBLIC_HERO_CAROUSEL = {
 };
 
 export const PUBLIC_FAQ_BODY = `Q: Is ImmigrationOnMe USCIS or a law firm?
-No. ImmigrationOnMe is an immigration case assistant that explains your situation and guides your next steps in plain English. For high-stakes decisions we connect you with licensed professionals.
+No. ImmigrationOnMe is an immigration options and paperwork assistant that explains your situation and guides your next steps in plain English. For high-stakes decisions we connect you with licensed professionals.
 
 Q: Do I need a USCIS receipt to start?
 No. You can explore options, matching forms, and official questions with no filing yet. Checking a USCIS case is only useful if you already have a receipt number — use the official USCIS case status site or sign in at my.uscis.gov, then upload that letter here so we can organize the timeline.
@@ -208,7 +210,7 @@ export const PUBLIC_HOW_IT_WORKS_PAGE = `ImmigrationOnMe helps you understand im
 
 Our analysis engine maps possible pathways with conditions, or breaks a filed situation into clear issues, checks facts against your documents, and builds a step-by-step path forward. When facts can't be verified, we say so — we never guess.
 
-If your case needs a licensed professional, we can help prepare a handoff to an immigration attorney, accredited representative, or vetted immigration professional — only with your approval.`;
+If this situation or a filed case needs a licensed professional, we can help prepare a handoff to an immigration attorney, accredited representative, or vetted immigration professional — only with your approval.`;
 
 const OPTIONS_GOAL_CHIPS = [
   "Family green card options",
@@ -247,6 +249,8 @@ export function resolvePublicStartCopy(raw?: string | null): PublicStartCopy {
         { title: "Any documents?", subtitle: "Upload the notice if you have it. Receipt numbers help when they appear on the letter." },
       ],
       goalChips: [...LETTER_GOAL_CHIPS, ...OPTIONS_GOAL_CHIPS],
+      submitLabel: "Analyze my case →",
+      submitPendingLabel: "Analyzing your case…",
     };
   }
   if (intent === "options") {
@@ -263,6 +267,8 @@ export function resolvePublicStartCopy(raw?: string | null): PublicStartCopy {
         { title: "Any documents?", subtitle: "Optional. Identity and relationship records help a family petition; skip a USCIS notice if you do not have one." },
       ],
       goalChips: [...OPTIONS_GOAL_CHIPS, ...LETTER_GOAL_CHIPS],
+      submitLabel: "Analyze my situation →",
+      submitPendingLabel: "Analyzing your situation…",
     };
   }
   return {
@@ -278,6 +284,8 @@ export function resolvePublicStartCopy(raw?: string | null): PublicStartCopy {
       { title: "Any documents?", subtitle: "Optional. Identity and relationship records help a family petition; skip a USCIS notice if you do not have one." },
     ],
     goalChips: [...OPTIONS_GOAL_CHIPS, ...LETTER_GOAL_CHIPS],
+    submitLabel: "Analyze my situation →",
+    submitPendingLabel: "Analyzing your situation…",
   };
 }
 

@@ -1,4 +1,5 @@
 import { matchingFormNumber, normalizeFormNumber, rankMatchingForms, type FormMatchInput } from "./goal-forms";
+import { isFiledCaseSurface, type FiledSurfaceInput } from "./goal-notices";
 
 export type LetterKind =
   | "i130_cover"
@@ -236,6 +237,20 @@ export function letterStartLabel(kind?: string | null): string {
   if (def.kind === "notice_response") return "Draft notice response";
   if (def.formNumber) return `Draft ${def.formNumber} cover letter`;
   return `Draft ${def.title}`;
+}
+
+export function letterKindHint(input: FiledSurfaceInput = {}): string {
+  return isFiledCaseSurface(input)
+    ? "Matching kinds come from official material on this case. Family options start with an I-130 cover letter, not an RFE reply."
+    : "Matching kinds come from official material on this situation. Family options start with an I-130 cover letter, not an RFE reply. A USCIS receipt is not required.";
+}
+
+export function letterGroundSelectLabel(input: FiledSurfaceInput = {}): string {
+  return isFiledCaseSurface(input) ? "Ground this letter in a case" : "Ground this letter in a situation";
+}
+
+export function letterUnlinkedOption(input: FiledSurfaceInput = {}): string {
+  return isFiledCaseSurface(input) ? "Not linked to a case" : "Not linked to a situation";
 }
 
 export function letterTitleForKind(kind?: string | null, now = new Date()): string {

@@ -53,6 +53,8 @@ export type CasesListCopy = {
   emptyTitle: string;
   emptyBody: string;
   startLabel: string;
+  recentHeading: string;
+  navLabel: string;
 };
 
 export const SUPPORT_PLAYBOOK_MATCHING = {
@@ -88,9 +90,10 @@ const NAV_TAIL: AccountNavItem[] = [
 
 export function resolveAccountNav(input: ChromeMatchInput = {}): AccountNavItem[] {
   const filed = isFiledCaseSurface(input);
+  const list = resolveCasesListCopy(input);
   const head: AccountNavItem[] = [
     { href: "/app", label: "Overview", optional: false },
-    { href: "/app/cases", label: "My cases", optional: false },
+    { href: "/app/cases", label: list.navLabel, optional: false },
   ];
   const matching: AccountNavItem[] = [
     { href: "/app/documents", label: "Document vault", optional: false },
@@ -193,15 +196,19 @@ export function resolveCasesListCopy(input: ChromeMatchInput = {}): CasesListCop
       emptyTitle: "No cases yet",
       emptyBody: "Describe your situation and goal, and we'll analyze it into a clear case plan.",
       startLabel: intake.startLabel,
+      recentHeading: "Recent cases",
+      navLabel: "My cases",
     };
   }
   return {
-    pageTitle: "My cases",
-    pageSubtitle: "Each case is one immigration situation — options before a filing, or a letter already on file.",
-    emptyTitle: "No cases yet",
+    pageTitle: "My situations",
+    pageSubtitle: "Each situation is one immigration review — options before a filing, or a letter already on file.",
+    emptyTitle: "No situations yet",
     emptyBody:
       "Describe your situation and goal, even if you have not filed anything with USCIS, and we'll map options and next steps.",
     startLabel: intake.startLabel,
+    recentHeading: "Recent situations",
+    navLabel: "My situations",
   };
 }
 

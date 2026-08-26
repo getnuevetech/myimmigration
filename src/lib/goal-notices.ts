@@ -15,6 +15,8 @@ export type NoticePageCopy = {
   skipBanner: string | null;
   uploadPrimary: boolean;
   primaryCta: { label: string; href: string };
+  relatedSelectLabel: string;
+  unlinkedOption: string;
 };
 
 export type DeadlinesPageCopy = {
@@ -60,6 +62,10 @@ export function isFiledCaseSurface(input: FiledSurfaceInput = {}): boolean {
   return false;
 }
 
+export function surfaceNoun(input: FiledSurfaceInput = {}): "case" | "situation" {
+  return isFiledCaseSurface(input) ? "case" : "situation";
+}
+
 export function noticeCatalogHref(caseId?: string | null): string {
   return caseId ? `/app/notices?case=${encodeURIComponent(caseId)}` : "/app/notices";
 }
@@ -87,9 +93,11 @@ export function resolveNoticePageCopy(input: FiledSurfaceInput = {}): NoticePage
       pageSubtitle: "Skip this if USCIS has not sent you a letter. Family options start with identity and relationship evidence, not an I-797 receipt.",
       emptyTitle: "No USCIS letter on file",
       emptyBody: "You do not need a receipt or RFE to keep going. Upload matching evidence, or paste a notice later if USCIS sends one.",
-      skipBanner: "No USCIS notice is required for this case. Use matching documents first.",
+      skipBanner: "No USCIS notice is required for this situation. Use matching documents first.",
       uploadPrimary: false,
       primaryCta: { label: `${evidenceLabel} →`, href: evidenceHref },
+      relatedSelectLabel: "Related situation (optional)",
+      unlinkedOption: "Not linked to a situation",
     };
   }
   return {
@@ -104,6 +112,8 @@ export function resolveNoticePageCopy(input: FiledSurfaceInput = {}): NoticePage
     skipBanner: null,
     uploadPrimary: true,
     primaryCta: { label: "Explain this notice →", href: noticeCatalogHref() },
+    relatedSelectLabel: "Related case (optional)",
+    unlinkedOption: "Not linked to a case",
   };
 }
 
@@ -113,7 +123,7 @@ export function resolveDeadlinesPageCopy(input: FiledSurfaceInput = {}): Deadlin
     return {
       pageSubtitle: "USCIS does not set a respond-by date until it sends a notice. Add your own filing targets if you want reminders.",
       emptyTitle: "No USCIS deadlines yet",
-      emptyBody: "Open-options cases do not invent an RFE or receipt deadline. Add a date yourself, or it will appear here when a USCIS notice is on file.",
+      emptyBody: "Open-options situations do not invent an RFE or receipt deadline. Add a date yourself, or it will appear here when a USCIS notice is on file.",
       dashboardEmptyBody: "No USCIS deadline applies yet — none is invented from a receipt you do not have.",
       addPlaceholder: "e.g. File Form I-130",
     };
