@@ -6,6 +6,7 @@ import { startFormAction } from "@/actions/forms";
 import { InlineUpload } from "@/components/inline-upload";
 import { CaseUpload } from "@/components/case-upload";
 import type { PresentationContract } from "@/lib/case-presentation-contract";
+import { withPresentationSurfaceCopy } from "@/lib/case-presentation-contract";
 import { formatPresentationDate, presentationActionStatus, presentationEvidenceGateLabel, presentationStepCta } from "@/lib/case-presentation-ui";
 import { limitSuggestionItems, suggestionConsultantCopy, type SuggestionChatAccess } from "@/lib/suggestion-access";
 import { formCatalogHref, formNumberForStep, formStartLabel } from "@/lib/goal-forms";
@@ -102,6 +103,7 @@ export function CasePresentationView({
   inquiryMode?: string | null;
   suggestionAccess?: SuggestionChatAccess;
 }) {
+  const presented = withPresentationSurfaceCopy(presentation, { inquiryMode });
   const readinessCopy = resolveReadinessCopy({ inquiryMode: inquiryMode ?? undefined });
   const versionChrome = resolveVersionChrome({ inquiryMode: inquiryMode ?? undefined });
   const intake = resolveIntakeChrome({ inquiryMode: inquiryMode ?? undefined });
@@ -296,7 +298,7 @@ export function CasePresentationView({
             <h2 className="mb-3 text-base font-semibold text-slate-900">What this means</h2>
             <Card>
               <CardBody>
-                <p className="text-sm leading-relaxed text-slate-700">{presentation.what_this_means.summary}</p>
+                <p className="text-sm leading-relaxed text-slate-700">{presented.what_this_means.summary}</p>
                 <p className="mt-3 text-sm text-slate-500">
                   {presentation.what_this_means.unresolved_count} open item{presentation.what_this_means.unresolved_count === 1 ? "" : "s"} still need attention.
                 </p>

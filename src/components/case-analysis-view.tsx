@@ -26,6 +26,7 @@ import {
 import { shouldShowUscisAccountGuide } from "@/lib/goal-notices";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { presentationStepCta } from "@/lib/case-presentation-ui";
+import { presentationWhatThisMeansSummary } from "@/lib/case-presentation-contract";
 import {
   analysisDocumentWalkthrough,
   closedReasonLabel,
@@ -134,11 +135,14 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   }
   const currentPosition =
     presentation?.hero.current_posture || c.reconstruction?.currentPosition || versionChrome.defaultPosture;
-  const evidenceSummary =
+  const evidenceSummaryRaw =
     presentation?.what_this_means.summary ||
     c.reconstruction?.summary ||
     latestEvidenceAudit?.summary ||
-    versionChrome.emptyEvidenceSummary;
+    "";
+  const evidenceSummary = evidenceSummaryRaw
+    ? presentationWhatThisMeansSummary(evidenceSummaryRaw, versionMatch)
+    : versionChrome.emptyEvidenceSummary;
   const evidenceGateStatus = presentation?.what_this_means.evidence_gate_status || latestEvidenceAudit?.status || null;
   const unknownQuestions = presentation?.what_this_means.unknowns.length
     ? presentation.what_this_means.unknowns

@@ -7,7 +7,17 @@ import {
   presentationNoticeStepDescription,
   withPresentationNoticeSteps,
 } from "../src/lib/case-presentation-brief";
-import { assemblePresentationContract, evidenceStrengthFromScores, parsePresentationRecord } from "../src/lib/case-presentation-contract";
+import {
+  assemblePresentationContract,
+  approvedPresentationHeading,
+  evidenceStrengthFromScores,
+  FILED_ORGANIZING_SUMMARY,
+  OPTIONS_ORGANIZING_SUMMARY,
+  parsePresentationRecord,
+  presentationOrganizingSummary,
+  presentationWhatThisMeansSummary,
+  withPresentationSurfaceCopy,
+} from "../src/lib/case-presentation-contract";
 import { caseListActionLine, caseListEvidenceLine, caseListSummary, caseListSummaryFromView, caseListVersionLine } from "../src/lib/case-presentation-list";
 import { presentationReportSections } from "../src/lib/case-report-presentation";
 import { presentationActionStatus, presentationEvidenceGateLabel, presentationStepCta } from "../src/lib/case-presentation-ui";
@@ -919,6 +929,36 @@ assert(optionsPresentation.hero.current_posture === OPEN_OPTIONS_POSTURE, "open-
 assert(optionsPresentation.hero.professional_review_recommended === false, "a simple marriage-options story must not flag consultant review on the hero");
 assert(!/STALE reconstruction|Case posture needs verification|upload a (uscis )?notice/i.test(JSON.stringify(optionsPresentation)), "open-options presentation must not show unverified case posture or notice-only next steps");
 assert(optionsPresentation.findings.some((finding) => finding.group === "opportunity"), "open-options presentation should show pathway opportunities");
+assert(!/the case is still being organized/i.test(optionsPresentation.what_this_means.summary), "open-options presentation must not use the canned case organizing summary");
+assert(presentationWhatThisMeansSummary("The case is still being organized from the available information.", { inquiryMode: "open_options" }) === OPTIONS_ORGANIZING_SUMMARY, "stored canned case organizing copy must remap to this situation");
+assert(presentationWhatThisMeansSummary("The case is still being organized.", { inquiryMode: "existing_case" }) === FILED_ORGANIZING_SUMMARY, "filed canned organizing copy stays the case");
+assert(presentationWhatThisMeansSummary("You asked about a family petition.", { inquiryMode: "open_options" }) === "You asked about a family petition.", "real presentation summaries must not be rewritten");
+const emptyOpenPresentation = assemblePresentationContract({
+  status: "analyzed",
+  actionReadinessScore: 0,
+  inquiryMode: "open_options",
+  issues: [],
+  deadlines: [],
+  actionNodes: [],
+  documents: [],
+});
+assert(emptyOpenPresentation.what_this_means.summary === OPTIONS_ORGANIZING_SUMMARY, "open-options assemble fallback must not say the case is still being organized");
+const emptyFiledPresentation = assemblePresentationContract({
+  status: "analyzed",
+  actionReadinessScore: 0,
+  inquiryMode: "existing_case",
+  issues: [],
+  deadlines: [],
+  actionNodes: [],
+  documents: [],
+});
+assert(emptyFiledPresentation.what_this_means.summary === FILED_ORGANIZING_SUMMARY, "filed assemble fallback stays the case is still being organized");
+assert(/this situation/i.test(buildPresentationBrief(emptyOpenPresentation, { inquiryMode: "open_options" }).text), "open-options presentation brief must not say the case is still being organized");
+assert(/the case is still being organized/i.test(buildPresentationBrief(emptyFiledPresentation, { inquiryMode: "existing_case" }).text), "filed presentation brief stays the case is still being organized");
+assert(/this situation/i.test(presentationReportSections(emptyOpenPresentation, { inquiryMode: "open_options" })), "open-options report must not keep the canned case organizing summary");
+assert(/the case is still being organized/i.test(presentationReportSections(emptyFiledPresentation, { inquiryMode: "existing_case" })), "filed report stays the canned case organizing summary");
+assert(approvedPresentationHeading({ inquiryMode: "open_options" }) === "Approved options presentation", "open-options letter context must not stay Approved case presentation");
+assert(approvedPresentationHeading({ inquiryMode: "existing_case" }) === "Approved case presentation", "filed letter context stays Approved case presentation");
 assert(presentationStepCta("ADD_CASE_DETAILS", "case-1")?.label === "Answer follow-up questions", "options follow-up CTA should not require a case file");
 assert(presentationStepCta("REVIEW_ANALYSIS", "case-1")?.href === "/app/qa?case=case-1", "follow-up questions should still link to Q&A");
 
@@ -2016,6 +2056,46 @@ assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven workspace 
 assert(requested.autoAssigned === false, "goal-driven workspace chrome must not auto-assign consultants");
 assert(!/receipt number detected/i.test(openNoticeCopy.skipBanner ?? ""), "workspace chrome must not invent a detected receipt number");
 
+assert(presentationOrganizingSummary(familyGuideInput) === OPTIONS_ORGANIZING_SUMMARY, "open-options organizing summary must not stay the case");
+assert(presentationOrganizingSummary(rfeGuideInput) === FILED_ORGANIZING_SUMMARY, "filed RFE organizing summary stays the case");
+assert(withPresentationSurfaceCopy({
+  ...optionsPresentation,
+  what_this_means: { ...optionsPresentation.what_this_means, summary: FILED_ORGANIZING_SUMMARY },
+}, familyGuideInput).what_this_means.summary === OPTIONS_ORGANIZING_SUMMARY, "stored canned case organizing copy must remap on open-options lists and views");
+assert(withPresentationSurfaceCopy({
+  ...presentation,
+  what_this_means: { ...presentation.what_this_means, summary: FILED_ORGANIZING_SUMMARY },
+}, rfeGuideInput).what_this_means.summary === FILED_ORGANIZING_SUMMARY, "filed canned organizing copy must stay on RFE presentations");
+const cannedList = caseListSummaryFromView(
+  { status: "analyzed" },
+  buildApprovedCaseView({
+    canonical: buildCanonicalApprovedState({
+      version: 1,
+      reason: "analysis",
+      pipelineConfigVersion: "v4.2-c24",
+      evidenceSnapshotHash: "canned-hash",
+      status: "analyzed",
+      readinessScore: 30,
+      presentation: {
+        ...optionsPresentation,
+        what_this_means: { ...optionsPresentation.what_this_means, summary: FILED_ORGANIZING_SUMMARY },
+      },
+    }),
+  }),
+  familyGuideInput,
+);
+assert(cannedList.meaning === OPTIONS_ORGANIZING_SUMMARY, "open-options case lists must not keep the canned case organizing sentence");
+const presentationViewSrcC24 = readFileSync(join(process.cwd(), "src/components/case-presentation-view.tsx"), "utf8");
+assert(presentationViewSrcC24.includes("withPresentationSurfaceCopy"), "presentation view must remap canned organizing copy");
+const analysisViewSrcC24 = readFileSync(join(process.cwd(), "src/components/case-analysis-view.tsx"), "utf8");
+assert(analysisViewSrcC24.includes("presentationWhatThisMeansSummary"), "analysis view must remap canned organizing copy");
+const lettersNewSrcC24 = readFileSync(join(process.cwd(), "src/app/app/letters/new/page.tsx"), "utf8");
+assert(lettersNewSrcC24.includes("approvedPresentationHeading"), "letter composer context card must use dual-path presentation heading");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven presentation copy must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven presentation copy must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven presentation copy must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven presentation copy must not auto-assign consultants");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -2057,3 +2137,4 @@ console.log(`- v4 C20: open ${openVersion.recordHeading}/${versionReasonLabel("a
 console.log(`- v4 C21: open ${openIntake.pageTitle}/${openIntake.listCta}, RFE ${rfeIntake.pageTitle}/${rfeIntake.listCta}`);
 console.log(`- v4 C22: open ${resolveCasesListCopy(familyGuideInput).pageTitle}/${surfaceNoun(familyGuideInput)}, RFE ${resolveCasesListCopy(rfeGuideInput).pageTitle}/${surfaceNoun(rfeGuideInput)}`);
 console.log(`- v4 C23: open ${thisSurfacePhrase(familyGuideInput)}/${resolveConsultantWorkspaceCopy([familyGuideInput]).heading}, RFE ${thisSurfacePhrase(rfeGuideInput)}/${resolveConsultantWorkspaceCopy([rfeGuideInput]).heading}`);
+console.log(`- v4 C24: open ${presentationOrganizingSummary(familyGuideInput).slice(0, 24)}, RFE ${presentationOrganizingSummary(rfeGuideInput).slice(0, 18)}`);

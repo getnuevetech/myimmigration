@@ -1,8 +1,9 @@
 import "server-only";
 import { db } from "./db";
-import { assemblePresentationContract, parsePresentationRecord, type PresentationContract } from "./case-presentation-contract";
+import { assemblePresentationContract, parsePresentationRecord, withPresentationSurfaceCopy, type PresentationContract } from "./case-presentation-contract";
 import { buildPresentationBrief } from "./case-presentation-brief";
 import { parseCanonicalApprovedState, buildApprovedCaseView, type ApprovedCaseView } from "./canonical-case-state";
+import { matchInputFromCase } from "./goal-versions";
 
 const CASE_PRESENTATION_INCLUDE = {
   reconstruction: true,
@@ -24,6 +25,8 @@ function parseJson<T>(value: string, fallback: T): T {
 
 function assembleFromLoadedCase(c: {
   status: string;
+  situation?: string | null;
+  goal?: string | null;
   actionReadinessScore: number;
   conflictsJson: string;
   reconstruction: {
@@ -68,6 +71,7 @@ function assembleFromLoadedCase(c: {
     unknowns: c.unknowns,
     evidenceGateStatus: c.evidenceAudits[0]?.status ?? null,
     conflicts: parseJson(c.conflictsJson, []),
+    ...matchInputFromCase({ situation: c.situation, goal: c.goal }),
   });
 }
 
@@ -115,7 +119,10 @@ export async function resolveCasePresentation(caseId: string) {
 export async function getCasePresentationBrief(caseId: string) {
   const contract = await resolveCasePresentation(caseId);
   if (!contract) return null;
-  return { contract, ...buildPresentationBrief(contract) };
+  const record = await db.case.findUnique({ where: { id: caseId }, select: { situation: true, goal: true } }).catch(() => null);
+  const input = record ? matchInputFromCase(record) : {};
+  const presented = withPresentationSurfaceCopy(contract, input);
+  return { contract: presented, ...buildPresentationBrief(presented, input) };
 }
 
 export async function loadApprovedViewsByCaseIds(caseIds: string[]) {
