@@ -3,10 +3,9 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PageHeader } from "@/components/ui";
-import { formatCaseNumber } from "@/lib/case-number";
 import { CaseAnalysisView } from "@/components/case-analysis-view";
 import { CaseComments } from "@/components/case-comments";
-import { consultantRecordLabel, resolveReportChrome } from "@/lib/goal-chrome";
+import { recordRefLabel, resolveReportChrome } from "@/lib/goal-chrome";
 import { matchInputFromCase } from "@/lib/goal-versions";
 
 // Consultants see EXACTLY what the customer sees — same analysis, findings,
@@ -25,7 +24,7 @@ export default async function ConsultantCaseViewPage({
   if (!assignment) notFound();
   const c = await db.case.findFirst({
     where: { id: caseId, userId: assignment.user.id },
-    select: { id: true, title: true, number: true, createdAt: true, situation: true, goal: true },
+    select: { id: true, title: true, number: true, createdAt: true, situation: true, goal: true, notices: { select: { noticeType: true } } },
   });
   if (!c) notFound();
   const matchInput = matchInputFromCase(c);
@@ -35,7 +34,7 @@ export default async function ConsultantCaseViewPage({
     <div>
       <PageHeader
         title={c.title}
-        subtitle={`${consultantRecordLabel(matchInput)} ${formatCaseNumber(c.number)} · ${assignment.user.firstName} ${assignment.user.lastName} · opened ${c.createdAt.toLocaleDateString("en-US")} — you see the same analysis as your client`}
+        subtitle={`${recordRefLabel(matchInput, c.number)} · ${assignment.user.firstName} ${assignment.user.lastName} · opened ${c.createdAt.toLocaleDateString("en-US")} — you see the same analysis as your client`}
         actions={
           <div className="flex gap-2">
             <a href={`/api/cases/${c.id}/report`} target="_blank" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">

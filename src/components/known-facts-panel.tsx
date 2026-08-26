@@ -24,14 +24,20 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-export function KnownFactsPanel({ facts }: { facts: KnownFact[] }) {
+export function KnownFactsPanel({
+  facts,
+  sourceHint = "From your profile and options analysis. Copy anything you need while completing this form.",
+  verifyHint = "Always double-check names, dates, and matching evidence against official USCIS form instructions before filing. A receipt is not required.",
+}: {
+  facts: KnownFact[];
+  sourceHint?: string;
+  verifyHint?: string;
+}) {
   if (facts.length === 0) return null;
   return (
     <aside className="rounded-2xl border border-lime-100 bg-lime-50/40 p-5">
       <h3 className="text-sm font-bold text-slate-900">What we already know</h3>
-      <p className="mt-1 text-xs text-slate-500">
-        From your profile and case analysis. Copy anything you need while completing this form.
-      </p>
+      <p className="mt-1 text-xs text-slate-500">{sourceHint}</p>
       <dl className="mt-4 space-y-3">
         {facts.map((f) => (
           <div key={f.label} className="rounded-lg bg-white p-2.5 ring-1 ring-slate-100">
@@ -43,9 +49,7 @@ export function KnownFactsPanel({ facts }: { facts: KnownFact[] }) {
           </div>
         ))}
       </dl>
-      <p className="mt-3 text-[11px] text-slate-400">
-        Always double-check names, receipt numbers, dates, deadlines, and filing requirements against your USCIS notice or case record before filing.
-      </p>
+      <p className="mt-3 text-[11px] text-slate-400">{verifyHint}</p>
     </aside>
   );
 }

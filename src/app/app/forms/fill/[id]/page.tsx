@@ -131,7 +131,7 @@ export default async function FillFormPage({
         {prefilledKeys.length > 0 && (
           <div className="mb-4 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
             We prefilled {prefilledKeys.length} answer{prefilledKeys.length === 1 ? "" : "s"} on this step from your
-            profile{prefill.caseNumber ? ` and case ${prefill.caseNumber}` : ""} — review each before continuing.
+            profile{prefill.recordHint} — review each before continuing.
           </div>
         )}
         <FormStep
@@ -151,7 +151,7 @@ export default async function FillFormPage({
         )}
       </div>
       <div className="lg:sticky lg:top-6">
-        <KnownFactsPanel facts={prefill.facts} />
+        <KnownFactsPanel facts={prefill.facts} sourceHint={prefill.sourceHint} verifyHint={prefill.verifyHint} />
       </div>
     </div>
   );

@@ -2,10 +2,9 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { guardAdminPage } from "@/lib/admin-guard";
 import { PageHeader, Card, CardBody, Badge } from "@/components/ui";
-import { formatCaseNumber } from "@/lib/case-number";
 import { CaseAnalysisView } from "@/components/case-analysis-view";
 import { CaseComments } from "@/components/case-comments";
-import { resolveReportChrome } from "@/lib/goal-chrome";
+import { recordRefLabel, resolveReportChrome } from "@/lib/goal-chrome";
 import { listCaseVersions } from "@/lib/case-versioning";
 import { parseCanonicalApprovedState, versionReasonLabel } from "@/lib/canonical-case-state";
 import { matchInputFromCase, resolveVersionChrome } from "@/lib/goal-versions";
@@ -19,6 +18,7 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
     where: { id },
     include: {
       user: { select: { email: true, firstName: true, lastName: true } },
+      notices: { select: { noticeType: true } },
       runs: {
         orderBy: { startedAt: "desc" },
         include: {
@@ -46,7 +46,7 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
     <div>
       <PageHeader
         title={c.title}
-        subtitle={`Case ${formatCaseNumber(c.number)} · ${c.user ? `${c.user.firstName} ${c.user.lastName} · ${c.user.email}` : "Guest intake (unclaimed)"} · created ${c.createdAt.toLocaleString("en-US")} — you are seeing the same analysis as the customer`}
+        subtitle={`${recordRefLabel(versionMatch, c.number)} · ${c.user ? `${c.user.firstName} ${c.user.lastName} · ${c.user.email}` : "Guest intake (unclaimed)"} · created ${c.createdAt.toLocaleString("en-US")} — you are seeing the same analysis as the customer`}
         actions={
           <a
             href={`/api/cases/${c.id}/report`}
