@@ -174,7 +174,7 @@ export function guideTipForStep(actionKey: string | null | undefined, input: Gui
         ? "Use the document vault and pick the matching kind. Photos from your phone work fine."
         : `Use the document vault and pick the matching kind. ${docCta} — family options start with identity and relationship evidence, not a USCIS receipt. Photos from your phone work fine.`;
     case "REVIEW_ANALYSIS":
-      return "You've added documents — the case page updates automatically as the evidence is processed. Check the current evidence position and path forward for the newest verified next step.";
+      return `You've added documents — the ${surfaceNoun(input)} page updates automatically as the evidence is processed. Check the current evidence position and path forward for the newest verified next step.`;
     case "DRAFT_LETTER":
       return filed
         ? "Use USCIS letters. If an RFE is on file, draft the RFE response; otherwise draft the matching notice response. Describe what you want to say in plain English."
@@ -184,7 +184,7 @@ export function guideTipForStep(actionKey: string | null | undefined, input: Gui
       const formNumber = form || (filed && key === "COMPLETE_FORM_I485" ? "I-485" : null);
       return formNumber
         ? `Open USCIS forms → Form ${formNumber} and answer the guided questions. Review the draft against the official USCIS instructions before filing.`
-        : "Open USCIS forms and start the matching form listed on your case. Answer the guided questions. Review the draft against the official USCIS instructions before filing.";
+        : `Open USCIS forms and start the matching form listed on your ${surfaceNoun(input)}. Answer the guided questions. Review the draft against the official USCIS instructions before filing.`;
     }
     default:
       return input.actionTitle
@@ -206,7 +206,7 @@ export function guideStatusHint(question: string, input: GuideMatchInput = {}): 
     return " If your question is about status, an RFE, a notice, or a deadline, upload the USCIS notice or receipt number so the case page can verify it.";
   }
   if (mentionsFiledChase(question) && !isFiledCaseSurface(input)) {
-    return " This case is still open-options. There is no USCIS receipt, RFE, or interview notice to chase yet. Keep going with matching documents and the matching form — a receipt is not required to start.";
+    return ` This ${surfaceNoun(input)} is still open-options. There is no USCIS receipt, RFE, or interview notice to chase yet. Keep going with matching documents and the matching form — a receipt is not required to start.`;
   }
   return "";
 }
@@ -232,7 +232,7 @@ export function guideFallbackCopy(input: GuideMatchInput, question: string): str
 export function guidePrimaryAction(input: GuideMatchInput = {}): GuideLinkAction {
   const caseId = input.caseId ?? "";
   if (!caseId) {
-    return { type: "link", label: "Start my first case", href: "/app/cases/new" };
+    return { type: "link", label: resolveIntakeChrome(input).firstCta, href: "/app/cases/new" };
   }
   const actionKey = guideDefaultActionKey(input);
   if (actionKey) {
