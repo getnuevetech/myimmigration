@@ -79,7 +79,7 @@ export function matchInputFromCase(c: {
 }): VersionMatchInput {
   const query = `${c.situation ?? ""} ${c.goal ?? ""}`;
   const noticeTypes = (c.notices ?? []).map((notice) => notice.noticeType).filter((value): value is string => Boolean(value));
-  const inquiryMode = c.inquiryMode ?? classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode;
+  const inquiryMode = c.inquiryMode ?? classifyImmigrationInquiry({ situation: c.situation ?? undefined, goal: c.goal ?? undefined }).mode;
   return { inquiryMode, query, noticeTypes };
 }
 

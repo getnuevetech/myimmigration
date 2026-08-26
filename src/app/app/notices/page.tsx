@@ -157,7 +157,7 @@ export default async function NoticesPage({
                   </div>
                   {summary && (
                     <div className="mt-3 rounded-xl border border-lime-200 bg-lime-50 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-lime-700">{resolveVersionChrome(matchInputFromCase(n.case)).fitsHeading}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-lime-700">{resolveVersionChrome(n.case ? matchInputFromCase(n.case) : undefined).fitsHeading}</p>
                       <p className="mt-1 text-sm font-medium text-lime-950">{n.case?.title}: {summary.posture}</p>
                       <p className="mt-0.5 text-sm text-lime-900">{caseListActionLine(summary)}</p>
                       <p className="mt-0.5 text-xs text-lime-800">{caseListEvidenceLine(summary)}</p>

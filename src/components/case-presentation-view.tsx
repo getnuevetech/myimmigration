@@ -544,7 +544,7 @@ export function CasePresentationView({
                         {step?.description && <p className="text-sm text-slate-500">{step.description}</p>}
                         {verifiable && status.tone !== "done" && (
                           <p className="mt-1 text-xs font-medium text-lime-600">
-                            ◐ Verified automatically — {verifiableActionCopy(action.action_key, { inquiryMode }).toLowerCase()}
+                            ◐ Verified automatically — {verifiableActionCopy(action.action_key, { inquiryMode: inquiryMode ?? undefined }).toLowerCase()}
                           </p>
                         )}
                         {verifiable && status.tone === "done" && (
