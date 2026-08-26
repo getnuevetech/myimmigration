@@ -2091,6 +2091,9 @@ const analysisViewSrcC24 = readFileSync(join(process.cwd(), "src/components/case
 assert(analysisViewSrcC24.includes("presentationWhatThisMeansSummary"), "analysis view must remap canned organizing copy");
 const lettersNewSrcC24 = readFileSync(join(process.cwd(), "src/app/app/letters/new/page.tsx"), "utf8");
 assert(lettersNewSrcC24.includes("approvedPresentationHeading"), "letter composer context card must use dual-path presentation heading");
+const listCardSrc = readFileSync(join(process.cwd(), "src/components/case-list-card.tsx"), "utf8");
+assert(listCardSrc.includes("approvedPresentationHeading"), "presentation context card default heading must be dual-path");
+assert(!listCardSrc.includes('heading = "Approved case presentation"'), "presentation context card must not hardcode Approved case presentation");
 assert(familyForms[0]?.formNumber === "I-130", "goal-driven presentation copy must not rerank I-485 ahead of I-130");
 assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven presentation copy must not convert the RFE fixture into open-options");
 assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven presentation copy must keep the approved open-options posture");
