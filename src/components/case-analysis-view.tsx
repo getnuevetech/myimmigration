@@ -33,6 +33,7 @@ import {
   resolveVersionChrome,
   verifiableActionCopy,
 } from "@/lib/goal-versions";
+import { resolveIntakeChrome } from "@/lib/goal-intake";
 
 export type CaseViewer = {
   role: "customer" | "consultant" | "admin";
@@ -88,6 +89,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     inquiryMode: inquiry.mode,
   });
   const versionChrome = resolveVersionChrome(versionMatch);
+  const intake = resolveIntakeChrome(versionMatch);
   const versionCard = (
     <CaseVersionCard
       version={latestVersion}
@@ -349,15 +351,13 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
         {versionCard}
         {professionalReviewRecommended && (
           <div className="rounded-xl border border-lime-300 bg-lime-50 px-4 py-3 text-sm text-lime-900">
-            <span className="font-semibold">▲ Professional review recommended.</span> Based on the analysis, this case would benefit
+            <span className="font-semibold">▲ Professional review recommended.</span> Based on the analysis, this {inquiry.mode === "open_options" ? "situation" : "case"} would benefit
             from a licensed professional.
           </div>
         )}
         {verificationFlags > 0 && (
           <div className="rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
-            <span className="font-semibold">◐ Verification required.</span> Some values in this case couldn&apos;t be confirmed
-            against each other — we flag disagreements instead of guessing. More documents (like the USCIS account
-            case record) resolve this.
+            <span className="font-semibold">◐ Verification required.</span> {intake.verificationHint}
           </div>
         )}
         {conflicts.map((cf, ci) => (

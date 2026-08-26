@@ -174,6 +174,7 @@ import {
   usesMatchingEvidenceProgress,
   verifiableActionCopy,
 } from "../src/lib/goal-versions";
+import { resolveIntakeChrome } from "../src/lib/goal-intake";
 import {
   consultantFromOfficialSources,
   askedFollowUpFromAssistant,
@@ -1817,6 +1818,81 @@ assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven versions m
 assert(requested.autoAssigned === false, "goal-driven versions must not auto-assign consultants");
 assert(!/receipt number detected/i.test(openVersion.emptyEvidenceSummary + verifiableActionCopy("GET_CASE_RECORD", familyGuideInput)), "version copy must not invent a detected receipt number");
 
+const openIntake = resolveIntakeChrome(familyGuideInput);
+const rfeIntake = resolveIntakeChrome(rfeGuideInput);
+const unlabeledIntake = resolveIntakeChrome();
+assert(openIntake.pageTitle === "Start a new situation", "open-options intake title must not be Start a new case");
+assert(/receipt is not required/.test(openIntake.prefillBanner), "open-options prefill must not require a receipt");
+assert(openIntake.listCta === "New situation →", "open-options dashboard CTA must not say New case");
+assert(openIntake.firstCta === "Start your first situation", "open-options empty dashboard must not say Start your first case");
+assert(openIntake.startLabel === "Start a situation", "open-options list start must not say Start a case");
+assert(resolveCasesListCopy(familyGuideInput).startLabel === "Start a situation", "cases list copy must use the options start label");
+assert(openIntake.consultantConsent.includes("situation details"), "open-options consultant consent must not say case details");
+assert(!/case details/.test(openIntake.consultantConsent), "open-options consultant consent must not say case details");
+assert(openIntake.documentsTitle === "Documents matched to your situation", "open-options documents header must not say your case");
+assert(openIntake.lettersTitle === "USCIS letters, matched to your situation", "open-options letters header must not say your case");
+assert(/receipt is not required/.test(openIntake.documentsEmptyIdentity), "open-options empty vault must not require a receipt");
+assert(/this situation/.test(openIntake.formsSubtitle), "open-options forms subtitle must not say latest case");
+assert(/this situation/.test(openIntake.letterGroundHint), "open-options letter grounding must not say this case");
+assert(openIntake.officialMaterialLead === "Official material for this situation points to", "open-options matching lead must not say this case");
+assert(openIntake.professionalReview.includes("this situation"), "open-options professional review must not say this case");
+assert(/case record is not required/.test(openIntake.verificationHint), "open-options verification must not chase a USCIS case record");
+assert(openIntake.guideNewCaseLabel === "Yes — start this as a new situation", "open-options guide handoff must not say start this as a new case");
+assert(/receipt is not required/.test(openIntake.guideNewCaseMessage), "open-options guide handoff must not require a receipt");
+assert(/Open your situation/.test(openIntake.guideOpenStep), "open-options guide must not say Open your case");
+assert(rfeIntake.pageTitle === "Start a new case", "filed RFE intake title stays Start a new case");
+assert(rfeIntake.listCta === "New case →", "filed RFE dashboard CTA stays New case");
+assert(rfeIntake.startLabel === "Start a case", "filed RFE list start stays Start a case");
+assert(resolveCasesListCopy(rfeGuideInput).startLabel === "Start a case", "filed RFE cases list stays Start a case");
+assert(rfeIntake.consultantConsent.includes("case details"), "filed RFE consultant consent stays case details");
+assert(rfeIntake.documentsTitle === "Documents matched to your case", "filed RFE documents header stays your case");
+assert(rfeIntake.lettersTitle === "USCIS letters, matched to your case", "filed RFE letters header stays your case");
+assert(rfeIntake.officialMaterialLead === "Official material for this case points to", "filed RFE matching lead stays this case");
+assert(rfeIntake.guideNewCaseLabel === "Yes — start this as a new case", "filed RFE guide handoff stays start this as a new case");
+assert(unlabeledIntake.pageTitle === "Start a new situation", "unlabeled intake defaults to options so empty accounts are not sold a filed case");
+assert(!/Start a case review/.test(openIntake.pageTitle + openIntake.listCta), "intake chrome must not revive Start a case review");
+const newCaseSrc = readFileSync(join(process.cwd(), "src/app/app/cases/new/page.tsx"), "utf8");
+assert(newCaseSrc.includes("resolveIntakeChrome"), "new-case page must use goal-driven intake chrome");
+assert(!newCaseSrc.includes("Start a new case"), "new-case page must not hardcode Start a new case");
+const dashboardSrc = readFileSync(join(process.cwd(), "src/app/app/page.tsx"), "utf8");
+assert(dashboardSrc.includes("resolveIntakeChrome") && dashboardSrc.includes("listCta"), "dashboard must use goal-driven new-situation CTA");
+assert(!dashboardSrc.includes("New case →"), "dashboard must not hardcode New case");
+assert(!dashboardSrc.includes("Start your first case"), "dashboard empty state must not hardcode Start your first case");
+const casesListSrc = readFileSync(join(process.cwd(), "src/app/app/cases/page.tsx"), "utf8");
+assert(casesListSrc.includes("resolveIntakeChrome"), "cases list must use goal-driven intake chrome");
+assert(!casesListSrc.includes("New case →"), "cases list must not hardcode New case");
+const consultantsSrc = readFileSync(join(process.cwd(), "src/app/app/consultants/page.tsx"), "utf8");
+assert(consultantsSrc.includes("consultantConsent"), "consultant consent must use goal-driven intake chrome");
+assert(!consultantsSrc.includes("view your case details"), "consultant page must not hardcode view your case details");
+const docsPageSrc = readFileSync(join(process.cwd(), "src/app/app/documents/page.tsx"), "utf8");
+assert(docsPageSrc.includes("documentsTitle"), "documents page must use dual-path title");
+assert(!docsPageSrc.includes("Documents matched to your case"), "documents page must not hardcode matched to your case");
+const lettersPageSrc = readFileSync(join(process.cwd(), "src/app/app/letters/page.tsx"), "utf8");
+assert(lettersPageSrc.includes("lettersTitle"), "letters page must use dual-path title");
+assert(!lettersPageSrc.includes("matched to your case"), "letters page must not hardcode matched to your case");
+const formsPageSrc = readFileSync(join(process.cwd(), "src/app/app/forms/page.tsx"), "utf8");
+assert(formsPageSrc.includes("formsSubtitle"), "forms page must use dual-path subtitle");
+assert(!formsPageSrc.includes("your latest case"), "forms page must not hardcode your latest case");
+assert(presentationViewSrc.includes("officialMaterialLead"), "presentation matching leads must use intake chrome");
+assert(!presentationViewSrc.includes("Official material for this case points to"), "presentation must not hardcode Official material for this case");
+const analysisViewSrcC21 = readFileSync(join(process.cwd(), "src/components/case-analysis-view.tsx"), "utf8");
+assert(analysisViewSrcC21.includes("verificationHint"), "analysis verification must use dual-path intake copy");
+assert(!analysisViewSrcC21.includes("like the USCIS account"), "legacy analysis verification must not hardcode a USCIS account case record");
+const guideRuntimeSrc = readFileSync(join(process.cwd(), "src/lib/guide.ts"), "utf8");
+assert(guideRuntimeSrc.includes("guideNewCaseLabel"), "guide new-situation handoff must use intake chrome");
+assert(!guideRuntimeSrc.includes("Yes — start this as a new case"), "guide runtime must not hardcode start this as a new case");
+assert(!guideRuntimeSrc.includes("Open your case and follow"), "guide runtime must not hardcode Open your case");
+const readmeSrc = readFileSync(join(process.cwd(), "README.md"), "utf8");
+assert(/explore options before they file/i.test(readmeSrc), "README must lead with options before a filing");
+assert(/receipt is not required/i.test(readmeSrc), "README must not require a USCIS receipt to start");
+assert(!/A friendly AI immigration case assistant/.test(readmeSrc), "README must not introduce the product as a case assistant only");
+assert(!/^\| Upload \/ photograph USCIS notices \|/m.test(readmeSrc), "README feature table must not lead with notice upload");
+assert(familyForms[0]?.formNumber === "I-130", "goal-driven intake must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "goal-driven intake must not convert the RFE fixture into open-options");
+assert(listFromOptions.posture === OPEN_OPTIONS_POSTURE, "goal-driven intake must keep the approved open-options posture");
+assert(requested.autoAssigned === false, "goal-driven intake must not auto-assign consultants");
+assert(!/receipt number detected/i.test(openIntake.prefillBanner + openIntake.guideNewCaseMessage), "intake copy must not invent a detected receipt number");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -1855,3 +1931,4 @@ console.log(`- v4 C17: open tip ${openRecordTip.includes("I-130") ? "I-130" : "m
 console.log(`- v4 C18: nav docs-before-notices=${navHrefsBefore(openNav, "/app/notices").includes("/app/documents")}, options report=${openChrome.reportTitle}, RFE notice=${rfeChrome.evidenceLabel}`);
 console.log(`- v4 C19: discussion ${openDiscussion.heading}, closing ${openClosing.notificationTitle("IMM-1").split(" ")[0]}, fallback ${openFallbackSteps[0]?.action_key}`);
 console.log(`- v4 C20: open ${openVersion.recordHeading}/${versionReasonLabel("analysis", familyGuideInput)}, RFE ${rfeVersion.recordHeading}/${versionReasonLabel("analysis", rfeGuideInput)}`);
+console.log(`- v4 C21: open ${openIntake.pageTitle}/${openIntake.listCta}, RFE ${rfeIntake.pageTitle}/${rfeIntake.listCta}`);

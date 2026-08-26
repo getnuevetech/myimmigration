@@ -5,17 +5,23 @@ import { useSearchParams } from "next/navigation";
 import { ActionForm, SubmitButton } from "@/components/action-form";
 import { createCaseAction } from "@/actions/case";
 import { PageHeader, Field, inputClass } from "@/components/ui";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { resolveIntakeChrome } from "@/lib/goal-intake";
 
 function NewCaseForm() {
   // The guide chatbot hands off new immigration situations here with the user's
-  // message pre-filled — the user confirms it as a new case.
+  // message pre-filled — the user confirms it as a new review.
   const prefill = useSearchParams().get("prefill") ?? "";
+  const intake = resolveIntakeChrome({
+    inquiryMode: classifyImmigrationInquiry({ situation: prefill }).mode,
+    query: prefill,
+  });
   return (
     <div className="max-w-2xl">
-      <PageHeader title="Start a new case" subtitle="Tell us what is going on — a USCIS case, a letter, or a situation with no filing yet. We'll map options and next steps." />
+      <PageHeader title={intake.pageTitle} subtitle={intake.pageSubtitle} />
       {prefill && (
         <div className="mb-4 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
-          We carried over what you told the guide — review it, add anything missing, and confirm to open this as a new case.
+          {intake.prefillBanner}
         </div>
       )}
       <ActionForm action={createCaseAction}>

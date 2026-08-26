@@ -20,6 +20,7 @@ import {
   type GuideChrome,
   type GuideMatchInput,
 } from "./goal-guide";
+import { resolveIntakeChrome } from "./goal-intake";
 
 // The in-account guide chatbot. It always analyzes the user's account state,
 // coaches them through the current matching step (open-options or a filed
@@ -206,8 +207,8 @@ export async function guideRespond(
       actionKey: guideDefaultActionKey(snapshot.surface),
     })
       ?? (snapshot.surface.caseId
-        ? "Open your case and follow the next matching step."
-        : "You haven't started a case yet — tell us what's going on, even if you have not filed anything with USCIS, and we'll map options and next steps.");
+        ? resolveIntakeChrome(snapshot.surface).guideOpenStep
+        : resolveIntakeChrome(snapshot.surface).guideNoCaseYet);
     return withChrome(snapshot, {
       message: `Here's where you stand:\n\n${snapshot.text
         .split("\n")
@@ -220,11 +221,11 @@ export async function guideRespond(
   // Hard routing rules the AI must not override.
   const intent = detectIntent(lastQuestion);
   if (intent === "new_case") {
+    const intake = resolveIntakeChrome(snapshot.surface);
     return withChrome(snapshot, {
-      message:
-        "That sounds like a separate immigration situation — it deserves its own case so it gets a full analysis, its own issues, and its own step-by-step plan (chat isn't the right place to handle it). Want me to start it as a new case? Your message will be pre-filled and you just confirm.",
+      message: intake.guideNewCaseMessage,
       actions: [
-        { type: "new_case", label: "Yes — start this as a new case", href: `/app/cases/new?prefill=${encodeURIComponent(lastQuestion.slice(0, 500))}` },
+        { type: "new_case", label: intake.guideNewCaseLabel, href: `/app/cases/new?prefill=${encodeURIComponent(lastQuestion.slice(0, 500))}` },
         ...baseActions(),
       ],
     });

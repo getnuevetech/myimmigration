@@ -3,6 +3,7 @@ import { matchingFormNumber } from "./goal-forms";
 import { matchingDocumentKind } from "./goal-documents";
 import { matchingLetterKind } from "./goal-letters";
 import { isFiledCaseSurface, type FiledSurfaceInput } from "./goal-notices";
+import { resolveIntakeChrome } from "./goal-intake";
 
 export type ChromeMatchInput = FiledSurfaceInput & {
   caseId?: string | null;
@@ -184,13 +185,14 @@ export function resolveReportChrome(input: ChromeMatchInput = {}): ReportChromeC
 }
 
 export function resolveCasesListCopy(input: ChromeMatchInput = {}): CasesListCopy {
+  const intake = resolveIntakeChrome(input);
   if (isFiledCaseSurface(input)) {
     return {
       pageTitle: "My cases",
       pageSubtitle: "Each case is one immigration situation, with a current posture and next step.",
       emptyTitle: "No cases yet",
       emptyBody: "Describe your situation and goal, and we'll analyze it into a clear case plan.",
-      startLabel: "Start a case",
+      startLabel: intake.startLabel,
     };
   }
   return {
@@ -199,7 +201,7 @@ export function resolveCasesListCopy(input: ChromeMatchInput = {}): CasesListCop
     emptyTitle: "No cases yet",
     emptyBody:
       "Describe your situation and goal, even if you have not filed anything with USCIS, and we'll map options and next steps.",
-    startLabel: "Start a case",
+    startLabel: intake.startLabel,
   };
 }
 

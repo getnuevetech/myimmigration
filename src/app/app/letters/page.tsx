@@ -17,6 +17,7 @@ import {
   rankMatchingLetters,
   resolveLetterCatalogEntitlement,
 } from "@/lib/goal-letters";
+import { resolveIntakeChrome } from "@/lib/goal-intake";
 
 export const metadata = { title: "USCIS letters" };
 
@@ -75,6 +76,12 @@ export default async function LettersPage({
   const inquiry = scopedCase
     ? classifyImmigrationInquiry({ situation: scopedCase.situation, goal: scopedCase.goal })
     : null;
+  const intake = resolveIntakeChrome({
+    themes: inquiry?.themes,
+    inquiryMode: inquiry?.mode,
+    query: `${scopedCase?.situation ?? ""} ${scopedCase?.goal ?? ""}`,
+    noticeTypes: (scopedCase?.notices ?? []).map((notice) => notice.noticeType),
+  });
   const ranked = inquiry
     ? rankMatchingLetters({
         themes: inquiry.themes,
@@ -99,8 +106,8 @@ export default async function LettersPage({
   return (
     <div>
       <PageHeader
-        title="USCIS letters, matched to your case"
-        subtitle="Cover letters for the matching official form, or notice responses when a receipt is actually on file. Matching kinds come from official material on your latest case, not a generic RFE reply."
+        title={intake.lettersTitle}
+        subtitle={intake.lettersSubtitle}
         actions={<ButtonLink href={newHref}>{canStart ? "New letter →" : "Unlock with Plus →"}</ButtonLink>}
       />
 

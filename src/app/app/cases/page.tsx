@@ -8,6 +8,7 @@ import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { resolveCasesListCopy } from "@/lib/goal-chrome";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { matchInputFromCase } from "@/lib/goal-versions";
+import { resolveIntakeChrome } from "@/lib/goal-intake";
 
 export const metadata = { title: "My cases" };
 
@@ -24,13 +25,14 @@ export default async function CasesPage() {
     ? classifyImmigrationInquiry({ situation: cases[0].situation, goal: cases[0].goal })
     : { mode: "open_options" as const };
   const listCopy = resolveCasesListCopy({ inquiryMode: latestInquiry.mode });
+  const intake = resolveIntakeChrome({ inquiryMode: latestInquiry.mode });
 
   return (
     <div>
       <PageHeader
         title={listCopy.pageTitle}
         subtitle={listCopy.pageSubtitle}
-        actions={<ButtonLink href="/app/cases/new">New case →</ButtonLink>}
+        actions={<ButtonLink href="/app/cases/new">{intake.listCta}</ButtonLink>}
       />
       {cases.length === 0 ? (
         <EmptyState
