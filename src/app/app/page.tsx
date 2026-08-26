@@ -12,6 +12,7 @@ import { resolveDashboardFiledCopy } from "@/lib/goal-notices";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { matchInputFromCase } from "@/lib/goal-versions";
 import { resolveIntakeChrome } from "@/lib/goal-intake";
+import { resolveCasesListCopy } from "@/lib/goal-chrome";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -71,6 +72,12 @@ export default async function DashboardPage() {
     query: `${latest?.situation ?? ""} ${latest?.goal ?? ""}`,
     noticeTypes: (latest?.notices ?? []).map((notice) => notice.noticeType),
   });
+  const listCopy = resolveCasesListCopy({
+    themes: inquiry?.themes,
+    inquiryMode: inquiry?.mode,
+    query: `${latest?.situation ?? ""} ${latest?.goal ?? ""}`,
+    noticeTypes: (latest?.notices ?? []).map((notice) => notice.noticeType),
+  });
 
   return (
     <div>
@@ -125,11 +132,11 @@ export default async function DashboardPage() {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div>
-          <h2 className="mb-3 text-base font-semibold text-slate-900">Recent cases</h2>
+          <h2 className="mb-3 text-base font-semibold text-slate-900">{listCopy.recentHeading}</h2>
           {cases.length === 0 ? (
             <EmptyState
-              title="No cases yet"
-              body="Tell us about your immigration situation — with a USCIS case, a letter, or with no filing yet — and we'll break it into clear options and next steps."
+              title={listCopy.emptyTitle}
+              body={listCopy.emptyBody}
               action={<ButtonLink href="/app/cases/new">{intake.firstCta}</ButtonLink>}
             />
           ) : (

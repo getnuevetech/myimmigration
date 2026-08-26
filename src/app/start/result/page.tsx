@@ -8,6 +8,8 @@ import { Card, CardBody, StateMark, ButtonLink, Badge } from "@/components/ui";
 import { resolveCasePresentation } from "@/lib/case-presentation";
 import { loadSuggestionAccess } from "@/lib/suggestion-quota";
 import { suggestionConsultantCopy } from "@/lib/suggestion-access";
+import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
+import { isFiledCaseSurface } from "@/lib/goal-notices";
 
 export const metadata = { title: "Your first results" };
 
@@ -28,6 +30,9 @@ export default async function GuestResultPage({
   });
   if (!c) redirect("/start");
 
+  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const filed = isFiledCaseSurface({ inquiryMode: inquiry.mode, query: `${c.situation} ${c.goal}` });
+
   // The analysis runs in the background after intake — show a live-refreshing
   // waiting state until findings are ready.
   if (c.status === "analyzing" && Date.now() - c.updatedAt.getTime() < 10 * 60000) {
@@ -37,7 +42,7 @@ export default async function GuestResultPage({
         <SiteHeader />
         <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-24 text-center">
           <span className="mx-auto block h-4 w-4 animate-ping rounded-full bg-lime-500" />
-          <h1 className="mt-6 text-2xl font-extrabold text-slate-900">Analyzing your situation…</h1>
+          <h1 className="mt-6 text-2xl font-extrabold text-slate-900">{filed ? "Analyzing your case…" : "Analyzing your situation…"}</h1>
           <p className="mt-2 text-slate-600">
             We&apos;re reading your summary and goal{c.documents.length ? ", and any documents you uploaded" : ""}. This page updates automatically — most analyses finish in
             under a minute.
@@ -58,6 +63,7 @@ export default async function GuestResultPage({
     suggestionAccess.entitlement,
     null,
     Boolean(presentation?.hero.professional_review_recommended),
+    { inquiryMode: inquiry.mode, query: `${c.situation} ${c.goal}` },
   );
 
   return (

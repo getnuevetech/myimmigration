@@ -22,6 +22,9 @@ import {
   rankLetterCatalog,
   rankMatchingLetters,
   resolveLetterCatalogEntitlement,
+  letterKindHint,
+  letterGroundSelectLabel,
+  letterUnlinkedOption,
 } from "@/lib/goal-letters";
 
 export const metadata = { title: "Draft a USCIS letter" };
@@ -125,13 +128,13 @@ export default async function NewLetterPage({
           {noticeId ? <input type="hidden" name="notice" value={noticeId} /> : null}
           <input type="hidden" name="kind" value={defaultKind} />
           <label className="block text-sm font-medium text-slate-700">
-            Ground this letter in a case
+            {letterGroundSelectLabel(selected ? matchInputFromCase(selected) : undefined)}
             <select
               name="case"
               defaultValue={defaultCaseId}
               className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
             >
-              <option value="">Not linked to a case</option>
+              <option value="">{letterUnlinkedOption(selected ? matchInputFromCase(selected) : undefined)}</option>
               {cases.map((c) => (
                 <option key={c.id} value={c.id}>{formatCaseNumber(c.number)} · {c.title}</option>
               ))}
@@ -168,6 +171,7 @@ export default async function NewLetterPage({
           notices={relatedNotices.map((n) => ({ id: n.id, label: `${n.noticeType || "Notice"}${n.caseYear ? ` · ${n.caseYear}` : ""}` }))}
           defaultNoticeId={def?.isNoticeResponse ? defaultNoticeId : ""}
           defaultCaseId={defaultCaseId}
+          kindHint={letterKindHint(selected ? matchInputFromCase(selected) : undefined)}
         />
       )}
     </div>

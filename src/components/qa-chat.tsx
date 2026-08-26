@@ -120,7 +120,9 @@ export function QaChat({
                     ? `Personalized answers are included on your plan. A matching professional on ImmigrationOnMe: ${access.consultantName}.`
                     : "Personalized answers are included on your plan. Pro can match you with a licensed attorney or accredited representative on this platform."
                   : access.audience === "free" && access.linkedCase
-                    ? "Questions about this case do not use your general Q&A allowance. Upgrade to Plus for personalized general follow-ups, or Pro to add a matched professional."
+                    ? access.filed
+                      ? "Questions about this case do not use your general Q&A allowance. Upgrade to Plus for personalized general follow-ups, or Pro to add a matched professional."
+                      : "Questions about this situation do not use your general Q&A allowance. Upgrade to Plus for personalized general follow-ups, or Pro to add a matched professional."
                     : "Personalized official follow-ups are included on your plan. A licensed professional on ImmigrationOnMe can go deeper on Pro."
                 : access.remaining === 1
                   ? "1 general question left at this access level."

@@ -11,6 +11,10 @@ export type IntakeChrome = {
   firstCta: string;
   startLabel: string;
   consultantConsent: string;
+  consultantRoutedLead: string;
+  consultantAwaiting: string;
+  consultantDetailsLabel: string;
+  consultantPendingPrivacy: string;
   documentsTitle: string;
   lettersTitle: string;
   lettersSubtitle: string;
@@ -38,6 +42,10 @@ export function resolveIntakeChrome(input: IntakeMatchInput = {}): IntakeChrome 
       firstCta: "Start your first case",
       startLabel: "Start a case",
       consultantConsent: "view your case details and the documents you've shared",
+      consultantRoutedLead: "Why this case was routed to you:",
+      consultantAwaiting: "This client's case is awaiting analysis — open for the case details.",
+      consultantDetailsLabel: "Case details",
+      consultantPendingPrivacy: "Case files, findings, and contact details stay private until the connection is active.",
       documentsTitle: "Documents matched to your case",
       lettersTitle: "USCIS letters, matched to your case",
       lettersSubtitle:
@@ -67,6 +75,10 @@ export function resolveIntakeChrome(input: IntakeMatchInput = {}): IntakeChrome 
     firstCta: "Start your first situation",
     startLabel: "Start a situation",
     consultantConsent: "view your situation details and the documents you've shared",
+    consultantRoutedLead: "Why this situation was routed to you:",
+    consultantAwaiting: "This client's situation is awaiting analysis — open for the situation details.",
+    consultantDetailsLabel: "Situation details",
+    consultantPendingPrivacy: "Situation files, findings, and contact details stay private until the connection is active.",
     documentsTitle: "Documents matched to your situation",
     lettersTitle: "USCIS letters, matched to your situation",
     lettersSubtitle:

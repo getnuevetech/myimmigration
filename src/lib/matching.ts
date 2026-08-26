@@ -6,6 +6,7 @@ import { callProvider, extractJson } from "./ai/adapters";
 import { consultantSpecialtiesForThemes } from "./qa-access";
 import { classifyImmigrationInquiry } from "./immigration-inquiry";
 import { consultantMatchNotificationTitle } from "./goal-conversation";
+import { surfaceNoun } from "./goal-notices";
 
 // Consultant matching engine: deterministic scoring over specialty fit,
 // experience, and past cases handled, optionally re-ranked by an AI model,
@@ -219,12 +220,13 @@ export async function generateAssignmentReason(
       issueTypes.some((t) => (ISSUE_SPECIALTY_MAP[t] ?? []).includes(s)),
     );
     const cred = credentialLabel(candidate.credentialType);
-    const summary = `${candidate.name} (${cred}, ${candidate.yearsExperience} yrs) specializes in ${matched.length ? matched.map(specialtyName).join(" and ") : "immigration case support"}, which matches this case.`;
+    const noun = c ? surfaceNoun({ inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode, query: `${c.situation} ${c.goal}` }) : "case";
+    const summary = `${candidate.name} (${cred}, ${candidate.yearsExperience} yrs) specializes in ${matched.length ? matched.map(specialtyName).join(" and ") : "immigration case support"}, which matches this ${noun}.`;
     const detail = [
       `- Credential: ${cred} with ${candidate.yearsExperience} years of professional immigration experience.`,
-      matched.length ? `- Specialty match: ${matched.map(specialtyName).join(", ")} — directly relevant to the issues in this case (${issueTypes.map((t) => t.replace(/_/g, " ")).join(", ")}).` : `- Broad immigration background relevant to this case.`,
+      matched.length ? `- Specialty match: ${matched.map(specialtyName).join(", ")} — directly relevant to the issues in this ${noun} (${issueTypes.map((t) => t.replace(/_/g, " ")).join(", ")}).` : `- Broad immigration background relevant to this ${noun}.`,
       candidate.pastCases.length ? `- Track record: ${candidate.pastCases.length} past case(s) recorded, including ${candidate.pastCases[0].title}.` : `- Available capacity: currently handling ${candidate.activeLoad} active client(s).`,
-      `- Workload: ${candidate.activeLoad} active client(s) — capacity to take this case now.`,
+      `- Workload: ${candidate.activeLoad} active client(s) — capacity to take this ${noun} now.`,
     ].join("\n");
     return { summary, detail };
   };

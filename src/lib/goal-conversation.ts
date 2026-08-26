@@ -75,6 +75,16 @@ export function consultantMatchNotificationTitle(input: ConversationMatchInput =
     : "We found a consultant who fits this situation";
 }
 
+export function qaGroundSelectLabel(input: ConversationMatchInput = {}): string {
+  return isFiledCaseSurface(input) ? "Ground answers in a case" : "Ground answers in a situation";
+}
+
+export function qaLinkedAllowanceCopy(input: ConversationMatchInput = {}): string {
+  return isFiledCaseSurface(input)
+    ? "Questions about this case do not use your general Q&A allowance. Upgrade to Plus for personalized general follow-ups, or Pro to add a matched professional."
+    : "Questions about this situation do not use your general Q&A allowance. Upgrade to Plus for personalized general follow-ups, or Pro to add a matched professional.";
+}
+
 export function resolveClosingCopy(input: ConversationMatchInput = {}): ClosingCopy {
   if (isFiledCaseSurface(input)) {
     return {

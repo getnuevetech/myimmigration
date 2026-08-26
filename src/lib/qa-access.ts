@@ -39,6 +39,7 @@ export type QaChatAccess = {
   allowSaveOptionsCase: boolean;
   consultantName?: string | null;
   linkedCase?: boolean;
+  filed?: boolean;
 };
 
 export function toQaChatAccess(
@@ -46,6 +47,7 @@ export function toQaChatAccess(
   usage: QaUsage,
   consultantName?: string | null,
   linkedCase = false,
+  filed = false,
 ): QaChatAccess {
   const caseThread = linkedCase && entitlement.audience !== "guest";
   return {
@@ -62,6 +64,7 @@ export function toQaChatAccess(
     allowSaveOptionsCase: caseThread ? false : entitlement.allowSaveOptionsCase,
     consultantName: consultantName ?? null,
     linkedCase: caseThread,
+    filed: caseThread && filed,
   };
 }
 

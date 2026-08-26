@@ -1,3 +1,5 @@
+import { isFiledCaseSurface, type FiledSurfaceInput } from "./goal-notices";
+
 export type SuggestionAudience = "guest" | "free" | "plus" | "pro";
 
 export type SuggestionEntitlement = {
@@ -85,15 +87,20 @@ export function resolveSuggestionEntitlement(input: {
   };
 }
 
-export function suggestionUsageFromCount(used: number, entitlement: SuggestionEntitlement): SuggestionUsage {
+export function suggestionUsageFromCount(
+  used: number,
+  entitlement: SuggestionEntitlement,
+  input: FiledSurfaceInput = {},
+): SuggestionUsage {
   if (entitlement.maxClarifyAnswers === null) {
     return { used, remaining: null, blocked: false, blockReason: "" };
   }
   const remaining = Math.max(0, entitlement.maxClarifyAnswers - used);
   if (remaining <= 0) {
+    const noun = isFiledCaseSurface(input) ? "case" : "situation";
     const blockReason = entitlement.audience === "guest"
       ? "Create a free account to keep answering official follow-ups. Paid plans keep the full suggested next steps, and Pro can match you with a licensed attorney or accredited representative on ImmigrationOnMe."
-      : "You have used this case's follow-up questions on the Free plan. Upgrade to Plus for the full suggested path from official material, or Pro to add a matched immigration lawyer or accredited representative.";
+      : `You have used this ${noun}'s follow-up questions on the Free plan. Upgrade to Plus for the full suggested path from official material, or Pro to add a matched immigration lawyer or accredited representative.`;
     return { used, remaining: 0, blocked: true, blockReason };
   }
   return { used, remaining, blocked: false, blockReason: "" };
@@ -130,11 +137,13 @@ export function suggestionConsultantCopy(
   entitlement: SuggestionEntitlement,
   consultant: SuggestionConsultantPreview = null,
   professionalReviewRecommended = false,
+  input: FiledSurfaceInput = {},
 ): string {
+  const kind = isFiledCaseSurface(input) ? "case" : "situation";
   if (entitlement.consultantReferral && consultant) {
     const who = [consultant.name, consultant.credentialLabel].filter(Boolean).join(", ");
     return professionalReviewRecommended
-      ? `Professional review is recommended for this matter. A licensed professional on ImmigrationOnMe who works this kind of case: ${who}. Request a match — nothing is shared until you approve.`
+      ? `Professional review is recommended for this matter. A licensed professional on ImmigrationOnMe who works this kind of ${kind}: ${who}. Request a match — nothing is shared until you approve.`
       : `A licensed professional on ImmigrationOnMe who works this kind of matter: ${who}. Open Consultants to request a match — nothing is shared until you approve.`;
   }
   if (entitlement.consultantReferral) {

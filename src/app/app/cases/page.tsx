@@ -9,8 +9,21 @@ import { resolveCasesListCopy } from "@/lib/goal-chrome";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { matchInputFromCase } from "@/lib/goal-versions";
 import { resolveIntakeChrome } from "@/lib/goal-intake";
+import { getCurrentUser } from "@/lib/auth";
 
-export const metadata = { title: "My cases" };
+export async function generateMetadata() {
+  const user = await getCurrentUser();
+  if (!user) return { title: "My situations" };
+  const latest = await db.case.findFirst({
+    where: { userId: user.id },
+    orderBy: { updatedAt: "desc" },
+    select: { situation: true, goal: true },
+  });
+  const inquiry = latest
+    ? classifyImmigrationInquiry({ situation: latest.situation, goal: latest.goal })
+    : { mode: "open_options" as const };
+  return { title: resolveCasesListCopy({ inquiryMode: inquiry.mode }).pageTitle };
+}
 
 export default async function CasesPage() {
   const user = await requireUser();

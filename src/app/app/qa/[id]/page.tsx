@@ -12,6 +12,7 @@ import { conversationNarrative } from "@/lib/goal-suggestions";
 import { matchInputFromCase } from "@/lib/goal-versions";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { previewBestConsultantForThemes } from "@/lib/matching";
+import { isFiledCaseSurface } from "@/lib/goal-notices";
 
 export default async function QaThreadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -55,7 +56,18 @@ export default async function QaThreadPage({ params }: { params: Promise<{ id: s
         threadId={thread.id}
         caseId={thread.caseId ?? ""}
         messages={thread.messages.map((m) => ({ id: m.id, role: m.role, content: m.content }))}
-        access={toQaChatAccess(access.entitlement, access.usage, consultantName, Boolean(thread.caseId))}
+        access={toQaChatAccess(
+          access.entitlement,
+          access.usage,
+          consultantName,
+          Boolean(thread.caseId),
+          thread.case
+            ? isFiledCaseSurface({
+                inquiryMode: classifyImmigrationInquiry({ situation: thread.case.situation, goal: thread.case.goal }).mode,
+                query: `${thread.case.situation} ${thread.case.goal}`,
+              })
+            : false,
+        )}
       />
     </div>
   );
