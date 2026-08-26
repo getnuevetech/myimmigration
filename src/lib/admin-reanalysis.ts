@@ -7,7 +7,6 @@ import {
 import { ensureCaseVersion, finalizeCaseVersion } from "./case-versioning";
 import {
   compareCustomerSnapshots,
-  parseCustomerFacingSnapshot,
   presentationFromSnapshot,
   reanalysisVisibleTo,
 } from "./admin-reanalysis-compare";
