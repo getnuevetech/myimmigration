@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { startAdminReanalysisFromCaseAction } from "@/actions/admin-reanalysis";
 import { db } from "@/lib/db";
 import { guardAdminPage } from "@/lib/admin-guard";
 import { PageHeader, Card, CardBody, Badge } from "@/components/ui";
@@ -48,13 +50,29 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
         title={c.title}
         subtitle={`${recordRefLabel(versionMatch, c.number)} · ${c.user ? `${c.user.firstName} ${c.user.lastName} · ${c.user.email}` : "Guest intake (unclaimed)"} · created ${c.createdAt.toLocaleString("en-US")} — you are seeing the same analysis as the customer`}
         actions={
-          <a
-            href={`/api/cases/${c.id}/report`}
-            target="_blank"
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            {reportChrome.documentTitle} ↗
-          </a>
+          <div className="flex gap-2">
+            <form action={startAdminReanalysisFromCaseAction.bind(null, c.id)}>
+              <button
+                type="submit"
+                className="rounded-lg bg-lime-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-lime-700"
+              >
+                Re-run analysis
+              </button>
+            </form>
+            <Link
+              href={`/admin/reanalysis?caseId=${c.id}`}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Compare with selected models
+            </Link>
+            <a
+              href={`/api/cases/${c.id}/report`}
+              target="_blank"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {reportChrome.documentTitle} ↗
+            </a>
+          </div>
         }
       />
 

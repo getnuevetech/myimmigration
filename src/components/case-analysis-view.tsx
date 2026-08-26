@@ -35,6 +35,13 @@ import {
   verifiableActionCopy,
 } from "@/lib/goal-versions";
 import { resolveIntakeChrome } from "@/lib/goal-intake";
+import {
+  getRunningReanalysis,
+  getSharedReanalysisForViewer,
+  parseCustomerFacingSnapshot,
+  presentationFromSnapshot,
+} from "@/lib/admin-reanalysis";
+import { StaffSharedReanalysis } from "@/components/staff-shared-reanalysis";
 
 export type CaseViewer = {
   role: "customer" | "consultant" | "admin";
@@ -62,9 +69,33 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   });
   if (!c) return null;
 
+  const runningReanalysis = await getRunningReanalysis(caseId).catch(() => null);
+  const freeze = runningReanalysis ? parseCustomerFacingSnapshot(runningReanalysis.currentSnapshotJson) : null;
+  if (freeze) {
+    c.status = freeze.case.status;
+    c.readinessScore = freeze.case.readinessScore;
+    c.evidenceAvailableScore = freeze.case.evidenceAvailableScore;
+    c.evidenceProcessedScore = freeze.case.evidenceProcessedScore;
+    c.actionReadinessScore = freeze.case.actionReadinessScore;
+    c.conflictsJson = freeze.case.conflictsJson;
+    c.issues = freeze.issues as typeof c.issues;
+    c.pathSteps = freeze.pathSteps as typeof c.pathSteps;
+    if (freeze.reconstruction) {
+      c.reconstruction = {
+        ...(c.reconstruction ?? {
+          id: "freeze",
+          caseId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+        ...freeze.reconstruction,
+      } as typeof c.reconstruction;
+    }
+  }
+
   // Self-heal: if a background analysis was cut off (deploy/restart), don't
   // spin forever — recover to a stable status after 10 minutes.
-  if (c.status === "analyzing" && Date.now() - c.updatedAt.getTime() > 10 * 60000) {
+  if (!freeze && c.status === "analyzing" && Date.now() - c.updatedAt.getTime() > 10 * 60000) {
     c.status = c.issues.length > 0 ? "analyzed" : "needs_info";
     await db.case.update({ where: { id: c.id }, data: { status: c.status } }).catch(() => null);
   }
@@ -74,12 +105,32 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const visibleIssues = fullAccess ? c.issues : c.issues.slice(0, 1);
   const verificationFlags = c.runs.filter((r) => r.consensus?.verificationRequired).length;
   const latestEvidenceAudit = c.evidenceAudits[0] ?? null;
-  const canonicalState = await db.canonicalCaseState.findUnique({
-    where: { caseId },
-    select: { approvedStateJson: true },
-  }).catch(() => null);
+  const canonicalState = freeze?.canonical
+    ? { approvedStateJson: freeze.canonical.approvedStateJson }
+    : await db.canonicalCaseState.findUnique({
+        where: { caseId },
+        select: { approvedStateJson: true },
+      }).catch(() => null);
   const approvedState = parseCanonicalApprovedState(canonicalState?.approvedStateJson);
-  const presentation = await resolveCasePresentation(caseId).catch(() => null);
+  const presentation =
+    (freeze ? presentationFromSnapshot(freeze) : null) ?? (await resolveCasePresentation(caseId).catch(() => null));
+  const sharedRow =
+    viewer.role === "admin" ? null : await getSharedReanalysisForViewer(caseId, viewer.role).catch(() => null);
+  const sharedSnapshot = sharedRow ? parseCustomerFacingSnapshot(sharedRow.proposedSnapshotJson) : null;
+  const staffReviewBanner = (
+    <>
+      {runningReanalysis && viewer.role === "admin" && (
+        <div className="rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
+          <span className="font-semibold">Staff re-analysis running.</span> Live customer output is held at the
+          pre-run snapshot.{" "}
+          <Link href={`/admin/reanalysis/${runningReanalysis.id}`} className="font-medium underline">
+            Open comparison
+          </Link>
+        </div>
+      )}
+      {sharedSnapshot ? <StaffSharedReanalysis snapshot={sharedSnapshot} /> : null}
+    </>
+  );
   const latestVersion = await getLatestCaseVersion(caseId).catch(() => null);
   const versionHistory = viewer.role === "admin" ? await listCaseVersions(caseId, 8).catch(() => []) : [];
   const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
@@ -225,6 +276,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   if (presentation) {
     return (
       <div className="space-y-6">
+        {staffReviewBanner}
         {c.status === "analyzing" && (
           <div className="flex items-center gap-3 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
             <span className="h-3 w-3 shrink-0 animate-ping rounded-full bg-lime-500" />
@@ -329,6 +381,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
+        {staffReviewBanner}
         {c.status === "analyzing" && (
           <div className="flex items-center gap-3 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
             <span className="h-3 w-3 shrink-0 animate-ping rounded-full bg-lime-500" />
