@@ -123,9 +123,6 @@ export async function reanalyzeCaseAction(caseId: string) {
   redirect(`/admin/reanalysis?caseId=${encodeURIComponent(caseId)}`);
 }
 
-// Clarifying interview: store the Q&A, fold the answer into the case
-// narrative in extraction-friendly phrasing, and re-run the analysis so the
-// customer immediately sees sharper findings.
 export async function clarifyAnswerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
   const caseId = String(formData.get("caseId") ?? "");
@@ -147,7 +144,7 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
     if (quotaError) return { error: quotaError };
   }
 
-  const { nextClarifyQuestion, situationLine } = await import("@/lib/clarify");
+  const { nextClarifyQuestion } = await import("@/lib/clarify");
   const q = await nextClarifyQuestion(caseId);
   if (!q) return { error: "All questions are already answered — the analysis is up to date." };
 
@@ -183,12 +180,32 @@ export async function clarifyAnswerAction(_prev: ActionState, formData: FormData
     data: { caseId, role: "user", questionKey: q.key, content: answerWithFiles.slice(0, 2000) },
   });
   await recordSuggestionsForCase(caseId, ["ADD_CASE_DETAILS", suggestionQuestionKey(q.key)].filter(Boolean), "completed");
+  const { reportedFactsFromAnswer } = await import("@/lib/situation-brief");
+  const reported = reportedFactsFromAnswer(answerWithFiles);
+  if (reported.length) {
+    const existing = await db.evidenceFact.findMany({
+      where: { caseId, provenance: "USER_REPORTED" },
+      select: { key: true, value: true },
+    });
+    const have = new Set(existing.map((item) => `${item.key}:${item.value}`));
+    const fresh = reported.filter((item) => !have.has(`${item.key}:${item.value}`));
+    if (fresh.length) {
+      await db.evidenceFact.createMany({
+        data: fresh.map((item) => ({
+          caseId,
+          key: item.key,
+          value: item.value,
+          confidence: "needs_verification",
+          provenance: "USER_REPORTED",
+          verificationState: "EXTRACTED",
+          sourceText: answerWithFiles.slice(0, 500),
+        })),
+      });
+    }
+  }
   await db.case.update({
     where: { id: caseId },
-    data: {
-      situation: `${c.situation}\n\n${situationLine(q.key, q.text, answerWithFiles)}`,
-      status: "analyzing",
-    },
+    data: { status: "analyzing" },
   });
   // The multi-model re-analysis can take minutes — never block the button on
   // it. The answer is saved instantly; the analysis runs after the response

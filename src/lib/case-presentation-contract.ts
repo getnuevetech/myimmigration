@@ -1,4 +1,5 @@
 import { isFiledCaseSurface, type FiledSurfaceInput } from "./goal-notices";
+import { stripClarifiedNarrative } from "./situation-brief";
 
 export type PresentationEvidenceStrength = "Strong" | "Moderate" | "Limited";
 
@@ -17,7 +18,7 @@ export function isCannedOrganizingSummary(text?: string | null): boolean {
 }
 
 export function presentationWhatThisMeansSummary(raw: string | null | undefined, input: FiledSurfaceInput = {}): string {
-  const text = (raw ?? "").trim();
+  const text = stripClarifiedNarrative(raw).trim();
   if (!text || isCannedOrganizingSummary(text)) return presentationOrganizingSummary(input);
   return text;
 }

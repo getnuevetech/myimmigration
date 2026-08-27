@@ -153,6 +153,7 @@ export async function captureCustomerFacingSnapshot(caseId: string): Promise<Cus
           timelineJson: c.reconstruction.timelineJson,
           pendingActionsJson: c.reconstruction.pendingActionsJson,
           confidence: c.reconstruction.confidence,
+          briefJson: c.reconstruction.briefJson,
         }
       : null,
     canonical: c.canonicalState
@@ -351,6 +352,7 @@ export async function overrideCustomerOutputWithSnapshot(caseId: string, snapsho
     action_readiness_score: snapshot.case.actionReadinessScore,
     presentation,
     analysis_plan: approved?.analysis_plan ?? null,
+    situation_brief: approved?.situation_brief ?? null,
   };
   await finalizeCaseVersion(version.id, caseId, approvedState);
 }

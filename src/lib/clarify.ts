@@ -5,11 +5,10 @@ import { classifyImmigrationInquiry, INQUIRY_MODES, OPEN_OPTIONS_POSTURE } from 
 import { selectNextClarifyQuestion, type ClarifyQuestionPick } from "./goal-suggestions";
 import { resolveCasePresentation } from "./case-presentation";
 
-// The clarifying interview: when the analysis is thin (missing timeline years,
-// forms, receipt numbers, dates, notices, or documents), the app asks the customer targeted questions in a
-// chat conversation. Every answer is folded back into the case narrative in a
-// form the extraction engine parses, and the analysis re-runs automatically —
-// so each answer visibly sharpens the findings.
+// The clarifying interview: when the analysis is thin, the app asks the
+// customer targeted questions. Answers are stored as clarify messages and
+// user-reported facts. They are not appended to the customer-facing situation
+// narrative. The situation brief reconstructs them, then analysis re-runs.
 
 export type ClarifyQuestion = ClarifyQuestionPick;
 

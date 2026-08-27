@@ -9,6 +9,7 @@ import { presentationReportSections } from "./case-report-presentation";
 import { classifyImmigrationInquiry } from "./immigration-inquiry";
 import { resolveReadinessCopy } from "./goal-readiness";
 import { reportFileName, resolveReportChrome } from "./goal-chrome";
+import { stripClarifiedNarrative } from "./situation-brief";
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -107,7 +108,7 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
 ${presentationReportSections(presentation, chromeInput)}
 
 <h2>Situation as reported</h2>
-<p>${esc(c.situation)}</p>
+<p>${esc(stripClarifiedNarrative(c.situation) || c.situation)}</p>
 <h2>Applicant's goal</h2>
 <p>${esc(c.goal || "—")}</p>
 

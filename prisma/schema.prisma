@@ -653,6 +653,7 @@ model CaseReconstruction {
   timelineJson String  @default("[]")
   pendingActionsJson String @default("[]")
   confidence  String   @default("needs_verification")
+  briefJson   String   @default("{}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
