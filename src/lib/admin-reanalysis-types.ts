@@ -78,6 +78,7 @@ export type CustomerFacingSnapshot = {
     timelineJson: string;
     pendingActionsJson: string;
     confidence: string;
+    briefJson?: string;
   } | null;
   canonical: {
     approvedStateJson: string;

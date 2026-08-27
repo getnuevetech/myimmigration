@@ -2,6 +2,7 @@ import type { PresentationContract } from "./case-presentation-contract";
 import type { AnalysisPlan } from "./case-analysis-plan";
 import { analysisPlanSummary } from "./case-analysis-plan";
 import { resolveVersionChrome, versionReasonLabel as versionReasonLabelForSurface, FILED_VERSION_REASON_LABELS, type VersionMatchInput } from "./goal-versions";
+import { parseSituationBrief, type SituationBrief } from "./situation-brief";
 
 export type CanonicalApprovedState = {
   version: number;
@@ -15,6 +16,7 @@ export type CanonicalApprovedState = {
   action_readiness_score: number;
   presentation: PresentationContract | null;
   analysis_plan: AnalysisPlan | null;
+  situation_brief?: SituationBrief | null;
 };
 
 export const VERSION_REASON_LABELS: Record<string, string> = FILED_VERSION_REASON_LABELS;
@@ -26,12 +28,13 @@ export function versionReasonLabel(reason: string, input?: VersionMatchInput): s
 export function parseCanonicalApprovedState(value: string | CanonicalApprovedState | null | undefined): CanonicalApprovedState | null {
   if (!value) return null;
   if (typeof value === "object") {
-    return typeof value.version === "number" ? value : null;
+    if (typeof value.version !== "number") return null;
+    return { ...value, situation_brief: parseSituationBrief(value.situation_brief) };
   }
   try {
     const parsed = JSON.parse(value) as CanonicalApprovedState;
     if (!parsed || typeof parsed.version !== "number") return null;
-    return parsed;
+    return { ...parsed, situation_brief: parseSituationBrief(parsed.situation_brief) };
   } catch {
     return null;
   }
@@ -49,6 +52,7 @@ export function buildCanonicalApprovedState(input: {
   actionReadinessScore?: number;
   presentation?: PresentationContract | null;
   analysisPlan?: AnalysisPlan | null;
+  situationBrief?: SituationBrief | string | null;
 }): CanonicalApprovedState {
   return {
     version: input.version,
@@ -62,6 +66,7 @@ export function buildCanonicalApprovedState(input: {
     action_readiness_score: input.actionReadinessScore ?? 0,
     presentation: input.presentation ?? null,
     analysis_plan: input.analysisPlan ?? null,
+    situation_brief: parseSituationBrief(input.situationBrief) ?? null,
   };
 }
 

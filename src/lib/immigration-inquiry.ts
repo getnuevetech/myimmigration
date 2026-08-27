@@ -69,6 +69,7 @@ export type InquiryClassifyInput = {
   forms?: string[];
   receipts?: string[];
   factKeys?: string[];
+  clarifyAnswers?: string[];
 };
 
 export type OpenOptionsIssue = {
@@ -151,7 +152,7 @@ function uniq<T>(values: T[]): T[] {
 }
 
 function combinedText(input: InquiryClassifyInput): string {
-  return [input.situation, input.goal, input.documentsText].filter(Boolean).join("\n");
+  return [input.situation, input.goal, input.documentsText, ...(input.clarifyAnswers ?? [])].filter(Boolean).join("\n");
 }
 
 export function hasExistingCaseSignals(input: InquiryClassifyInput): boolean {

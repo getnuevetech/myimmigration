@@ -385,6 +385,12 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
       await logSystem("warning", "case_orchestrator", "Plan-driven document processing failed", String(err));
     });
   }
+  if (!decisions.stop) {
+    await rebuildCaseEvidenceState(caseId).catch(async (err) => {
+      const { logSystem } = await import("../syslog");
+      await logSystem("warning", "evidence_state", "Could not rebuild case evidence state before analysis", String(err));
+    });
+  }
   if (decisions.retrieveAuthority) {
     await snapshotAuthorityForPlan(caseId, parsedPlan?.authority_queries_needed ?? [], {
       situation: c.situation,
@@ -394,10 +400,6 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
       await logSystem("warning", "case_orchestrator", "Plan-driven authority retrieval failed", String(err));
     });
   }
-  await rebuildCaseEvidenceState(caseId).catch(async (err) => {
-    const { logSystem } = await import("../syslog");
-    await logSystem("warning", "evidence_state", "Could not rebuild case evidence state before analysis", String(err));
-  });
 
   async function stageRun(stageKey: string, vars: Record<string, string>, sequentialContext = false, stageMedia?: MediaAttachment[], roles?: string[]) {
     const run = await db.analysisRun.create({ data: { caseId, stageKey, status: "running" } });
@@ -746,6 +748,7 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
       select: { evidenceAvailableScore: true, evidenceProcessedScore: true, actionReadinessScore: true },
     });
     const canonical = await db.canonicalCaseState.findUnique({ where: { caseId }, select: { evidenceSnapshotHash: true } });
+    const reconstruction = await db.caseReconstruction.findUnique({ where: { caseId }, select: { briefJson: true } });
     await finalizeCaseVersion(
       caseVersion.id,
       caseId,
@@ -761,6 +764,7 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
         actionReadinessScore: scores?.actionReadinessScore,
         presentation: presentationContract,
         analysisPlan: finishedPlan,
+        situationBrief: reconstruction?.briefJson,
       }),
     ).catch(async (err) => {
       const { logSystem } = await import("../syslog");

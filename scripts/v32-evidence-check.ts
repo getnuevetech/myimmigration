@@ -43,6 +43,14 @@ import {
   selectApprovedPresentation,
   versionReasonLabel,
 } from "../src/lib/canonical-case-state";
+import {
+  buildSituationBrief,
+  FAMILY_OPEN_OPTIONS_FIXTURE,
+  reportedFactsFromAnswer,
+  RFE_I485_FIXTURE,
+  stripClarifiedNarrative,
+  VAWA_PRIMA_FACIE_FIXTURE,
+} from "../src/lib/situation-brief";
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, extractUniversalDocumentIntelligence, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 import {
   applyInquiryToEvidenceState,
@@ -530,6 +538,7 @@ assert(!lowPlan.tasks_required.includes(ANALYSIS_TASKS.PROCESS_DOCUMENTS), "extr
 assert(!lowPlan.tasks_required.includes(ANALYSIS_TASKS.INDEPENDENT_REVIEW), "low-risk cases should skip independent review");
 assert(!lowPlan.tasks_required.includes(ANALYSIS_TASKS.QUESTION_PLANNING), "cases without unknowns should skip question planning");
 assert(lowPlan.tasks_required.includes(ANALYSIS_TASKS.PRIMARY_REASONING), "analysis plan should still run primary reasoning");
+assert(lowPlan.tasks_required.indexOf(ANALYSIS_TASKS.RECONSTRUCT_CASE) < lowPlan.tasks_required.indexOf(ANALYSIS_TASKS.RETRIEVE_AUTHORITY), "situation reconstruction must run before authority retrieval");
 assert(lowPlan.deterministic_tools.includes("ACTION_GRAPH"), "analysis plan should include the action graph tool");
 const lowDecisions = analysisRunDecisions(lowPlan);
 assert(lowDecisions.processDocuments === false, "pipeline must not process already-extracted documents");
@@ -2514,6 +2523,55 @@ assert(familyForms[0]?.formNumber === "I-130", "matching-materials layout must n
 assert(presentation.hero.current_posture === "RFE notice needs review", "matching-materials layout must not convert the RFE fixture into open-options");
 assert(requested.autoAssigned === false, "matching-materials layout must not auto-assign consultants");
 
+const vawaBrief = buildSituationBrief(VAWA_PRIMA_FACIE_FIXTURE);
+assert(vawaBrief.caseType === "VAWA self-petition", `VAWA fixture case type should be VAWA self-petition, got ${vawaBrief.caseType}`);
+assert(vawaBrief.primaryForm === "I-360", `VAWA fixture primary form should be I-360, got ${vawaBrief.primaryForm}`);
+assert(vawaBrief.relatedForm === "I-485", `VAWA fixture related form should be I-485, got ${vawaBrief.relatedForm}`);
+assert(vawaBrief.relatedProcess === "Adjustment of Status", "VAWA fixture related process should be adjustment of status");
+assert(vawaBrief.doNotRecommendNewPathway === true, "VAWA fixture must not recommend a new pathway");
+assert(vawaBrief.lockFamilyOpenOptionsI130 === false, "VAWA fixture must not lock the family open-options I-130 path");
+assert(/prima facie/i.test(vawaBrief.customerQuestion), `VAWA fixture question should be about the prima facie notice, got ${vawaBrief.customerQuestion}`);
+assert(vawaBrief.situationBullets.every((item) => !/\[Clarified/i.test(item.text)), "situation brief bullets must not include interview tags");
+assert(vawaBrief.situationBullets.every((item) => !item.text.includes(" and ") || item.text.split(" ").length < 18), "situation brief bullets should stay one idea each");
+assert(vawaBrief.verifiedFacts.some((item) => /I-360/i.test(item.text)), "VAWA fixture should verify the I-360 filing from documents");
+assert(vawaBrief.verifiedFacts.some((item) => /prima facie/i.test(item.text)), "VAWA fixture should verify the prima facie determination from documents");
+assert(vawaBrief.reportedFacts.some((item) => /I-485/i.test(item.text)), "VAWA fixture should keep the I-485 filing as reported until a receipt is reviewed");
+assert(vawaBrief.unknownFacts.some((item) => /I-485 receipt/i.test(item.text)), "VAWA fixture should leave the I-485 receipt unknown");
+assert(vawaBrief.situationBullets.length >= 8 && vawaBrief.situationBullets.length <= 15, `VAWA situation bullets should stay 8-15, got ${vawaBrief.situationBullets.length}`);
+
+const familyBrief = buildSituationBrief(FAMILY_OPEN_OPTIONS_FIXTURE);
+assert(familyBrief.primaryForm === "I-130", `family open-options brief should lock I-130, got ${familyBrief.primaryForm}`);
+assert(familyBrief.lockFamilyOpenOptionsI130 === true, "family open-options with nothing filed should keep the I-130 lock");
+assert(familyBrief.doNotRecommendNewPathway === false, "family open-options may still discuss a first petition");
+assert(familyForms[0]?.formNumber === "I-130", "v5 situation brief must not rerank I-485 ahead of I-130 for family open-options");
+
+const rfeBrief = buildSituationBrief(RFE_I485_FIXTURE);
+assert(rfeBrief.primaryForm === "I-485", `RFE brief should lock I-485, got ${rfeBrief.primaryForm}`);
+assert(rfeBrief.lockFamilyOpenOptionsI130 === false, "RFE brief must not lock a family I-130 path");
+assert(rfeBrief.doNotRecommendNewPathway === true, "RFE brief must prefer the existing notice over a new pathway");
+assert(presentation.hero.current_posture === "RFE notice needs review", "v5 situation brief must not convert the RFE fixture into open-options");
+
+assert(stripClarifiedNarrative("I am in the United States.\n\n[Clarified evidence] What happened: I filed I-360.") === "I am in the United States.", "clarified interview lines must be stripped from customer situation text");
+assert(presentationWhatThisMeansSummary("[Clarified] My USCIS notice: an RFE.") === OPTIONS_ORGANIZING_SUMMARY, "what this means must not display clarified interview tags");
+assert(reportedFactsFromAnswer("I already filed Form I-485 and received a prima facie notice.").some((item) => item.key === "form_type" && item.value === "I-485"), "clarify answers should record reported form facts without rewriting the situation");
+assert(PROMPT_VERSION.includes("v32"), "v5 situation brief must not bump analysis prompt version");
+assert(requested.autoAssigned === false, "v5 situation brief must not auto-assign consultants");
+
+const caseActionSrc = readFileSync(join(process.cwd(), "src/actions/case.ts"), "utf8");
+const clarifyFn = caseActionSrc.slice(caseActionSrc.indexOf("export async function clarifyAnswerAction"), caseActionSrc.indexOf("export async function createOptionsCaseFromQaAction"));
+assert(!clarifyFn.includes("situationLine"), "clarify answers must not be appended onto the customer situation narrative");
+assert(clarifyFn.includes("reportedFactsFromAnswer"), "clarify answers must become user-reported facts");
+assert(clarifyFn.includes('provenance: "USER_REPORTED"'), "clarify facts must be stored as USER_REPORTED");
+
+const orchestratorRebuildSrc = readFileSync(join(process.cwd(), "src/lib/ai/orchestrator.ts"), "utf8");
+assert(
+  orchestratorRebuildSrc.indexOf("await rebuildCaseEvidenceState") > 0 &&
+    orchestratorRebuildSrc.indexOf("await rebuildCaseEvidenceState") < orchestratorRebuildSrc.indexOf("await snapshotAuthorityForPlan"),
+  "pipeline must lock the situation brief before authority retrieval",
+);
+assert(readFileSync(join(process.cwd(), "src/lib/evidence/case-state.ts"), "utf8").includes("buildSituationBrief"), "evidence reconstruction must persist the situation brief");
+assert(readFileSync(join(process.cwd(), "prisma/schema.prisma"), "utf8").includes("briefJson"), "situation brief must persist on case reconstruction");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -2563,3 +2621,4 @@ console.log(`- v4 C28: open ${openClarify.placeholder.includes("receipt is not r
 console.log(`- v4 C29: empty ${guidePrimaryAction(emptyOpenGuide).label}, hint ${guideStatusHint("receipt status", familyGuideInput).includes("This situation") ? "situation" : "missing"}, RFE ${guidePrimaryAction(emptyRfeGuide).label}`);
 console.log(`- v4 C30: open ${approvedPresentationPhrase(familyGuideInput)}, RFE ${approvedPresentationPhrase(rfeGuideInput)}`);
 console.log(`- admin re-analysis: compare changed=${reanalysisDiff.changed}, share hidden=${!reanalysisVisibleTo({ visibleToCustomer: false, visibleToConsultant: false, status: "completed" }, "customer")}`);
+console.log(`- v5 P1: VAWA brief ${vawaBrief.primaryForm}/${vawaBrief.relatedForm}, family lock I-130=${familyBrief.lockFamilyOpenOptionsI130}, RFE ${rfeBrief.primaryForm}`);

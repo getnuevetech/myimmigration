@@ -1,0 +1,1 @@
+ALTER TABLE "CaseReconstruction" ADD COLUMN IF NOT EXISTS "briefJson" TEXT NOT NULL DEFAULT '{}';
