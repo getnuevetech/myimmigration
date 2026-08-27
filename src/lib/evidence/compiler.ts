@@ -1,4 +1,4 @@
-import { classifyImmigrationDocument, type ImmigrationDocumentType } from "@/domain/documents";
+import { resolveImmigrationDocumentType, type ImmigrationDocumentType } from "@/domain/documents";
 import type { ImmigrationEventType } from "@/domain/events";
 import type { ImmigrationFactKey } from "@/domain/facts";
 import type {
@@ -22,6 +22,7 @@ const ISO_DATE_RE = /\b20\d{2}-\d{2}-\d{2}\b/g;
 const NOTICE_PATTERNS: { value: string; pattern: RegExp; eventType: ImmigrationEventType }[] = [
   { value: "RFE", pattern: /\brequest for evidence\b|\bRFE\b/i, eventType: "rfe_issued" },
   { value: "NOID", pattern: /\bnotice of intent to deny\b|\bNOID\b/i, eventType: "noid_issued" },
+  { value: "PRIMA_FACIE", pattern: /\bprima facie\b/i, eventType: "notice_issued" },
   { value: "I-797", pattern: /\bI-?797C?\b|\bnotice of action\b/i, eventType: "notice_issued" },
   { value: "BIOMETRICS", pattern: /\bbiometrics?\b|\bfingerprint/i, eventType: "biometrics_scheduled" },
   { value: "INTERVIEW", pattern: /\binterview\b/i, eventType: "interview_scheduled" },
@@ -282,10 +283,11 @@ function buildReconstruction(facts: CompiledEvidenceFact[], events: CompiledCase
 
 export function compileImmigrationEvidence(document: EvidenceDocumentInput): CompiledEvidenceState {
   const text = document.text;
-  const documentType =
-    document.declaredType && document.declaredType !== "other"
-      ? document.declaredType
-      : classifyImmigrationDocument(`${document.fileName ?? ""}\n${text}`);
+  const documentType = resolveImmigrationDocumentType({
+    fileName: document.fileName,
+    text,
+    declaredType: document.declaredType,
+  });
   const facts: CompiledEvidenceFact[] = [];
 
   addFacts(facts, document, documentType, "receipt_number", uniq(text.toUpperCase().match(RECEIPT_RE) ?? []));

@@ -6,7 +6,7 @@ import { startFormAction } from "@/actions/forms";
 import { InlineUpload } from "@/components/inline-upload";
 import { CaseUpload } from "@/components/case-upload";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { parseCanonicalApprovedState } from "@/lib/canonical-case-state";
+import { immigrationDocumentTypeLabel } from "@/domain/documents";
 import { getLatestCaseVersion, listCaseVersions } from "@/lib/case-versioning";
 import { resolveCasePresentation } from "@/lib/case-presentation";
 import { CasePresentationView, MatchingUscisMaterials } from "@/components/case-presentation-view";
@@ -887,7 +887,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                         {d.fileName}
                       </a>{" "}
                       <Badge>{d.docKind}</Badge>
-                      {d.documentType && <Badge color="lime">{d.documentType.replace(/_/g, " ")}</Badge>}
+                      {d.documentType && <Badge color="lime">{immigrationDocumentTypeLabel(d.documentType)}</Badge>}
                       {d.processingStatus && d.processingStatus !== "uploaded" && (
                         <Badge color={d.processingStatus === "extracted" ? "green" : d.processingStatus === "failed" ? "red" : "slate"}>
                           {d.processingStatus.replace(/_/g, " ")}

@@ -44,6 +44,11 @@ import {
   versionReasonLabel,
 } from "../src/lib/canonical-case-state";
 import {
+  classifyUploadedDocument,
+  immigrationDocumentTypeLabel,
+  resolveImmigrationDocumentType,
+} from "../src/domain/documents";
+import {
   buildSituationBrief,
   FAMILY_OPEN_OPTIONS_FIXTURE,
   reportedFactsFromAnswer,
@@ -287,7 +292,7 @@ const universalRfe = extractUniversalDocumentIntelligence({
 const receiptFacts = receipt.facts.map((fact) => `${fact.key}:${fact.value}`);
 const rfeFacts = rfe.facts.map((fact) => `${fact.key}:${fact.value}`);
 
-assert(receipt.documentType === "i797_notice", `expected I-797 classification, got ${receipt.documentType}`);
+assert(receipt.documentType === "aos_filing_record", `expected I-485 receipt to classify as an adjustment filing record, got ${receipt.documentType}`);
 assert(receiptFacts.includes("receipt_number:MSC2390123456"), "receipt fixture should extract receipt number");
 assert(receiptFacts.includes("form_type:I-485"), "receipt fixture should extract I-485 form type");
 assert(receipt.suppressedQuestions.some((item) => item.questionKey === "receipt_number"), "receipt number question should be suppressed");
@@ -2572,6 +2577,75 @@ assert(
 assert(readFileSync(join(process.cwd(), "src/lib/evidence/case-state.ts"), "utf8").includes("buildSituationBrief"), "evidence reconstruction must persist the situation brief");
 assert(readFileSync(join(process.cwd(), "prisma/schema.prisma"), "utf8").includes("briefJson"), "situation brief must persist on case reconstruction");
 
+const vawaUploads = (VAWA_PRIMA_FACIE_FIXTURE.documents ?? []).map((doc) =>
+  compileImmigrationEvidence({
+    id: doc.fileName,
+    fileName: doc.fileName,
+    text: doc.text ?? "",
+    declaredType: "identity_document",
+  }),
+);
+const vawaUploadTypes = vawaUploads.map((item) => item.documentType);
+assert(new Set(vawaUploadTypes).size === 4, `VAWA uploads must classify as four different types, got ${vawaUploadTypes.join(", ")}`);
+assert(vawaUploadTypes.includes("uscis_i360_receipt_notice"), "I-360 receipt must classify as an I-360 receipt notice");
+assert(vawaUploadTypes.includes("uscis_vawa_prima_facie_notice"), "prima facie notice must classify as a VAWA prima facie notice");
+assert(vawaUploadTypes.includes("relationship_civil_document"), "marriage certificate must classify as a relationship/civil document");
+assert(vawaUploadTypes.includes("personal_declaration"), "personal declaration must classify as a personal declaration");
+assert(!vawaUploadTypes.includes("identity_document"), "VAWA supporting uploads must not collapse into identity");
+assert(
+  vawaUploads.every((item, index) => {
+    const classified = classifyUploadedDocument({
+      fileName: VAWA_PRIMA_FACIE_FIXTURE.documents?.[index]?.fileName,
+      text: VAWA_PRIMA_FACIE_FIXTURE.documents?.[index]?.text,
+      declaredType: "identity_document",
+      docKind: "identity",
+    });
+    return classified.documentType === item.documentType && classified.docKind !== "identity";
+  }),
+  "content classification must remap identity upload kinds to the matching catalog kind",
+);
+
+const passportClassified = compileImmigrationEvidence({
+  id: "passport",
+  fileName: "passport.pdf",
+  text: "U.S. Passport. Biographic page.",
+  declaredType: "identity_document",
+});
+assert(passportClassified.documentType === "identity_document", `passport must stay an identity document, got ${passportClassified.documentType}`);
+assert(immigrationDocumentTypeLabel(passportClassified.documentType) === "Identity & Entry Document", "passport label must be identity and entry");
+
+const i94Classified = compileImmigrationEvidence({
+  id: "i94",
+  fileName: "i-94.pdf",
+  text: "I-94 Arrival/Departure Record. Admitted January 12, 2024.",
+  declaredType: "identity_document",
+});
+assert(i94Classified.documentType === "admission_entry_record", `I-94 must classify as an admission/entry record, got ${i94Classified.documentType}`);
+
+const genericNotice = compileImmigrationEvidence({
+  id: "generic-i797",
+  fileName: "notice-of-action.txt",
+  text: "Form I-797C, Notice of Action. Receipt Number: EAC1234567890. This notice of action does not identify a specific form receipt.",
+});
+assert(genericNotice.documentType === "i797_notice", `generic I-797 must stay a notice of action, got ${genericNotice.documentType}`);
+
+assert(resolveImmigrationDocumentType({ fileName: "marriage-certificate.pdf", text: "Marriage Certificate.", declaredType: "identity_document" }) === "relationship_civil_document", "declared identity must not beat a marriage certificate");
+assert(vawaBrief.verifiedFacts.some((item) => /marriage certificate/i.test(item.text)), "VAWA brief must verify the marriage certificate from its document type");
+assert(vawaBrief.verifiedFacts.some((item) => /personal declaration/i.test(item.text)), "VAWA brief must verify the personal declaration from its document type");
+assert(VAWA_PRIMA_FACIE_FIXTURE.documents?.every((doc) => doc.documentType && doc.documentType !== "identity_document"), "VAWA fixture documents must keep distinct classified types");
+assert(familyForms[0]?.formNumber === "I-130", "v5 document classification must not rerank I-485 ahead of I-130 for family open-options");
+assert(presentation.hero.current_posture === "RFE notice needs review", "v5 document classification must not convert the RFE fixture into open-options");
+assert(PROMPT_VERSION.includes("v32"), "v5 document classification must not bump analysis prompt version");
+assert(requested.autoAssigned === false, "v5 document classification must not auto-assign consultants");
+
+const compilerSrc = readFileSync(join(process.cwd(), "src/lib/evidence/compiler.ts"), "utf8");
+const processingSrc = readFileSync(join(process.cwd(), "src/lib/evidence/document-processing.ts"), "utf8");
+const caseStateSrc = readFileSync(join(process.cwd(), "src/lib/evidence/case-state.ts"), "utf8");
+assert(compilerSrc.includes("resolveImmigrationDocumentType"), "compiler must classify from document contents before declared identity");
+assert(processingSrc.includes("classifyUploadedDocument"), "document processing must persist the content-classified type and catalog kind");
+assert(caseStateSrc.includes("classifyUploadedDocument"), "reconstruction must reclassify extracted documents before building the situation brief");
+assert(readFileSync(join(process.cwd(), "src/lib/ai/prompts.ts"), "utf8").includes(`PROMPT_VERSION = "${PROMPT_VERSION}"`), "document classification must not bump analysis prompt version");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -2622,3 +2696,4 @@ console.log(`- v4 C29: empty ${guidePrimaryAction(emptyOpenGuide).label}, hint $
 console.log(`- v4 C30: open ${approvedPresentationPhrase(familyGuideInput)}, RFE ${approvedPresentationPhrase(rfeGuideInput)}`);
 console.log(`- admin re-analysis: compare changed=${reanalysisDiff.changed}, share hidden=${!reanalysisVisibleTo({ visibleToCustomer: false, visibleToConsultant: false, status: "completed" }, "customer")}`);
 console.log(`- v5 P1: VAWA brief ${vawaBrief.primaryForm}/${vawaBrief.relatedForm}, family lock I-130=${familyBrief.lockFamilyOpenOptionsI130}, RFE ${rfeBrief.primaryForm}`);
+console.log(`- v5 P2: VAWA types ${vawaUploadTypes.join(", ")}, passport ${passportClassified.documentType}, I-94 ${i94Classified.documentType}`);

@@ -130,6 +130,11 @@ function provenanceIsDocument(provenance?: string | null): boolean {
   return value === "DOCUMENT_EXTRACTED" || value === "DOCUMENT_VERIFIED";
 }
 
+function hasDocumentType(input: SituationBriefInput, ...types: string[]): boolean {
+  const wanted = new Set(types.map((type) => type.toLowerCase()));
+  return (input.documents ?? []).some((doc) => wanted.has(String(doc.documentType ?? "").toLowerCase()));
+}
+
 function hasDocumentSignal(input: SituationBriefInput, pattern: RegExp): boolean {
   return (input.documents ?? []).some((doc) =>
     pattern.test(`${doc.fileName ?? ""} ${doc.documentType ?? ""} ${doc.docKind ?? ""} ${doc.text ?? ""}`),
@@ -170,10 +175,17 @@ export function buildSituationBrief(input: SituationBriefInput = {}): SituationB
   const hasI485Form = forms.includes("I-485");
   const reportsI485 = hasI485Form || ADJUSTMENT_FILED_RE.test(`${situation}\n${clarifyText}\n${goal}`);
   const hasI130Filing = forms.includes("I-130") && !NOTHING_FILED_RE.test(text);
-  const primaFacie = PRIMA_FACIE_RE.test(text);
-  const primaFacieVerified = hasDocumentSignal(input, PRIMA_FACIE_RE);
-  const i360ReceiptVerified = hasDocumentSignal(input, /\bi-?360\b/i) && hasDocumentSignal(input, /\breceipt\b/i);
-  const i485ReceiptVerified = hasDocumentSignal(input, /\bi-?485\b/i) && hasDocumentSignal(input, /\breceipt\b/i);
+  const primaFacie = PRIMA_FACIE_RE.test(text) || hasDocumentType(input, "uscis_vawa_prima_facie_notice");
+  const primaFacieVerified = hasDocumentType(input, "uscis_vawa_prima_facie_notice") || hasDocumentSignal(input, PRIMA_FACIE_RE);
+  const i360ReceiptVerified =
+    hasDocumentType(input, "uscis_i360_receipt_notice") ||
+    (hasDocumentSignal(input, /\bi-?360\b/i) && hasDocumentSignal(input, /\breceipt notice\b|\breceived your\b|\bwe received your\b/i));
+  const i485ReceiptVerified =
+    hasDocumentType(input, "aos_filing_record") ||
+    (hasDocumentSignal(input, /\bi-?485\b/i) && hasDocumentSignal(input, /\breceipt notice\b|\breceived your\b|\bwe received your\b/i));
+  const marriageCertificateVerified =
+    hasDocumentType(input, "relationship_civil_document") || hasDocumentSignal(input, /\bmarriage[-_\s]?certificate\b|\bcertificate of marriage\b/i);
+  const personalDeclarationVerified = hasDocumentType(input, "personal_declaration") || hasDocumentSignal(input, /\bpersonal[-_\s]?declaration\b|\bpersonal statement\b/i);
   const rfe = RFE_RE.test(text) || (input.notices ?? []).some((notice) => RFE_RE.test(notice)) || (input.facts ?? []).some((fact) => fact.key === "notice_type" && RFE_RE.test(fact.value));
   const marriedUsc = MARRIED_USC_RE.test(text);
   const inUnitedStates = IN_US_RE.test(text);
@@ -253,6 +265,13 @@ export function buildSituationBrief(input: SituationBriefInput = {}): SituationB
   } else if (primaFacie) {
     pushFact(reportedFacts, reportedPrefix("you received a Prima Facie Determination"), "reported");
     currentPosition.push("Prima Facie Determination reported");
+  }
+
+  if (marriageCertificateVerified) {
+    pushFact(verifiedFacts, "Your marriage certificate is on file", "verified");
+  }
+  if (personalDeclarationVerified) {
+    pushFact(verifiedFacts, "You uploaded a personal declaration", "verified");
   }
 
   if (i485ReceiptVerified) {
@@ -346,22 +365,22 @@ export const VAWA_PRIMA_FACIE_FIXTURE: SituationBriefInput = {
   documents: [
     {
       fileName: "I-360-receipt.pdf",
-      documentType: "receipt_notice",
+      documentType: "uscis_i360_receipt_notice",
       text: "USCIS Receipt Notice. Form I-360, Petition for Amerasian, Widow(er), or Special Immigrant. We received your Form I-360.",
     },
     {
       fileName: "prima-facie-determination.pdf",
-      documentType: "i797_notice",
+      documentType: "uscis_vawa_prima_facie_notice",
       text: "USCIS Prima Facie Determination. This notice is a preliminary determination relating to the eligibility requirements for your VAWA self-petition on Form I-360.",
     },
     {
       fileName: "marriage-certificate.pdf",
-      documentType: "supporting_evidence",
+      documentType: "relationship_civil_document",
       text: "Marriage Certificate.",
     },
     {
       fileName: "personal-declaration.pdf",
-      documentType: "supporting_evidence",
+      documentType: "personal_declaration",
       text: "Personal declaration / supporting statement.",
     },
   ],
