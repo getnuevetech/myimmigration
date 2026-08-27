@@ -254,6 +254,11 @@ export function RegisterForm({
             className={`${inputClass} bg-slate-50`}
           />
           {consentFields}
+          <p className="text-xs leading-relaxed text-slate-500">
+            Checking the required boxes and creating your account is your electronic signature of the Registration
+            Agreement, Terms of Service, and Privacy Policy. ImmigrationOnMe records your name, email, agreement
+            version, time, and a consent receipt.
+          </p>
           <SubmitButton className="w-full py-2.5">Create my account</SubmitButton>
         </div>
       </ActionForm>
@@ -274,6 +279,11 @@ export function RegisterForm({
           <input name="address" placeholder="Address (optional — you can add it later)" className={inputClass} />
           <input name="password" type="password" required placeholder="Password (8+ characters)" className={inputClass} />
           {consentFields}
+          <p className="text-xs leading-relaxed text-slate-500">
+            Checking the required boxes and creating your account is your electronic signature of the Registration
+            Agreement, Terms of Service, and Privacy Policy. ImmigrationOnMe records your name, email, agreement
+            version, time, and a consent receipt.
+          </p>
           <SubmitButton className="w-full py-2.5">
             {asConsultant ? "Create consultant account" : "Create my account"}
           </SubmitButton>

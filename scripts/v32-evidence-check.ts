@@ -2447,12 +2447,19 @@ for (const page of LEGAL_CONTENT_PAGES) {
   }
 }
 assert(termsPage.body.includes("Nueve Technologies LLC"), "terms must name Nueve Technologies LLC");
+assert(termsPage.body.includes("Nueve Parties"), "revised terms must define Nueve Parties");
+assert(termsPage.body.includes("American Arbitration Association"), "revised terms must name AAA arbitration");
+assert(termsPage.body.includes("Owner & Platform Protection Revision"), "terms must publish the revised last-updated label");
 assert(termsPage.body.includes("Harris County, Texas"), "terms must include Harris County venue");
 assert(termsPage.body.includes("legal@immigrationonme.com"), "terms must include the legal contact");
 assert(privacyPage.body.includes("privacy@immigrationonme.com"), "privacy policy must include the privacy contact");
 assert(/does not sell customer immigration documents/i.test(privacyPage.body), "privacy policy must prohibit sale of immigration case information");
+assert(privacyPage.body.includes("Owner & Platform Protection Revision"), "privacy policy must publish the revised last-updated label");
 assert(agreementPage.title.includes("Registration, Consent"), "user agreement title must match the attached registration agreement");
 assert(agreementPage.body.includes("each acknowledgment is recorded separately"), "registration agreement must keep acknowledgments separate");
+assert(agreementPage.body.includes("electronically sign"), "registration agreement must treat account creation as the electronic signature");
+assert(agreementPage.body.includes("Nueve Parties"), "revised registration agreement must define Nueve Parties");
+assert(agreementPage.body.includes("American Arbitration Association"), "revised registration agreement must name AAA arbitration");
 assert(!agreementPage.body.includes("Suggested user-facing label"), "registration agreement must not publish the UI implementation table");
 const seedLegalSrc = readFileSync(join(process.cwd(), "prisma/seed.ts"), "utf8");
 assert(seedLegalSrc.includes("LEGAL_CONTENT_PAGES"), "seed must publish the attached legal documents");
@@ -2461,6 +2468,7 @@ const registerFormSrc = readFileSync(join(process.cwd(), "src/components/auth-fo
 assert(registerFormSrc.includes("REGISTRATION_CONSENTS"), "register form must render the separate registration consents");
 assert(registerFormSrc.includes("item.formName"), "register form must submit each consent under its own field name");
 assert(REQUIRED_REGISTRATION_CONSENT_KEYS.join(",") === "agreement_bundle,core_processing,ai_processing,service_providers", "registration must require the four attached consents");
+assert(registerFormSrc.includes("electronic signature"), "register form must state that creating an account is the electronic signature");
 assert(!/name=["']agree["']/.test(registerFormSrc), "register form must not collapse consents into one agree checkbox");
 assert(registerFormSrc.includes("startGoogleSignupAction"), "Google signup must collect consents before OAuth");
 assert(registerFormSrc.includes("completeGoogleRegisterAction"), "pending Google signup must finish on the consent form");
