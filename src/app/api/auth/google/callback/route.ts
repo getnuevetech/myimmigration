@@ -4,6 +4,13 @@ import { getSetting } from "@/lib/settings";
 import { createSession } from "@/lib/auth";
 import { claimGuestSession } from "@/lib/guest";
 import { cookies } from "next/headers";
+import {
+  OAUTH_CONSENTS_COOKIE,
+  OAUTH_GOOGLE_PENDING_COOKIE,
+  hasRequiredRegistrationConsents,
+  parseOauthConsentsCookie,
+} from "@/lib/legal/consents";
+import { recordRegistrationLegal } from "@/lib/legal/record-registration";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -47,10 +54,29 @@ export async function GET(request: Request) {
   // Email is compulsory regardless of registration method.
   if (!info.email) return NextResponse.redirect(`${appUrl}/login?error=no_email`);
 
+  const consents = parseOauthConsentsCookie(cookieStore.get(OAUTH_CONSENTS_COOKIE)?.value);
   let user = await db.user.findFirst({
     where: { OR: [{ googleId: info.id }, { email: info.email.toLowerCase() }] },
   });
   if (!user) {
+    if (!consents || !hasRequiredRegistrationConsents(consents.grants)) {
+      const pending = {
+        email: info.email.toLowerCase(),
+        googleId: info.id,
+        firstName: info.given_name ?? "",
+        lastName: info.family_name ?? "",
+      };
+      const pendingResponse = NextResponse.redirect(`${appUrl}/register?google=pending`);
+      pendingResponse.cookies.set("oauth_state", "", { httpOnly: true, maxAge: 0, path: "/" });
+      pendingResponse.cookies.set(OAUTH_CONSENTS_COOKIE, "", { httpOnly: true, maxAge: 0, path: "/" });
+      pendingResponse.cookies.set(OAUTH_GOOGLE_PENDING_COOKIE, JSON.stringify(pending), {
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 600,
+        path: "/",
+      });
+      return pendingResponse;
+    }
     user = await db.user.create({
       data: {
         email: info.email.toLowerCase(),
@@ -60,15 +86,11 @@ export async function GET(request: Request) {
         emailVerifiedAt: new Date(),
       },
     });
-    const agreement = await db.contentPage.findFirst({
-      where: { kind: "agreement_user", isPublished: true },
-      orderBy: { version: "desc" },
+    await recordRegistrationLegal({
+      userId: user.id,
+      grants: consents.grants,
+      context: "google_signup",
     });
-    if (agreement) {
-      await db.agreementAcceptance.create({
-        data: { userId: user.id, pageId: agreement.id, version: agreement.version, context: "registration" },
-      });
-    }
     const { sendSystemMessage } = await import("@/lib/messaging");
     await sendSystemMessage("account_created", user, { link: "/app" });
   } else if (!user.googleId) {
@@ -81,5 +103,7 @@ export async function GET(request: Request) {
   const response = NextResponse.redirect(`${appUrl}/app`);
   // Clear the state cookie after successful use.
   response.cookies.set("oauth_state", "", { httpOnly: true, maxAge: 0, path: "/" });
+  response.cookies.set(OAUTH_CONSENTS_COOKIE, "", { httpOnly: true, maxAge: 0, path: "/" });
+  response.cookies.set(OAUTH_GOOGLE_PENDING_COOKIE, "", { httpOnly: true, maxAge: 0, path: "/" });
   return response;
 }

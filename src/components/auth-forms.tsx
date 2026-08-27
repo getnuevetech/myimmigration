@@ -1,9 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { useState, type ReactNode } from "react";
 import { ActionForm, SubmitButton } from "./action-form";
-import { loginAction, registerAction, requestPasswordResetAction, resetPasswordAction } from "@/actions/auth";
+import {
+  completeGoogleRegisterAction,
+  loginAction,
+  registerAction,
+  requestPasswordResetAction,
+  resetPasswordAction,
+  startGoogleSignupAction,
+} from "@/actions/auth";
 import { inputClass } from "./ui";
+import {
+  CONSULTANT_AGREEMENT_FORM_NAME,
+  REGISTRATION_CONSENTS,
+  REQUIRED_REGISTRATION_CONSENT_KEYS,
+  emptyConsentGrants,
+  type RegistrationConsentGrants,
+  type RegistrationConsentKey,
+} from "@/lib/legal/consents";
 
 export function LoginForm() {
   return (
@@ -49,44 +65,244 @@ export function ResetPasswordForm({ token }: { token: string }) {
   );
 }
 
-export function RegisterForm({
-  asConsultant,
-  agreementSlug,
-  agreementTitle,
+export type LegalPageLink = { slug: string; title: string };
+
+function LegalLink({ page, children }: { page: LegalPageLink | null; children: string }) {
+  if (!page?.slug) return <>{children}</>;
+  return (
+    <Link href={`/p/${page.slug}`} target="_blank" className="font-medium text-lime-600 underline">
+      {children}
+    </Link>
+  );
+}
+
+function ConsentCheckbox({
+  name,
+  required,
+  checked,
+  onChange,
+  children,
 }: {
-  asConsultant: boolean;
-  agreementSlug: string;
-  agreementTitle: string;
+  name: string;
+  required: boolean;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  children: ReactNode;
 }) {
   return (
-    <ActionForm action={registerAction}>
-      {asConsultant && <input type="hidden" name="asConsultant" value="1" />}
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <input name="firstName" required placeholder="First name" className={inputClass} />
-          <input name="lastName" required placeholder="Last name" className={inputClass} />
+    <label className="flex items-start gap-2 text-sm text-slate-600">
+      <input
+        type="checkbox"
+        name={name}
+        required={required}
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-1 h-4 w-4 rounded border-slate-300 text-lime-600"
+      />
+      <span>
+        {required ? null : <span className="mr-1 text-xs font-medium uppercase tracking-wide text-slate-400">Optional</span>}
+        {children}
+      </span>
+    </label>
+  );
+}
+
+function RegistrationConsentFields({
+  grants,
+  setGrant,
+  asConsultant,
+  consultantAgreement,
+  setConsultantAgreement,
+  userAgreement,
+  terms,
+  privacy,
+  consultantAgreementPage,
+}: {
+  grants: RegistrationConsentGrants;
+  setGrant: (key: RegistrationConsentKey, value: boolean) => void;
+  asConsultant: boolean;
+  consultantAgreement: boolean;
+  setConsultantAgreement: (value: boolean) => void;
+  userAgreement: LegalPageLink | null;
+  terms: LegalPageLink | null;
+  privacy: LegalPageLink | null;
+  consultantAgreementPage: LegalPageLink | null;
+}) {
+  return (
+    <fieldset className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+      <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Required consents</legend>
+      {REGISTRATION_CONSENTS.filter((item) => item.required).map((item) => (
+        <ConsentCheckbox
+          key={item.key}
+          name={item.formName}
+          required
+          checked={grants[item.key]}
+          onChange={(value) => setGrant(item.key, value)}
+        >
+          {item.key === "agreement_bundle" ? (
+            <>
+              I agree to the ImmigrationOnMe{" "}
+              <LegalLink page={userAgreement}>Registration Agreement</LegalLink>,{" "}
+              <LegalLink page={terms}>Terms of Service</LegalLink>, and{" "}
+              <LegalLink page={privacy}>Privacy Policy</LegalLink>.
+            </>
+          ) : (
+            item.label
+          )}
+        </ConsentCheckbox>
+      ))}
+      {asConsultant && (
+        <ConsentCheckbox
+          name={CONSULTANT_AGREEMENT_FORM_NAME}
+          required
+          checked={consultantAgreement}
+          onChange={setConsultantAgreement}
+        >
+          I have read and agree to the{" "}
+          <LegalLink page={consultantAgreementPage}>
+            {consultantAgreementPage?.title || "Consultant Partner Agreement"}
+          </LegalLink>
+          .
+        </ConsentCheckbox>
+      )}
+      <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Optional</p>
+      {REGISTRATION_CONSENTS.filter((item) => !item.required).map((item) => (
+        <ConsentCheckbox
+          key={item.key}
+          name={item.formName}
+          required={false}
+          checked={grants[item.key]}
+          onChange={(value) => setGrant(item.key, value)}
+        >
+          {item.label}
+        </ConsentCheckbox>
+      ))}
+    </fieldset>
+  );
+}
+
+export function RegisterForm({
+  asConsultant,
+  googleEnabled,
+  googlePending,
+  pendingProfile,
+  userAgreement,
+  terms,
+  privacy,
+  consultantAgreement,
+}: {
+  asConsultant: boolean;
+  googleEnabled: boolean;
+  googlePending?: boolean;
+  pendingProfile?: { email: string; firstName: string; lastName: string } | null;
+  userAgreement: LegalPageLink | null;
+  terms: LegalPageLink | null;
+  privacy: LegalPageLink | null;
+  consultantAgreement: LegalPageLink | null;
+}) {
+  const [grants, setGrants] = useState<RegistrationConsentGrants>(emptyConsentGrants);
+  const [consultantOk, setConsultantOk] = useState(false);
+  const requiredReady =
+    REQUIRED_REGISTRATION_CONSENT_KEYS.every((key) => grants[key]) && (!asConsultant || consultantOk);
+
+  function setGrant(key: RegistrationConsentKey, value: boolean) {
+    setGrants((current) => ({ ...current, [key]: value }));
+  }
+
+  const consentFields = (
+    <RegistrationConsentFields
+      grants={grants}
+      setGrant={setGrant}
+      asConsultant={asConsultant}
+      consultantAgreement={consultantOk}
+      setConsultantAgreement={setConsultantOk}
+      userAgreement={userAgreement}
+      terms={terms}
+      privacy={privacy}
+      consultantAgreementPage={consultantAgreement}
+    />
+  );
+
+  if (googlePending) {
+    return (
+      <ActionForm action={completeGoogleRegisterAction}>
+        <div className="space-y-4">
+          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            Google verified {pendingProfile?.email || "your email"}. Accept the required consents to finish creating your account.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              name="firstName"
+              required
+              defaultValue={pendingProfile?.firstName ?? ""}
+              placeholder="First name"
+              className={inputClass}
+            />
+            <input
+              name="lastName"
+              required
+              defaultValue={pendingProfile?.lastName ?? ""}
+              placeholder="Last name"
+              className={inputClass}
+            />
+          </div>
+          <input
+            name="email"
+            type="email"
+            readOnly
+            defaultValue={pendingProfile?.email ?? ""}
+            className={`${inputClass} bg-slate-50`}
+          />
+          {consentFields}
+          <SubmitButton className="w-full py-2.5">Create my account</SubmitButton>
         </div>
-        <input name="email" type="email" required placeholder="Email address (required)" className={inputClass} />
-        <input name="phone" type="tel" placeholder="Mobile number (optional)" className={inputClass} />
-        <input name="address" placeholder="Address (optional — you can add it later)" className={inputClass} />
-        <input name="password" type="password" required placeholder="Password (8+ characters)" className={inputClass} />
-        <label className="flex items-start gap-2 text-sm text-slate-600">
-          <input type="checkbox" name="agree" required className="mt-1 h-4 w-4 rounded border-slate-300 text-lime-600" />
-          <span>
-            I have read and agree to the{" "}
-            {agreementSlug ? (
-              <Link href={`/p/${agreementSlug}`} target="_blank" className="font-medium text-lime-600 underline">
-                {agreementTitle}
-              </Link>
-            ) : (
-              agreementTitle
+      </ActionForm>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <ActionForm action={registerAction}>
+        {asConsultant && <input type="hidden" name="asConsultant" value="1" />}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <input name="firstName" required placeholder="First name" className={inputClass} />
+            <input name="lastName" required placeholder="Last name" className={inputClass} />
+          </div>
+          <input name="email" type="email" required placeholder="Email address (required)" className={inputClass} />
+          <input name="phone" type="tel" placeholder="Mobile number (optional)" className={inputClass} />
+          <input name="address" placeholder="Address (optional — you can add it later)" className={inputClass} />
+          <input name="password" type="password" required placeholder="Password (8+ characters)" className={inputClass} />
+          {consentFields}
+          <SubmitButton className="w-full py-2.5">
+            {asConsultant ? "Create consultant account" : "Create my account"}
+          </SubmitButton>
+        </div>
+      </ActionForm>
+      {googleEnabled && !asConsultant && (
+        <>
+          <div className="flex items-center gap-3 text-xs text-slate-400">
+            <div className="h-px flex-1 bg-slate-200" /> or <div className="h-px flex-1 bg-slate-200" />
+          </div>
+          <ActionForm action={startGoogleSignupAction}>
+            {REGISTRATION_CONSENTS.map((item) =>
+              grants[item.key] ? <input key={item.key} type="hidden" name={item.formName} value="on" /> : null,
             )}
-          </span>
-        </label>
-        <SubmitButton className="w-full py-2.5">
-          {asConsultant ? "Create consultant account" : "Create my account"}
-        </SubmitButton>
-      </div>
-    </ActionForm>
+            <button
+              type="submit"
+              disabled={!requiredReady}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Continue with Google
+            </button>
+            {!requiredReady && (
+              <p className="mt-2 text-center text-xs text-slate-500">
+                Check the required consents above to continue with Google.
+              </p>
+            )}
+          </ActionForm>
+        </>
+      )}
+    </div>
   );
 }

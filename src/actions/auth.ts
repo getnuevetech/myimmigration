@@ -1,11 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { createSession, destroySession, hashPassword, verifyPassword, getCurrentUser } from "@/lib/auth";
 import { claimGuestSession } from "@/lib/guest";
 import { ROLES } from "@/lib/constants";
+import { LEGAL_AGREEMENT_VERSION, parseRegistrationConsents, OAUTH_GOOGLE_PENDING_COOKIE, OAUTH_CONSENTS_COOKIE } from "@/lib/legal/consents";
+import { readPendingGoogleProfile, recordRegistrationLegal, setOauthConsentsCookie } from "@/lib/legal/record-registration";
 
 export type ActionState = { error?: string; ok?: boolean; info?: string; link?: string } | null;
 
@@ -16,18 +19,19 @@ const registerSchema = z.object({
   phone: z.string().optional().default(""),
   address: z.string().optional().default(""),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  agree: z.literal("on", { message: "You must accept the agreement to continue" }),
 });
 
 export async function registerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = registerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const asConsultant = formData.get("asConsultant") === "1";
+  const consents = parseRegistrationConsents(formData, { asConsultant });
+  if (!consents.ok) return { error: consents.error };
   const { firstName, lastName, email, phone, address, password } = parsed.data;
 
   const existing = await db.user.findUnique({ where: { email: email.toLowerCase() } });
   if (existing) return { error: "An account with this email already exists. Try signing in." };
 
-  const asConsultant = formData.get("asConsultant") === "1";
   const user = await db.user.create({
     data: {
       email: email.toLowerCase(),
@@ -40,17 +44,12 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
     },
   });
 
-  // Record acceptance of the current published agreement (admin-managed content).
-  const agreementKind = asConsultant ? "agreement_consultant" : "agreement_user";
-  const agreement = await db.contentPage.findFirst({
-    where: { kind: agreementKind, isPublished: true },
-    orderBy: { version: "desc" },
+  await recordRegistrationLegal({
+    userId: user.id,
+    grants: consents.grants,
+    context: "registration",
+    consultantAgreement: consents.consultantAgreement,
   });
-  if (agreement) {
-    await db.agreementAcceptance.create({
-      data: { userId: user.id, pageId: agreement.id, version: agreement.version, context: "registration" },
-    });
-  }
 
   // Welcome message (admin-editable template).
   const { sendSystemMessage } = await import("@/lib/messaging");
@@ -60,6 +59,57 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
   await claimGuestSession(user.id);
   await createSession(user.id);
   redirect(asConsultant ? "/consultant/onboarding" : "/app");
+}
+
+export async function startGoogleSignupAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const consents = parseRegistrationConsents(formData);
+  if (!consents.ok) return { error: consents.error };
+  await setOauthConsentsCookie({
+    version: LEGAL_AGREEMENT_VERSION,
+    grants: consents.grants,
+  });
+  redirect("/api/auth/google");
+}
+
+export async function completeGoogleRegisterAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const pending = await readPendingGoogleProfile();
+  if (!pending) {
+    return { error: "Your Google sign-up expired. Continue with Google again and accept the required consents." };
+  }
+  const consents = parseRegistrationConsents(formData);
+  if (!consents.ok) return { error: consents.error };
+
+  const existing = await db.user.findUnique({ where: { email: pending.email } });
+  if (existing) return { error: "An account with this email already exists. Try signing in." };
+
+  const firstName = String(formData.get("firstName") ?? pending.firstName).trim() || pending.firstName;
+  const lastName = String(formData.get("lastName") ?? pending.lastName).trim() || pending.lastName;
+
+  const user = await db.user.create({
+    data: {
+      email: pending.email,
+      googleId: pending.googleId,
+      firstName,
+      lastName,
+      emailVerifiedAt: new Date(),
+    },
+  });
+
+  await recordRegistrationLegal({
+    userId: user.id,
+    grants: consents.grants,
+    context: "google_signup",
+  });
+
+  const store = await cookies();
+  store.set(OAUTH_GOOGLE_PENDING_COOKIE, "", { httpOnly: true, maxAge: 0, path: "/" });
+  store.set(OAUTH_CONSENTS_COOKIE, "", { httpOnly: true, maxAge: 0, path: "/" });
+
+  const { sendSystemMessage } = await import("@/lib/messaging");
+  await sendSystemMessage("account_created", user, { link: "/app" });
+  await claimGuestSession(user.id);
+  await createSession(user.id);
+  redirect("/app");
 }
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

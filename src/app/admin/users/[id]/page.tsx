@@ -12,6 +12,7 @@ import { CONSULTANT_SPECIALTIES } from "@/lib/constants";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
 import { caseListSummaryFromView, caseListActionLine, caseListEvidenceLine } from "@/lib/case-presentation-list";
 import { matchInputFromCase } from "@/lib/goal-versions";
+import { CONSENT_LABELS } from "@/lib/legal/consents";
 
 // Full detail page for any customer or consultant account.
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,6 +30,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
       documents: { where: { deletedAt: null }, select: { id: true } },
       tickets: { orderBy: { updatedAt: "desc" }, take: 8 },
       agreementAcceptances: { include: { page: { select: { title: true } } }, orderBy: { acceptedAt: "desc" } },
+      consents: { orderBy: { createdAt: "desc" } },
       consultantProfile: { include: { pastCases: { orderBy: { createdAt: "desc" } } } },
       clientAssignments: { include: { consultant: { select: { firstName: true, lastName: true, email: true } } } },
       consultantAssignments: { include: { user: { select: { firstName: true, lastName: true, email: true } } } },
@@ -128,6 +130,23 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                   <li key={a.id}>✓ {a.page.title} v{a.version} — {a.acceptedAt.toLocaleDateString("en-US")} ({a.context.replace(/_/g, " ")})</li>
                 ))}
                 {user.agreementAcceptances.length === 0 && <li className="text-slate-400">None recorded.</li>}
+              </ul>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardBody>
+              <h2 className="mb-3 text-sm font-semibold text-slate-900">Registration consents</h2>
+              <ul className="space-y-1 text-xs text-slate-600">
+                {user.consents.map((consent) => (
+                  <li key={consent.id}>
+                    {consent.granted ? "✓" : "✗"}{" "}
+                    {CONSENT_LABELS[consent.key as keyof typeof CONSENT_LABELS] ?? consent.key}
+                    {" · "}
+                    {consent.agreementVersion} · {consent.createdAt.toLocaleString("en-US")} · receipt {consent.receiptId}
+                  </li>
+                ))}
+                {user.consents.length === 0 && <li className="text-slate-400">None recorded.</li>}
               </ul>
             </CardBody>
           </Card>
