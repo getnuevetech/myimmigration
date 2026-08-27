@@ -9,7 +9,7 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { parseCanonicalApprovedState } from "@/lib/canonical-case-state";
 import { getLatestCaseVersion, listCaseVersions } from "@/lib/case-versioning";
 import { resolveCasePresentation } from "@/lib/case-presentation";
-import { CasePresentationView } from "@/components/case-presentation-view";
+import { CasePresentationView, MatchingUscisMaterials } from "@/components/case-presentation-view";
 import { CaseAnalysisPlanCard } from "@/components/case-analysis-plan-card";
 import { CaseVersionCard } from "@/components/case-version-card";
 import Link from "next/link";
@@ -272,6 +272,19 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const canGenerateLetter = Boolean(
     interactive && matchingLetter && (viewer.role !== "customer" || (await hasFeature(viewer.userId, FEATURE_KEYS.LETTERS))),
   );
+  const matchingMaterials = (
+    <MatchingUscisMaterials
+      caseId={c.id}
+      interactive={interactive}
+      matchingFormId={matchingForm?.id ?? null}
+      matchingFormNumber={matchingFormNumberValue}
+      canStartForm={canStartForm}
+      matchingLetterKind={matchingLetter}
+      canGenerateLetter={canGenerateLetter}
+      matchingDocumentKind={matchingDocumentKind}
+      officialMaterialLead={intake.officialMaterialLead}
+    />
+  );
 
   if (presentation) {
     return (
@@ -326,6 +339,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
         />
         {analysisPlanJson && (viewer.role !== "customer" || viewer.suggestionAccess?.personalized !== false) ? <CaseAnalysisPlanCard planJson={analysisPlanJson} match={versionMatch} /> : null}
         {versionCard}
+        {matchingMaterials}
       </div>
     );
   }
@@ -379,6 +393,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   };
 
   return (
+    <div className="space-y-6">
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
         {staffReviewBanner}
@@ -893,6 +908,8 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           </CardBody>
         </Card>
       </div>
+    </div>
+    {matchingMaterials}
     </div>
   );
 }

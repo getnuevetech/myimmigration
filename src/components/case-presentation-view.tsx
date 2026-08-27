@@ -73,7 +73,6 @@ export function CasePresentationView({
   matchingFormNumber,
   canStartForm,
   matchingLetterKind,
-  canGenerateLetter,
   matchingDocumentKind,
   documentKinds,
   inquiryMode,
@@ -237,59 +236,6 @@ export function CasePresentationView({
             )}
           </div>
         </div>
-        {matchingFormNumber && interactive && (
-          <div className="mt-3 rounded-xl border border-lime-200 bg-white px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Matching USCIS form</p>
-            <p className="mt-1 text-sm text-slate-700">
-              {intake.officialMaterialLead} Form {matchingFormNumber} first
-              {matchingFormNumber !== "I-485" ? ", not Form I-485." : "."}
-            </p>
-            {canStartForm && matchingFormId ? (
-              <form action={startFormAction.bind(null, matchingFormId)} className="mt-3">
-                <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
-                  {formStartLabel(matchingFormNumber)} →
-                </button>
-              </form>
-            ) : (
-              <a
-                href={formCatalogHref(matchingFormNumber)}
-                className="mt-3 inline-flex rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700"
-              >
-                {canStartForm ? `${formStartLabel(matchingFormNumber)} →` : `See matching Form ${matchingFormNumber} →`}
-              </a>
-            )}
-          </div>
-        )}
-        {matchingLetterKind && interactive && (
-          <div className="mt-3 rounded-xl border border-lime-200 bg-white px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Matching USCIS letter</p>
-            <p className="mt-1 text-sm text-slate-700">
-              {intake.officialMaterialLead} {letterKindDef(matchingLetterKind)?.title ?? "a matching letter"} first
-              {matchingLetterKind !== "rfe_response" ? ", not an RFE response." : "."}
-            </p>
-            <a
-              href={canGenerateLetter ? letterComposerHref({ caseId, kind: matchingLetterKind }) : letterCatalogHref(matchingLetterKind)}
-              className="mt-3 inline-flex rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700"
-            >
-              {canGenerateLetter ? `${letterStartLabel(matchingLetterKind)} →` : `See matching ${letterKindDef(matchingLetterKind)?.title ?? "letter"} →`}
-            </a>
-          </div>
-        )}
-        {matchingDocumentKind && interactive && (
-          <div className="mt-3 rounded-xl border border-lime-200 bg-white px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Matching evidence</p>
-            <p className="mt-1 text-sm text-slate-700">
-              {intake.officialMaterialLead} {documentKindDef(matchingDocumentKind)?.name ?? "matching documents"} first
-              {documentKindDef(matchingDocumentKind)?.isFiledCase ? "." : ", not a USCIS receipt."}
-            </p>
-            <a
-              href={documentCatalogHref(matchingDocumentKind)}
-              className="mt-3 inline-flex rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700"
-            >
-              {documentStartLabel(matchingDocumentKind)} →
-            </a>
-          </div>
-        )}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -704,5 +650,94 @@ export function CasePresentationView({
         </div>
       </div>
     </div>
+  );
+}
+
+export function MatchingUscisMaterials({
+  caseId,
+  interactive,
+  matchingFormId,
+  matchingFormNumber,
+  canStartForm,
+  matchingLetterKind,
+  canGenerateLetter,
+  matchingDocumentKind,
+  officialMaterialLead,
+}: {
+  caseId: string;
+  interactive: boolean;
+  matchingFormId: string | null;
+  matchingFormNumber: string | null;
+  canStartForm: boolean;
+  matchingLetterKind: string | null;
+  canGenerateLetter: boolean;
+  matchingDocumentKind: string | null;
+  officialMaterialLead: string;
+}) {
+  if (!interactive) return null;
+  if (!matchingFormNumber && !matchingLetterKind && !matchingDocumentKind) return null;
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-6">
+      <h2 className="text-base font-semibold text-slate-900">Related USCIS materials</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Form, letter, and evidence types that official material matches here. They are listed for reference, not as the next action.
+      </p>
+      <div className="mt-4 space-y-3">
+        {matchingFormNumber && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Matching USCIS form</p>
+            <p className="mt-1 text-sm text-slate-700">
+              {officialMaterialLead} Form {matchingFormNumber} first
+              {matchingFormNumber !== "I-485" ? ", not Form I-485." : "."}
+            </p>
+            {canStartForm && matchingFormId ? (
+              <form action={startFormAction.bind(null, matchingFormId)} className="mt-3">
+                <button className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
+                  {formStartLabel(matchingFormNumber)} →
+                </button>
+              </form>
+            ) : (
+              <a
+                href={formCatalogHref(matchingFormNumber)}
+                className="mt-3 inline-flex rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700"
+              >
+                {canStartForm ? `${formStartLabel(matchingFormNumber)} →` : `See matching Form ${matchingFormNumber} →`}
+              </a>
+            )}
+          </div>
+        )}
+        {matchingLetterKind && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Matching USCIS letter</p>
+            <p className="mt-1 text-sm text-slate-700">
+              {officialMaterialLead} {letterKindDef(matchingLetterKind)?.title ?? "a matching letter"} first
+              {matchingLetterKind !== "rfe_response" ? ", not an RFE response." : "."}
+            </p>
+            <a
+              href={canGenerateLetter ? letterComposerHref({ caseId, kind: matchingLetterKind }) : letterCatalogHref(matchingLetterKind)}
+              className="mt-3 inline-flex rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700"
+            >
+              {canGenerateLetter ? `${letterStartLabel(matchingLetterKind)} →` : `See matching ${letterKindDef(matchingLetterKind)?.title ?? "letter"} →`}
+            </a>
+          </div>
+        )}
+        {matchingDocumentKind && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Matching evidence</p>
+            <p className="mt-1 text-sm text-slate-700">
+              {officialMaterialLead} {documentKindDef(matchingDocumentKind)?.name ?? "matching documents"} first
+              {documentKindDef(matchingDocumentKind)?.isFiledCase ? "." : ", not a USCIS receipt."}
+            </p>
+            <a
+              href={documentCatalogHref(matchingDocumentKind)}
+              className="mt-3 inline-flex rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700"
+            >
+              {documentStartLabel(matchingDocumentKind)} →
+            </a>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
