@@ -5,7 +5,7 @@ import { readUpload } from "@/lib/uploads";
 import { rebuildCaseEvidenceState } from "./case-state";
 import { compileImmigrationEvidence } from "./compiler";
 import { extractUniversalDocumentIntelligence } from "./universal-extraction";
-import type { ImmigrationDocumentType } from "@/domain/documents";
+import { classifyUploadedDocument, declaredImmigrationTypeFromDocKind, type ImmigrationDocumentType } from "@/domain/documents";
 import type { CompiledEvidenceState } from "./types";
 
 export const EVIDENCE_EXTRACTION_SCHEMA_VERSION = "immigration-evidence-v1";
@@ -35,14 +35,7 @@ function hashBuffer(buf: Buffer): string {
 }
 
 function declaredTypeFromDocKind(docKind: string): ImmigrationDocumentType | "" {
-  const key = docKind.toLowerCase().replace(/\s+/g, "_");
-  if (key === "receipt" || key === "case_record" || key === "case_record_/_online_account") return "receipt_notice";
-  if (key === "approval") return "approval_notice";
-  if (key === "rfe") return "rfe";
-  if (key === "form") return "uscis_form";
-  if (key === "identity") return "identity_document";
-  if (key === "evidence" || key === "proof" || key === "relationship" || key === "declaration" || key === "country_conditions" || key === "status_record") return "supporting_evidence";
-  return "";
+  return declaredImmigrationTypeFromDocKind(docKind);
 }
 
 async function extractReadableText(doc: DocumentForProcessing, buf: Buffer): Promise<string> {
@@ -136,6 +129,12 @@ export async function processDocumentEvidence(documentId: string): Promise<Proce
     const contentHash = hashBuffer(buf);
     const text = await extractReadableText(doc, buf);
     const declaredType = declaredTypeFromDocKind(doc.docKind);
+    const classified = classifyUploadedDocument({
+      fileName: doc.fileName,
+      text,
+      declaredType,
+      docKind: doc.docKind,
+    });
     const compiled = compileImmigrationEvidence({
       id: doc.id,
       fileName: doc.fileName,
@@ -149,7 +148,8 @@ export async function processDocumentEvidence(documentId: string): Promise<Proce
       await tx.document.update({
         where: { id: doc.id },
         data: {
-          documentType: compiled.documentType,
+          documentType: classified.documentType,
+          docKind: classified.docKind,
           processingStatus,
           status: text ? "extracted" : "verification_required",
           contentHash,

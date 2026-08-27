@@ -1,7 +1,7 @@
 import "server-only";
 import { IMMIGRATION_EVENT_TYPES, type ImmigrationEventType } from "@/domain/events";
 import { isImmigrationFactKey, type ImmigrationFactKey } from "@/domain/facts";
-import type { ImmigrationDocumentType } from "@/domain/documents";
+import { classifyUploadedDocument, type ImmigrationDocumentType } from "@/domain/documents";
 import { db } from "@/lib/db";
 import { getNumberSetting } from "@/lib/settings";
 import { classifyImmigrationInquiry, applyInquiryToEvidenceState, INQUIRY_MODES, authorityQueriesForInquiry } from "@/lib/immigration-inquiry";
@@ -46,7 +46,7 @@ export async function rebuildCaseEvidenceState(caseId: string) {
     }),
     db.document.findMany({
       where: { caseId, deletedAt: null, docKind: { not: "avatar" } },
-      select: { processingStatus: true, docKind: true, fileName: true, documentType: true, extractedJson: true },
+      select: { id: true, processingStatus: true, docKind: true, fileName: true, documentType: true, extractedJson: true },
     }),
     getNumberSetting("analysis.expected_documents", 3),
     db.case.findUnique({ where: { id: caseId }, select: { situation: true, goal: true } }),
@@ -108,23 +108,43 @@ export async function rebuildCaseEvidenceState(caseId: string) {
       return { question, answer: item.content };
     });
   const clarifyTexts = clarifyAnswers.map((item) => item.answer);
+  const classifiedDocuments = documents.map((doc) => {
+    const extracted = parseJson(doc.extractedJson);
+    const text = extracted && typeof extracted === "object" && "raw_text" in extracted
+      ? String((extracted as { raw_text?: string }).raw_text ?? "")
+      : "";
+    const classified = classifyUploadedDocument({
+      fileName: doc.fileName,
+      text,
+      declaredType: doc.documentType,
+      docKind: doc.docKind,
+    });
+    return {
+      id: doc.id,
+      fileName: doc.fileName,
+      processingStatus: doc.processingStatus,
+      documentType: classified.documentType,
+      docKind: classified.docKind,
+      text,
+      typeChanged: classified.documentType !== (doc.documentType || "") || classified.docKind !== doc.docKind,
+    };
+  });
   const inquiry = classifyImmigrationInquiry({
     situation: stripClarifiedNarrative(caseRow?.situation),
     goal: caseRow?.goal,
-    documentCount: documents.length,
+    documentCount: classifiedDocuments.length,
     factKeys: compiledFacts.map((fact) => fact.key),
     clarifyAnswers: clarifyTexts,
   });
   const situationBrief = buildSituationBrief({
     situation: caseRow?.situation,
     goal: caseRow?.goal,
-    documents: documents.map((doc) => {
-      const extracted = parseJson(doc.extractedJson);
-      const text = extracted && typeof extracted === "object" && "raw_text" in extracted
-        ? String((extracted as { raw_text?: string }).raw_text ?? "")
-        : "";
-      return { fileName: doc.fileName, documentType: doc.documentType, docKind: doc.docKind, text };
-    }),
+    documents: classifiedDocuments.map((doc) => ({
+      fileName: doc.fileName,
+      documentType: doc.documentType,
+      docKind: doc.docKind,
+      text: doc.text,
+    })),
     facts: facts.map((fact) => ({
       key: fact.key,
       value: fact.value,
@@ -156,10 +176,10 @@ export async function rebuildCaseEvidenceState(caseId: string) {
     clarifyMessages.filter((item) => item.role === "user").map((item) => item.questionKey),
   );
   const readiness = computeEvidenceReadinessSplit({
-    documentsCount: documents.length,
+    documentsCount: classifiedDocuments.length,
     documentsExpected,
-    extractedDocumentsCount: documents.filter((doc) => doc.processingStatus === "extracted").length,
-    needsReviewDocumentsCount: documents.filter((doc) => doc.processingStatus === "needs_review").length,
+    extractedDocumentsCount: classifiedDocuments.filter((doc) => doc.processingStatus === "extracted").length,
+    needsReviewDocumentsCount: classifiedDocuments.filter((doc) => doc.processingStatus === "needs_review").length,
     reconciled,
     policy: resolveReadinessPolicy({
       themes: inquiry.themes,
@@ -168,7 +188,7 @@ export async function rebuildCaseEvidenceState(caseId: string) {
       authorityQueries: authorityQueriesForInquiry(inquiry),
       noticeTypes: compiledFacts.filter((fact) => fact.key === "notice_type").map((fact) => fact.value),
       documentsExpected,
-      haveKinds: documents.map((doc) => doc.docKind),
+      haveKinds: classifiedDocuments.map((doc) => doc.docKind),
     }),
   });
 
@@ -212,6 +232,13 @@ export async function rebuildCaseEvidenceState(caseId: string) {
           question: item.question,
           reason: item.reason,
         })),
+      });
+    }
+
+    for (const doc of classifiedDocuments.filter((item) => item.typeChanged)) {
+      await tx.document.update({
+        where: { id: doc.id },
+        data: { documentType: doc.documentType, docKind: doc.docKind },
       });
     }
 
