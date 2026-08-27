@@ -237,6 +237,7 @@ model User {
   formSubmissions     FormSubmission[]
   notifications       Notification[]
   agreementAcceptances AgreementAcceptance[]
+  consents            UserConsent[]
   consultantProfile   ConsultantProfile?
   clientAssignments   ConsultantAssignment[] @relation("assignmentClient")
   consultantAssignments ConsultantAssignment[] @relation("assignmentConsultant")
@@ -297,10 +298,27 @@ model AgreementAcceptance {
   userId     String
   pageId     String
   version    Int
-  context    String      @default("registration") // registration | consultant_signup | assignment
+  context    String      @default("registration") // registration | consultant_signup | assignment | google_signup
   acceptedAt DateTime    @default(now())
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   page       ContentPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
+
+model UserConsent {
+  id                String   @id @default(cuid())
+  userId            String
+  key               String
+  granted           Boolean
+  agreementVersion  String
+  receiptId         String
+  ipAddress         String   @default("")
+  userAgent         String   @default("")
+  context           String   @default("registration") // registration | google_signup
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, key])
+  @@index([receiptId])
 }
 
 // ---------- Billing ----------

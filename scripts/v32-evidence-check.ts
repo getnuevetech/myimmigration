@@ -97,6 +97,13 @@ import {
 } from "../src/lib/admin-reanalysis-compare";
 import type { CustomerFacingSnapshot } from "../src/lib/admin-reanalysis-types";
 import { parseWizardSteps } from "../src/lib/form-wizard-steps";
+import { LEGAL_CONTENT_PAGES, LEGAL_DRAFT_MARKERS } from "../src/lib/legal/documents";
+import {
+  parseOauthConsentsCookie,
+  parseRegistrationConsents,
+  REGISTRATION_CONSENTS,
+  REQUIRED_REGISTRATION_CONSENT_KEYS,
+} from "../src/lib/legal/consents";
 import {
   fallbackLetterDraft,
   letterComposerHref,
@@ -2429,6 +2436,55 @@ assert(versionReasonLabel("analysis") === "Full case review", "admin re-analysis
 assert(familyForms[0]?.formNumber === "I-130", "admin re-analysis must not rerank I-485 ahead of I-130");
 assert(presentation.hero.current_posture === "RFE notice needs review", "admin re-analysis must not convert the RFE fixture into open-options");
 assert(requested.autoAssigned === false, "admin re-analysis must not auto-assign consultants");
+
+const termsPage = LEGAL_CONTENT_PAGES.find((page) => page.slug === "terms-of-service");
+const privacyPage = LEGAL_CONTENT_PAGES.find((page) => page.slug === "privacy-policy");
+const agreementPage = LEGAL_CONTENT_PAGES.find((page) => page.slug === "user-agreement");
+assert(termsPage && privacyPage && agreementPage, "legal pages must include terms, privacy, and the registration agreement");
+for (const page of LEGAL_CONTENT_PAGES) {
+  for (const marker of LEGAL_DRAFT_MARKERS) {
+    assert(!page.body.includes(marker), `${page.slug} must not publish draft marker: ${marker}`);
+  }
+}
+assert(termsPage.body.includes("Nueve Technologies LLC"), "terms must name Nueve Technologies LLC");
+assert(termsPage.body.includes("Harris County, Texas"), "terms must include Harris County venue");
+assert(termsPage.body.includes("legal@immigrationonme.com"), "terms must include the legal contact");
+assert(privacyPage.body.includes("privacy@immigrationonme.com"), "privacy policy must include the privacy contact");
+assert(/does not sell customer immigration documents/i.test(privacyPage.body), "privacy policy must prohibit sale of immigration case information");
+assert(agreementPage.title.includes("Registration, Consent"), "user agreement title must match the attached registration agreement");
+assert(agreementPage.body.includes("each acknowledgment is recorded separately"), "registration agreement must keep acknowledgments separate");
+assert(!agreementPage.body.includes("Suggested user-facing label"), "registration agreement must not publish the UI implementation table");
+const seedLegalSrc = readFileSync(join(process.cwd(), "prisma/seed.ts"), "utf8");
+assert(seedLegalSrc.includes("LEGAL_CONTENT_PAGES"), "seed must publish the attached legal documents");
+assert(!seedLegalSrc.includes("Replace this placeholder text with your reviewed terms"), "seed must not keep placeholder terms");
+const registerFormSrc = readFileSync(join(process.cwd(), "src/components/auth-forms.tsx"), "utf8");
+assert(registerFormSrc.includes("REGISTRATION_CONSENTS"), "register form must render the separate registration consents");
+assert(registerFormSrc.includes("item.formName"), "register form must submit each consent under its own field name");
+assert(REQUIRED_REGISTRATION_CONSENT_KEYS.join(",") === "agreement_bundle,core_processing,ai_processing,service_providers", "registration must require the four attached consents");
+assert(!/name=["']agree["']/.test(registerFormSrc), "register form must not collapse consents into one agree checkbox");
+assert(registerFormSrc.includes("startGoogleSignupAction"), "Google signup must collect consents before OAuth");
+assert(registerFormSrc.includes("completeGoogleRegisterAction"), "pending Google signup must finish on the consent form");
+const authSrc = readFileSync(join(process.cwd(), "src/actions/auth.ts"), "utf8");
+assert(authSrc.includes("parseRegistrationConsents"), "registerAction must require parsed registration consents");
+assert(authSrc.includes("recordRegistrationLegal"), "registerAction must record per-control consents");
+assert(!authSrc.includes('agree: z.literal("on"'), "registerAction must not accept a single agree checkbox");
+const googleCallbackSrc = readFileSync(join(process.cwd(), "src/app/api/auth/google/callback/route.ts"), "utf8");
+assert(googleCallbackSrc.includes("hasRequiredRegistrationConsents"), "Google callback must require registration consents for new users");
+assert(googleCallbackSrc.indexOf("hasRequiredRegistrationConsents") < googleCallbackSrc.indexOf("db.user.create"), "Google callback must not create a user before consent checks");
+assert(googleCallbackSrc.includes("register?google=pending"), "Google callback must send new users without consents back to registration");
+const missingConsents = new FormData();
+assert(parseRegistrationConsents(missingConsents).ok === false, "registration without consents must fail");
+const requiredConsents = new FormData();
+for (const item of REGISTRATION_CONSENTS.filter((item) => item.required)) requiredConsents.set(item.formName, "on");
+const parsedRequired = parseRegistrationConsents(requiredConsents);
+assert(parsedRequired.ok === true, "registration with the four required consents must succeed");
+assert(parseRegistrationConsents(requiredConsents, { asConsultant: true }).ok === false, "consultant registration must also require the consultant agreement");
+assert(parseOauthConsentsCookie(JSON.stringify({ version: "2026-08-26", grants: parsedRequired.ok ? parsedRequired.grants : {} })) !== null, "oauth consent cookie must accept required grants");
+assert(parseOauthConsentsCookie(JSON.stringify({ version: "2026-08-26", grants: { agreement_bundle: true } })) === null, "oauth consent cookie must reject incomplete grants");
+assert(versionReasonLabel("analysis") === "Full case review", "legal consent work must not change unlabeled analysis version labels");
+assert(familyForms[0]?.formNumber === "I-130", "legal consent work must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "legal consent work must not convert the RFE fixture into open-options");
+assert(requested.autoAssigned === false, "legal consent work must not auto-assign consultants");
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);

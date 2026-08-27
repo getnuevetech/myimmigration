@@ -17,6 +17,7 @@ import {
 } from "../src/lib/goal-public";
 import { CASE_REPORT_FEATURE_NAME, SUPPORT_PLAYBOOK_MATCHING } from "../src/lib/goal-chrome";
 import { ACCOUNT_CREATED_EMAIL } from "../src/lib/goal-conversation";
+import { LEGAL_CONTENT_PAGES } from "../src/lib/legal/documents";
 
 const db = new PrismaClient();
 
@@ -619,42 +620,7 @@ async function seedContent() {
       kind: "page",
       body: PUBLIC_HOW_IT_WORKS_PAGE,
     },
-    {
-      slug: "terms-of-service",
-      title: "Terms of Service",
-      kind: "terms",
-      body: `Welcome to ImmigrationOnMe. By using this service you agree to these terms.
-
-1. ImmigrationOnMe is an immigration case assistant, not USCIS, a law firm, or a government agency. We help you understand your immigration situation and USCIS documents; we do not provide legal advice.
-2. You are responsible for the accuracy of the information you provide and for any filings or responses you make.
-3. Analysis results are informational. Verify important dates, deadlines, eligibility, and filing requirements against official USCIS records or qualified professional advice.
-4. You may delete your documents and your account at any time.
-
-(Replace this placeholder text with your reviewed terms in the admin backend.)`,
-    },
-    {
-      slug: "privacy-policy",
-      title: "Privacy Policy",
-      kind: "privacy",
-      body: `Your privacy matters.
-
-- We collect only the basic information needed to run your account: name, email, phone (optional), and the documents you choose to upload.
-- Your documents are visible only to you, and to a consultant only after you explicitly approve the connection.
-- You can delete your files and your entire profile at any time.
-
-(Replace this placeholder text with your reviewed policy in the admin backend.)`,
-    },
-    {
-      slug: "user-agreement",
-      title: "User Agreement",
-      kind: "agreement_user",
-      body: `By creating an ImmigrationOnMe account you acknowledge:
-
-1. ImmigrationOnMe is an immigration case assistant that provides plain-English informational guidance, not legal advice.
-2. Information you provided before registering will be attached to your account and visible only to you.
-3. You control your data: you can delete documents or your entire account at any time.
-4. You will verify important dates, deadlines, and filing requirements against official USCIS records before acting.`,
-    },
+    ...LEGAL_CONTENT_PAGES,
     {
       slug: "consultant-agreement",
       title: "Consultant Partner Agreement",
@@ -684,6 +650,25 @@ async function seedContent() {
       update: {},
       create: { ...p, isPublished: true },
     });
+  }
+  for (const page of LEGAL_CONTENT_PAGES) {
+    const existing = await db.contentPage.findUnique({ where: { slug: page.slug } });
+    if (!existing) {
+      await db.contentPage.create({ data: { ...page, isPublished: true, version: 1 } });
+    } else if (existing.body !== page.body || existing.title !== page.title || existing.kind !== page.kind) {
+      await db.contentPage.update({
+        where: { slug: page.slug },
+        data: {
+          title: page.title,
+          body: page.body,
+          kind: page.kind,
+          isPublished: true,
+          version: { increment: 1 },
+        },
+      });
+    } else if (!existing.isPublished) {
+      await db.contentPage.update({ where: { slug: page.slug }, data: { isPublished: true } });
+    }
   }
   const faq = await db.contentPage.findUnique({ where: { slug: "faq" } });
   if (faq && /How do I check my USCIS case\?/.test(faq.body) && !/Do I need a USCIS receipt to start\?/.test(faq.body)) {
