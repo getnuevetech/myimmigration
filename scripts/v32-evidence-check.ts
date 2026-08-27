@@ -2494,6 +2494,26 @@ assert(familyForms[0]?.formNumber === "I-130", "legal consent work must not rera
 assert(presentation.hero.current_posture === "RFE notice needs review", "legal consent work must not convert the RFE fixture into open-options");
 assert(requested.autoAssigned === false, "legal consent work must not auto-assign consultants");
 
+const presentationLayoutSrc = readFileSync(join(process.cwd(), "src/components/case-presentation-view.tsx"), "utf8");
+const analysisLayoutSrc = readFileSync(join(process.cwd(), "src/components/case-analysis-view.tsx"), "utf8");
+const customerCaseLayoutSrc = readFileSync(join(process.cwd(), "src/app/app/cases/[id]/page.tsx"), "utf8");
+const heroSlice = presentationLayoutSrc.slice(
+  presentationLayoutSrc.indexOf("Next best action"),
+  presentationLayoutSrc.indexOf("What this means"),
+);
+assert(!heroSlice.includes("Matching USCIS form"), "matching form card must not sit in the analysis hero");
+assert(!heroSlice.includes("Matching USCIS letter"), "matching letter card must not sit in the analysis hero");
+assert(!heroSlice.includes("Matching evidence"), "matching evidence card must not sit in the analysis hero");
+assert(presentationLayoutSrc.includes("Related USCIS materials"), "matching materials must be grouped as related reference");
+assert(presentationLayoutSrc.includes("export function MatchingUscisMaterials"), "matching materials must be a reusable bottom section");
+assert(analysisLayoutSrc.includes("{matchingMaterials}"), "analysis must render matching materials after the presentation");
+assert(analysisLayoutSrc.indexOf("{matchingMaterials}") > analysisLayoutSrc.indexOf("<CasePresentationView"), "matching materials must render after the approved presentation");
+assert(analysisLayoutSrc.lastIndexOf("{matchingMaterials}") > analysisLayoutSrc.lastIndexOf("id=\"case-documents\""), "fallback analysis must keep matching materials at the bottom");
+assert(customerCaseLayoutSrc.indexOf("<CaseAnalysisView") < customerCaseLayoutSrc.indexOf("<CaseComments"), "situation discussion must stay after the analysis, including related materials");
+assert(familyForms[0]?.formNumber === "I-130", "matching-materials layout must not rerank I-485 ahead of I-130");
+assert(presentation.hero.current_posture === "RFE notice needs review", "matching-materials layout must not convert the RFE fixture into open-options");
+assert(requested.autoAssigned === false, "matching-materials layout must not auto-assign consultants");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
