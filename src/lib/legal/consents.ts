@@ -1,4 +1,4 @@
-export const LEGAL_AGREEMENT_VERSION = "2026-08-26";
+export const LEGAL_AGREEMENT_VERSION = "2026-08-26-r2";
 
 export const OAUTH_CONSENTS_COOKIE = "oauth_consents";
 export const OAUTH_GOOGLE_PENDING_COOKIE = "oauth_google_pending";
