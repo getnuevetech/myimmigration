@@ -34,7 +34,6 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
   const scopedCases = assignment.caseId
     ? client.cases.filter((item) => item.id === assignment.caseId)
     : client.cases;
-  const scopedCaseIds = new Set(scopedCases.map((item) => item.id));
   const scopedDocuments = assignment.caseId
     ? client.documents.filter((doc) => doc.caseId === assignment.caseId)
     : client.documents;
