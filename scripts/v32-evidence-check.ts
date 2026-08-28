@@ -23,7 +23,7 @@ import {
   withPresentationSurfaceCopy,
 } from "../src/lib/case-presentation-contract";
 import { caseListActionLine, caseListEvidenceLine, caseListSummary, caseListSummaryFromView, caseListVersionLine } from "../src/lib/case-presentation-list";
-import { presentationReportSections } from "../src/lib/case-report-presentation";
+import { presentationReportSections, v5CustomerPresentationReportSections } from "../src/lib/case-report-presentation";
 import { presentationActionStatus, presentationEvidenceGateLabel, presentationStepCta } from "../src/lib/case-presentation-ui";
 import {
   ANALYSIS_TASKS,
@@ -2875,6 +2875,47 @@ assert(orchestratorSrcP5.includes("situation_brief:") && orchestratorSrcP5.inclu
 assert(!/file Form I-130 first|final approval of (?:your )?I-360|prima facie.{0,40}green card/i.test(DEFAULT_PROMPTS.presenter), "presenter defaults must not teach I-130-first or prima-facie-as-green-card wording");
 assert(requested.autoAssigned === false, "v5 prompt rewrite must not auto-assign consultants");
 
+// --- V5 Phase 6: printable customer report matches the V5 hierarchy ---
+const vawaReportHtml = v5CustomerPresentationReportSections(vawaCustomer);
+const familyReportHtml = v5CustomerPresentationReportSections(familyCustomer);
+const rfeReportHtml = v5CustomerPresentationReportSections(rfeCustomer);
+for (const [label, html] of [
+  ["VAWA", vawaReportHtml],
+  ["family", familyReportHtml],
+  ["RFE", rfeReportHtml],
+] as const) {
+  assert(/Your situation/i.test(html), `${label} report must include Your situation`);
+  assert(/Current process/i.test(html), `${label} report must include Current process`);
+  assert(/What your documents tell us/i.test(html), `${label} report must include documents section`);
+  assert(/What we still need to confirm/i.test(html), `${label} report must include confirmation gaps`);
+  assert(/What to do next/i.test(html), `${label} report must include next actions`);
+  assert(!/Situation as reported/i.test(html), `${label} customer report must not dump Situation as reported`);
+  assert(!/Where you stand/i.test(html), `${label} customer report must not use the legacy Where you stand block`);
+  assert(!/Most likely explanations/i.test(html), `${label} customer report must omit most-likely explanations`);
+  assert(!/\b\d{1,3}%\s*(ready|options|case strength|readiness)/i.test(html), `${label} customer report must omit readiness percentages`);
+  assert(!V5_CUSTOMER_FORBIDDEN_RE.test(html.replace(/What this notice means/g, "")), `${label} customer report must omit forbidden customer-facing patterns`);
+}
+assert(/what this notice means/i.test(vawaReportHtml), "VAWA report must use the notice-meaning heading");
+assert(/preliminary/i.test(vawaReportHtml) && /not a final approval/i.test(vawaReportHtml) && /not a green card/i.test(vawaReportHtml), "VAWA report must keep the Rule 13 prima facie meaning");
+assert(/i-130/i.test(familyReportHtml), "Open-options report must still name I-130");
+assert(/respond to the (?:request for evidence|rfe)/i.test(rfeReportHtml), "RFE report must keep respond-to-the-RFE");
+assert(/Where you stand/i.test(presentationReportSections(presentation)), "staff helper must still expose the legacy presentation sections");
+
+const caseReportSrc = readFileSync(join(process.cwd(), "src/lib/case-report.ts"), "utf8");
+const caseReportPresentationSrc = readFileSync(join(process.cwd(), "src/lib/case-report-presentation.ts"), "utf8");
+const reportRouteSrc = readFileSync(join(process.cwd(), "src/app/api/cases/[id]/report/route.ts"), "utf8");
+assert(caseReportSrc.includes("assembleV5CustomerPresentation"), "case report must assemble the V5 customer presentation");
+assert(caseReportSrc.includes("v5CustomerPresentationReportSections"), "case report must render the V5 hierarchy HTML");
+assert(caseReportSrc.includes("includeStaffAppendix"), "case report must support a staff appendix option");
+assert(caseReportSrc.includes("Staff appendix — situation narrative"), "staff appendix may retain the raw situation narrative");
+assert(!/Situation as reported/.test(caseReportSrc), "customer report body must not include Situation as reported");
+assert(!/readinessCopy\.reportOverallLabel.*readinessScore/.test(caseReportSrc.split("staffAppendix")[0] ?? ""), "customer header must not show readiness percentages");
+assert(caseReportPresentationSrc.includes("v5CustomerPresentationReportSections"), "report presentation helper must export the V5 sections builder");
+assert(reportRouteSrc.includes("includeStaffAppendix"), "report API must pass the staff appendix flag");
+assert(reportRouteSrc.includes('user.role === "consultant"') || reportRouteSrc.includes("isAdmin(user)"), "staff appendix must be role-gated for admin/consultant");
+assert(PROMPT_VERSION.includes("v32"), "v5 customer report must keep v32 prompt lineage");
+assert(requested.autoAssigned === false, "v5 customer report must not auto-assign consultants");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -2889,7 +2930,7 @@ console.log(`- letter guard: replaced ${guardedLetter.findings.length} unsupport
 console.log(`- presentation contract: ${presentation.hero.current_posture}, next ${presentation.hero.next_best_action?.action_key}, ${presentation.findings.length} findings`);
 console.log("- presentation UX: action statuses and evidence-gate labels are customer-facing");
 console.log(`- case list: ${listFromContract.posture}, next ${listFromContract.nextActionTitle}`);
-console.log("- case report: presentation contract sections are used for the printable report");
+console.log("- case report: V5 customer hierarchy is used for the printable report; legacy sections stay in the staff appendix");
 console.log("- v41 B5: letters, notices, and Q&A share approved presentation blocks");
 console.log(`- v4 A10: analysis pipeline follows the case plan (${lowPlan.case_complexity}, skip process=${!lowDecisions.processDocuments}, runtime review=${runtimeDecisions.independentReview})`);
 console.log(`- v4 A11: canonical approved state v${approvedState.version} stores ${approvedState.presentation?.hero.current_posture} and the analysis plan`);

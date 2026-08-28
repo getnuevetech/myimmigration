@@ -55,7 +55,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
   if (!allowed) return new NextResponse("Forbidden", { status: 403 });
 
-  const report = await buildCaseReportHtml(id);
+  const includeStaffAppendix = isAdmin(user) || user.role === "consultant";
+  const report = await buildCaseReportHtml(id, { includeStaffAppendix });
   if (!report) return new NextResponse("Not found", { status: 404 });
   if (shouldRecordOwnerDownload && c.userId) await recordCaseReportDownload(c.userId, id);
 
