@@ -5,16 +5,28 @@ import { getSetting, getSettingsMap } from "./settings";
 import { formatCaseNumber } from "./case-number";
 import { resolveCasePresentation } from "./case-presentation";
 import { parseCanonicalApprovedState, canonicalStateSummary } from "./canonical-case-state";
-import { presentationReportSections } from "./case-report-presentation";
-import { classifyImmigrationInquiry } from "./immigration-inquiry";
+import { presentationReportSections, v5CustomerPresentationReportSections } from "./case-report-presentation";
+import { authorityQueriesForInquiry, classifyImmigrationInquiry } from "./immigration-inquiry";
 import { resolveReadinessCopy } from "./goal-readiness";
 import { reportFileName, resolveReportChrome } from "./goal-chrome";
-import { stripClarifiedNarrative } from "./situation-brief";
+import { buildSituationBrief, parseSituationBrief, stripClarifiedNarrative } from "./situation-brief";
+import { caseTypeLockFromBrief } from "./case-type-lock";
+import { assembleV5CustomerPresentation } from "./v5-customer-presentation";
+import { neededDocumentsFromRanked, rankMatchingDocuments } from "./goal-documents";
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export async function buildCaseReportHtml(caseId: string): Promise<{ html: string; fileName: string } | null> {
+export type CaseReportOptions = {
+  /** Staff/admin appendix may keep the legacy presentation contract + raw narrative. */
+  includeStaffAppendix?: boolean;
+};
+
+export async function buildCaseReportHtml(
+  caseId: string,
+  options: CaseReportOptions = {},
+): Promise<{ html: string; fileName: string } | null> {
+  const includeStaffAppendix = Boolean(options.includeStaffAppendix);
   const c = await db.case.findUnique({
     where: { id: caseId },
     include: {
@@ -22,6 +34,8 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
       documents: { where: { deletedAt: null }, orderBy: { uploadedAt: "asc" } },
       letters: { orderBy: { createdAt: "asc" } },
       notices: { orderBy: { createdAt: "asc" } },
+      pathSteps: { orderBy: { sortOrder: "asc" } },
+      reconstruction: true,
       runs: { orderBy: { startedAt: "desc" }, take: 1, include: { stepResults: { select: { id: true } } } },
     },
   });
@@ -40,14 +54,59 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
   const monoFont = fonts["font.mono"] || "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
   const ref = formatCaseNumber(c.number);
   const generatedAt = new Date().toLocaleString("en-US");
+  const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const brief =
+    parseSituationBrief(c.reconstruction?.briefJson) ??
+    buildSituationBrief({
+      situation: c.situation,
+      goal: c.goal,
+      documents: c.documents.map((doc) => ({
+        fileName: doc.fileName,
+        documentType: doc.documentType,
+        docKind: doc.docKind,
+      })),
+      notices: c.notices.map((notice) => notice.noticeType),
+    });
+  const caseLock = caseTypeLockFromBrief(brief);
   const chromeInput = {
-    inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
+    inquiryMode: inquiry.mode,
     query: `${c.situation} ${c.goal}`,
     noticeTypes: c.notices.map((notice) => notice.noticeType),
+    caseLock,
   };
   const reportChrome = resolveReportChrome(chromeInput);
   const reviewLevel = reportChrome.reviewLevel;
   const readinessCopy = resolveReadinessCopy(chromeInput);
+  const rankedDocuments = rankMatchingDocuments({
+    themes: inquiry.themes,
+    inquiryMode: inquiry.mode,
+    query: `${c.situation} ${c.goal}`,
+    authorityQueries: authorityQueriesForInquiry(inquiry, caseLock),
+    noticeTypes: c.notices.map((notice) => notice.noticeType),
+    caseLock,
+  });
+  const neededDocs = neededDocumentsFromRanked(rankedDocuments).map((item) => ({
+    kind: item.kind,
+    label: item.label,
+    hint: item.hint,
+  }));
+  const v5 = assembleV5CustomerPresentation({
+    brief,
+    presentation,
+    pathSteps: c.pathSteps.map((step) => ({
+      title: step.title,
+      description: step.description,
+      actionKey: step.actionKey,
+      status: step.status,
+    })),
+    documents: c.documents.map((doc) => ({
+      fileName: doc.fileName,
+      documentType: doc.documentType,
+      docKind: doc.docKind,
+      processingStatus: doc.processingStatus,
+    })),
+    neededDocs,
+  });
 
   const docSections: string[] = [];
   for (const [i, d] of c.documents.entries()) {
@@ -68,6 +127,22 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
       docSections.push(`${header}<p class="muted">Document could not be read for embedding.</p>`);
     }
   }
+
+  const staffAppendix = includeStaffAppendix
+    ? `
+<h2>Staff appendix — approved presentation detail</h2>
+<p class="muted">Internal audit copy included only for staff downloads.</p>
+${presentationReportSections(presentation, chromeInput)}
+
+<h2>Staff appendix — situation narrative</h2>
+<p>${esc(stripClarifiedNarrative(c.situation) || c.situation || "—")}</p>
+<h2>Staff appendix — applicant goal</h2>
+<p>${esc(c.goal || "—")}</p>
+<p class="meta"><strong>${esc(readinessCopy.reportOverallLabel)}:</strong> ${c.readinessScore}% ·
+<strong>${esc(readinessCopy.availableLabel)}:</strong> ${c.evidenceAvailableScore}% ·
+<strong>${esc(readinessCopy.processedLabel)}:</strong> ${c.evidenceProcessedScore}% ·
+<strong>${esc(readinessCopy.actionLabel)}:</strong> ${c.actionReadinessScore}%</p>`
+    : "";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -99,18 +174,13 @@ export async function buildCaseReportHtml(caseId: string): Promise<{ html: strin
   <p class="meta">
     <strong>${esc(reportChrome.referenceLabel)}:</strong> ${ref} &nbsp;·&nbsp; <strong>Generated:</strong> ${generatedAt}<br/>
     <strong>Applicant:</strong> ${esc(`${c.user?.firstName ?? ""} ${c.user?.lastName ?? ""}`.trim() || "—")} (${esc(c.user?.email ?? "—")}${c.user?.phone ? `, ${esc(c.user.phone)}` : ""})${c.user?.address ? `<br/><strong>Address:</strong> ${esc(c.user.address)}` : ""}<br/>
-    <strong>${esc(reportChrome.openedLabel)}:</strong> ${c.createdAt.toLocaleDateString("en-US")} &nbsp;·&nbsp; <strong>Status:</strong> ${esc(c.status.replace(/_/g, " "))} &nbsp;·&nbsp; <strong>${esc(readinessCopy.reportOverallLabel)}:</strong> ${c.readinessScore}% &nbsp;·&nbsp; <strong>Review level:</strong> ${reviewLevel}<br/>
-    <strong>${esc(readinessCopy.availableLabel)}:</strong> ${c.evidenceAvailableScore}% &nbsp;·&nbsp; <strong>${esc(readinessCopy.processedLabel)}:</strong> ${c.evidenceProcessedScore}% &nbsp;·&nbsp; <strong>${esc(readinessCopy.actionLabel)}:</strong> ${c.actionReadinessScore}%
+    <strong>${esc(reportChrome.openedLabel)}:</strong> ${c.createdAt.toLocaleDateString("en-US")} &nbsp;·&nbsp; <strong>Status:</strong> ${esc(c.status.replace(/_/g, " "))} &nbsp;·&nbsp; <strong>Review level:</strong> ${reviewLevel}
     ${approvedSummary ? `<br/><strong>${esc(reportChrome.recordLabel)}:</strong> ${esc(approvedSummary.versionLabel)} · ${esc(approvedSummary.reasonLabel)}` : ""}
+    ${v5.primaryForm ? `<br/><strong>Primary immigration matter:</strong> Form ${esc(v5.primaryForm)}${v5.relatedProcess ? ` · Related: ${esc(v5.relatedProcess)}` : ""}` : ""}
   </p>
 </header>
 
-${presentationReportSections(presentation, chromeInput)}
-
-<h2>Situation as reported</h2>
-<p>${esc(stripClarifiedNarrative(c.situation) || c.situation)}</p>
-<h2>Applicant's goal</h2>
-<p>${esc(c.goal || "—")}</p>
+${v5CustomerPresentationReportSections(v5)}
 
 ${c.notices.length ? `<h2>USCIS notices on file</h2>
 <table><tr><th>Notice</th><th>Year</th><th>Deadline</th></tr>
@@ -124,6 +194,8 @@ ${c.documents.length ? `<h2>Document inventory (${c.documents.length})</h2>
 <table><tr><th>File</th><th>Type</th><th>Uploaded</th><th>Size</th></tr>
 ${c.documents.map((d) => `<tr><td>${esc(d.fileName)}</td><td>${d.docKind}</td><td>${d.uploadedAt.toLocaleDateString("en-US")}</td><td>${(d.sizeBytes / 1024).toFixed(0)} KB</td></tr>`).join("\n")}
 </table>` : ""}
+
+${staffAppendix}
 
 ${docSections.length ? `<div class="appendix"><h2>Appendices — document copies</h2>${docSections.join("\n")}</div>` : ""}
 

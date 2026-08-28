@@ -2,6 +2,8 @@ import type { PresentationContract } from "./case-presentation-contract";
 import { withPresentationSurfaceCopy } from "./case-presentation-contract";
 import { formatPresentationDate, presentationActionStatus, presentationEvidenceGateLabel } from "./case-presentation-ui";
 import type { FiledSurfaceInput } from "./goal-notices";
+import type { V5CustomerPresentation } from "./v5-customer-presentation";
+import { v5FactMarkerLabel } from "./v5-customer-presentation";
 
 const esc = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -9,6 +11,75 @@ const esc = (value: string) =>
 function list(items: string[]): string {
   if (items.length === 0) return "";
   return `<ul>${items.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>`;
+}
+
+/** Printable customer body — same six-section hierarchy as the V5 analysis page. */
+export function v5CustomerPresentationReportSections(view: V5CustomerPresentation): string {
+  const situation = view.yourSituation.length
+    ? `<ul>${view.yourSituation
+        .map(
+          (item) =>
+            `<li><strong>${esc(item.text)}</strong> <span class="muted">(${esc(v5FactMarkerLabel(item.state))})</span></li>`,
+        )
+        .join("")}</ul>`
+    : "<p class=\"muted\">We are still reconstructing the one-fact situation list from your records.</p>";
+
+  const keyPoint = view.keyPoint.body.map((paragraph) => `<p>${esc(paragraph)}</p>`).join("\n");
+
+  const process = view.currentProcess.length
+    ? `<ol>${view.currentProcess.map((step) => `<li>${esc(step)}</li>`).join("")}</ol>`
+    : "<p class=\"muted\">No filing-order process steps are locked yet.</p>";
+
+  const documents = view.documentsTellUs.length
+    ? `<ul>${view.documentsTellUs
+        .map(
+          (doc) => `<li>
+<strong>${esc(doc.label)}</strong> <span class="muted">(${esc(doc.fileName)})</span><br/>
+<em>What it confirms:</em> ${esc(doc.confirms)}<br/>
+<em>Why it matters:</em> ${esc(doc.whyItMatters)}
+</li>`,
+        )
+        .join("")}</ul>`
+    : "<p class=\"muted\">No uploaded documents have been classified for this case yet.</p>";
+
+  const confirm = view.stillNeedToConfirm.length
+    ? `<ul>${view.stillNeedToConfirm
+        .map((item) => `<li><strong>${esc(item.text)}</strong><br/>${esc(item.why)}</li>`)
+        .join("")}</ul>`
+    : "<p class=\"muted\">No material confirmation gaps are listed right now.</p>";
+
+  const next = view.whatToDoNext.length
+    ? `<ol>${view.whatToDoNext
+        .map(
+          (action) => `<li>
+<strong>${esc(action.what)}</strong>
+<ul>
+<li><em>Why it matters:</em> ${esc(action.why)}</li>
+<li><em>Can it be done now?</em> ${esc(action.now)}</li>
+<li><em>What changes after:</em> ${esc(action.whatChanges)}</li>
+</ul>
+</li>`,
+        )
+        .join("")}</ol>`
+    : "<p class=\"muted\">No next actions are ready yet.</p>";
+
+  return `<h2>Your situation</h2>
+${situation}
+
+<h2>${esc(view.keyPoint.heading)}</h2>
+${keyPoint}
+
+<h2>Current process</h2>
+${process}
+
+<h2>What your documents tell us</h2>
+${documents}
+
+<h2>What we still need to confirm</h2>
+${confirm}
+
+<h2>What to do next</h2>
+${next}`;
 }
 
 export function presentationReportSections(contract: PresentationContract, input: FiledSurfaceInput = {}): string {
