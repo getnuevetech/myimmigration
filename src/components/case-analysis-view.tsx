@@ -59,6 +59,15 @@ export type CaseViewer = {
 // consultants, and admins all see EXACTLY this view — only the available
 // functions differ (customers act; consultants/admins read and comment).
 export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; viewer: CaseViewer }) {
+  const { getCurrentUser, isAdmin } = await import("@/lib/auth");
+  const { canAccessCase } = await import("@/lib/case-access");
+  const current = await getCurrentUser();
+  if (!current || current.id !== viewer.userId) return null;
+  if (!isAdmin(current)) {
+    const access = await canAccessCase(caseId, { kind: "user", user: current });
+    if (!access.allowed) return null;
+  }
+
   const c = await db.case.findUnique({
     where: { id: caseId },
     include: {

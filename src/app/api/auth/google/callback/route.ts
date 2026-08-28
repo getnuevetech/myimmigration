@@ -24,7 +24,14 @@ export async function GET(request: Request) {
   const expectedState = cookieStore.get("oauth_state")?.value ?? "";
   if (!returnedState || returnedState !== expectedState) {
     const stateFailResponse = NextResponse.redirect(`${appUrl}/login?error=invalid_state`);
-    stateFailResponse.cookies.set("oauth_state", "", { httpOnly: true, maxAge: 0, path: "/" });
+    const { secureCookiesEnabled } = await import("@/lib/auth");
+    stateFailResponse.cookies.set("oauth_state", "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: await secureCookiesEnabled(),
+      maxAge: 0,
+      path: "/",
+    });
     return stateFailResponse;
   }
 
@@ -53,6 +60,11 @@ export async function GET(request: Request) {
   const info = await infoRes.json();
   // Email is compulsory regardless of registration method.
   if (!info.email) return NextResponse.redirect(`${appUrl}/login?error=no_email`);
+  if (info.verified_email === false) return NextResponse.redirect(`${appUrl}/login?error=unverified_email`);
+
+  const { secureCookiesEnabled } = await import("@/lib/auth");
+  const secure = await secureCookiesEnabled();
+  const clearCookie = { httpOnly: true, sameSite: "lax" as const, secure, maxAge: 0, path: "/" };
 
   const consents = parseOauthConsentsCookie(cookieStore.get(OAUTH_CONSENTS_COOKIE)?.value);
   let user = await db.user.findFirst({
@@ -67,11 +79,12 @@ export async function GET(request: Request) {
         lastName: info.family_name ?? "",
       };
       const pendingResponse = NextResponse.redirect(`${appUrl}/register?google=pending`);
-      pendingResponse.cookies.set("oauth_state", "", { httpOnly: true, maxAge: 0, path: "/" });
-      pendingResponse.cookies.set(OAUTH_CONSENTS_COOKIE, "", { httpOnly: true, maxAge: 0, path: "/" });
+      pendingResponse.cookies.set("oauth_state", "", clearCookie);
+      pendingResponse.cookies.set(OAUTH_CONSENTS_COOKIE, "", clearCookie);
       pendingResponse.cookies.set(OAUTH_GOOGLE_PENDING_COOKIE, JSON.stringify(pending), {
         httpOnly: true,
         sameSite: "lax",
+        secure,
         maxAge: 600,
         path: "/",
       });
@@ -102,8 +115,8 @@ export async function GET(request: Request) {
   await createSession(user.id);
   const response = NextResponse.redirect(`${appUrl}/app`);
   // Clear the state cookie after successful use.
-  response.cookies.set("oauth_state", "", { httpOnly: true, maxAge: 0, path: "/" });
-  response.cookies.set(OAUTH_CONSENTS_COOKIE, "", { httpOnly: true, maxAge: 0, path: "/" });
-  response.cookies.set(OAUTH_GOOGLE_PENDING_COOKIE, "", { httpOnly: true, maxAge: 0, path: "/" });
+  response.cookies.set("oauth_state", "", clearCookie);
+  response.cookies.set(OAUTH_CONSENTS_COOKIE, "", clearCookie);
+  response.cookies.set(OAUTH_GOOGLE_PENDING_COOKIE, "", clearCookie);
   return response;
 }

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { saveUpload } from "@/lib/uploads";
+import { saveUpload, validateAvatarFile, validateUploadFile } from "@/lib/uploads";
 import { ROLES } from "@/lib/constants";
 import type { ActionState } from "./auth";
 
@@ -21,7 +21,8 @@ export async function consultantUpdateProfileAction(_prev: ActionState, formData
   let avatarPath: string | undefined;
   const avatar = formData.get("avatar");
   if (avatar instanceof File && avatar.size > 0) {
-    if (!avatar.type.startsWith("image/")) return { error: "The profile picture must be an image." };
+    const validationError = validateAvatarFile(avatar);
+    if (validationError) return { error: validationError };
     avatarPath = (await saveUpload(avatar)).filePath;
   }
 
@@ -88,17 +89,22 @@ export async function consultantOnboardingAction(_prev: ActionState, formData: F
   if (isBusiness && !businessName) return { error: "Business name is required for business accounts." };
   if (specialties.length === 0) return { error: "Select at least one area of specialty." };
 
-  async function pickUpload(field: string, previous: string): Promise<string> {
+  async function pickUpload(field: string, previous: string): Promise<string | { error: string }> {
     const file = formData.get(field);
     if (file instanceof File && file.size > 0) {
+      const validationError = validateUploadFile(file);
+      if (validationError) return { error: validationError };
       const saved = await saveUpload(file);
       return saved.filePath;
     }
     return previous;
   }
   const proofDocumentPath = await pickUpload("proof", existing?.proofDocumentPath ?? "");
+  if (typeof proofDocumentPath === "object") return proofDocumentPath;
   const photoIdPath = await pickUpload("photoId", existing?.photoIdPath ?? "");
+  if (typeof photoIdPath === "object") return photoIdPath;
   const insurancePath = await pickUpload("insurance", existing?.insurancePath ?? "");
+  if (typeof insurancePath === "object") return insurancePath;
 
   if (needsCredentialProof && !proofDocumentPath) {
     return { error: "Please upload proof of your attorney license, DOJ accreditation, or professional registration." };

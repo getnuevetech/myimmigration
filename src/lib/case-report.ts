@@ -113,8 +113,14 @@ export async function buildCaseReportHtml(
     const header = `<h3>Appendix ${String.fromCharCode(65 + (i % 26))} — ${esc(d.fileName)} <span class="muted">(${d.docKind}, uploaded ${d.uploadedAt.toLocaleDateString("en-US")})</span></h3>`;
     try {
       if (d.mimeType.startsWith("image/") && d.sizeBytes < 8 * 1024 * 1024) {
+        const { REPORT_EMBED_IMAGE_TYPES, normalizeMimeType } = await import("./uploads");
+        const mime = normalizeMimeType(d.mimeType);
+        if (!REPORT_EMBED_IMAGE_TYPES.has(mime)) {
+          docSections.push(`${header}<p class="muted">Image type not embedded for safety (${esc(mime)}).</p>`);
+          continue;
+        }
         const buf = await readUpload(d.filePath);
-        docSections.push(`${header}<img class="doc" src="data:${d.mimeType};base64,${buf.toString("base64")}" alt="${esc(d.fileName)}" />`);
+        docSections.push(`${header}<img class="doc" src="data:${esc(mime)};base64,${buf.toString("base64")}" alt="${esc(d.fileName)}" />`);
         continue;
       }
       if (d.mimeType.startsWith("text/") || /\.(txt|csv|md|log)$/i.test(d.fileName)) {
@@ -122,7 +128,7 @@ export async function buildCaseReportHtml(
         docSections.push(`${header}<pre class="doc-text">${esc(buf.toString("utf-8").slice(0, 20000))}</pre>`);
         continue;
       }
-      docSections.push(`${header}<p class="muted">Binary document (${d.mimeType}, ${(d.sizeBytes / 1024).toFixed(0)} KB) — stored in the ${appName} vault; attach the original file when sharing this report.</p>`);
+      docSections.push(`${header}<p class="muted">Binary document (${esc(d.mimeType)}, ${(d.sizeBytes / 1024).toFixed(0)} KB) — stored in the ${esc(appName)} vault; attach the original file when sharing this report.</p>`);
     } catch {
       docSections.push(`${header}<p class="muted">Document could not be read for embedding.</p>`);
     }

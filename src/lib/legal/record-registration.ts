@@ -86,12 +86,14 @@ export async function recordRegistrationLegal(options: {
 
 const COOKIE_BASE = { httpOnly: true, sameSite: "lax" as const, path: "/" };
 
+async function cookieOpts(extra: { maxAge: number }) {
+  const { secureCookiesEnabled } = await import("@/lib/auth");
+  return { ...COOKIE_BASE, secure: await secureCookiesEnabled(), ...extra };
+}
+
 export async function setOauthConsentsCookie(value: OauthConsentsCookie): Promise<void> {
   const store = await cookies();
-  store.set(OAUTH_CONSENTS_COOKIE, serializeOauthConsentsCookie(value), {
-    ...COOKIE_BASE,
-    maxAge: 600,
-  });
+  store.set(OAUTH_CONSENTS_COOKIE, serializeOauthConsentsCookie(value), await cookieOpts({ maxAge: 600 }));
 }
 
 export async function readOauthConsentsCookie(): Promise<OauthConsentsCookie | null> {

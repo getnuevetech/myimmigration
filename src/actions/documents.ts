@@ -61,13 +61,20 @@ export async function noticeQuotaError(userId: string | null | undefined, incomi
 export async function uploadDocumentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await getCurrentUser();
   const docKind = normalizeDocumentKind(String(formData.get("docKind") ?? "other")) ?? "other";
-  const caseId = String(formData.get("caseId") ?? "") || null;
+  let caseId = String(formData.get("caseId") ?? "") || null;
   const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length === 0) return { error: "Choose at least one file." };
   const quotaError = await documentQuotaError(user?.id, files.length);
   if (quotaError) return { error: quotaError };
 
   const guest = user ? null : await getOrCreateGuestSession();
+  const { resolveOwnedCaseId } = await import("@/lib/case-access");
+  caseId = await resolveOwnedCaseId({
+    caseId,
+    userId: user?.id ?? null,
+    guestSessionId: guest?.id ?? null,
+  });
+
   const documentIds: string[] = [];
   for (const file of files.slice(0, 10)) {
     const validationError = validateUploadFile(file);
@@ -175,14 +182,14 @@ export async function uploadNoticeAction(_prev: ActionState, formData: FormData)
     const docQuota = await documentQuotaError(user?.id, 1);
     if (docQuota) return { error: docQuota };
   }
-  if (user && caseId) {
-    const c = await db.case.findFirst({ where: { id: caseId, userId: user.id }, select: { id: true } });
-    caseId = c?.id ?? null;
-  } else {
-    caseId = null;
-  }
-
   const guest = user ? null : await getOrCreateGuestSession();
+  const { resolveOwnedCaseId } = await import("@/lib/case-access");
+  caseId = await resolveOwnedCaseId({
+    caseId,
+    userId: user?.id ?? null,
+    guestSessionId: guest?.id ?? null,
+  });
+
   let documentId: string | null = null;
   let content = pastedText;
 

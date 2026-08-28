@@ -28,6 +28,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!allowed && user.role === "consultant") {
     const assignment = await db.consultantAssignment.findFirst({
       where: { consultantId: user.id, userId: submission.userId, status: "active" },
+      select: { id: true },
     });
     allowed = Boolean(assignment);
   }

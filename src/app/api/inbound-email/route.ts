@@ -15,7 +15,13 @@ export async function POST(request: Request) {
   if (!secret) return NextResponse.json({ error: "Inbound email is not enabled" }, { status: 403 });
   // Accept the secret only via a header to avoid it appearing in server access logs.
   const provided = request.headers.get("x-inbound-secret") ?? "";
-  if (provided !== secret) {
+  const { timingSafeEqualString, checkRateLimit, clientIpFromRequest, rateLimitKey } = await import("@/lib/rate-limit");
+  const ip = clientIpFromRequest(request);
+  const limited = checkRateLimit({ key: rateLimitKey(["inbound-email", ip]), limit: 60, windowMs: 60_000 });
+  if (!limited.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+  if (!timingSafeEqualString(provided, secret)) {
     const { logSystem } = await import("@/lib/syslog");
     await logSystem("warning", "inbound_email", "Inbound email rejected: invalid secret");
     return NextResponse.json({ error: "Invalid secret" }, { status: 403 });

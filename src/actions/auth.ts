@@ -1,16 +1,37 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { createSession, destroySession, hashPassword, verifyPassword, getCurrentUser } from "@/lib/auth";
+import { createSession, destroySession, hashPassword, verifyPassword, getCurrentUser, bumpSessionVersion } from "@/lib/auth";
 import { claimGuestSession } from "@/lib/guest";
 import { ROLES } from "@/lib/constants";
 import { LEGAL_AGREEMENT_VERSION, parseRegistrationConsents, OAUTH_GOOGLE_PENDING_COOKIE, OAUTH_CONSENTS_COOKIE } from "@/lib/legal/consents";
 import { readPendingGoogleProfile, recordRegistrationLegal, setOauthConsentsCookie } from "@/lib/legal/record-registration";
+import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit";
 
 export type ActionState = { error?: string; ok?: boolean; info?: string; link?: string } | null;
+
+async function loginRateLimited(email: string): Promise<string | null> {
+  const h = await headers();
+  const ip = (h.get("x-forwarded-for") || h.get("x-real-ip") || "unknown").split(",")[0]?.trim() || "unknown";
+  const byIp = checkRateLimit({ key: rateLimitKey(["login-ip", ip]), limit: 30, windowMs: 15 * 60_000 });
+  if (!byIp.allowed) return `Too many sign-in attempts. Try again in ${byIp.retryAfterSec} seconds.`;
+  const byEmail = checkRateLimit({ key: rateLimitKey(["login-email", email]), limit: 10, windowMs: 15 * 60_000 });
+  if (!byEmail.allowed) return `Too many sign-in attempts for this email. Try again in ${byEmail.retryAfterSec} seconds.`;
+  return null;
+}
+
+async function resetRateLimited(email: string): Promise<string | null> {
+  const h = await headers();
+  const ip = (h.get("x-forwarded-for") || h.get("x-real-ip") || "unknown").split(",")[0]?.trim() || "unknown";
+  const byIp = checkRateLimit({ key: rateLimitKey(["reset-ip", ip]), limit: 20, windowMs: 60 * 60_000 });
+  if (!byIp.allowed) return `Too many reset requests. Try again in ${byIp.retryAfterSec} seconds.`;
+  const byEmail = checkRateLimit({ key: rateLimitKey(["reset-email", email || "none"]), limit: 5, windowMs: 60 * 60_000 });
+  if (!byEmail.allowed) return `Too many reset requests for this email. Try again in ${byEmail.retryAfterSec} seconds.`;
+  return null;
+}
 
 const registerSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -115,6 +136,8 @@ export async function completeGoogleRegisterAction(_prev: ActionState, formData:
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const email = String(formData.get("email") ?? "").toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const limited = await loginRateLimited(email);
+  if (limited) return { error: limited };
   const user = await db.user.findUnique({ where: { email } });
   if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
     return { error: "Invalid email or password." };
@@ -150,6 +173,8 @@ export async function deleteAccountAction(): Promise<void> {
 export async function requestPasswordResetAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!email) return { error: "Enter your email address." };
+  const limited = await resetRateLimited(email);
+  if (limited) return { error: limited };
   const user = await db.user.findUnique({ where: { email } });
   // Same response whether or not the account exists (no user enumeration).
   if (user && user.status === "active") {
@@ -188,7 +213,11 @@ export async function resetPasswordAction(_prev: ActionState, formData: FormData
     return { error: "This account is not active. Contact support if you believe this is a mistake." };
   }
 
-  const user = await db.user.update({ where: { id: userId }, data: { passwordHash: await hashPassword(password) } });
+  const user = await db.user.update({
+    where: { id: userId },
+    data: { passwordHash: await hashPassword(password) },
+  });
+  await bumpSessionVersion(userId);
   await consumeResetToken(token);
   await createSession(userId);
   if (user.role === ROLES.SUPER_ADMIN || user.role === ROLES.ADMIN) redirect("/admin");

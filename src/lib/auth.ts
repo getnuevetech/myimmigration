@@ -58,7 +58,9 @@ export async function secureCookiesEnabled(): Promise<boolean> {
 
 export async function createSession(userId: string) {
   const secret = await getSecret();
-  const token = await new SignJWT({ sub: userId })
+  const user = await db.user.findUnique({ where: { id: userId }, select: { sessionVersion: true } });
+  const sv = user?.sessionVersion ?? 0;
+  const token = await new SignJWT({ sub: userId, sv })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("30d")
@@ -71,6 +73,16 @@ export async function createSession(userId: string) {
     maxAge: 60 * 60 * 24 * 30,
     path: "/",
   });
+}
+
+/** Invalidate all outstanding JWTs for this user (password change, suspend, etc.). */
+export async function bumpSessionVersion(userId: string): Promise<number> {
+  const updated = await db.user.update({
+    where: { id: userId },
+    data: { sessionVersion: { increment: 1 } },
+    select: { sessionVersion: true },
+  });
+  return updated.sessionVersion;
 }
 
 export async function destroySession() {
@@ -91,6 +103,8 @@ export const getCurrentUser = cache(async () => {
       include: { adminPermissions: true, adminRole: true, consultantProfile: true },
     });
     if (!user || user.status !== "active") return null;
+    const tokenSv = typeof payload.sv === "number" ? payload.sv : 0;
+    if (tokenSv !== (user.sessionVersion ?? 0)) return null;
     return user;
   } catch {
     return null;

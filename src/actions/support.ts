@@ -18,9 +18,10 @@ async function saveTicketAttachments(
   fromStaff: boolean,
 ): Promise<string | null> {
   const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  const { saveUpload, validateUploadFile, MAX_TICKET_ATTACHMENT_BYTES } = await import("@/lib/uploads");
   for (const file of files.slice(0, 5)) {
-    if (file.size > 10 * 1024 * 1024) return `${file.name} is larger than 10 MB.`;
-    const { saveUpload } = await import("@/lib/uploads");
+    const validationError = validateUploadFile(file, { maxBytes: MAX_TICKET_ATTACHMENT_BYTES });
+    if (validationError) return validationError;
     const saved = await saveUpload(file);
     await db.ticketAttachment.create({
       data: {

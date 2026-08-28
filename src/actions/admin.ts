@@ -21,6 +21,9 @@ export async function addSettingAction(_prev: ActionState, formData: FormData): 
   await requireAdminArea("admin.settings");
   const key = String(formData.get("key") ?? "").trim();
   if (!key) return { error: "Key is required." };
+  if (/^(auth\.|.*\.secret$|cron\.secret$)/i.test(key) || key.toLowerCase().includes("secret")) {
+    return { error: "Secret keys cannot be created from this form. Use environment variables or the managed settings list." };
+  }
   await db.setting.upsert({
     where: { key },
     update: { value: String(formData.get("value") ?? "") },
@@ -358,7 +361,9 @@ export async function deleteContentPageAction(id: string) {
 
 export async function setUserStatusAction(userId: string, status: "active" | "suspended") {
   await requireAdminArea("admin.users");
+  const { bumpSessionVersion } = await import("@/lib/auth");
   await db.user.update({ where: { id: userId }, data: { status } });
+  if (status === "suspended") await bumpSessionVersion(userId);
   revalidatePath("/admin/users");
 }
 

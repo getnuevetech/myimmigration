@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser, hasAdminArea } from "@/lib/auth";
-import { readUpload } from "@/lib/uploads";
+import { readUpload, safeContentType, INLINE_SAFE_MIME_TYPES } from "@/lib/uploads";
 
 // Ticket attachments: visible to the ticket owner and support staff only.
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -17,10 +17,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!allowed) return new NextResponse("Forbidden", { status: 403 });
 
   const buf = await readUpload(attachment.filePath);
+  const contentType = safeContentType(attachment.mimeType);
+  const disposition = INLINE_SAFE_MIME_TYPES.has(contentType) ? "inline" : "attachment";
   return new NextResponse(new Uint8Array(buf), {
     headers: {
-      "Content-Type": attachment.mimeType,
-      "Content-Disposition": `inline; filename="${attachment.fileName.replace(/[^\w.\- ]/g, "_")}"`,
+      "Content-Type": contentType,
+      "Content-Disposition": `${disposition}; filename="${attachment.fileName.replace(/[^\w.\- ]/g, "_")}"`,
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

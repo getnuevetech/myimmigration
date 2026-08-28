@@ -9,8 +9,20 @@ import { getSetting } from "./settings";
 
 export type MessageVars = Record<string, string>;
 
-function render(text: string, vars: MessageVars): string {
-  return text.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function render(text: string, vars: MessageVars, htmlMode: boolean): string {
+  return text.replace(/\{\{(\w+)\}\}/g, (_, k: string) => {
+    const raw = vars[k] ?? "";
+    return htmlMode ? escapeHtml(raw) : raw;
+  });
 }
 
 function stripHtml(html: string): string {
@@ -58,8 +70,8 @@ export async function sendSystemMessage(
     }
 
     const vars = { ...(await baseVars(user)), ...extraVars };
-    const subject = render(template.subject, vars);
-    const html = render(template.bodyHtml, vars);
+    const subject = render(template.subject, vars, false);
+    const html = render(template.bodyHtml, vars, true);
     const text = stripHtml(html);
 
     const mail = await sendMail(user.email, subject, text, html);
