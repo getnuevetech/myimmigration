@@ -68,6 +68,11 @@ import {
   evaluateConsultantReferral,
 } from "../src/lib/immigration-inquiry";
 import { caseTypeLockFromBrief } from "../src/lib/case-type-lock";
+import {
+  assembleV5CustomerPresentation,
+  V5_CUSTOMER_FORBIDDEN_RE,
+  v5CustomerPresentationText,
+} from "../src/lib/v5-customer-presentation";
 import { rankKnowledgeSources, type KnowledgeRecord } from "../src/lib/knowledge-retrieval";
 import {
   authorityQueryKeys,
@@ -2760,6 +2765,92 @@ assert(readFileSync(join(process.cwd(), "src/lib/case-type-lock.ts"), "utf8").in
 assert(PROMPT_VERSION.includes("v32"), "v5 case-type lock must not bump analysis prompt version");
 assert(requested.autoAssigned === false, "v5 case-type lock must not auto-assign consultants");
 
+// --- V5 Phase 4: customer presentation hierarchy ---
+const vawaCustomer = assembleV5CustomerPresentation({
+  brief: vawaBrief,
+  presentation: {
+    ...presentation,
+    hero: { ...presentation.hero, current_posture: "VAWA self-petition with prima facie determination" },
+    evidence: (VAWA_PRIMA_FACIE_FIXTURE.documents ?? []).map((doc, index) => ({
+      id: `vawa-doc-${index}`,
+      file_name: doc.fileName ?? `doc-${index}.pdf`,
+      document_type: doc.documentType ?? "other",
+      processing_status: "extracted",
+    })),
+    actions: [
+      { id: "a1", title: "Stay with the VAWA Form I-360 case already on file", action_key: "REVIEW_ANALYSIS", status: "READY", priority: 1 },
+      { id: "a2", title: "Upload any missing I-485 receipt if adjustment was filed", action_key: "UPLOAD_DOCUMENTS", status: "READY", priority: 2 },
+      { id: "a3", title: "Keep the prima facie notice with your case records", action_key: "UPLOAD_NOTICE", status: "READY", priority: 3 },
+    ],
+  },
+  documents: (VAWA_PRIMA_FACIE_FIXTURE.documents ?? []).map((doc) => ({
+    fileName: doc.fileName ?? "document.pdf",
+    documentType: doc.documentType,
+  })),
+});
+assert(vawaCustomer.yourSituation.length >= 5, `VAWA customer situation should list one-fact bullets, got ${vawaCustomer.yourSituation.length}`);
+assert(vawaCustomer.yourSituation.every((item) => ["verified", "reported", "unknown"].includes(item.state)), "VAWA situation bullets must carry verified/reported/unknown markers");
+assert(vawaCustomer.yourSituation.every((item) => !/\[Clarified/i.test(item.text)), "VAWA customer situation must not show clarified interview tags");
+assert(vawaCustomer.keyPoint.kind === "notice_meaning", "VAWA key point should use a Rule 13 notice heading");
+assert(/what this notice means/i.test(vawaCustomer.keyPoint.heading), `VAWA heading should be notice meaning, got ${vawaCustomer.keyPoint.heading}`);
+assert(/preliminary/i.test(vawaCustomer.keyPoint.body.join(" ")), "VAWA notice meaning must call prima facie preliminary");
+assert(/not a final approval/i.test(vawaCustomer.keyPoint.body.join(" ")) && /not a green card/i.test(vawaCustomer.keyPoint.body.join(" ")), "VAWA notice meaning must explicitly say it is not final approval and not a green card");
+assert(/do not treat marriage alone as a reason to file a new Form I-130/i.test(vawaCustomer.keyPoint.body.join(" ")), "VAWA notice meaning must steer away from a new I-130");
+assert(!/\bis approved\b|\bgrants? (?:you )?a green card\b|\bfile Form I-130 first\b/i.test(vawaCustomer.keyPoint.body.join(" ")), "VAWA notice meaning must avoid approval/green-card/I-130-first wording");
+assert(vawaCustomer.currentProcess.some((step) => /prima facie|i-360/i.test(step)), "VAWA current process should stay in filing order around I-360 / prima facie");
+assert(vawaCustomer.documentsTellUs.length === 4, `VAWA documents section should list 4 uploads, got ${vawaCustomer.documentsTellUs.length}`);
+assert(vawaCustomer.stillNeedToConfirm.length >= 1, "VAWA should list material confirmation gaps");
+assert(vawaCustomer.whatToDoNext.length >= 3 && vawaCustomer.whatToDoNext.length <= 5, `VAWA next actions should be 3-5, got ${vawaCustomer.whatToDoNext.length}`);
+assert(vawaCustomer.whatToDoNext.every((item) => item.what && item.why && item.now && item.whatChanges), "Each next action must answer what/why/now/what-changes");
+assert(!/i-130/i.test(vawaCustomer.whatToDoNext.map((item) => item.what).join(" ")), "VAWA next actions must not recommend I-130");
+assert(!V5_CUSTOMER_FORBIDDEN_RE.test(v5CustomerPresentationText(vawaCustomer)), "VAWA customer presentation text must omit forbidden customer-facing patterns");
+
+const familyCustomer = assembleV5CustomerPresentation({
+  brief: familyBrief,
+  pathSteps: [
+    { title: "Share the facts this official material still needs", description: "Identity and relationship facts.", actionKey: "ADD_CASE_DETAILS", status: "current" },
+    { title: "Review Form I-130", description: "Family petition starts here.", actionKey: "PREPARE_FORM", status: "pending" },
+    { title: "Ask a follow-up about these options", description: "Clarify status and location.", actionKey: "REVIEW_ANALYSIS", status: "pending" },
+  ],
+});
+assert(familyCustomer.keyPoint.kind === "most_important", "Open-options marriage should use the most-important heading");
+assert(/i-130/i.test(familyCustomer.keyPoint.body.join(" ")), "Open-options marriage key point must name I-130 first");
+assert(!/start with (?:form )?i-485/i.test(familyCustomer.keyPoint.body.join(" ")), "Open-options marriage must not tell the customer to start with I-485");
+assert(familyCustomer.whatToDoNext.some((item) => /i-130/i.test(item.what)), "Open-options next actions should still lead with I-130 work");
+assert(familyCustomer.whatToDoNext.length >= 3 && familyCustomer.whatToDoNext.length <= 5, "Open-options next actions should stay 3-5");
+
+const rfeCustomer = assembleV5CustomerPresentation({
+  brief: rfeBrief,
+  presentation,
+  pathSteps: [
+    { title: "Respond to the Request for Evidence", description: "Answer every requested item before the deadline.", actionKey: "UPLOAD_NOTICE", status: "current" },
+    { title: "Upload or confirm the RFE notice and deadline", description: "The notice controls the response.", actionKey: "UPLOAD_DOCUMENTS", status: "pending" },
+    { title: "Organize the exact evidence items USCIS listed", description: "Do not send a generic packet.", actionKey: "ADD_CASE_DETAILS", status: "pending" },
+  ],
+  documents: [{ fileName: "rfe.pdf", documentType: "rfe" }],
+});
+assert(rfeCustomer.keyPoint.kind === "notice_meaning", "RFE key point should use a notice heading");
+assert(/request for evidence|rfe/i.test(rfeCustomer.keyPoint.body.join(" ")), "RFE notice meaning must explain the RFE");
+assert(rfeCustomer.whatToDoNext.some((item) => /respond to the (?:request for evidence|rfe)/i.test(item.what)), "RFE next actions must keep respond-to-the-RFE");
+assert(!rfeCustomer.whatToDoNext.some((item) => /i-130/i.test(item.what)), "RFE next actions must not recommend I-130");
+assert(rfeCustomer.documentsTellUs.some((item) => /rfe|request for evidence/i.test(item.label + item.confirms)), "RFE documents section should describe the RFE");
+
+const caseAnalysisViewSrc = readFileSync(join(process.cwd(), "src/components/case-analysis-view.tsx"), "utf8");
+const v5ViewSrc = readFileSync(join(process.cwd(), "src/components/v5-customer-presentation-view.tsx"), "utf8");
+assert(caseAnalysisViewSrc.includes("V5CustomerPresentationView"), "analyze-case must render the V5 customer presentation");
+assert(caseAnalysisViewSrc.includes("showStaffInternals"), "analyze-case must keep readiness/explanations on staff/audit only");
+assert(caseAnalysisViewSrc.includes('viewer.role !== "customer"'), "staff internals must be role-gated");
+assert(v5ViewSrc.includes("Your situation"), "V5 view must include Your situation");
+assert(v5ViewSrc.includes("Current process"), "V5 view must include Current process");
+assert(v5ViewSrc.includes("What your documents tell us"), "V5 view must include documents section");
+assert(v5ViewSrc.includes("What we still need to confirm"), "V5 view must include confirmation gaps");
+assert(v5ViewSrc.includes("What to do next"), "V5 view must include next actions");
+assert(!v5ViewSrc.includes("Most likely explanations"), "V5 view must not include most-likely explanations");
+assert(!v5ViewSrc.includes("ProgressBar"), "V5 view must not show readiness percentage bars");
+assert(!/What this means/.test(v5ViewSrc.replace(/What this notice means/g, "")), "V5 view must not use the old What this means dump heading");
+assert(PROMPT_VERSION.includes("v32"), "v5 customer presentation must not bump analysis prompt version");
+assert(requested.autoAssigned === false, "v5 customer presentation must not auto-assign consultants");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -2812,3 +2903,4 @@ console.log(`- admin re-analysis: compare changed=${reanalysisDiff.changed}, sha
 console.log(`- v5 P1: VAWA brief ${vawaBrief.primaryForm}/${vawaBrief.relatedForm}, family lock I-130=${familyBrief.lockFamilyOpenOptionsI130}, RFE ${rfeBrief.primaryForm}`);
 console.log(`- v5 P2: VAWA types ${vawaUploadTypes.join(", ")}, passport ${passportClassified.documentType}, I-94 ${i94Classified.documentType}`);
 console.log(`- v5 P3: VAWA next ${vawaForms[0]?.formNumber}, queries ${vawaQueries.join("/")}, family ${familyLockedForms[0]?.formNumber}, RFE letter ${matchingLetterKind(rfeMatchInput)}`);
+console.log(`- v5 P4: VAWA key=${vawaCustomer.keyPoint.heading}, actions=${vawaCustomer.whatToDoNext.length}, family=${familyCustomer.keyPoint.kind}, RFE=${rfeCustomer.whatToDoNext[0]?.what.slice(0, 28)}`);

@@ -29,6 +29,8 @@ import { presentationStepCta } from "@/lib/case-presentation-ui";
 import { presentationWhatThisMeansSummary } from "@/lib/case-presentation-contract";
 import { parseSituationBrief } from "@/lib/situation-brief";
 import { caseTypeLockFromBrief } from "@/lib/case-type-lock";
+import { assembleV5CustomerPresentation } from "@/lib/v5-customer-presentation";
+import { V5CustomerPresentationView } from "@/components/v5-customer-presentation-view";
 import {
   analysisDocumentWalkthrough,
   closedReasonLabel,
@@ -136,7 +138,8 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const latestVersion = await getLatestCaseVersion(caseId).catch(() => null);
   const versionHistory = viewer.role === "admin" ? await listCaseVersions(caseId, 8).catch(() => []) : [];
   const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
-  const caseLock = caseTypeLockFromBrief(parseSituationBrief(c.reconstruction?.briefJson));
+  const situationBrief = parseSituationBrief(c.reconstruction?.briefJson);
+  const caseLock = caseTypeLockFromBrief(situationBrief);
   const versionMatch = matchInputFromCase({
     situation: c.situation,
     goal: c.goal,
@@ -293,7 +296,26 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     />
   );
 
-  if (presentation) {
+  const v5Presentation = assembleV5CustomerPresentation({
+    brief: situationBrief,
+    presentation,
+    pathSteps: c.pathSteps.map((step) => ({
+      title: step.title,
+      description: step.description,
+      actionKey: step.actionKey,
+      status: step.status,
+    })),
+    documents: c.documents.map((doc) => ({
+      fileName: doc.fileName,
+      documentType: doc.documentType,
+      docKind: doc.docKind,
+      processingStatus: doc.processingStatus,
+    })),
+    neededDocs,
+  });
+  const showStaffInternals = viewer.role !== "customer";
+
+  if (presentation || situationBrief) {
     return (
       <div className="space-y-6">
         {staffReviewBanner}
@@ -319,33 +341,47 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
             <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-200">{c.closingRemarks || versionChrome.closedEmpty}</p>
           </div>
         )}
-        <CasePresentationView
-          caseId={c.id}
-          viewer={viewer}
-          interactive={interactive}
-          fullAccess={fullAccess}
-          presentation={presentation}
-          goal={c.goal}
-          readinessScore={c.readinessScore}
-          evidenceAvailableScore={c.evidenceAvailableScore}
-          evidenceProcessedScore={c.evidenceProcessedScore}
-          actionReadinessScore={c.actionReadinessScore}
-          issues={c.issues}
-          pathSteps={c.pathSteps}
-          documents={c.documents}
-          neededDocs={neededDocs}
-          matchingFormId={matchingForm?.id ?? null}
-          matchingFormNumber={matchingFormNumberValue}
-          canStartForm={canStartForm}
-          matchingLetterKind={matchingLetter}
-          canGenerateLetter={canGenerateLetter}
-          matchingDocumentKind={matchingDocumentKind}
-          documentKinds={documentKinds}
-          inquiryMode={inquiry.mode}
-          suggestionAccess={viewer.suggestionAccess}
+        <V5CustomerPresentationView
+          presentation={v5Presentation}
+          caseMeta={{
+            primaryForm: situationBrief?.primaryForm ?? caseLock?.primaryForm ?? null,
+            relatedProcess: situationBrief?.relatedProcess ?? null,
+          }}
         />
-        {analysisPlanJson && (viewer.role !== "customer" || viewer.suggestionAccess?.personalized !== false) ? <CaseAnalysisPlanCard planJson={analysisPlanJson} match={versionMatch} /> : null}
-        {versionCard}
+        {showStaffInternals && presentation ? (
+          <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-800">Staff / audit presentation detail</summary>
+            <div className="mt-4">
+              <CasePresentationView
+                caseId={c.id}
+                viewer={viewer}
+                interactive={interactive}
+                fullAccess={fullAccess}
+                presentation={presentation}
+                goal={c.goal}
+                readinessScore={c.readinessScore}
+                evidenceAvailableScore={c.evidenceAvailableScore}
+                evidenceProcessedScore={c.evidenceProcessedScore}
+                actionReadinessScore={c.actionReadinessScore}
+                issues={c.issues}
+                pathSteps={c.pathSteps}
+                documents={c.documents}
+                neededDocs={neededDocs}
+                matchingFormId={matchingForm?.id ?? null}
+                matchingFormNumber={matchingFormNumberValue}
+                canStartForm={canStartForm}
+                matchingLetterKind={matchingLetter}
+                canGenerateLetter={canGenerateLetter}
+                matchingDocumentKind={matchingDocumentKind}
+                documentKinds={documentKinds}
+                inquiryMode={inquiry.mode}
+                suggestionAccess={viewer.suggestionAccess}
+              />
+            </div>
+          </details>
+        ) : null}
+        {showStaffInternals && analysisPlanJson ? <CaseAnalysisPlanCard planJson={analysisPlanJson} match={versionMatch} /> : null}
+        {showStaffInternals ? versionCard : null}
         {matchingMaterials}
       </div>
     );
@@ -538,7 +574,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
           </section>
         )}
 
-        {latestBatch.length > 0 && (
+        {showStaffInternals && latestBatch.length > 0 && (
           <section>
             <h2 className="mb-3 text-base font-semibold text-slate-900">{versionChrome.howAnalyzedHeading}</h2>
             <Card>
@@ -617,7 +653,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                   </div>
                   {issue.uscisBasis && <p className="mt-1 text-xs text-slate-400">USCIS basis: {issue.uscisBasis}</p>}
 
-                  {explanations.length > 0 && (
+                  {showStaffInternals && explanations.length > 0 && (
                     <div className="mt-4">
                       <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Most likely explanations</p>
                       <ol className="space-y-2">
@@ -634,7 +670,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
                     </div>
                   )}
 
-                  {outline.length > 0 && (
+                  {showStaffInternals && outline.length > 0 && (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
                       <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Why ImmigrationOnMe says this</p>
                       <ol className="space-y-3">
@@ -814,24 +850,26 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       </div>
 
       <div className="space-y-6">
-        <Card>
-          <CardBody>
-            <ProgressBar value={c.readinessScore} label={readinessCopy.overallLabel} />
-            <p className="mt-2 text-xs text-slate-500">
-              {readinessCopy.overallHint}
-            </p>
-            {(c.evidenceAvailableScore > 0 || c.evidenceProcessedScore > 0 || c.actionReadinessScore > 0) && (
-              <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
-                <ProgressBar value={c.evidenceAvailableScore} label={readinessCopy.availableLabel} />
-                <ProgressBar value={c.evidenceProcessedScore} label={readinessCopy.processedLabel} />
-                <ProgressBar value={c.actionReadinessScore} label={readinessCopy.actionLabel} />
-                <p className="text-[11px] leading-relaxed text-slate-500">
-                  {readinessCopy.splitHint}
-                </p>
-              </div>
-            )}
-          </CardBody>
-        </Card>
+        {showStaffInternals && (
+          <Card>
+            <CardBody>
+              <ProgressBar value={c.readinessScore} label={readinessCopy.overallLabel} />
+              <p className="mt-2 text-xs text-slate-500">
+                {readinessCopy.overallHint}
+              </p>
+              {(c.evidenceAvailableScore > 0 || c.evidenceProcessedScore > 0 || c.actionReadinessScore > 0) && (
+                <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                  <ProgressBar value={c.evidenceAvailableScore} label={readinessCopy.availableLabel} />
+                  <ProgressBar value={c.evidenceProcessedScore} label={readinessCopy.processedLabel} />
+                  <ProgressBar value={c.actionReadinessScore} label={readinessCopy.actionLabel} />
+                  <p className="text-[11px] leading-relaxed text-slate-500">
+                    {readinessCopy.splitHint}
+                  </p>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        )}
 
         <Card>
           <CardBody>
