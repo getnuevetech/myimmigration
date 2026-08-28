@@ -66,9 +66,9 @@ export type ImmigrationInquiry = {
 };
 
 export type InquiryClassifyInput = {
-  situation?: string;
-  goal?: string;
-  documentsText?: string;
+  situation?: string | null;
+  goal?: string | null;
+  documentsText?: string | null;
   documentCount?: number;
   notices?: string[];
   forms?: string[];

@@ -39,6 +39,7 @@ import {
   verifiableActionCopy,
 } from "@/lib/goal-versions";
 import { resolveIntakeChrome } from "@/lib/goal-intake";
+import { parseCanonicalApprovedState } from "@/lib/canonical-case-state";
 import {
   getRunningReanalysis,
   getSharedReanalysisForViewer,

@@ -2584,10 +2584,10 @@ assert(
 assert(readFileSync(join(process.cwd(), "src/lib/evidence/case-state.ts"), "utf8").includes("buildSituationBrief"), "evidence reconstruction must persist the situation brief");
 assert(readFileSync(join(process.cwd(), "prisma/schema.prisma"), "utf8").includes("briefJson"), "situation brief must persist on case reconstruction");
 
-const vawaUploads = (VAWA_PRIMA_FACIE_FIXTURE.documents ?? []).map((doc) =>
+const vawaUploads = (VAWA_PRIMA_FACIE_FIXTURE.documents ?? []).map((doc, index) =>
   compileImmigrationEvidence({
-    id: doc.fileName,
-    fileName: doc.fileName,
+    id: doc.fileName ?? `vawa-upload-${index}`,
+    fileName: doc.fileName ?? `vawa-upload-${index}.pdf`,
     text: doc.text ?? "",
     declaredType: "identity_document",
   }),
