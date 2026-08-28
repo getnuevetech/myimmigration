@@ -25,30 +25,79 @@ export const ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ]);
 
+export const AVATAR_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+
+export const INLINE_SAFE_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
+
+/** Safe image MIME types for embedding in printable HTML reports. */
+export const REPORT_EMBED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
+
 // Maximum upload size enforced across all upload paths.
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // 20 MB
+export const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+export const MAX_TICKET_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB
 
-export function validateUploadFile(file: File): string | null {
-  if (file.size > MAX_UPLOAD_BYTES) return `${file.name} is larger than 20 MB.`;
-  // Normalise the MIME type: client-supplied types are best-effort, but we
-  // still reject anything clearly outside the allowlist.
-  const mime = (file.type || "application/octet-stream").split(";")[0].trim().toLowerCase();
-  if (!ALLOWED_MIME_TYPES.has(mime)) {
+export function normalizeMimeType(mimeType: string | null | undefined): string {
+  return (mimeType || "application/octet-stream").split(";")[0].trim().toLowerCase();
+}
+
+export function safeContentType(mimeType: string | null | undefined): string {
+  const normalized = normalizeMimeType(mimeType);
+  return ALLOWED_MIME_TYPES.has(normalized) ? normalized : "application/octet-stream";
+}
+
+export function validateUploadFile(
+  file: File,
+  options?: { maxBytes?: number; allowedMimes?: Set<string> },
+): string | null {
+  const maxBytes = options?.maxBytes ?? MAX_UPLOAD_BYTES;
+  const allowed = options?.allowedMimes ?? ALLOWED_MIME_TYPES;
+  if (file.size <= 0) return `${file.name || "File"} is empty.`;
+  if (file.size > maxBytes) return `${file.name} is larger than ${Math.round(maxBytes / (1024 * 1024))} MB.`;
+  const mime = normalizeMimeType(file.type);
+  if (!allowed.has(mime)) {
     return `${file.name}: file type "${mime}" is not allowed. Please upload a PDF, image, or Office document.`;
   }
   return null;
 }
 
+export function validateAvatarFile(file: File): string | null {
+  return validateUploadFile(file, { maxBytes: MAX_AVATAR_BYTES, allowedMimes: AVATAR_MIME_TYPES });
+}
+
 export async function saveUpload(file: File): Promise<{ filePath: string; sizeBytes: number }> {
+  // Defense in depth: never write oversized payloads even if a caller skipped validateUploadFile.
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error(`Upload exceeds ${MAX_UPLOAD_BYTES} bytes`);
+  }
   await fs.mkdir(UPLOAD_ROOT, { recursive: true });
   const ext = path.extname(file.name).slice(0, 12).replace(/[^a-zA-Z0-9.]/g, "");
   const name = `${crypto.randomBytes(16).toString("hex")}${ext}`;
   const buf = Buffer.from(await file.arrayBuffer());
+  if (buf.length > MAX_UPLOAD_BYTES) {
+    throw new Error(`Upload exceeds ${MAX_UPLOAD_BYTES} bytes`);
+  }
   await fs.writeFile(path.join(UPLOAD_ROOT, name), buf);
   return { filePath: name, sizeBytes: buf.length };
 }
 
 export async function saveUploadBuffer(buf: Buffer, ext: string): Promise<string> {
+  if (buf.length > MAX_UPLOAD_BYTES) {
+    throw new Error(`Upload exceeds ${MAX_UPLOAD_BYTES} bytes`);
+  }
   await fs.mkdir(UPLOAD_ROOT, { recursive: true });
   const safeExt = ext.slice(0, 12).replace(/[^a-zA-Z0-9.]/g, "");
   const name = `${crypto.randomBytes(16).toString("hex")}${safeExt}`;

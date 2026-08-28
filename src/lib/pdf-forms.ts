@@ -44,7 +44,9 @@ export async function ensureOfficialPdf(template: UscisFormTemplate): Promise<Bu
   }
   if (!template.pdfSourceUrl) return null;
   try {
-    const res = await fetch(template.pdfSourceUrl, { signal: AbortSignal.timeout(30_000) });
+    const { assertSafeOutboundUrl, PDF_SOURCE_HOST_SUFFIXES } = await import("./url-safety");
+    const safeUrl = assertSafeOutboundUrl(template.pdfSourceUrl, { allowedHostSuffixes: PDF_SOURCE_HOST_SUFFIXES });
+    const res = await fetch(safeUrl.toString(), { signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
     if (!buf.subarray(0, 5).toString("latin1").startsWith("%PDF")) throw new Error("Response is not a PDF");

@@ -14,6 +14,15 @@ const roleBadge: Record<string, { label: string; color: string }> = {
 // Shared case discussion thread — same content model for all three portals,
 // with role-appropriate visibility (enforced server-side).
 export async function CaseComments({ caseId, viewer }: { caseId: string; viewer: { role: ViewerRole; userId: string } }) {
+  const { getCurrentUser, isAdmin } = await import("@/lib/auth");
+  const { canAccessCase } = await import("@/lib/case-access");
+  const current = await getCurrentUser();
+  if (!current || current.id !== viewer.userId) return null;
+  if (!isAdmin(current)) {
+    const access = await canAccessCase(caseId, { kind: "user", user: current });
+    if (!access.allowed) return null;
+  }
+
   const [comments, checkboxLabel, record] = await Promise.all([
     getVisibleComments(caseId, viewer.role, viewer.userId),
     getComposerCheckbox(viewer.role),

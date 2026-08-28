@@ -44,10 +44,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
     shouldRecordOwnerDownload = true;
   } else if (user.role === "consultant" && c.userId) {
-    const assignment = await db.consultantAssignment.findFirst({
-      where: { consultantId: user.id, userId: c.userId, status: "active" },
+    const { consultantCanAccessClient } = await import("@/lib/case-access");
+    const assignmentOk = await consultantCanAccessClient({
+      consultantId: user.id,
+      clientUserId: c.userId,
+      caseId: id,
     });
-    if (assignment) {
+    if (assignmentOk) {
       const { consultantSubscriptionsEnabled, hasActiveConsultantSubscription } = await import("@/lib/payments");
       allowed = !(await consultantSubscriptionsEnabled()) || (await hasActiveConsultantSubscription(user.id));
       if (!allowed) return billingRedirect(request, "/consultant/billing", { required: "1" });

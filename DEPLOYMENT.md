@@ -91,7 +91,12 @@ docker compose --env-file .env.deploy restart app
 
 Then on the new server's admin → Settings, set **App URL** to the address users will use
 (e.g. `http://192.168.1.50:3000` for LAN, or your HTTPS domain), and point a daily cron at the
-maintenance endpoint: `crontab -e` → `0 6 * * * curl -s http://localhost:3000/api/health > /dev/null`.
+maintenance endpoint with a shared secret:
+
+```bash
+# Prefer env CRON_SECRET (or admin setting cron.secret). Public GETs only return liveness.
+0 6 * * * curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/health > /dev/null
+```
 
 For internet-facing servers, put Caddy in front for automatic HTTPS:
 

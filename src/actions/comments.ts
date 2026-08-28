@@ -20,7 +20,9 @@ export async function addCaseCommentAction(_prev: ActionState, formData: FormDat
   if (!body && files.length === 0) return { error: "Write a comment or attach a file." };
   if (body.length > 4000) return { error: "Comments are limited to 4000 characters." };
   for (const f of files) {
-    if (f.size > 20 * 1024 * 1024) return { error: `${f.name} is larger than 20 MB.` };
+    const { validateUploadFile } = await import("@/lib/uploads");
+    const validationError = validateUploadFile(f);
+    if (validationError) return { error: validationError };
   }
 
   const c = await db.case.findUnique({ where: { id: caseId }, select: { id: true, userId: true, title: true, number: true, situation: true, goal: true } });
@@ -33,10 +35,13 @@ export async function addCaseCommentAction(_prev: ActionState, formData: FormDat
     authorRole = "admin";
   } else if (user.role === "consultant") {
     if (!c.userId) return { error: "Case not found." };
-    const assignment = await db.consultantAssignment.findFirst({
-      where: { consultantId: user.id, userId: c.userId, status: "active" },
+    const { consultantCanAccessClient } = await import("@/lib/case-access");
+    const allowed = await consultantCanAccessClient({
+      consultantId: user.id,
+      clientUserId: c.userId,
+      caseId,
     });
-    if (!assignment) return { error: "You don't have an active connection to this client." };
+    if (!allowed) return { error: "You don't have an active connection to this client." };
     authorRole = "consultant";
   } else {
     if (c.userId !== user.id) return { error: "Case not found." };
@@ -64,7 +69,7 @@ export async function addCaseCommentAction(_prev: ActionState, formData: FormDat
       const quotaError = await documentQuotaError(user.id, files.length);
       if (quotaError) return { error: quotaError };
     }
-    const { saveUpload } = await import("@/lib/uploads");
+    const { saveUpload, validateUploadFile } = await import("@/lib/uploads");
     const { matchingDocumentKind } = await import("@/lib/goal-documents");
     const { authorityQueriesForInquiry, classifyImmigrationInquiry } = await import("@/lib/immigration-inquiry");
     const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
@@ -75,6 +80,8 @@ export async function addCaseCommentAction(_prev: ActionState, formData: FormDat
       authorityQueries: authorityQueriesForInquiry(inquiry),
     }) ?? "identity";
     for (const file of files.slice(0, 10)) {
+      const validationError = validateUploadFile(file);
+      if (validationError) return { error: validationError };
       const { filePath, sizeBytes } = await saveUpload(file);
       const doc = await db.document.create({
         data: {

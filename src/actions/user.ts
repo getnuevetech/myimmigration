@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUser, isAdmin, requireUser } from "@/lib/auth";
 import { getOrCreateGuestSession } from "@/lib/guest";
-import { saveUpload } from "@/lib/uploads";
+import { saveUpload, validateAvatarFile } from "@/lib/uploads";
 import { runQaChat, generateLetterDraft } from "@/lib/ai/orchestrator";
 import { verifyUserCasesProgress } from "@/lib/case-progress";
 import { featureLimit, hasFeature } from "@/lib/access";
@@ -30,7 +30,8 @@ export async function updateProfileAction(_prev: ActionState, formData: FormData
   const avatar = formData.get("avatar");
   let avatarPath = user.avatarPath;
   if (avatar instanceof File && avatar.size > 0) {
-    if (!avatar.type.startsWith("image/")) return { error: "Profile picture must be an image." };
+    const validationError = validateAvatarFile(avatar);
+    if (validationError) return { error: validationError };
     const saved = await saveUpload(avatar);
     avatarPath = saved.filePath;
   }

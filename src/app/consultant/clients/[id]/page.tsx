@@ -31,8 +31,15 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
   });
   if (!assignment) notFound();
   const client = assignment.user;
-  const views = await loadApprovedViewsByCaseIds(client.cases.map((item) => item.id));
-  const workspace = resolveConsultantWorkspaceCopy(client.cases.map((item) => matchInputFromCase(item)));
+  const scopedCases = assignment.caseId
+    ? client.cases.filter((item) => item.id === assignment.caseId)
+    : client.cases;
+  const scopedCaseIds = new Set(scopedCases.map((item) => item.id));
+  const scopedDocuments = assignment.caseId
+    ? client.documents.filter((doc) => doc.caseId === assignment.caseId)
+    : client.documents;
+  const views = await loadApprovedViewsByCaseIds(scopedCases.map((item) => item.id));
+  const workspace = resolveConsultantWorkspaceCopy(scopedCases.map((item) => matchInputFromCase(item)));
 
   return (
     <div>
@@ -47,11 +54,11 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
       <div className="grid gap-6 lg:grid-cols-2">
         <section>
           <h2 className="mb-3 text-base font-semibold text-slate-900">{workspace.heading}</h2>
-          {client.cases.length === 0 ? (
+          {scopedCases.length === 0 ? (
             <EmptyState title={workspace.emptyTitle} />
           ) : (
             <div className="space-y-4">
-              {client.cases.map((c) => {
+              {scopedCases.map((c) => {
                 const summary = caseListSummaryFromView(
                   {
                     status: c.status,
@@ -97,13 +104,13 @@ export default async function ClientWorkspacePage({ params }: { params: Promise<
 
         <section>
           <h2 className="mb-3 text-base font-semibold text-slate-900">Shared documents</h2>
-          {client.documents.length === 0 ? (
+          {scopedDocuments.length === 0 ? (
             <EmptyState title="No documents shared" />
           ) : (
             <Card>
               <CardBody>
                 <ul className="divide-y divide-slate-100">
-                  {client.documents.map((d) => (
+                  {scopedDocuments.map((d) => (
                     <li key={d.id} className="flex items-center justify-between py-2">
                       <div>
                         <Link href={`/api/files/${d.id}`} target="_blank" className="text-sm font-medium text-lime-600 underline">

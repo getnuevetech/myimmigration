@@ -1,6 +1,25 @@
 import "server-only";
 import { db } from "./db";
 
+const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+const KEYISH_RE = /\b(sk-[A-Za-z0-9]{10,}|Bearer\s+[A-Za-z0-9._\-]{10,}|api[_-]?key\s*[:=]\s*\S+)/gi;
+const SSNISH_RE = /\b\d{3}-\d{2}-\d{4}\b/g;
+const RECEIPTISH_RE = /\b[A-Z]{3}\d{10}\b/g;
+
+export function redactForLog(value: unknown): string {
+  const raw = value === undefined || value === null
+    ? ""
+    : typeof value === "string"
+      ? value
+      : JSON.stringify(value);
+  return raw
+    .replace(EMAIL_RE, "[email]")
+    .replace(KEYISH_RE, "[redacted-secret]")
+    .replace(SSNISH_RE, "[ssn]")
+    .replace(RECEIPTISH_RE, "[receipt]")
+    .slice(0, 5000);
+}
+
 // Central failure/event log surfaced in Admin → System logs.
 // Fire-and-forget: logging must never break the flow that calls it.
 export async function logSystem(
@@ -15,14 +34,14 @@ export async function logSystem(
       data: {
         level,
         source,
-        message: message.slice(0, 300),
-        detail: detail === undefined ? "" : (typeof detail === "string" ? detail : JSON.stringify(detail)).slice(0, 5000),
+        message: redactForLog(message).slice(0, 300),
+        detail: detail === undefined ? "" : redactForLog(detail),
         userId: userId ?? "",
       },
     });
   } catch {
     // Last resort: at least leave a trace in the server console.
-    console.error(`[syslog:${level}:${source}]`, message);
+    console.error(`[syslog:${level}:${source}]`, message.slice(0, 200));
   }
 }
 

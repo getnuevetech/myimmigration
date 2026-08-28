@@ -22,6 +22,7 @@ export default async function ConsultantCaseViewPage({
     include: { user: { select: { id: true, firstName: true, lastName: true } } },
   });
   if (!assignment) notFound();
+  if (assignment.caseId && assignment.caseId !== caseId) notFound();
   const c = await db.case.findFirst({
     where: { id: caseId, userId: assignment.user.id },
     select: { id: true, title: true, number: true, createdAt: true, situation: true, goal: true, notices: { select: { noticeType: true } } },
