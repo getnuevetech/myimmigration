@@ -27,6 +27,8 @@ import { shouldShowUscisAccountGuide } from "@/lib/goal-notices";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { presentationStepCta } from "@/lib/case-presentation-ui";
 import { presentationWhatThisMeansSummary } from "@/lib/case-presentation-contract";
+import { parseSituationBrief } from "@/lib/situation-brief";
+import { caseTypeLockFromBrief } from "@/lib/case-type-lock";
 import {
   analysisDocumentWalkthrough,
   closedReasonLabel,
@@ -134,6 +136,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
   const latestVersion = await getLatestCaseVersion(caseId).catch(() => null);
   const versionHistory = viewer.role === "admin" ? await listCaseVersions(caseId, 8).catch(() => []) : [];
   const inquiry = classifyImmigrationInquiry({ situation: c.situation, goal: c.goal });
+  const caseLock = caseTypeLockFromBrief(parseSituationBrief(c.reconstruction?.briefJson));
   const versionMatch = matchInputFromCase({
     situation: c.situation,
     goal: c.goal,
@@ -209,18 +212,20 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     inquiryMode: inquiry.mode,
     query: `${c.situation} ${c.goal}`,
     noticeTypes: c.notices.map((notice) => notice.noticeType),
+    caseLock,
   });
   const rankedDocuments = rankMatchingDocuments({
     themes: inquiry.themes,
     inquiryMode: inquiry.mode,
     query: `${c.situation} ${c.goal}`,
-    authorityQueries: authorityQueriesForInquiry(inquiry),
+    authorityQueries: authorityQueriesForInquiry(inquiry, caseLock),
     sources: c.issues.map((issue) => ({
       reference: issue.uscisBasis,
       title: issue.title,
       content: issue.conclusion,
     })),
     noticeTypes: c.notices.map((notice) => notice.noticeType),
+    caseLock,
   });
   const neededDocs = neededDocumentsFromRanked(rankedDocuments).map((item) => ({
     kind: item.kind,
@@ -240,12 +245,13 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     themes: inquiry.themes,
     inquiryMode: inquiry.mode,
     query: `${c.situation} ${c.goal}`,
-    authorityQueries: authorityQueriesForInquiry(inquiry),
+    authorityQueries: authorityQueriesForInquiry(inquiry, caseLock),
     sources: c.issues.map((issue) => ({
       reference: issue.uscisBasis,
       title: issue.title,
       content: issue.conclusion,
     })),
+    caseLock,
   });
   const matchingForm = matchingNumber
     ? await db.uscisFormTemplate.findFirst({
@@ -261,13 +267,14 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     themes: inquiry.themes,
     inquiryMode: inquiry.mode,
     query: `${c.situation} ${c.goal}`,
-    authorityQueries: authorityQueriesForInquiry(inquiry),
+    authorityQueries: authorityQueriesForInquiry(inquiry, caseLock),
     sources: c.issues.map((issue) => ({
       reference: issue.uscisBasis,
       title: issue.title,
       content: issue.conclusion,
     })),
     noticeTypes: c.notices.map((notice) => notice.noticeType),
+    caseLock,
   });
   const canGenerateLetter = Boolean(
     interactive && matchingLetter && (viewer.role !== "customer" || (await hasFeature(viewer.userId, FEATURE_KEYS.LETTERS))),

@@ -1,3 +1,5 @@
+import { isCompetingPathwayForm, lockedFormNumbers, type CaseTypeLock } from "./case-type-lock";
+
 export type KnowledgeRecord = {
   title: string;
   reference: string;
@@ -34,9 +36,10 @@ export type KnowledgeRetrievalHint = {
   themes?: string[];
   authorityQueries?: string[];
   matchBoosts?: Record<string, number>;
+  caseLock?: CaseTypeLock | null;
 };
 
-const USCIS_REFERENCE_RE = /\b(?:RFE|NOID|NOIR|NOIT|I-797C?|I-485|I-130|I-765|I-864|I-589|N-400|G-28|AR-11|I-20|F-1|OPT|EOIR|NTA|[A-Z]{3}\d{10})\b/gi;
+const USCIS_REFERENCE_RE = /\b(?:RFE|NOID|NOIR|NOIT|I-797C?|I-485|I-130|I-360|I-765|I-864|I-589|N-400|G-28|AR-11|I-20|F-1|OPT|EOIR|NTA|[A-Z]{3}\d{10})\b/gi;
 const NOTICE_QUERY_RE = /\b(rfe|noid|noir|noit|i-?797|receipt notice|request for evidence|notice of intent)\b/i;
 const STOP = new Set(["that", "this", "with", "from", "have", "been", "were", "what", "when", "your", "about", "they", "them", "then", "than", "into", "also", "will", "would", "could", "should", "there", "their", "does", "done", "just", "like", "want", "need", "next", "month", "anything"]);
 
@@ -65,6 +68,19 @@ function isNoticeSource(source: KnowledgeRecord): boolean {
   const type = (source.sourceType ?? "").toLowerCase();
   const ref = compact(source.reference ?? "");
   return type.includes("notice") || ["RFE", "NOID", "NOIR", "NOIT", "I797", "I797C"].some((code) => ref.includes(code));
+}
+
+function formCodesInSource(source: KnowledgeRecord): string[] {
+  const hay = `${source.reference} ${source.title} ${source.tags ?? ""} ${source.content}`.toUpperCase();
+  return Array.from(
+    new Set(
+      Array.from(hay.matchAll(/\b((?:I|N|G|DS)-?\d{3}[A-Z]?)\b/g), (match) => {
+        const raw = match[1].toUpperCase();
+        const parts = raw.match(/^(I|N|G|DS)-?(\d{3}[A-Z]?)$/);
+        return parts ? `${parts[1]}-${parts[2]}` : raw;
+      }),
+    ),
+  );
 }
 
 export function scoreKnowledgeSource(source: KnowledgeRecord, hint: KnowledgeRetrievalHint): number {
@@ -99,6 +115,27 @@ export function scoreKnowledgeSource(source: KnowledgeRecord, hint: KnowledgeRet
       if (item.pattern.test(exclusiveHay) && !themes.includes(item.theme)) score -= 15;
     }
   }
+
+  const lock = hint.caseLock ?? null;
+  if (lock?.doNotRecommendNewPathway) {
+    const locked = lockedFormNumbers(lock);
+    const sourceForms = formCodesInSource(source);
+    for (const form of locked) {
+      if (sourceForms.includes(form) || compact(`${source.reference} ${source.title}`).includes(compact(form))) {
+        score += 18;
+      }
+    }
+    for (const form of sourceForms) {
+      if (isCompetingPathwayForm(form, lock)) score -= 25;
+    }
+    if (
+      /country.?conditions|i-?589|\basylum\b/i.test(`${source.title} ${source.reference} ${source.tags ?? ""}`) &&
+      !locked.includes("I-589")
+    ) {
+      score -= 20;
+    }
+  }
+
   const urlKey = (source.url ?? "").trim().toLowerCase().replace(/\/+$/, "");
   if (hint.matchBoosts && urlKey && hint.matchBoosts[urlKey]) score += hint.matchBoosts[urlKey];
   return score;

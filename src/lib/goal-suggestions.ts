@@ -121,6 +121,7 @@ export function officialSuggestionCandidates(
       inquiryMode: formMatch.inquiryMode,
       query: formMatch.query,
       authorityQueries: formMatch.authorityQueries,
+      caseLock: formMatch.caseLock,
     });
     const reference = sources[0].reference || sources[0].title;
     steps.push({

@@ -23,6 +23,11 @@ import {
 } from "./goal-suggestions";
 import type { FormMatchInput } from "./goal-forms";
 import {
+  scopeAuthorityQueries,
+  scopeInquiryThemes,
+  type CaseTypeLock,
+} from "./case-type-lock";
+import {
   applyQaEntitlementToAnswer,
   countAskedOfficialFollowUps,
   limitOfficialExcerpts,
@@ -180,8 +185,10 @@ export function classifyImmigrationInquiry(input: InquiryClassifyInput): Immigra
   };
 }
 
-export function authorityQueriesForInquiry(inquiry: ImmigrationInquiry): string[] {
-  return uniq(inquiry.themes.flatMap((theme) => THEME_AUTHORITY[theme] ?? []));
+export function authorityQueriesForInquiry(inquiry: ImmigrationInquiry, caseLock?: CaseTypeLock | null): string[] {
+  const themes = scopeInquiryThemes(inquiry.themes, caseLock);
+  const queries = uniq(themes.flatMap((theme) => THEME_AUTHORITY[theme] ?? []));
+  return scopeAuthorityQueries(queries, caseLock);
 }
 
 function firstSentences(text: string, count = 2): string {
@@ -372,18 +379,23 @@ export function buildOpenOptionsAnalysis(
   boosts: SuggestionBoosts = {},
   answeredKeys: string[] = [],
   answeredQuestions: string[] = [],
+  caseLock: CaseTypeLock | null = null,
 ): OpenOptionsAnalysis {
   const situation = (input.situation ?? "").trim();
   const goal = (input.goal ?? "").trim();
   const known = [situation, goal].filter(Boolean).join(" ").trim() || "You described an immigration goal.";
+  const lock = caseLock;
+  const themes = scopeInquiryThemes(inquiry.themes, lock);
+  inquiry = { ...inquiry, themes };
   const rankHint = {
     query: known,
     inquiryMode: inquiry.mode,
     themes: inquiry.themes,
-    authorityQueries: authorityQueriesForInquiry(inquiry),
+    authorityQueries: authorityQueriesForInquiry(inquiry, lock),
+    caseLock: lock,
   };
   const ranked = sources.length ? rankKnowledgeSources(sources, rankHint, 3) : [];
-  inquiry = { ...inquiry, themes: refineInquiryThemes(inquiry.themes, ranked) };
+  inquiry = { ...inquiry, themes: scopeInquiryThemes(refineInquiryThemes(inquiry.themes, ranked), lock) };
   const gaps = rankAuthorityGaps(deriveAuthorityGaps(ranked, known, { keys: answeredKeys, questions: answeredQuestions }), boosts);
   const referral = evaluateConsultantReferral({ text: known, inquiry, sources: ranked });
   const issues: OpenOptionsIssue[] = ranked.map((source) => issueFromSource(source, known, gaps, referral));
@@ -481,7 +493,8 @@ export function buildOpenOptionsAnalysis(
     themes: inquiry.themes,
     inquiryMode: inquiry.mode,
     query: known,
-    authorityQueries: authorityQueriesForInquiry(inquiry),
+    authorityQueries: authorityQueriesForInquiry(inquiry, lock),
+    caseLock: lock,
   });
   return {
     inquiry,
@@ -490,7 +503,7 @@ export function buildOpenOptionsAnalysis(
     reconstruction: openOptionsReconstruction(inquiry, goal || situation, ranked),
     unknowns: gaps.map(({ key, question, reason }) => ({ key, question, reason })),
     authorityQueries: uniq([
-      ...authorityQueriesForInquiry(inquiry),
+      ...authorityQueriesForInquiry(inquiry, lock),
       ...ranked.map((source) => source.reference).filter(Boolean),
     ]),
     suggestionKeys: uniq([

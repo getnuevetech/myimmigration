@@ -1,3 +1,5 @@
+import { applyCaseTypeFormLock, type CaseTypeLock } from "./case-type-lock";
+
 export type FormMatchSource = {
   reference?: string | null;
   title?: string | null;
@@ -11,6 +13,8 @@ export type FormMatchInput = {
   inquiryMode?: string;
   query?: string;
   authorityQueries?: string[];
+  /** V5 Rules 5–6: lock ranking to the situation brief’s primary matter. */
+  caseLock?: CaseTypeLock | null;
 };
 
 export type RankedForm = {
@@ -80,6 +84,12 @@ function putFirst(list: string[], formNumber: string): string[] {
 }
 
 function applyOfficialFormOrder(forms: string[], input: FormMatchInput): string[] {
+  const lock = input.caseLock ?? null;
+  // Existing locked matter wins over theme-based pathway guessing (V5 Rules 5–6).
+  if (lock?.doNotRecommendNewPathway && (lock.primaryForm || lock.relatedForm)) {
+    return applyCaseTypeFormLock(forms, lock);
+  }
+
   const themes = input.themes ?? [];
   const queryHay = `${input.query ?? ""} ${(input.sources ?? []).map((source) => `${source.reference ?? ""} ${source.title ?? ""}`).join(" ")}`.toLowerCase();
   const existing = input.inquiryMode === "existing_case";
@@ -93,29 +103,29 @@ function applyOfficialFormOrder(forms: string[], input: FormMatchInput): string[
 
   if (existing && (rfe || mentionsI485) && (themes.includes("adjustment") || ranked.includes("I-485") || mentionsI485)) {
     ensure("I-485");
-    return putFirst(ranked, "I-485");
+    return applyCaseTypeFormLock(putFirst(ranked, "I-485"), lock);
   }
   if (themes.includes("asylum")) {
     ensure("I-589");
-    return putFirst(ranked, "I-589");
+    return applyCaseTypeFormLock(putFirst(ranked, "I-589"), lock);
   }
   if (themes.includes("student")) {
     ensure("I-765");
-    return putFirst(ranked, "I-765");
+    return applyCaseTypeFormLock(putFirst(ranked, "I-765"), lock);
   }
   if (themes.includes("naturalization") && !themes.includes("family")) {
     ensure("N-400");
-    return putFirst(ranked, "N-400");
+    return applyCaseTypeFormLock(putFirst(ranked, "N-400"), lock);
   }
-  if (themes.includes("family") || themes.includes("parents_children")) {
+  if (themes.includes("family") || themes.includes("parents_children") || lock?.lockFamilyOpenOptionsI130) {
     ensure("I-130");
     ranked = putFirst(ranked, "I-130");
     if (ranked.includes("I-485")) {
       ranked = ["I-130", "I-485", ...ranked.filter((item) => item !== "I-130" && item !== "I-485")];
     }
-    return ranked;
+    return applyCaseTypeFormLock(ranked, lock);
   }
-  return ranked;
+  return applyCaseTypeFormLock(ranked, lock);
 }
 
 export function rankMatchingForms(input: FormMatchInput = {}): RankedForm[] {
@@ -124,6 +134,10 @@ export function rankMatchingForms(input: FormMatchInput = {}): RankedForm[] {
     const formNumber = value ? normalizeFormNumber(value) ?? extractFormNumbers(value)[0] : null;
     if (formNumber && !ordered.includes(formNumber)) ordered.push(formNumber);
   };
+
+  // Seed locked forms first so theme maps cannot bury the existing matter.
+  if (input.caseLock?.primaryForm) add(input.caseLock.primaryForm);
+  if (input.caseLock?.relatedForm) add(input.caseLock.relatedForm);
 
   for (const source of input.sources ?? []) {
     for (const formNumber of formsFromSource(source)) add(formNumber);

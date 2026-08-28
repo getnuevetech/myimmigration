@@ -133,15 +133,27 @@ async function getRunnableSteps(stageKey: string, providerIds?: string[]) {
 // Ranked retrieval over the unified authority path (registry + knowledge + match stats).
 export async function retrieveKnowledgeRecords(query: string, limit = 5, caseId?: string | null): Promise<KnowledgeRecord[]> {
   const inquiry = classifyImmigrationInquiry({ situation: query, goal: query });
+  let caseLock = null as import("../case-type-lock").CaseTypeLock | null;
+  if (caseId) {
+    const reconstruction = await db.caseReconstruction.findUnique({ where: { caseId }, select: { briefJson: true } }).catch(() => null);
+    const { parseSituationBrief } = await import("../situation-brief");
+    const { caseTypeLockFromBrief } = await import("../case-type-lock");
+    caseLock = caseTypeLockFromBrief(parseSituationBrief(reconstruction?.briefJson));
+  } else {
+    const { buildSituationBrief } = await import("../situation-brief");
+    const { caseTypeLockFromBrief } = await import("../case-type-lock");
+    caseLock = caseTypeLockFromBrief(buildSituationBrief({ situation: query, goal: query }));
+  }
   return retrieveUnifiedAuthority({
     query,
-    queries: authorityQueriesForInquiry(inquiry),
+    queries: authorityQueriesForInquiry(inquiry, caseLock),
     inquiryMode: inquiry.mode,
     themes: inquiry.themes,
     caseId,
     limit,
     persistHits: true,
     preferSnapshots: Boolean(caseId),
+    caseLock,
   });
 }
 
@@ -392,9 +404,14 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
     });
   }
   if (decisions.retrieveAuthority) {
+    const reconstruction = await db.caseReconstruction.findUnique({ where: { caseId }, select: { briefJson: true } }).catch(() => null);
+    const { parseSituationBrief } = await import("../situation-brief");
+    const { caseTypeLockFromBrief } = await import("../case-type-lock");
+    const caseLock = caseTypeLockFromBrief(parseSituationBrief(reconstruction?.briefJson));
     await snapshotAuthorityForPlan(caseId, parsedPlan?.authority_queries_needed ?? [], {
       situation: c.situation,
       goal: c.goal,
+      caseLock,
     }).catch(async (err) => {
       const { logSystem } = await import("../syslog");
       await logSystem("warning", "case_orchestrator", "Plan-driven authority retrieval failed", String(err));

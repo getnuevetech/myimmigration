@@ -10,6 +10,7 @@ import { loadBoostsForNarrative } from "@/lib/goal-suggestion-store";
 import { resolveReadinessPolicy } from "@/lib/goal-readiness";
 import type { KnowledgeRecord } from "@/lib/knowledge-retrieval";
 import { buildSituationBrief, stripClarifiedNarrative } from "@/lib/situation-brief";
+import { caseTypeLockFromBrief } from "@/lib/case-type-lock";
 import { computeEvidenceReadinessSplit } from "./readiness";
 import { reconcileEvidenceStates } from "./reconcile";
 import type { CompiledCaseEvent, CompiledEvidenceFact, CompiledEvidenceState, EvidenceConfidence } from "./types";
@@ -154,6 +155,7 @@ export async function rebuildCaseEvidenceState(caseId: string) {
     })),
     clarifyAnswers,
   });
+  const caseLock = caseTypeLockFromBrief(situationBrief);
   let knowledgeSources: KnowledgeRecord[] = [];
   if (inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS) {
     knowledgeSources = await retrieveUnifiedAuthority({
@@ -162,6 +164,10 @@ export async function rebuildCaseEvidenceState(caseId: string) {
       limit: 6,
       persistHits: false,
       preferSnapshots: true,
+      caseLock,
+      queries: authorityQueriesForInquiry(inquiry, caseLock),
+      themes: inquiry.themes,
+      inquiryMode: inquiry.mode,
     });
   }
   const { boosts } = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS
@@ -185,10 +191,11 @@ export async function rebuildCaseEvidenceState(caseId: string) {
       themes: inquiry.themes,
       inquiryMode: inquiry.mode,
       query: [caseRow?.situation, caseRow?.goal].filter(Boolean).join(" "),
-      authorityQueries: authorityQueriesForInquiry(inquiry),
+      authorityQueries: authorityQueriesForInquiry(inquiry, caseLock),
       noticeTypes: compiledFacts.filter((fact) => fact.key === "notice_type").map((fact) => fact.value),
       documentsExpected,
       haveKinds: classifiedDocuments.map((doc) => doc.docKind),
+      caseLock,
     }),
   });
 

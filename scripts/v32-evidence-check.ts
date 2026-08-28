@@ -59,6 +59,7 @@ import {
 import { buildEvidenceGateBriefFromReconciled, compileImmigrationEvidence, computeEvidenceReadinessSplit, evaluateEvidenceAction, extractUniversalDocumentIntelligence, guardLetterDraftWithEvidence, reconcileEvidenceStates } from "../src/lib/evidence";
 import {
   applyInquiryToEvidenceState,
+  authorityQueriesForInquiry,
   buildOpenOptionsAnalysis,
   buildQaFallbackAnswer,
   classifyImmigrationInquiry,
@@ -66,6 +67,7 @@ import {
   OPEN_OPTIONS_POSTURE,
   evaluateConsultantReferral,
 } from "../src/lib/immigration-inquiry";
+import { caseTypeLockFromBrief } from "../src/lib/case-type-lock";
 import { rankKnowledgeSources, type KnowledgeRecord } from "../src/lib/knowledge-retrieval";
 import {
   authorityQueryKeys,
@@ -2646,6 +2648,118 @@ assert(processingSrc.includes("classifyUploadedDocument"), "document processing 
 assert(caseStateSrc.includes("classifyUploadedDocument"), "reconstruction must reclassify extracted documents before building the situation brief");
 assert(readFileSync(join(process.cwd(), "src/lib/ai/prompts.ts"), "utf8").includes(`PROMPT_VERSION = "${PROMPT_VERSION}"`), "document classification must not bump analysis prompt version");
 
+// --- V5 Phase 3: existing filings + case-type lock ---
+const vawaLock = caseTypeLockFromBrief(vawaBrief);
+assert(vawaLock?.doNotRecommendNewPathway === true, "VAWA lock must block new pathways");
+assert(vawaLock?.primaryForm === "I-360", "VAWA lock primary form must be I-360");
+
+const vawaInquiry = classifyImmigrationInquiry({
+  situation: VAWA_PRIMA_FACIE_FIXTURE.situation,
+  goal: VAWA_PRIMA_FACIE_FIXTURE.goal,
+  documentCount: VAWA_PRIMA_FACIE_FIXTURE.documents?.length ?? 0,
+  factKeys: ["form_type", "notice_type", "receipt_number"],
+});
+assert(vawaInquiry.mode === INQUIRY_MODES.EXISTING_CASE, "VAWA fixture must classify as an existing case");
+
+const vawaQueries = authorityQueriesForInquiry(vawaInquiry, vawaLock);
+assert(vawaQueries[0] === "I-360", `VAWA authority queries must lead with I-360, got ${vawaQueries.join(", ")}`);
+assert(vawaQueries.includes("I-485"), "VAWA authority queries must keep related I-485");
+assert(!vawaQueries.includes("I-130"), `VAWA authority queries must not include I-130, got ${vawaQueries.join(", ")}`);
+assert(!vawaQueries.includes("I-589"), `VAWA authority queries must not include I-589, got ${vawaQueries.join(", ")}`);
+
+const vawaMatchInput = {
+  themes: vawaInquiry.themes,
+  inquiryMode: vawaInquiry.mode,
+  query: `${VAWA_PRIMA_FACIE_FIXTURE.situation}\n${VAWA_PRIMA_FACIE_FIXTURE.goal}`,
+  authorityQueries: vawaQueries,
+  caseLock: vawaLock,
+};
+const vawaForms = rankMatchingForms(vawaMatchInput);
+assert(vawaForms[0]?.formNumber === "I-360", `VAWA next form must be I-360, got ${vawaForms[0]?.formNumber}`);
+assert(!vawaForms.some((item) => item.formNumber === "I-130"), "VAWA matching forms must not recommend I-130");
+assert(!vawaForms.some((item) => item.formNumber === "I-589"), "VAWA matching forms must not recommend I-589");
+assert(matchingFormNumber(vawaMatchInput) === "I-360", "VAWA matchingFormNumber must be I-360");
+
+const vawaDocs = rankMatchingDocuments(vawaMatchInput);
+assert(!vawaDocs.some((item) => item.kind === "country_conditions"), "VAWA document list must not include country-conditions");
+assert(vawaDocs.some((item) => item.kind === "declaration" || item.kind === "relationship" || item.kind === "identity"), "VAWA document list should keep VAWA packet kinds");
+
+const vawaSources: KnowledgeRecord[] = [
+  {
+    title: "Family petition overview",
+    reference: "Form I-130",
+    tags: "family",
+    content: "Form I-130 is used by a U.S. citizen petitioner. Approval of I-130 alone does not grant status.",
+  },
+  {
+    title: "VAWA self-petition",
+    reference: "Form I-360",
+    tags: "humanitarian vawa",
+    content: "Form I-360 may be filed as a VAWA self-petition. A prima facie determination is preliminary.",
+  },
+  {
+    title: "Asylum instructions",
+    reference: "Form I-589",
+    tags: "asylum",
+    content: "Form I-589 is used to apply for asylum. Country-conditions material is often required.",
+  },
+];
+const vawaRanked = rankKnowledgeSources(vawaSources, {
+  query: `${VAWA_PRIMA_FACIE_FIXTURE.situation} ${VAWA_PRIMA_FACIE_FIXTURE.goal}`,
+  inquiryMode: "existing_case",
+  themes: vawaInquiry.themes,
+  authorityQueries: vawaQueries,
+  caseLock: vawaLock,
+}, 3);
+assert(vawaRanked[0]?.reference === "Form I-360", `VAWA retrieval must rank I-360 first, got ${vawaRanked[0]?.reference}`);
+assert(!vawaRanked.some((item) => /I-589|asylum/i.test(item.reference + item.title)), "VAWA retrieval must not surface I-589/asylum material");
+
+const vawaPath = officialSuggestionCandidates(vawaRanked, [], { level: "probably_unnecessary", reason: "" }, vawaMatchInput);
+assert(!vawaPath.some((step) => /I-130/i.test(step.title)), `VAWA next action must not be I-130, got ${vawaPath.map((s) => s.title).join("; ")}`);
+assert(vawaPath.some((step) => /I-360/i.test(step.title)) || matchingFormNumber(vawaMatchInput) === "I-360", "VAWA next action should name I-360");
+
+const familyLock = caseTypeLockFromBrief(familyBrief);
+assert(familyLock?.lockFamilyOpenOptionsI130 === true, "family open-options must keep the I-130 lock");
+const familyInquiry = classifyImmigrationInquiry({
+  situation: FAMILY_OPEN_OPTIONS_FIXTURE.situation,
+  goal: FAMILY_OPEN_OPTIONS_FIXTURE.goal,
+});
+const familyLockedForms = rankMatchingForms({
+  themes: familyInquiry.themes,
+  inquiryMode: familyInquiry.mode,
+  query: `${FAMILY_OPEN_OPTIONS_FIXTURE.situation} ${FAMILY_OPEN_OPTIONS_FIXTURE.goal}`,
+  authorityQueries: authorityQueriesForInquiry(familyInquiry, familyLock),
+  caseLock: familyLock,
+});
+assert(familyLockedForms[0]?.formNumber === "I-130", `open-options marriage must still lock I-130 first, got ${familyLockedForms[0]?.formNumber}`);
+
+const rfeLock = caseTypeLockFromBrief(rfeBrief);
+assert(rfeLock?.doNotRecommendNewPathway === true, "RFE lock must prefer the existing notice");
+const rfeLockedInquiry = classifyImmigrationInquiry({
+  situation: RFE_I485_FIXTURE.situation,
+  goal: RFE_I485_FIXTURE.goal,
+  notices: RFE_I485_FIXTURE.notices,
+  factKeys: ["form_type", "notice_type", "response_deadline"],
+});
+const rfeMatchInput = {
+  themes: rfeLockedInquiry.themes,
+  inquiryMode: rfeLockedInquiry.mode,
+  query: `${RFE_I485_FIXTURE.situation} ${RFE_I485_FIXTURE.goal} Request for Evidence Form I-485`,
+  authorityQueries: authorityQueriesForInquiry(rfeLockedInquiry, rfeLock),
+  noticeTypes: ["RFE"],
+  caseLock: rfeLock,
+};
+assert(matchingFormNumber(rfeMatchInput) === "I-485", `RFE matching form must stay I-485, got ${matchingFormNumber(rfeMatchInput)}`);
+assert(matchingLetterKind(rfeMatchInput) === "rfe_response", `RFE next letter must be rfe_response, got ${matchingLetterKind(rfeMatchInput)}`);
+assert(rankMatchingDocuments(rfeMatchInput)[0]?.kind === "rfe", `RFE document list must lead with the RFE, got ${rankMatchingDocuments(rfeMatchInput)[0]?.kind}`);
+assert(!rankMatchingForms(rfeMatchInput).some((item) => item.formNumber === "I-130"), "RFE matching forms must not recommend a new I-130");
+
+assert(caseStateSrc.includes("caseTypeLockFromBrief"), "evidence reconstruction must apply the case-type lock");
+assert(readFileSync(join(process.cwd(), "src/lib/goal-forms.ts"), "utf8").includes("caseLock"), "form ranking must accept the case-type lock");
+assert(readFileSync(join(process.cwd(), "src/lib/case-type-lock.ts"), "utf8").includes("doNotRecommendNewPathway"), "case-type lock helper must exist");
+assert(PROMPT_VERSION.includes("v32"), "v5 case-type lock must not bump analysis prompt version");
+assert(requested.autoAssigned === false, "v5 case-type lock must not auto-assign consultants");
+
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
 console.log(`- ${rfe.documentType}: ${rfe.facts.length} facts, ${rfe.events.length} events`);
@@ -2697,3 +2811,4 @@ console.log(`- v4 C30: open ${approvedPresentationPhrase(familyGuideInput)}, RFE
 console.log(`- admin re-analysis: compare changed=${reanalysisDiff.changed}, share hidden=${!reanalysisVisibleTo({ visibleToCustomer: false, visibleToConsultant: false, status: "completed" }, "customer")}`);
 console.log(`- v5 P1: VAWA brief ${vawaBrief.primaryForm}/${vawaBrief.relatedForm}, family lock I-130=${familyBrief.lockFamilyOpenOptionsI130}, RFE ${rfeBrief.primaryForm}`);
 console.log(`- v5 P2: VAWA types ${vawaUploadTypes.join(", ")}, passport ${passportClassified.documentType}, I-94 ${i94Classified.documentType}`);
+console.log(`- v5 P3: VAWA next ${vawaForms[0]?.formNumber}, queries ${vawaQueries.join("/")}, family ${familyLockedForms[0]?.formNumber}, RFE letter ${matchingLetterKind(rfeMatchInput)}`);

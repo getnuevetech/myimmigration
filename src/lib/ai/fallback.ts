@@ -10,6 +10,8 @@ import { retrieveUnifiedAuthority } from "../authority-retrieval";
 import { fallbackEvidenceLine, resolveFallbackPathSteps } from "../goal-conversation";
 import { loadBoostsForNarrative, recordSuggestionEvent } from "../goal-suggestion-store";
 import type { KnowledgeRecord } from "../knowledge-retrieval";
+import { buildSituationBrief } from "../situation-brief";
+import { caseTypeLockFromBrief } from "../case-type-lock";
 
 type Json = Record<string, unknown>;
 
@@ -52,16 +54,22 @@ function evidenceLine(docs: DocInfo[], inquiryMode: string): string {
   return fallbackEvidenceLine(docs, { inquiryMode });
 }
 
-async function loadRankedKnowledge(query: string, inquiry: ReturnType<typeof classifyImmigrationInquiry>, caseId?: string): Promise<KnowledgeRecord[]> {
+async function loadRankedKnowledge(
+  query: string,
+  inquiry: ReturnType<typeof classifyImmigrationInquiry>,
+  caseId?: string,
+  caseLock?: ReturnType<typeof caseTypeLockFromBrief>,
+): Promise<KnowledgeRecord[]> {
   return retrieveUnifiedAuthority({
     query,
-    queries: authorityQueriesForInquiry(inquiry),
+    queries: authorityQueriesForInquiry(inquiry, caseLock),
     inquiryMode: inquiry.mode,
     themes: inquiry.themes,
     caseId,
     limit: 8,
     persistHits: true,
     preferSnapshots: Boolean(caseId),
+    caseLock,
   });
 }
 
@@ -88,10 +96,17 @@ export async function fallbackAnalyze(
     documentCount: docs.length,
     receipts: receiptNumbers,
   });
-  const ranked = await loadRankedKnowledge(`${situation} ${goal} ${documentsText}`, inquiry, caseId);
+  const brief = buildSituationBrief({
+    situation,
+    goal,
+    notices,
+    documents: [{ text: documentsText }],
+  });
+  const caseLock = caseTypeLockFromBrief(brief);
+  const ranked = await loadRankedKnowledge(`${situation} ${goal} ${documentsText}`, inquiry, caseId, caseLock);
   const { queryKeys, boosts } = await loadBoostsForNarrative(situation, goal);
   const options = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS
-    ? buildOpenOptionsAnalysis({ situation, goal, documentsText }, inquiry, ranked, boosts)
+    ? buildOpenOptionsAnalysis({ situation, goal, documentsText }, inquiry, ranked, boosts, [], [], caseLock)
     : null;
   const knowledge = ranked[0] ?? null;
   const referral = evaluateConsultantReferral({ text, inquiry, notices, sources: ranked });

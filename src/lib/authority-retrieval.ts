@@ -12,6 +12,7 @@ import {
 import { classifyImmigrationInquiry } from "./immigration-inquiry";
 import { rankKnowledgeSources, toKnowledgeRecord, type KnowledgeRecord } from "./knowledge-retrieval";
 import { getUscisUpdates } from "./uscis-updates";
+import { scopeAuthorityQueries, scopeInquiryThemes, type CaseTypeLock } from "./case-type-lock";
 
 function hash(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -26,6 +27,7 @@ export type UnifiedAuthorityHint = {
   limit?: number;
   persistHits?: boolean;
   preferSnapshots?: boolean;
+  caseLock?: CaseTypeLock | null;
 };
 
 function catalogFromRow(row: {
@@ -71,8 +73,8 @@ async function recordAuthorityHits(records: KnowledgeRecord[], authorities: Auth
 async function rankFromCatalog(hint: UnifiedAuthorityHint): Promise<{ records: KnowledgeRecord[]; authorities: AuthorityCatalogEntry[]; queryKeys: string[] }> {
   const inquiry = classifyImmigrationInquiry({ situation: hint.query, goal: hint.query });
   const inquiryMode = hint.inquiryMode ?? inquiry.mode;
-  const themes = hint.themes?.length ? hint.themes : inquiry.themes;
-  const queries = hint.queries?.length ? hint.queries : [];
+  const themes = scopeInquiryThemes(hint.themes?.length ? hint.themes : inquiry.themes, hint.caseLock);
+  const queries = scopeAuthorityQueries(hint.queries?.length ? hint.queries : [], hint.caseLock);
   const queryKeys = authorityQueryKeys(themes, queries);
   const [knowledgeRows, authorityRows, matchBoosts] = await Promise.all([
     db.knowledgeSource.findMany({ where: { isActive: true } }),
@@ -88,6 +90,7 @@ async function rankFromCatalog(hint: UnifiedAuthorityHint): Promise<{ records: K
       themes,
       authorityQueries: queries,
       matchBoosts,
+      caseLock: hint.caseLock,
     },
     hint.limit ?? 5,
   ).map((record) => {
@@ -126,21 +129,29 @@ export async function retrieveUnifiedAuthority(hint: UnifiedAuthorityHint): Prom
 export async function snapshotAuthorityForPlan(
   caseId: string,
   queries: string[],
-  hint: { situation?: string; goal?: string; inquiryMode?: "existing_case" | "open_options"; themes?: string[] } = {},
+  hint: {
+    situation?: string;
+    goal?: string;
+    inquiryMode?: "existing_case" | "open_options";
+    themes?: string[];
+    caseLock?: CaseTypeLock | null;
+  } = {},
 ) {
   const query = [hint.situation, hint.goal, queries.join(" ")].filter(Boolean).join(" ");
   const inquiry = classifyImmigrationInquiry({ situation: hint.situation, goal: hint.goal });
   const inquiryMode = hint.inquiryMode ?? inquiry.mode;
-  const themes = hint.themes?.length ? hint.themes : inquiry.themes;
+  const themes = scopeInquiryThemes(hint.themes?.length ? hint.themes : inquiry.themes, hint.caseLock);
+  const scopedQueries = scopeAuthorityQueries(queries, hint.caseLock);
   const ranked = await rankFromCatalog({
     query,
-    queries,
+    queries: scopedQueries,
     inquiryMode,
     themes,
     limit: 6,
+    caseLock: hint.caseLock,
   });
   const liveUpdates = await getUscisUpdates(12).catch(() => []);
-  const matchingUpdates = liveUpdates.filter((update) => overlappingOfficialUpdate(update, queries, query));
+  const matchingUpdates = liveUpdates.filter((update) => overlappingOfficialUpdate(update, scopedQueries, query));
 
   await db.authoritySnapshot.deleteMany({ where: { caseId } }).catch(() => null);
 
@@ -153,8 +164,8 @@ export async function snapshotAuthorityForPlan(
     const excerpt = record.content.slice(0, 2000);
     const applicability = [
       {
-        query: queries[0] || query,
-        reason: `Ranked against this customer's goal and plan queries (${[...themes, ...queries].filter(Boolean).join(", ") || "situation"}).`,
+        query: scopedQueries[0] || query,
+        reason: `Ranked against this customer's goal and plan queries (${[...themes, ...scopedQueries].filter(Boolean).join(", ") || "situation"}).`,
         goal: hint.goal || "",
         themes,
         reference: record.reference,
@@ -183,7 +194,7 @@ export async function snapshotAuthorityForPlan(
   }
 
   if (!snapshots.length) {
-    for (const queryItem of queries) {
+    for (const queryItem of scopedQueries) {
       const fallback = ranked.authorities.find((source) => {
         const hay = `${source.key} ${source.title} ${source.jurisdictionOrScope}`.toLowerCase();
         return hay.includes(queryItem.toLowerCase().replace(/_/g, " ")) || hay.includes(queryItem.toLowerCase());

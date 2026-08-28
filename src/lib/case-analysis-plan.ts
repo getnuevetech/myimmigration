@@ -1,4 +1,6 @@
 import { authorityQueriesForInquiry, classifyImmigrationInquiry, INQUIRY_MODES } from "./immigration-inquiry";
+import { buildSituationBrief } from "./situation-brief";
+import { caseTypeLockFromBrief } from "./case-type-lock";
 
 export const ANALYSIS_TASKS = {
   PROCESS_DOCUMENTS: "PROCESS_DOCUMENTS",
@@ -147,6 +149,13 @@ export function buildAnalysisPlan(input: AnalysisPlanInput): AnalysisPlan {
         })
       : { mode: INQUIRY_MODES.EXISTING_CASE, themes: ["general" as const], hasUscisFileSignals: true };
   const openOptions = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS;
+  const caseLock = caseTypeLockFromBrief(
+    buildSituationBrief({
+      situation: input.situation,
+      goal: input.goal,
+      facts: input.evidenceFactKeys.map((key) => ({ key, value: key })),
+    }),
+  );
   const highRiskIssue = input.issues.some((issue) =>
     issue.priority === "urgent" ||
     ["professional_review", "deadline_tracking", "uscis_notice_response"].includes(issue.issueType),
@@ -184,7 +193,9 @@ export function buildAnalysisPlan(input: AnalysisPlanInput): AnalysisPlan {
     ]),
     authority_queries_needed: uniq([
       ...input.evidenceFactKeys.filter((key) => ["form_type", "notice_type", "response_deadline"].includes(key)),
-      ...(openOptions ? authorityQueriesForInquiry(inquiry) : []),
+      ...(openOptions || caseLock?.doNotRecommendNewPathway
+        ? authorityQueriesForInquiry(inquiry, caseLock)
+        : []),
     ]),
     reasoning_level: reasoningLevel,
     review_required: needsReview,

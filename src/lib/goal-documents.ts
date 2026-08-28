@@ -1,4 +1,5 @@
 import { matchingFormNumber, type FormMatchInput } from "./goal-forms";
+import { shouldExcludeCountryConditions } from "./case-type-lock";
 
 export type DocumentKindDef = {
   kind: string;
@@ -184,6 +185,13 @@ export function rankMatchingDocuments(input: DocumentMatchInput = {}): RankedDoc
     add("identity");
     add("relationship");
     add("form");
+  } else if (formNumber === "I-360") {
+    add("identity");
+    add("relationship");
+    add("declaration");
+    add("form");
+    add("notice");
+    add("receipt");
   } else if (formNumber === "I-765") {
     add("identity");
     add("status_record");
@@ -207,7 +215,10 @@ export function rankMatchingDocuments(input: DocumentMatchInput = {}): RankedDoc
     add(documentKindFromEvidenceItem(`${source.reference ?? ""} ${source.title ?? ""} ${source.content ?? ""}`));
   }
   for (const theme of input.themes ?? []) {
-    for (const kind of THEME_DOC_KINDS[theme] ?? []) add(kind);
+    for (const kind of THEME_DOC_KINDS[theme] ?? []) {
+      if (kind === "country_conditions" && shouldExcludeCountryConditions(input.caseLock)) continue;
+      add(kind);
+    }
   }
 
   add("identity");
@@ -229,7 +240,7 @@ export function rankMatchingDocuments(input: DocumentMatchInput = {}): RankedDoc
   if (existing && rfe) {
     ordered = putFirst(putFirst(putFirst(ordered, "case_record"), "notice"), "rfe");
   } else {
-    const preferred = formNumber === "I-130"
+    const preferred = formNumber === "I-130" || formNumber === "I-360"
       ? "identity"
       : formNumber === "I-765"
         ? "identity"
@@ -238,8 +249,12 @@ export function rankMatchingDocuments(input: DocumentMatchInput = {}): RankedDoc
           : kinds.find((kind) => !documentKindDef(kind)?.isFiledCase) ?? "identity";
     ordered = putFirst(ordered, preferred);
     if (formNumber === "I-130") ordered = putFirst(putFirst(ordered, "relationship"), "identity");
+    if (formNumber === "I-360") ordered = putFirst(putFirst(putFirst(ordered, "declaration"), "relationship"), "identity");
     if (formNumber === "I-765") ordered = putFirst(putFirst(ordered, "status_record"), "identity");
     if (formNumber === "I-589") ordered = putFirst(putFirst(putFirst(ordered, "country_conditions"), "declaration"), "identity");
+    if (shouldExcludeCountryConditions(input.caseLock)) {
+      ordered = ordered.filter((kind) => kind !== "country_conditions");
+    }
     ordered = [
       ...ordered.filter((kind) => !documentKindDef(kind)?.isFiledCase),
       ...ordered.filter((kind) => documentKindDef(kind)?.isFiledCase),
