@@ -518,6 +518,12 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
         compiled_evidence_gate: evidenceGateJson,
         evidence_gate_instructions: evidenceGate?.promptText ?? "",
         primary_reasoner_context: primaryReasonerContext,
+        situation_brief: primaryReasonerContext && typeof primaryReasonerContext === "object"
+          ? (primaryReasonerContext as { situation_brief?: unknown }).situation_brief ?? null
+          : null,
+        case_type_lock: primaryReasonerContext && typeof primaryReasonerContext === "object"
+          ? (primaryReasonerContext as { case_type_lock?: unknown }).case_type_lock ?? null
+          : null,
       }),
       knowledge: knowledge || "(no matching reference material)",
       goal: JSON.stringify(goalFacts),
@@ -537,6 +543,12 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
           compiled_evidence_gate: evidenceGateJson,
           evidence_gate_instructions: evidenceGate?.promptText ?? "",
           primary_reasoner_context: primaryReasonerContext,
+          situation_brief: primaryReasonerContext && typeof primaryReasonerContext === "object"
+            ? (primaryReasonerContext as { situation_brief?: unknown }).situation_brief ?? null
+            : null,
+          case_type_lock: primaryReasonerContext && typeof primaryReasonerContext === "object"
+            ? (primaryReasonerContext as { case_type_lock?: unknown }).case_type_lock ?? null
+            : null,
         }),
         knowledge: knowledge || "(no matching reference material)",
         goal: JSON.stringify(goalFacts),
@@ -560,6 +572,12 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
         documents: documentOut?.merged ?? null,
         evidence_gate: evidenceGateJson,
         primary_reasoner_context: primaryReasonerContext,
+        situation_brief: primaryReasonerContext && typeof primaryReasonerContext === "object"
+          ? (primaryReasonerContext as { situation_brief?: unknown }).situation_brief ?? null
+          : null,
+        case_type_lock: primaryReasonerContext && typeof primaryReasonerContext === "object"
+          ? (primaryReasonerContext as { case_type_lock?: unknown }).case_type_lock ?? null
+          : null,
         evidence_gate_instructions: evidenceGate?.promptText ?? "",
         analysis: situationMerged,
         presentation_lock: true,

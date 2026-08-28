@@ -1,5 +1,7 @@
 import "server-only";
 import { db } from "./db";
+import { parseSituationBrief } from "./situation-brief";
+import { caseTypeLockFromBrief } from "./case-type-lock";
 
 function parseJson(value: string, fallback: unknown) {
   try {
@@ -42,8 +44,13 @@ export async function buildPrimaryReasonerContext(caseId: string) {
     db.caseUnknown.findMany({ where: { caseId, status: "open" }, select: { key: true, question: true, reason: true }, take: 20 }),
   ]);
 
+  const situationBrief = parseSituationBrief(reconstruction?.briefJson);
+  const caseTypeLock = caseTypeLockFromBrief(situationBrief);
+
   return {
     canonical_state: canonicalState ? parseJson(canonicalState.approvedStateJson || canonicalState.stateJson, {}) : null,
+    situation_brief: situationBrief,
+    case_type_lock: caseTypeLock,
     case_reconstruction: reconstruction
       ? {
           summary: reconstruction.summary,

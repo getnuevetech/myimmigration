@@ -2848,8 +2848,32 @@ assert(v5ViewSrc.includes("What to do next"), "V5 view must include next actions
 assert(!v5ViewSrc.includes("Most likely explanations"), "V5 view must not include most-likely explanations");
 assert(!v5ViewSrc.includes("ProgressBar"), "V5 view must not show readiness percentage bars");
 assert(!/What this means/.test(v5ViewSrc.replace(/What this notice means/g, "")), "V5 view must not use the old What this means dump heading");
-assert(PROMPT_VERSION.includes("v32"), "v5 customer presentation must not bump analysis prompt version");
+assert(PROMPT_VERSION.includes("v32"), "v5 customer presentation must keep v32 prompt lineage");
 assert(requested.autoAssigned === false, "v5 customer presentation must not auto-assign consultants");
+
+// --- V5 Phase 5: explanation behind the brief (prompt rewrite) ---
+assert(PROMPT_VERSION.includes("v5-brief-authority-explanation"), `prompt version should identify the v5 brief-authority bump, got ${PROMPT_VERSION}`);
+assert(PROMPT_VERSION.includes("v32"), "v5 prompt bump must keep v32 evidence lineage");
+assert((PROMPT_SUPERSEDES.analyst ?? []).includes("6e92f232c5109d9fc679765e7c19303f32fbf83ee36e9791a8550704053a579c"), "analyst supersedes must include the pre-v5 brief-authority hash");
+assert((PROMPT_SUPERSEDES.reviewer ?? []).includes("69e0e824bd6183597694c0aee1a63b8d1b09fa1908def1215c491a41e1e28fa3"), "reviewer supersedes must include the pre-v5 brief-authority hash");
+assert((PROMPT_SUPERSEDES.presenter ?? []).includes("7a9dc109ee2feb908a625375e4add797d48338ff06c0d49af3dac83539427ba4"), "presenter supersedes must include the pre-v5 brief-authority hash");
+assert(DEFAULT_PROMPTS.analyst.includes("situation_brief"), "analyst prompt must reference the locked situation brief");
+assert(DEFAULT_PROMPTS.analyst.includes("case_type_lock"), "analyst prompt must reference the case-type lock");
+assert(DEFAULT_PROMPTS.reviewer.includes("situation_brief"), "reviewer prompt must reference the locked situation brief");
+assert(DEFAULT_PROMPTS.presenter.includes("situation_brief"), "presenter prompt must reference the locked situation brief");
+assert(/preliminary positive development/i.test(DEFAULT_PROMPTS.analyst) && /preliminary positive development/i.test(DEFAULT_PROMPTS.presenter), "analyst and presenter must describe prima facie as a preliminary positive development");
+assert(/not final I-360 approval/i.test(DEFAULT_PROMPTS.analyst) && /not a green card/i.test(DEFAULT_PROMPTS.analyst), "analyst must forbid treating prima facie as I-360 approval or a green card");
+assert(/never recommend Form I-130/i.test(DEFAULT_PROMPTS.analyst), "analyst must forbid I-130 recommendations for locked VAWA I-360");
+assert(/never an instruction to file Form I-130/i.test(DEFAULT_PROMPTS.presenter) || /never recommend Form I-130/i.test(DEFAULT_PROMPTS.presenter), "presenter must forbid I-130 instructions for locked VAWA");
+assert(/Plain English first|plain English first/i.test(DEFAULT_PROMPTS.analyst) && /Plain English first|plain English first/i.test(DEFAULT_PROMPTS.presenter), "prompts must require plain English before citations");
+assert(/filing order/i.test(DEFAULT_PROMPTS.analyst), "analyst must require current process in filing order");
+const reasonerCtxSrc = readFileSync(join(process.cwd(), "src/lib/primary-reasoner-context.ts"), "utf8");
+assert(reasonerCtxSrc.includes("situation_brief") && reasonerCtxSrc.includes("case_type_lock"), "primary reasoner context must include the locked brief and case-type lock");
+assert(reasonerCtxSrc.includes("parseSituationBrief") && reasonerCtxSrc.includes("caseTypeLockFromBrief"), "primary reasoner context must parse the brief lock helpers");
+const orchestratorSrcP5 = readFileSync(join(process.cwd(), "src/lib/ai/orchestrator.ts"), "utf8");
+assert(orchestratorSrcP5.includes("situation_brief:") && orchestratorSrcP5.includes("case_type_lock:"), "orchestrator must inject situation_brief and case_type_lock into analysis stages");
+assert(!/file Form I-130 first|final approval of (?:your )?I-360|prima facie.{0,40}green card/i.test(DEFAULT_PROMPTS.presenter), "presenter defaults must not teach I-130-first or prima-facie-as-green-card wording");
+assert(requested.autoAssigned === false, "v5 prompt rewrite must not auto-assign consultants");
 
 console.log("v3.2 immigration evidence check passed");
 console.log(`- ${receipt.documentType}: ${receipt.facts.length} facts, ${receipt.events.length} events`);
@@ -2904,3 +2928,4 @@ console.log(`- v5 P1: VAWA brief ${vawaBrief.primaryForm}/${vawaBrief.relatedFor
 console.log(`- v5 P2: VAWA types ${vawaUploadTypes.join(", ")}, passport ${passportClassified.documentType}, I-94 ${i94Classified.documentType}`);
 console.log(`- v5 P3: VAWA next ${vawaForms[0]?.formNumber}, queries ${vawaQueries.join("/")}, family ${familyLockedForms[0]?.formNumber}, RFE letter ${matchingLetterKind(rfeMatchInput)}`);
 console.log(`- v5 P4: VAWA key=${vawaCustomer.keyPoint.heading}, actions=${vawaCustomer.whatToDoNext.length}, family=${familyCustomer.keyPoint.kind}, RFE=${rfeCustomer.whatToDoNext[0]?.what.slice(0, 28)}`);
+console.log(`- v5 P5: prompt ${PROMPT_VERSION}, analyst brief=${DEFAULT_PROMPTS.analyst.includes("situation_brief")}, supersedes analyst=${(PROMPT_SUPERSEDES.analyst ?? [])[0]?.slice(0, 8)}`);
