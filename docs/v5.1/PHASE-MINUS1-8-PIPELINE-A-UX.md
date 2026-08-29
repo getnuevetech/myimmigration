@@ -1,6 +1,6 @@
 # Phase −1.8 — Pipeline A UX polish
 
-**Status:** Implementing  
+**Status:** Ready for merge  
 **Date:** 2026-08-29  
 **Depends on:** Phase −1.7 Assistant hardening on `main`
 
@@ -25,4 +25,10 @@ Make Pipeline A (Assistant) feel like a first-class product surface — structur
 
 ## Checks
 
-`npm run test:phase-minus1` + `scripts/phase-minus1-8-pipeline-a-ux-check.ts`
+`npm run test:phase-minus1` (includes `scripts/phase-minus1-8-pipeline-a-ux-check.ts`)
+
+## Delivered
+
+- `composeAssistantView` + `AssistantReplyBlocks` / `CaseAnswerFirstPanel`
+- Q&A focus chrome, starters, promote CTA, `?q=` prefill
+- Guide handoff with encoded question
