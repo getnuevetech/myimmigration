@@ -1,9 +1,10 @@
 # Phase −1 — Conversation Intelligence
 
-**Status:** Implementing  
+**Status:** Implemented on branch — awaiting merge  
 **Date:** 2026-08-29  
 **Sequence:** before any further immigration-static workflows; sits in front of V5.1 Case engine  
 **Domain:** Domain-neutral conversational layer (ImmigrationOnMe / future TaxOnMe share this contract)
+**Checks:** `npm run test:phase-minus1`
 
 ## Diagnosis (locked)
 
