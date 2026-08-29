@@ -13,6 +13,7 @@ import { matchInputFromCase } from "@/lib/goal-versions";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { previewBestConsultantForThemes } from "@/lib/matching";
 import { isFiledCaseSurface } from "@/lib/goal-notices";
+import { decisionFocusLabel, parseStoredIntelligence } from "@/lib/conversation";
 
 export default async function QaThreadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -44,6 +45,10 @@ export default async function QaThreadPage({ params }: { params: Promise<{ id: s
         matchInputFromCase(thread.case),
       )
     : null;
+  const intelligence = parseStoredIntelligence(thread.intelligenceJson);
+  const focusLabel = intelligence
+    ? decisionFocusLabel(intelligence.question_contract.decision_target)
+    : null;
 
   return (
     <div className="max-w-3xl">
@@ -56,6 +61,8 @@ export default async function QaThreadPage({ params }: { params: Promise<{ id: s
         threadId={thread.id}
         caseId={thread.caseId ?? ""}
         messages={thread.messages.map((m) => ({ id: m.id, role: m.role, content: m.content }))}
+        focusLabel={focusLabel}
+        interpretedQuestion={intelligence?.question_contract.interpreted_question ?? null}
         access={toQaChatAccess(
           access.entitlement,
           access.usage,

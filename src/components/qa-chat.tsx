@@ -1,14 +1,23 @@
 "use client";
 
-import { useActionState, useRef, useEffect } from "react";
+import { useActionState, useRef, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { askQuestionAction } from "@/actions/user";
 import { createOptionsCaseFromQaAction } from "@/actions/case";
 import { qaConversationCanSaveAsOptionsCase } from "@/lib/goal-suggestions";
 import type { QaChatAccess } from "@/lib/qa-access";
+import { AssistantMessageText } from "@/components/assistant-reply";
+import { decisionFocusLabel } from "@/lib/conversation/assistant-composer";
 
 export type { QaChatAccess } from "@/lib/qa-access";
+
+const STARTER_PROMPTS = [
+  "Can my U.S. citizen wife file for me? We are married.",
+  "I came through Mexico, have been here 3 years, wife is USC — what are my options?",
+  "What is an I-862 / Notice to Appear?",
+  "What documents do I need for a marriage green card?",
+];
 
 function Submit() {
   const { pending } = useFormStatus();
@@ -66,44 +75,90 @@ export function QaChat({
   caseId = "",
   messages,
   access,
+  focusLabel,
+  interpretedQuestion,
+  defaultQuestion = "",
 }: {
   threadId: string;
   caseId?: string;
   messages: { id: string; role: string; content: string }[];
   access?: QaChatAccess;
+  /** Customer-facing decision focus from Question Contract. */
+  focusLabel?: string | null;
+  interpretedQuestion?: string | null;
+  /** Prefill from guide / deep link (`?q=`). */
+  defaultQuestion?: string;
 }) {
   const [state, formAction] = useActionState(askQuestionAction, null);
   const [saveState, saveAction] = useActionState(createOptionsCaseFromQaAction, null);
+  const [draft, setDraft] = useState(defaultQuestion);
   const formRef = useRef<HTMLFormElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const canSave = Boolean(threadId) && Boolean(access?.allowSaveOptionsCase) && qaConversationCanSaveAsOptionsCase(messages, caseId);
   const showGuestKeep = Boolean(threadId) && Boolean(access?.showRegisterCta) && !caseId && messages.some((m) => m.role === "assistant");
   const blocked = Boolean(access?.blocked);
+  const showPromoteCase =
+    Boolean(threadId) &&
+    !caseId &&
+    !access?.showRegisterCta &&
+    messages.some((m) => m.role === "assistant");
+  const narrativeForCase = messages
+    .filter((m) => m.role === "user")
+    .map((m) => m.content)
+    .join("\n\n")
+    .slice(0, 500);
+  const caseHref = `/app/cases/new?prefill=${encodeURIComponent(narrativeForCase || draft || "")}&forceCase=1`;
+  const resolvedFocus = focusLabel || (interpretedQuestion ? decisionFocusLabel("answer_user_question") : null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    if (state?.ok) formRef.current?.reset();
+    if (state?.ok) {
+      formRef.current?.reset();
+      setDraft("");
+    }
   }, [messages.length, state]);
 
   return (
     <div className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {resolvedFocus && messages.length > 0 && (
+        <div className="border-b border-emerald-100 bg-gradient-to-r from-emerald-50/90 to-white px-4 py-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-800/80">Working on</p>
+          <p className="text-sm font-medium text-slate-900">{resolvedFocus}</p>
+          {interpretedQuestion ? (
+            <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{interpretedQuestion}</p>
+          ) : null}
+        </div>
+      )}
       <div className="max-h-[55vh] min-h-[200px] space-y-4 overflow-y-auto p-5">
         {messages.length === 0 && (
-          <div className="py-8 text-center text-sm text-slate-400">
-            <p className="font-medium text-slate-500">Try one of these:</p>
-            <p className="mt-2">&ldquo;I want to marry a U.S. citizen and we have not filed yet. What can we do?&rdquo;</p>
-            <p>&ldquo;I am on F-1 and graduating. What are my options?&rdquo;</p>
-            <p>&ldquo;What does this RFE notice mean?&rdquo;</p>
+          <div className="py-6 text-center">
+            <p className="text-sm font-medium text-slate-600">Try a question like these:</p>
+            <div className="mt-3 flex flex-col gap-2">
+              {STARTER_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => setDraft(prompt)}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-700 transition hover:border-lime-300 hover:bg-lime-50/60"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+              className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                 m.role === "user" ? "bg-lime-600 text-white" : "bg-slate-100 text-slate-800"
               }`}
             >
-              {m.content}
+              {m.role === "assistant" ? (
+                <AssistantMessageText content={m.content} />
+              ) : (
+                <div className="whitespace-pre-wrap text-sm leading-relaxed">{m.content}</div>
+              )}
             </div>
           </div>
         ))}
@@ -157,6 +212,21 @@ export function QaChat({
           </div>
         </div>
       )}
+      {showPromoteCase && (
+        <div className="border-t border-slate-100 bg-white px-4 py-3">
+          <p className="text-sm text-slate-700">
+            Need filings, risks, and a complete next-action plan? Start a full case review — uploads alone never open a case.
+          </p>
+          <div className="mt-2">
+            <Link
+              href={caseHref}
+              className="inline-flex rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+            >
+              Start a full case review
+            </Link>
+          </div>
+        </div>
+      )}
       <form ref={formRef} action={formAction} className="border-t border-slate-200 p-4">
         {state?.error && (
           <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
@@ -167,6 +237,8 @@ export function QaChat({
           <div className="flex gap-2">
             <input
               name="question"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
               placeholder={messages.some((m) => m.role === "assistant") ? "Answer the follow-up, or ask something else…" : "Type your immigration question…"}
               autoComplete="off"
               className="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-lime-500 focus:outline-none focus:ring-2 focus:ring-lime-100"

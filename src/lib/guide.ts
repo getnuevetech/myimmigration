@@ -295,7 +295,7 @@ export async function guideRespond(
         message:
           "That looks like a question the Immigration Assistant can answer directly — without opening a full case. Continue there for an answer-first reply.",
         actions: [
-          { type: "link", label: "Ask the assistant", href: "/app/qa" },
+          { type: "link", label: "Ask the assistant", href: `/app/qa?q=${encodeURIComponent(lastQuestion.slice(0, 500))}` },
           ...primaryActions(snapshot).slice(0, 1),
           ...baseActions(),
         ],
