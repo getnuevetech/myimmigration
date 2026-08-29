@@ -101,8 +101,8 @@ export default async function GuestResultPage({
               <p className="mt-1 text-base font-semibold text-slate-900">{nextStep}</p>
               <p className="mt-2 text-sm text-slate-600">{consultantCopy}</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <ButtonLink href="/register" className="px-4 py-2 text-sm">Create a free account</ButtonLink>
-                <Link href="/register" className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
+                <ButtonLink href={`/register?next=${encodeURIComponent(`/app/cases/${c.id}`)}`} className="px-4 py-2 text-sm">Create a free account</ButtonLink>
+                <Link href={`/register?next=${encodeURIComponent(`/app/cases/${c.id}`)}`} className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
                   Talk with a licensed professional
                 </Link>
               </div>
@@ -137,8 +137,8 @@ export default async function GuestResultPage({
             Your answers and {c.documents.length > 0 ? `${c.documents.length} uploaded document${c.documents.length > 1 ? "s" : ""}` : "results"} will be attached to your account automatically — nothing is lost. Paid plans keep the full suggested path, and Pro can match you with a licensed attorney or accredited representative.
           </p>
           <div className="mt-5 flex justify-center gap-3">
-            <ButtonLink href="/register" variant="secondary" className="px-6 py-3">Create free account</ButtonLink>
-            <Link href="/login" className="inline-flex items-center px-4 text-sm font-medium text-lime-100 underline hover:text-white">
+            <ButtonLink href={`/register?next=${encodeURIComponent(`/app/cases/${c.id}`)}`} variant="secondary" className="px-6 py-3">Create free account</ButtonLink>
+            <Link href={`/login?next=${encodeURIComponent(`/app/cases/${c.id}`)}`} className="inline-flex items-center px-4 text-sm font-medium text-lime-100 underline hover:text-white">
               I already have one
             </Link>
           </div>

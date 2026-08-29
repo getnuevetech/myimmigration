@@ -2,22 +2,42 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-nav";
 import { LoginForm } from "@/components/auth-forms";
 import { getSetting } from "@/lib/settings";
+import { sanitizeAuthNext, setAuthNextCookie } from "@/lib/guest";
 
 export const metadata = { title: "Sign in" };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next: nextRaw } = await searchParams;
+  const next = sanitizeAuthNext(nextRaw) || "";
+  if (next) await setAuthNextCookie(next);
   const googleClientId = await getSetting("auth.google_client_id", "");
+  const googleHref = next
+    ? `/api/auth/google?next=${encodeURIComponent(next)}`
+    : "/api/auth/google";
+  const registerHref = next
+    ? `/register?next=${encodeURIComponent(next)}`
+    : "/register";
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
       <main className="mx-auto max-w-md px-4 py-16">
         <h1 className="text-center text-2xl font-bold text-slate-900">Welcome back</h1>
         <p className="mt-1 text-center text-sm text-slate-500">Sign in to your account</p>
+        {next.startsWith("/app/qa/") && (
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            After you sign in we will return you to your conversation.
+          </div>
+        )}
         <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           {googleClientId && (
             <>
               <a
-                href="/api/auth/google"
+                href={googleHref}
                 className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 Continue with Google
@@ -27,11 +47,13 @@ export default async function LoginPage() {
               </div>
             </>
           )}
-          <LoginForm />
+          <LoginForm next={next} />
         </div>
         <p className="mt-4 text-center text-sm text-slate-500">
           New here?{" "}
-          <Link href="/register" className="font-medium text-lime-600 underline">Create a free account</Link>
+          <Link href={registerHref} className="font-medium text-lime-600 underline">
+            Create a free account
+          </Link>
         </p>
       </main>
     </div>

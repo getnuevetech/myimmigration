@@ -17,6 +17,13 @@ export default async function GuestQaPage({
   const user = await getCurrentUser();
   const { thread: threadId, q: prefillQuestion } = await searchParams;
   if (user) {
+    if (threadId) {
+      const owned = await db.qaThread.findFirst({
+        where: { id: threadId, userId: user.id },
+        select: { id: true },
+      });
+      if (owned) redirect(`/app/qa/${owned.id}`);
+    }
     const qs = new URLSearchParams();
     if (prefillQuestion?.trim()) qs.set("q", prefillQuestion.trim());
     redirect(qs.size ? `/app/qa?${qs}` : "/app/qa");

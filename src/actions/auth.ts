@@ -5,7 +5,7 @@ import { cookies, headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { createSession, destroySession, hashPassword, verifyPassword, getCurrentUser, bumpSessionVersion } from "@/lib/auth";
-import { claimGuestSession } from "@/lib/guest";
+import { claimGuestSession, continuePathAfterAuth, consumeAuthNextCookie, sanitizeAuthNext, setAuthNextCookie } from "@/lib/guest";
 import { ROLES } from "@/lib/constants";
 import { LEGAL_AGREEMENT_VERSION, parseRegistrationConsents, OAUTH_GOOGLE_PENDING_COOKIE, OAUTH_CONSENTS_COOKIE } from "@/lib/legal/consents";
 import { readPendingGoogleProfile, recordRegistrationLegal, setOauthConsentsCookie } from "@/lib/legal/record-registration";
@@ -72,14 +72,19 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
     consultantAgreement: consents.consultantAgreement,
   });
 
-  // Welcome message (admin-editable template).
-  const { sendSystemMessage } = await import("@/lib/messaging");
-  await sendSystemMessage("account_created", user, { link: asConsultant ? "/consultant" : "/app" });
-
   // Attach any pre-registration guest data (cases, documents, Q&A) to the new account.
-  await claimGuestSession(user.id);
+  const claimed = await claimGuestSession(user.id);
   await createSession(user.id);
-  redirect(asConsultant ? "/consultant/onboarding" : "/app");
+  const next =
+    sanitizeAuthNext(String(formData.get("next") ?? "")) ||
+    (await consumeAuthNextCookie());
+  const dest = asConsultant
+    ? "/consultant/onboarding"
+    : continuePathAfterAuth({ next, claimed, fallback: "/app" });
+
+  const { sendSystemMessage } = await import("@/lib/messaging");
+  await sendSystemMessage("account_created", user, { link: dest.startsWith("/app") ? dest : "/app" });
+  redirect(dest);
 }
 
 export async function startGoogleSignupAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -89,6 +94,7 @@ export async function startGoogleSignupAction(_prev: ActionState, formData: Form
     version: LEGAL_AGREEMENT_VERSION,
     grants: consents.grants,
   });
+  await setAuthNextCookie(String(formData.get("next") ?? ""));
   redirect("/api/auth/google");
 }
 
@@ -126,11 +132,15 @@ export async function completeGoogleRegisterAction(_prev: ActionState, formData:
   store.set(OAUTH_GOOGLE_PENDING_COOKIE, "", { httpOnly: true, maxAge: 0, path: "/" });
   store.set(OAUTH_CONSENTS_COOKIE, "", { httpOnly: true, maxAge: 0, path: "/" });
 
-  const { sendSystemMessage } = await import("@/lib/messaging");
-  await sendSystemMessage("account_created", user, { link: "/app" });
-  await claimGuestSession(user.id);
+  const claimed = await claimGuestSession(user.id);
   await createSession(user.id);
-  redirect("/app");
+  const next =
+    sanitizeAuthNext(String(formData.get("next") ?? "")) ||
+    (await consumeAuthNextCookie());
+  const dest = continuePathAfterAuth({ next, claimed, fallback: "/app" });
+  const { sendSystemMessage } = await import("@/lib/messaging");
+  await sendSystemMessage("account_created", user, { link: dest.startsWith("/app") ? dest : "/app" });
+  redirect(dest);
 }
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -143,11 +153,14 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     return { error: "Invalid email or password." };
   }
   if (user.status !== "active") return { error: "This account is not active." };
-  await claimGuestSession(user.id);
+  const claimed = await claimGuestSession(user.id);
   await createSession(user.id);
   if (user.role === ROLES.SUPER_ADMIN || user.role === ROLES.ADMIN) redirect("/admin");
   if (user.role === ROLES.CONSULTANT) redirect("/consultant");
-  redirect("/app");
+  const next =
+    sanitizeAuthNext(String(formData.get("next") ?? "")) ||
+    (await consumeAuthNextCookie());
+  redirect(continuePathAfterAuth({ next, claimed, fallback: "/app" }));
 }
 
 export async function logoutAction() {

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { SiteHeader } from "@/components/site-nav";
 import { RegisterForm } from "@/components/auth-forms";
 import { getSetting } from "@/lib/settings";
-import { getGuestSession } from "@/lib/guest";
+import { getGuestSession, sanitizeAuthNext, setAuthNextCookie } from "@/lib/guest";
 import { readPendingGoogleProfile } from "@/lib/legal/record-registration";
 import {
   PRIVACY_POLICY_SLUG,
@@ -16,10 +16,16 @@ export const metadata = { title: "Create your account" };
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; google?: string }>;
+  searchParams: Promise<{ type?: string; google?: string; next?: string; thread?: string }>;
 }) {
-  const { type, google } = await searchParams;
+  const { type, google, next: nextRaw, thread } = await searchParams;
   const asConsultant = type === "consultant";
+  const next =
+    sanitizeAuthNext(nextRaw) ||
+    (thread && /^[a-z0-9]+$/i.test(thread) ? `/app/qa/${thread}` : null) ||
+    "";
+  if (next) await setAuthNextCookie(next);
+
   const [googleClientId, guest, pendingProfile] = await Promise.all([
     getSetting("auth.google_client_id", ""),
     getGuestSession(),
@@ -27,6 +33,7 @@ export default async function RegisterPage({
   ]);
   const googlePending = !asConsultant && google === "pending" && !!pendingProfile;
   const guestQaCount = guest ? await db.qaThread.count({ where: { guestSessionId: guest.id } }) : 0;
+  const guestCaseCount = guest ? await db.case.count({ where: { guestSessionId: guest.id } }) : 0;
   const pages = await db.contentPage.findMany({
     where: {
       isPublished: true,
@@ -37,7 +44,8 @@ export default async function RegisterPage({
     select: { slug: true, title: true },
   });
   const pageBySlug = Object.fromEntries(pages.map((page) => [page.slug, page]));
-  const hasGuestData = !!guest && (guest.situation.length > 0 || guest.goal.length > 0 || guestQaCount > 0);
+  const hasGuestData =
+    !!guest && (guest.situation.length > 0 || guest.goal.length > 0 || guestQaCount > 0 || guestCaseCount > 0);
 
   return (
     <div className="min-h-screen">
@@ -59,7 +67,10 @@ export default async function RegisterPage({
         </p>
         {hasGuestData && !asConsultant && (
           <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            Your questions, answers, and uploads from before will be attached to your new account automatically. Paid plans keep a more personalized review, and Pro can match you with a licensed professional on ImmigrationOnMe.
+            Your questions, answers, and uploads from before will stay with your new account — you will not have to start over.
+            {next.startsWith("/app/qa/")
+              ? " After you create the account we will take you back to this conversation."
+              : " Paid plans keep a more personalized review, and Pro can match you with a licensed professional on ImmigrationOnMe."}
           </div>
         )}
         {google === "pending" && !pendingProfile && !asConsultant && (
@@ -73,6 +84,7 @@ export default async function RegisterPage({
             googleEnabled={Boolean(googleClientId) && !asConsultant}
             googlePending={googlePending}
             pendingProfile={pendingProfile}
+            next={next}
             userAgreement={pageBySlug[USER_REGISTRATION_AGREEMENT_SLUG] ?? null}
             terms={pageBySlug[TERMS_OF_SERVICE_SLUG] ?? null}
             privacy={pageBySlug[PRIVACY_POLICY_SLUG] ?? null}
@@ -81,7 +93,12 @@ export default async function RegisterPage({
         </div>
         <p className="mt-4 text-center text-sm text-slate-500">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-lime-600 underline">Sign in</Link>
+          <Link
+            href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
+            className="font-medium text-lime-600 underline"
+          >
+            Sign in
+          </Link>
         </p>
       </main>
     </div>

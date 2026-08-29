@@ -45,22 +45,35 @@ function SaveOptionsCase() {
   );
 }
 
-function ConversionLinks({ access, caseId }: { access: QaChatAccess; caseId?: string }) {
+function ConversionLinks({
+  access,
+  caseId,
+  registerHref,
+  upgradeHref,
+}: {
+  access: QaChatAccess;
+  caseId?: string;
+  registerHref: string;
+  upgradeHref: string;
+}) {
   return (
     <div className="mt-2 flex flex-wrap gap-2">
       {access.showRegisterCta && (
-        <Link href="/register" className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
+        <Link href={registerHref} className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
           Create a free account
         </Link>
       )}
       {access.showUpgradeCta && (
-        <Link href="/pricing" className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-lime-800 ring-1 ring-lime-300 hover:bg-lime-100">
+        <Link
+          href={upgradeHref}
+          className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-lime-800 ring-1 ring-lime-300 hover:bg-lime-100"
+        >
           See paid plans
         </Link>
       )}
       {access.showConsultantCta && (
         <Link
-          href={access.audience === "guest" ? "/register" : access.audience === "pro" ? (caseId ? `/app/consultants?case=${caseId}` : "/app/consultants") : "/pricing"}
+          href={access.audience === "guest" ? registerHref : access.audience === "pro" ? (caseId ? `/app/consultants?case=${caseId}` : "/app/consultants") : upgradeHref}
           className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
         >
           {access.audience === "pro" ? "Request a professional match" : "Talk with a licensed professional"}
@@ -108,6 +121,12 @@ export function QaChat({
     .join("\n\n")
     .slice(0, 500);
   const caseHref = `/app/cases/new?prefill=${encodeURIComponent(narrativeForCase || draft || "")}&forceCase=1`;
+  const registerHref = threadId
+    ? `/register?next=${encodeURIComponent(`/app/qa/${threadId}`)}`
+    : "/register";
+  const upgradeHref = threadId
+    ? `/app/billing?returnTo=${encodeURIComponent(`/app/qa/${threadId}`)}`
+    : "/pricing";
   const resolvedFocus = focusLabel || (interpretedQuestion ? decisionFocusLabel("answer_user_question") : null);
 
   useEffect(() => {
@@ -183,7 +202,7 @@ export function QaChat({
                   ? "1 general question left at this access level."
                   : `${access.remaining} general questions left at this access level.`}
           </p>
-          <ConversionLinks access={access} caseId={caseId} />
+          <ConversionLinks access={access} caseId={caseId} registerHref={registerHref} upgradeHref={upgradeHref} />
         </div>
       )}
       {canSave && (
@@ -206,7 +225,7 @@ export function QaChat({
             Create a free account to keep these answers on a personalized options review. Paid plans continue official follow-ups, and Pro can match you with a licensed attorney or accredited representative.
           </p>
           <div className="mt-2">
-            <Link href="/register" className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
+            <Link href={registerHref} className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">
               Create a free account to keep this review
             </Link>
           </div>
