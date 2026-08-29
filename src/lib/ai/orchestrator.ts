@@ -131,7 +131,20 @@ async function getRunnableSteps(stageKey: string, providerIds?: string[]) {
     },
   });
   if (!stage?.isEnabled) return [];
-  const withKeys = stage.steps.filter((s) => s.provider.isEnabled && s.provider.apiKey.length > 0);
+  let withKeys = stage.steps.filter((s) => s.provider.isEnabled && s.provider.apiKey.length > 0);
+
+  // Model Responsibility Contract: prefer the capability-bound provider (Sol / Opus aliases).
+  // Notice keeps both Opus extract + Sol explain when both are enabled (ordered by sortOrder).
+  if (stageKey !== "notice") {
+    try {
+      const { capabilityForStage, preferCapabilitySteps, resolveCapabilityProvider } = await import("./model-capabilities");
+      const preferred = await resolveCapabilityProvider(capabilityForStage(stageKey));
+      withKeys = preferCapabilitySteps(withKeys, preferred?.id);
+    } catch {
+      /* incomplete env */
+    }
+  }
+
   const selected = (providerIds ?? []).map(String).filter(Boolean);
   if (selected.length === 0) return withKeys;
 
@@ -634,6 +647,41 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
           ? stageRun(STAGE_KEYS.DOCUMENT, { input: docText }, false, media)
           : Promise.resolve(null),
       ]);
+
+  // Opus document intelligence → structured extractedJson (ledger-shaped), not prose.
+  if (documentOut?.usedAi && documentOut.merged) {
+    const { parseDocumentIntelligence, ledgerFactsFromDocumentIntelligence, documentsBlockFromIntelligence } = await import(
+      "./document-intelligence"
+    );
+    const intel = parseDocumentIntelligence(documentOut.merged);
+    if (intel) {
+      documentOut.merged = documentsBlockFromIntelligence(intel, documentOut.merged) as typeof documentOut.merged;
+      for (const d of c.documents) {
+        await db.document.update({
+          where: { id: d.id },
+          data: {
+            extractedJson: JSON.stringify({ ...intel, document_id: d.id }),
+            status: "extracted",
+          },
+        }).catch(() => null);
+      }
+      // Persist high-confidence typed facts onto the case evidence fact table when present.
+      const ledgerRows = ledgerFactsFromDocumentIntelligence(intel);
+      for (const row of ledgerRows.slice(0, 40)) {
+        if (!row.key || !row.value) continue;
+        await db.evidenceFact.create({
+          data: {
+            caseId,
+            key: row.key,
+            value: row.value,
+            confidence: row.confidence >= 0.85 ? "confirmed" : row.confidence >= 0.6 ? "likely" : "needs_verification",
+            provenance: "DOCUMENT_EXTRACTED",
+            sourceText: row.sourceLocation.slice(0, 500),
+          },
+        }).catch(() => null);
+      }
+    }
+  }
 
   // Documents read by a vision model count as examined evidence.
   if (documentOut?.usedAi && media.length > 0) {
@@ -1241,8 +1289,20 @@ export async function explainNoticeContent(content: string, opts?: { caseId?: st
   const groundedInput = grounding.block
     ? `${content}\n\n${grounding.block}\n\nNotice grounding rule: explain this notice against the approved case presentation and compiled case record. Do not invent deadlines, receipt numbers, form types, outcomes, or requested evidence that are not in the notice text, approved presentation, or evidence brief. Do not replace the approved next action with a different plan.`
     : content;
-  const outcome = await runStage(STAGE_KEYS.NOTICE, { input: groundedInput });
-  const parsed = outcome.stepOutputs.find((o) => o.data)?.data ?? null;
+  const outcome = await runStage(STAGE_KEYS.NOTICE, { input: groundedInput }, { sequentialContext: true });
+  // Prefer Sol presenter output (customer explanation) when Opus→Sol sequential ran.
+  const solExplain = [...outcome.stepOutputs].reverse().find((o) => o.role === "presenter" && o.data)?.data;
+  const opusExtract = outcome.stepOutputs.find((o) => o.role === "document_intelligence" && o.data)?.data;
+  const parsed = solExplain ?? outcome.stepOutputs.find((o) => o.data)?.data ?? null;
+  if (parsed && opusExtract && !parsed.receipt_number && (opusExtract as Json).receipt_number) {
+    (parsed as Json).receipt_number = (opusExtract as Json).receipt_number;
+  }
+  if (parsed && opusExtract && !parsed.notice_type && (opusExtract as Json).notice_type) {
+    (parsed as Json).notice_type = (opusExtract as Json).notice_type;
+  }
+  if (parsed && opusExtract && !parsed.form_number && (opusExtract as Json).form_number) {
+    (parsed as Json).form_number = (opusExtract as Json).form_number;
+  }
   const fallbackSteps = [
     { title: "Keep the notice safe", description: "It's stored in your document vault." },
     { title: "Check the deadline", description: "USCIS notices usually show a response date, appointment date, or filing deadline. Add it to your deadlines." },

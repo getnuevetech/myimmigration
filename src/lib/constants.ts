@@ -78,6 +78,7 @@ export const STEP_ROLES = {
   SKEPTIC: "skeptic",
   EXTRACTOR_A: "extractor_a",
   EXTRACTOR_B: "extractor_b",
+  DOCUMENT_INTELLIGENCE: "document_intelligence",
   ANALYST: "analyst",
   REVIEWER: "reviewer",
   PRESENTER: "presenter",

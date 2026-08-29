@@ -420,73 +420,64 @@ async function seedAiAndPipelines() {
     {
       key: "summary",
       name: "1 · Summary analysis",
-      description: "Analyzes the user's situation summary with 2–3 models (fact extractor, case interpreter, skeptic) and merges results into one simple result.",
+      description: "PRIMARY_REASONING (Sol): understands the person's narrative. Single specialized brain — not multi-model competition.",
       steps: [
-        { provider: "OpenAI GPT-5.6 Sol", role: "fact_extractor", prompt: DEFAULT_PROMPTS.fact_extractor, order: 0 },
-        { provider: "Anthropic Claude Sonnet 5", role: "interpreter", prompt: DEFAULT_PROMPTS.interpreter, order: 1 },
-        { provider: "Google Gemini 3.1 Pro", role: "skeptic", prompt: DEFAULT_PROMPTS.skeptic, order: 2 },
+        { provider: "OpenAI GPT-5.6 Sol", role: "interpreter", prompt: DEFAULT_PROMPTS.interpreter, order: 0 },
       ],
     },
     {
       key: "goal",
       name: "2 · Goal analysis",
-      description: "Analyzes what the user wants to achieve and merges model outputs into a single result.",
+      description: "PRIMARY_REASONING (Sol): interprets what the person wants to achieve.",
       steps: [
-        { provider: "OpenAI GPT-5.6 Sol", role: "fact_extractor", prompt: DEFAULT_PROMPTS.fact_extractor, order: 0 },
-        { provider: "Anthropic Claude Sonnet 5", role: "interpreter", prompt: DEFAULT_PROMPTS.interpreter, order: 1 },
+        { provider: "OpenAI GPT-5.6 Sol", role: "interpreter", prompt: DEFAULT_PROMPTS.interpreter, order: 0 },
       ],
     },
     {
       key: "document",
       name: "3 · Document analysis",
-      description: "Two models independently extract each document into the standardized ImmigrationOnMe schema; disagreements are marked 'verification required' — never guessed.",
+      description: "DOCUMENT_INTELLIGENCE (Opus): structured findings + provenance + confidence into the evidence ledger. Does not decide case strategy.",
       steps: [
-        { provider: "Anthropic Claude Sonnet 5", role: "extractor_a", prompt: DEFAULT_PROMPTS.extractor_a, order: 0 },
-        { provider: "Google Gemini 3.1 Pro", role: "extractor_b", prompt: DEFAULT_PROMPTS.extractor_b, order: 1 },
+        { provider: "Anthropic Claude Opus 5", role: "document_intelligence", prompt: DEFAULT_PROMPTS.document_intelligence, order: 0 },
       ],
     },
     {
       key: "situation",
       name: "4 · Immigration situation analysis",
-      description: "Grounded in the USCIS knowledge base: each model answers the same structured questions (issue, evidence, USCIS basis, conditions, confidence, professional review).",
+      description: "PRIMARY_REASONING (Sol): case/options reasoning from user statements + ledger evidence + authorities.",
       steps: [
         { provider: "OpenAI GPT-5.6 Sol", role: "analyst", prompt: DEFAULT_PROMPTS.analyst, order: 0 },
-        { provider: "Anthropic Claude Opus 5", role: "reviewer", prompt: DEFAULT_PROMPTS.reviewer, order: 1 },
-        { provider: "Google Gemini 3.1 Pro", role: "reviewer", prompt: DEFAULT_PROMPTS.reviewer, order: 2 },
       ],
     },
     {
       key: "presenter",
       name: "5 · Results presentation",
-      description: "A single model converts internal analysis into structured JSON. The UI renders it deterministically — the AI never writes the customer's screen.",
+      description: "PRESENTATION (Sol): formats locked analysis for the UI — does not redo case reasoning.",
       steps: [
-        { provider: "OpenAI GPT-5.6 Terra", role: "presenter", prompt: DEFAULT_PROMPTS.presenter, order: 0 },
+        { provider: "OpenAI GPT-5.6 Sol", role: "presenter", prompt: DEFAULT_PROMPTS.presenter, order: 0 },
       ],
     },
     {
       key: "qa",
       name: "AI immigration Q&A",
-      description: "Conversational assistant grounded in the USCIS knowledge base. Configured providers run in order and later models refine earlier drafts.",
+      description: "PRIMARY_REASONING (Sol): conversational Q&A and clarifications. Single brain — no competing assistants.",
       steps: [
         { provider: "OpenAI GPT-5.6 Sol", role: "assistant", prompt: DEFAULT_PROMPTS.assistant, order: 0 },
-        { provider: "Anthropic Claude Sonnet 5", role: "assistant", prompt: DEFAULT_PROMPTS.assistant, order: 1 },
-        { provider: "Google Gemini 3.1 Pro", role: "assistant", prompt: DEFAULT_PROMPTS.assistant, order: 2 },
-        { provider: "OpenAI GPT-5.6 Terra", role: "assistant", prompt: DEFAULT_PROMPTS.assistant, order: 3 },
-        { provider: "Anthropic Claude Opus 5", role: "assistant", prompt: DEFAULT_PROMPTS.assistant, order: 4 },
       ],
     },
     {
       key: "notice",
       name: "USCIS notice explanation",
-      description: "Identifies notice type, form number, receipt number, important dates, and deadline; produces a plain-English explanation and next steps.",
+      description: "Opus extracts structured document findings; Sol writes the customer-facing explanation from those findings.",
       steps: [
-        { provider: "Anthropic Claude Sonnet 5", role: "analyst", prompt: DEFAULT_PROMPTS.notice_explainer, order: 0 },
+        { provider: "Anthropic Claude Opus 5", role: "document_intelligence", prompt: DEFAULT_PROMPTS.document_intelligence, order: 0 },
+        { provider: "OpenAI GPT-5.6 Sol", role: "presenter", prompt: DEFAULT_PROMPTS.notice_customer_explain, order: 1 },
       ],
     },
     {
       key: "letter",
       name: "Response letter drafting",
-      description: "Drafts a professional USCIS response letter the user reviews and edits.",
+      description: "PRIMARY_REASONING (Sol): drafts a professional USCIS response letter the user reviews and edits.",
       steps: [
         { provider: "OpenAI GPT-5.6 Sol", role: "assistant", prompt: DEFAULT_PROMPTS.letter_writer, order: 0 },
       ],
@@ -494,37 +485,31 @@ async function seedAiAndPipelines() {
     {
       key: "guide",
       name: "In-account immigration guide",
-      description: "The floating chatbot that coaches users through the next matching step — options, a letter, or a filed case. Models are tried in order until one answers — all five providers are chained by default.",
+      description: "PRIMARY_REASONING (Sol): coaches the next matching step. Single brain.",
       steps: [
         { provider: "OpenAI GPT-5.6 Sol", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 0 },
-        { provider: "Anthropic Claude Sonnet 5", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 1 },
-        { provider: "Google Gemini 3.1 Pro", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 2 },
-        { provider: "OpenAI GPT-5.6 Terra", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 3 },
-        { provider: "Anthropic Claude Opus 5", role: "assistant", prompt: DEFAULT_PROMPTS.guide, order: 4 },
       ],
     },
     {
       key: "match",
       name: "Consultant matching",
-      description: "Ranks candidate consultants for a case (specialty fit, experience, past cases, workload) on top of the deterministic score.",
+      description: "PRIMARY_REASONING (Sol): ranks candidate consultants for a case.",
       steps: [
         { provider: "OpenAI GPT-5.6 Sol", role: "analyst", prompt: DEFAULT_PROMPTS.match_rank, order: 0 },
-        { provider: "Anthropic Claude Sonnet 5", role: "reviewer", prompt: DEFAULT_PROMPTS.match_rank, order: 1 },
       ],
     },
     {
       key: "match_reason",
       name: "Assignment recommendation reason",
-      description: "Two models produce the recommendation shown to both parties: the first drafts a summary + detailed outline, the second reviews and refines it.",
+      description: "PRIMARY_REASONING (Sol): recommendation shown to both parties.",
       steps: [
         { provider: "OpenAI GPT-5.6 Sol", role: "analyst", prompt: DEFAULT_PROMPTS.match_reason, order: 0 },
-        { provider: "Anthropic Claude Sonnet 5", role: "reviewer", prompt: DEFAULT_PROMPTS.match_reason_review, order: 1 },
       ],
     },
     {
       key: "closing",
       name: "Closing remarks & final review",
-      description: "Writes the customer's closing summary when a case completes or is auto-closed: what was covered, what was resolved, and what to keep for their records.",
+      description: "PRESENTATION (Sol): customer closing summary when a case completes.",
       steps: [
         { provider: "OpenAI GPT-5.6 Sol", role: "presenter", prompt: DEFAULT_PROMPTS.closing, order: 0 },
       ],
@@ -534,25 +519,21 @@ async function seedAiAndPipelines() {
   for (const s of stages) {
     const stage = await db.pipelineStage.upsert({
       where: { key: s.key },
-      update: {},
+      update: { name: s.name, description: s.description },
       create: { key: s.key, name: s.name, description: s.description },
     });
-    const stepCount = await db.pipelineStep.count({ where: { stageKey: stage.key } });
-    if (stepCount === 0) {
-      for (const step of s.steps) {
-        await db.pipelineStep.create({
-          data: {
-            stageKey: stage.key,
-            providerId: providers[step.provider],
-            role: step.role,
-            promptTemplate: step.prompt,
-            sortOrder: step.order,
-          },
-        });
+    // Model Responsibility Contract: only the designated specialized steps stay enabled.
+    const allowedKeys = new Set(s.steps.map((step) => `${providers[step.provider]}::${step.role}`));
+    const existing = await db.pipelineStep.findMany({ where: { stageKey: stage.key } });
+    for (const row of existing) {
+      const key = `${row.providerId}::${row.role}`;
+      if (!allowedKeys.has(key)) {
+        await db.pipelineStep.update({ where: { id: row.id }, data: { isEnabled: false } });
       }
     }
     for (const step of s.steps) {
       const providerId = providers[step.provider];
+      if (!providerId) continue;
       const existingStep = await db.pipelineStep.findFirst({
         where: { stageKey: stage.key, providerId, role: step.role },
       });
@@ -564,32 +545,49 @@ async function seedAiAndPipelines() {
             role: step.role,
             promptTemplate: step.prompt,
             sortOrder: step.order,
+            isEnabled: true,
           },
         });
-      } else if (existingStep.sortOrder !== step.order) {
-        await db.pipelineStep.update({ where: { id: existingStep.id }, data: { sortOrder: step.order } });
+      } else {
+        await db.pipelineStep.update({
+          where: { id: existingStep.id },
+          data: {
+            promptTemplate: step.prompt,
+            sortOrder: step.order,
+            isEnabled: true,
+          },
+        });
       }
     }
   }
+
+  // Capability aliases — architecture stays fixed when provider versions change.
+  const capabilitySettings: Record<string, string> = {
+    "ai.capability.primary_reasoning": "OpenAI GPT-5.6 Sol",
+    "ai.capability.document_intelligence": "Anthropic Claude Opus 5",
+    "ai.capability.presentation": "OpenAI GPT-5.6 Sol",
+  };
+  for (const [key, value] of Object.entries(capabilitySettings)) {
+    await db.setting.upsert({
+      where: { key },
+      update: { value },
+      create: { key, value },
+    });
+  }
+
   const promptRepairs: { stageKey: string; role: string; promptKey: string; prompt: string }[] = [
-    { stageKey: "summary", role: "fact_extractor", promptKey: "fact_extractor", prompt: DEFAULT_PROMPTS.fact_extractor },
     { stageKey: "summary", role: "interpreter", promptKey: "interpreter", prompt: DEFAULT_PROMPTS.interpreter },
-    { stageKey: "summary", role: "skeptic", promptKey: "skeptic", prompt: DEFAULT_PROMPTS.skeptic },
-    { stageKey: "goal", role: "fact_extractor", promptKey: "fact_extractor", prompt: DEFAULT_PROMPTS.fact_extractor },
     { stageKey: "goal", role: "interpreter", promptKey: "interpreter", prompt: DEFAULT_PROMPTS.interpreter },
-    { stageKey: "document", role: "extractor_a", promptKey: "extractor_a", prompt: DEFAULT_PROMPTS.extractor_a },
-    { stageKey: "document", role: "extractor_b", promptKey: "extractor_b", prompt: DEFAULT_PROMPTS.extractor_b },
+    { stageKey: "document", role: "document_intelligence", promptKey: "document_intelligence", prompt: DEFAULT_PROMPTS.document_intelligence },
     { stageKey: "situation", role: "analyst", promptKey: "analyst", prompt: DEFAULT_PROMPTS.analyst },
-    { stageKey: "situation", role: "reviewer", promptKey: "reviewer", prompt: DEFAULT_PROMPTS.reviewer },
     { stageKey: "presenter", role: "presenter", promptKey: "presenter", prompt: DEFAULT_PROMPTS.presenter },
     { stageKey: "qa", role: "assistant", promptKey: "assistant", prompt: DEFAULT_PROMPTS.assistant },
-    { stageKey: "notice", role: "analyst", promptKey: "notice_explainer", prompt: DEFAULT_PROMPTS.notice_explainer },
+    { stageKey: "notice", role: "document_intelligence", promptKey: "document_intelligence", prompt: DEFAULT_PROMPTS.document_intelligence },
+    { stageKey: "notice", role: "presenter", promptKey: "notice_customer_explain", prompt: DEFAULT_PROMPTS.notice_customer_explain },
     { stageKey: "letter", role: "assistant", promptKey: "letter_writer", prompt: DEFAULT_PROMPTS.letter_writer },
     { stageKey: "guide", role: "assistant", promptKey: "guide", prompt: DEFAULT_PROMPTS.guide },
     { stageKey: "match", role: "analyst", promptKey: "match_rank", prompt: DEFAULT_PROMPTS.match_rank },
-    { stageKey: "match", role: "reviewer", promptKey: "match_rank", prompt: DEFAULT_PROMPTS.match_rank },
     { stageKey: "match_reason", role: "analyst", promptKey: "match_reason", prompt: DEFAULT_PROMPTS.match_reason },
-    { stageKey: "match_reason", role: "reviewer", promptKey: "match_reason_review", prompt: DEFAULT_PROMPTS.match_reason_review },
     { stageKey: "closing", role: "presenter", promptKey: "closing", prompt: DEFAULT_PROMPTS.closing },
   ];
   for (const repair of promptRepairs) {
@@ -599,7 +597,7 @@ async function seedAiAndPipelines() {
     });
     for (const step of stepsToCheck) {
       const superseded = (PROMPT_SUPERSEDES[repair.promptKey] ?? []).includes(promptHash(step.promptTemplate));
-      if (superseded || hasLegacyTaxonmePromptMarker(step.promptTemplate)) {
+      if (superseded || hasLegacyTaxonmePromptMarker(step.promptTemplate) || step.promptTemplate !== repair.prompt) {
         await db.pipelineStep.update({ where: { id: step.id }, data: { promptTemplate: repair.prompt } });
       }
     }

@@ -163,8 +163,54 @@ For question-shaped Case narratives (`requires_case_development` was false at in
 
 `−1.0 → −1.1 → −1.2 → −1.3 → −1.4 → −1.5 → −1.6` — each fully executed.
 
-## Out of scope
+## Model Responsibility Contract
 
-- TaxOnMe product UI (shared contract shape only)
-- Replacing V5.1 locks / fact ledger / approval gate
-- New immigration form workflows
+Architecture uses **specialization**, not multi-model competition on the same question.
+
+```
+USER
+  │
+  ▼
+OPENAI (PRIMARY_REASONING) — Conversation / Reasoning Brain
+  ├ Question/Intent Interpretation
+  ├ Q&A / Case Reasoning
+  └ Need-to-Know / Clarification
+  │
+  ▼
+DOCUMENT NEEDED?
+  ├ NO ────────────────────────────┐
+  └ YES → CLAUDE (DOCUMENT_INTELLIGENCE)
+            Document Evidence Engine
+            → Structured Findings + Provenance + Confidence
+            → Fact / Evidence Ledger
+                      │
+                      ▼
+            OPENAI (PRIMARY_REASONING) — Case Reasoning
+                      │
+                      ▼
+            OPENAI (PRESENTATION) — Presentation Engine
+                      │
+                      ▼
+                    USER
+```
+
+### Capability aliases (config, not hardcoded names)
+
+| Alias | Default binding | Owns |
+| --- | --- | --- |
+| `PRIMARY_REASONING_MODEL` | OpenAI GPT-5.6 Sol | Question contract, intent, answerability, need-to-know, Q&A, clarifications, case/legal reasoning, strategy, synthesis |
+| `DOCUMENT_INTELLIGENCE_MODEL` | Anthropic Claude Opus 5 | Classification, extraction, document interpretation, tables/notices/fields, document contradictions, provenance, confidence |
+| `PRESENTATION_MODEL` | OpenAI GPT-5.6 Sol | Customer-facing explanation, case summary, finding cards, final presentation JSON |
+
+Settings keys: `ai.capability.primary_reasoning`, `ai.capability.document_intelligence`, `ai.capability.presentation` (provider **name** values).
+
+### Must / must-not
+
+**PRIMARY_REASONING (Sol)** must not invent document facts or replace structured ledger evidence.  
+**DOCUMENT_INTELLIGENCE (Opus)** must not control conversation, choose A vs B, interrogate the customer, or produce final legal strategy / customer-facing conclusions.  
+**PRESENTATION** receives a **locked** analysis object and must only make it understandable — never redo case analysis.  
+**DETERMINISTIC SYSTEM** owns routing, schemas, fact ledger, locks, stale/invalidation, ceilings, promotion, audit.
+
+### Opus → ledger (required)
+
+Claude outputs structured JSON (facts + provenance + confidence), which enters the Fact/Evidence Ledger. Sol reasons from **user statements + verified document evidence + authorities** — not Claude prose.
