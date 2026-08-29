@@ -82,13 +82,23 @@ export async function askQuestionAction(_prev: ActionState, formData: FormData):
   }
   if (!linkedCase && access.usage.blocked) return { error: access.usage.blockReason };
 
-  const { runConversationIntelligence, composeAssistantReply } = await import("@/lib/conversation");
+  const {
+    runConversationIntelligence,
+    composeAssistantReply,
+    priorContractFromStored,
+    enrichIntelligenceWithReasoningModel,
+  } = await import("@/lib/conversation");
   const prior = thread?.messages.map((m) => ({ role: m.role, content: m.content })) ?? [];
-  const intel = runConversationIntelligence({
+  const priorContract = priorContractFromStored(thread?.intelligenceJson);
+  const intelInput = {
     message: question,
     history: prior,
     documentCount: 0,
-  });
+    priorContract,
+  };
+  let intel = runConversationIntelligence(intelInput);
+  // Phase −1.7: optional Sol enrichment when heuristic routing confidence is low.
+  intel = await enrichIntelligenceWithReasoningModel(intel, intelInput);
 
   // If the router selects case on an explicit comprehensive ask from Q&A, still answer in-thread
   // unless the user uses the promote CTA — keep A first-class.

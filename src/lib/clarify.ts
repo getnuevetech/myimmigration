@@ -45,6 +45,30 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
   if (!c || c.status === "closed") return null;
 
   const answered = c.clarifyMessages.map((m) => m.questionKey);
+  // Phase −1.7: prefer need-to-know critical asks aligned to Question Contract.
+  try {
+    const { intelligenceForCase, needToKnowClarifyQuestion } = await import("@/lib/conversation");
+    const row = await db.case.findUnique({ where: { id: caseId }, select: { intelligenceJson: true } });
+    const intel = intelligenceForCase({
+      situation: c.situation,
+      goal: c.goal,
+      intelligenceJson: row?.intelligenceJson,
+    });
+    if (!intel.answerability.clarify_first_required) {
+      const ntk = needToKnowClarifyQuestion(intel, answered);
+      if (ntk) {
+        return { key: ntk.key, text: ntk.text, reason: ntk.reason };
+      }
+      // Answer-first complete and no critical ask left — do not dump schema unknowns.
+      if (intel.strategy.mode === "answer" || intel.strategy.ask_now.length === 0) {
+        const openOptions = await caseUsesOpenOptionsInterview(caseId);
+        if (openOptions && intel.route.pipeline === "assistant") return null;
+      }
+    }
+  } catch {
+    /* fall through to legacy planner */
+  }
+
   const suppressedEvidenceKeys = new Set(c.suppressedQuestions.map((q) => q.evidenceFactId || q.questionKey));
   const hasCaseRecord =
     c.documents.some((d) => ["case_record", "case record", "receipt"].includes(d.docKind)) ||

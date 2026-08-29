@@ -70,6 +70,9 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
     gateResult = null;
   }
 
+  const { parseStoredIntelligence } = await import("@/lib/conversation");
+  const intelligence = parseStoredIntelligence(c.intelligenceJson);
+
   const versionMatch = matchInputFromCase(c);
   const reportChrome = resolveReportChrome(versionMatch);
   const versionChrome = resolveVersionChrome(versionMatch);
@@ -132,6 +135,47 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
                 ⚙ Technical diagnostics — analysis runs ({c.runs.length}), model calls, and consensus data (staff only)
               </summary>
               <div className="mt-4 space-y-3">
+                {intelligence && (
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
+                    <p className="font-semibold text-slate-800">Conversation intelligence (Phase −1)</p>
+                    <dl className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
+                      <div>
+                        <dt className="font-medium text-slate-500">Decision target</dt>
+                        <dd className="font-mono text-slate-800">{intelligence.question_contract.decision_target}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-slate-500">Pipeline / route</dt>
+                        <dd className="font-mono text-slate-800">
+                          {intelligence.route.pipeline} · conf {intelligence.route.confidence.toFixed(2)}
+                        </dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="font-medium text-slate-500">Interpreted question</dt>
+                        <dd>{intelligence.question_contract.interpreted_question || "—"}</dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="font-medium text-slate-500">Answerability</dt>
+                        <dd className="font-mono">
+                          fully={String(intelligence.answerability.fully_answerable)} · partial=
+                          {String(intelligence.answerability.partially_answerable)} · clarify_first=
+                          {String(intelligence.answerability.clarify_first_required)} · needs_doc=
+                          {String(intelligence.answerability.requires_document)}
+                        </dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="font-medium text-slate-500">Ask now (need-to-know)</dt>
+                        <dd>
+                          {intelligence.strategy.ask_now.length === 0
+                            ? "—"
+                            : intelligence.strategy.ask_now
+                                .map((q) => q.question)
+                                .slice(0, 3)
+                                .join(" · ")}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                )}
                 {(versions.length > 0 || approved) && (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                     <p className="font-semibold text-slate-800">{versionChrome.recordListHeading}</p>

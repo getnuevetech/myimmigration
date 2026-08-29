@@ -56,7 +56,7 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
     goal,
     documentCount: files.length,
     documentHints: files.map((f) => f.name),
-    forceCase: formData.get("forceCase") === "on",
+    forceCase: formData.get("forceCase") === "on" || formData.get("forceCase") === "1",
   });
 
   // Pipeline A — Assistant (default for questions). Upload alone never forces Case.
@@ -172,7 +172,7 @@ export async function createCaseAction(_prev: ActionState, formData: FormData): 
   const intel = runConversationIntelligence({
     message: situation,
     goal,
-    forceCase: formData.get("forceCase") === "on",
+    forceCase: formData.get("forceCase") === "on" || formData.get("forceCase") === "1",
   });
 
   if (intel.route.pipeline === "assistant") {
