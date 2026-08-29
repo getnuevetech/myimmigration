@@ -24,12 +24,14 @@ export async function buildCaseActionGraph(caseId: string) {
   const [steps, issues, reconstruction] = await Promise.all([
     db.pathStep.findMany({ where: { caseId }, orderBy: { sortOrder: "asc" } }),
     db.issue.findMany({ where: { caseId }, select: { id: true, nextAction: true, issueType: true } }),
-    db.caseReconstruction.findUnique({ where: { caseId }, select: { factLedgerJson: true } }),
+    db.caseReconstruction.findUnique({ where: { caseId }, select: { factLedgerJson: true, briefJson: true } }),
   ]);
   await db.caseActionNode.deleteMany({ where: { caseId } });
 
   const ledger = parseLedger(reconstruction?.factLedgerJson);
-  const ranked = buildLedgerDrivenActions({ ledger });
+  const { parseSituationBrief } = await import("./situation-brief");
+  const brief = parseSituationBrief(reconstruction?.briefJson);
+  const ranked = buildLedgerDrivenActions({ ledger, brief });
   const priorityByKey = new Map(ranked.map((a, index) => [a.action_id.toUpperCase(), index + 1]));
 
   const completedActionKeys = new Set<string>();
