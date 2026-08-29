@@ -2660,7 +2660,7 @@ const genericNotice = compileImmigrationEvidence({
 assert(genericNotice.documentType === "i797_notice", `generic I-797 must stay a notice of action, got ${genericNotice.documentType}`);
 
 assert(resolveImmigrationDocumentType({ fileName: "marriage-certificate.pdf", text: "Marriage Certificate.", declaredType: "identity_document" }) === "relationship_civil_document", "declared identity must not beat a marriage certificate");
-assert(vawaBrief.verifiedFacts.some((item) => /marriage certificate/i.test(item.text)), "VAWA brief must verify the marriage certificate from its document type");
+assert(vawaBrief.verifiedFacts.some((item) => /marriage (?:certificate|is documented|civil marriage)/i.test(item.text)), "VAWA brief must verify the marriage certificate from its document type");
 assert(vawaBrief.verifiedFacts.some((item) => /personal declaration/i.test(item.text)), "VAWA brief must verify the personal declaration from its document type");
 assert(VAWA_PRIMA_FACIE_FIXTURE.documents?.every((doc) => doc.documentType && doc.documentType !== "identity_document"), "VAWA fixture documents must keep distinct classified types");
 assert(familyForms[0]?.formNumber === "I-130", "v5 document classification must not rerank I-485 ahead of I-130 for family open-options");

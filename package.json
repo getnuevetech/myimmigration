@@ -11,6 +11,7 @@
     "test:evidence": "tsx scripts/v32-evidence-check.ts",
     "test:phase-f": "tsx scripts/phase-f-reliability-check.ts",
     "test:phase-a": "tsx scripts/phase-a-classification-check.ts",
+    "test:phase-b": "tsx scripts/phase-b-fact-ledger-check.ts",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate deploy"

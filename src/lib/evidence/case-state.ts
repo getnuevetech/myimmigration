@@ -34,11 +34,14 @@ function parseJson(value: string): unknown {
   }
 }
 
-export async function rebuildCaseEvidenceState(caseId: string) {
+export async function rebuildCaseEvidenceState(
+  caseId: string,
+  opts?: { skipInvalidationSchedule?: boolean },
+) {
   const [facts, events, documents, documentsExpected, caseRow, clarifyMessages] = await Promise.all([
     db.evidenceFact.findMany({
       where: { caseId },
-      include: { document: { select: { id: true, fileName: true, documentType: true } } },
+      include: { document: { select: { id: true, fileName: true, documentType: true, contentHash: true } } },
       orderBy: { createdAt: "asc" },
     }),
     db.caseEvent.findMany({
@@ -47,7 +50,15 @@ export async function rebuildCaseEvidenceState(caseId: string) {
     }),
     db.document.findMany({
       where: { caseId, deletedAt: null, docKind: { not: "avatar" } },
-      select: { id: true, processingStatus: true, docKind: true, fileName: true, documentType: true, extractedJson: true },
+      select: {
+        id: true,
+        processingStatus: true,
+        docKind: true,
+        fileName: true,
+        documentType: true,
+        extractedJson: true,
+        contentHash: true,
+      },
     }),
     getNumberSetting("analysis.expected_documents", 3),
     db.case.findUnique({ where: { id: caseId }, select: { situation: true, goal: true } }),
@@ -126,6 +137,7 @@ export async function rebuildCaseEvidenceState(caseId: string) {
       processingStatus: doc.processingStatus,
       documentType: classified.documentType,
       docKind: classified.docKind,
+      contentHash: doc.contentHash,
       text,
       typeChanged: classified.documentType !== (doc.documentType || "") || classified.docKind !== doc.docKind,
     };
@@ -155,6 +167,25 @@ export async function rebuildCaseEvidenceState(caseId: string) {
     })),
     clarifyAnswers,
   });
+  const { buildFactLedger } = await import("./fact-ledger");
+  const factLedger = buildFactLedger({
+    situation: caseRow?.situation,
+    goal: caseRow?.goal,
+    clarifyText: clarifyTexts.join("\n"),
+    documents: classifiedDocuments.map((doc) => ({
+      id: doc.id,
+      fileName: doc.fileName,
+      documentType: doc.documentType,
+      contentHash: doc.contentHash,
+      text: doc.text,
+    })),
+  });
+  // Prefer ledger posture for VAWA current-position when present.
+  if (factLedger.current_posture?.value === "PRIMA_FACIE_PENDING") {
+    if (!situationBrief.currentPosition.includes("Prima Facie Determination issued")) {
+      situationBrief.currentPosition = ["Prima Facie Determination issued", ...situationBrief.currentPosition].slice(0, 8);
+    }
+  }
   const caseLock = caseTypeLockFromBrief(situationBrief);
   let knowledgeSources: KnowledgeRecord[] = [];
   if (inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS) {
@@ -263,20 +294,26 @@ export async function rebuildCaseEvidenceState(caseId: string) {
       where: { caseId },
       update: {
         summary: reconciled.reconstruction.summary,
-        currentPosition: reconciled.reconstruction.currentPosition,
+        currentPosition: factLedger.current_posture?.value
+          ? `${reconciled.reconstruction.currentPosition} · posture ${factLedger.current_posture.value}`.trim()
+          : reconciled.reconstruction.currentPosition,
         timelineJson: JSON.stringify(reconciled.reconstruction.timeline),
         pendingActionsJson: JSON.stringify(reconciled.reconstruction.pendingActions),
         confidence: reconciled.reconstruction.confidence,
         briefJson: JSON.stringify(situationBrief),
+        factLedgerJson: JSON.stringify(factLedger),
       },
       create: {
         caseId,
         summary: reconciled.reconstruction.summary,
-        currentPosition: reconciled.reconstruction.currentPosition,
+        currentPosition: factLedger.current_posture?.value
+          ? `${reconciled.reconstruction.currentPosition} · posture ${factLedger.current_posture.value}`.trim()
+          : reconciled.reconstruction.currentPosition,
         timelineJson: JSON.stringify(reconciled.reconstruction.timeline),
         pendingActionsJson: JSON.stringify(reconciled.reconstruction.pendingActions),
         confidence: reconciled.reconstruction.confidence,
         briefJson: JSON.stringify(situationBrief),
+        factLedgerJson: JSON.stringify(factLedger),
       },
     });
 
@@ -290,5 +327,11 @@ export async function rebuildCaseEvidenceState(caseId: string) {
     });
   });
 
-  return reconciled;
+  const typeChanged = classifiedDocuments.some((doc) => doc.typeChanged);
+  if (typeChanged && !opts?.skipInvalidationSchedule) {
+    const { scheduleClassificationInvalidation } = await import("./invalidation");
+    scheduleClassificationInvalidation(caseId);
+  }
+
+  return { readiness, inquiry, situationBrief, factLedger };
 }
