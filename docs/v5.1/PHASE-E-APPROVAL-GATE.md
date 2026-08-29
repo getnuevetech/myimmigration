@@ -24,4 +24,5 @@
 
 ## Next
 
-Phase D — deterministic action ranking formula.
+Phase D — action ranking — done (`docs/v5.1/PHASE-D-ACTION-RANKING.md`).  
+Phase G — multi-fixture pack.

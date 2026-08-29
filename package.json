@@ -14,6 +14,7 @@
     "test:phase-b": "tsx scripts/phase-b-fact-ledger-check.ts",
     "test:phase-c": "tsx scripts/phase-c-locks-check.ts",
     "test:phase-e": "tsx scripts/phase-e-approval-gate-check.ts",
+    "test:phase-d": "tsx scripts/phase-d-action-ranking-check.ts",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate deploy"
