@@ -100,7 +100,10 @@ export default async function AdminOverviewPage() {
           <h3 className="mb-3 text-sm font-semibold text-slate-900">AI engine</h3>
           <dl className="space-y-2.5 text-sm">
             <div className="flex justify-between"><dt className="text-slate-600">Connected providers</dt><dd className="font-semibold text-slate-900">{a.engine.providers}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-600">Analysis runs (AI / total)</dt><dd className="font-semibold text-slate-900">{a.engine.runsWithAi} / {a.engine.runsTotal}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-600">Logical analyses (complete / total)</dt><dd className="font-semibold text-slate-900">{a.engine.logicalComplete} / {a.engine.logicalTotal}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-600">Logical skipped (concurrent)</dt><dd className={`font-semibold ${a.engine.logicalSkipped > 0 ? "text-lime-700" : "text-slate-900"}`}>{a.engine.logicalSkipped}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-600">Logical running / failed</dt><dd className="font-semibold text-slate-900">{a.engine.logicalRunning} / {a.engine.logicalFailed}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-600">Stage runs (AI / total)</dt><dd className="font-semibold text-slate-900">{a.engine.runsWithAi} / {a.engine.runsTotal}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-600">Model calls succeeded</dt><dd className="font-semibold text-emerald-600">{a.engine.aiCallsOk}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-600">Model calls failed</dt><dd className={`font-semibold ${a.engine.aiCallsFailed > 0 ? "text-red-600" : "text-slate-900"}`}>{a.engine.aiCallsFailed}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-600">Call success rate</dt><dd className="font-semibold text-slate-900">{a.engine.callSuccessRate !== null ? `${a.engine.callSuccessRate}%` : "—"}</dd></div>

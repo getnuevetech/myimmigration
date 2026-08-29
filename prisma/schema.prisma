@@ -412,6 +412,7 @@ model Case {
   guestSession   GuestSession? @relation(fields: [guestSessionId], references: [id])
   documents      Document[]
   runs           AnalysisRun[]
+  logicalAnalyses LogicalAnalysis[]
   issues         Issue[]
   pathSteps      PathStep[]
   actionNodes    CaseActionNode[]
@@ -688,17 +689,47 @@ model SuppressedQuestion {
   @@index([caseId, questionKey])
 }
 
+model LogicalAnalysis {
+  id               String    @id @default(cuid())
+  caseId           String
+  caseVersionId    String?
+  parentId         String?
+  trigger          String    @default("user_request") // user_request | evidence_coalesce | admin_draft
+  status           String    @default("running") // running | complete | failed | skipped_concurrent
+  skipReason       String    @default("")
+  modelCallCount   Int       @default(0)
+  failedCallCount  Int       @default(0)
+  stageBudgetJson  String    @default("{}") // { stageKey: { attempts, fallbacksUsed } }
+  coalescePending  Boolean   @default(false)
+  startedAt        DateTime  @default(now())
+  finishedAt       DateTime?
+  wallClockMs      Int       @default(0)
+  case             Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  parent           LogicalAnalysis?  @relation("LogicalAnalysisChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children         LogicalAnalysis[] @relation("LogicalAnalysisChildren")
+  runs             AnalysisRun[]
+
+  @@index([caseId, status])
+  @@index([caseId, startedAt])
+  @@index([parentId])
+}
+
 model AnalysisRun {
-  id         String    @id @default(cuid())
-  caseId     String
-  stageKey   String
-  status     String    @default("pending") // pending | running | complete | failed
-  error      String    @default("")
-  startedAt  DateTime  @default(now())
-  finishedAt DateTime?
-  case       Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  stepResults AnalysisStepResult[]
-  consensus  ConsensusResult?
+  id                 String    @id @default(cuid())
+  caseId             String
+  logicalAnalysisId  String?
+  stageKey           String
+  status             String    @default("pending") // pending | running | complete | failed
+  error              String    @default("")
+  startedAt          DateTime  @default(now())
+  finishedAt         DateTime?
+  case               Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  logicalAnalysis    LogicalAnalysis? @relation(fields: [logicalAnalysisId], references: [id], onDelete: SetNull)
+  stepResults        AnalysisStepResult[]
+  consensus          ConsensusResult?
+
+  @@index([logicalAnalysisId])
+  @@index([caseId, startedAt])
 }
 
 model AnalysisStepResult {

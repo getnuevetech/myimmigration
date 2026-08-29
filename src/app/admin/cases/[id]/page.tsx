@@ -21,6 +21,24 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
     include: {
       user: { select: { email: true, firstName: true, lastName: true } },
       notices: { select: { noticeType: true } },
+      logicalAnalyses: {
+        orderBy: { startedAt: "desc" },
+        take: 12,
+        select: {
+          id: true,
+          status: true,
+          trigger: true,
+          modelCallCount: true,
+          failedCallCount: true,
+          wallClockMs: true,
+          skipReason: true,
+          coalescePending: true,
+          startedAt: true,
+          finishedAt: true,
+          caseVersionId: true,
+          parentId: true,
+        },
+      },
       runs: {
         orderBy: { startedAt: "desc" },
         include: {
@@ -114,6 +132,28 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
                         ))}
                       </ol>
                     )}
+                  </div>
+                )}
+                {c.logicalAnalyses.length > 0 && (
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <p className="font-semibold text-slate-800">Logical analyses (Phase F)</p>
+                    <ol className="mt-2 space-y-1 text-xs text-slate-600">
+                      {c.logicalAnalyses.map((la) => (
+                        <li key={la.id}>
+                          <span className="font-medium text-slate-800">{la.status}</span>
+                          {" · "}
+                          {la.trigger}
+                          {" · "}
+                          {la.modelCallCount} calls
+                          {la.failedCallCount > 0 ? ` (${la.failedCallCount} failed)` : ""}
+                          {la.wallClockMs ? ` · ${Math.round(la.wallClockMs / 1000)}s` : ""}
+                          {la.skipReason ? ` · ${la.skipReason}` : ""}
+                          {la.parentId ? " · child" : ""}
+                          {" · "}
+                          {la.startedAt.toLocaleString("en-US")}
+                        </li>
+                      ))}
+                    </ol>
                   </div>
                 )}
                 {c.runs.map((r) => (
