@@ -1,4 +1,5 @@
 import { buildDocumentFactSource, formatContentHash } from "./authority";
+import { POSTURE_FILED_PENDING, POSTURE_PENDING_PRIMA_FACIE_ISSUED } from "./case-posture";
 
 export type LedgerFactStatus = "VERIFIED" | "REPORTED" | "UNKNOWN";
 
@@ -312,14 +313,14 @@ export function buildFactLedger(input: FactLedgerInput = {}): FactLedger {
   if (primaFacie) {
     current_posture = {
       posture_id: "I360_CURRENT_POSTURE",
-      value: "PRIMA_FACIE_PENDING",
-      supersedes: "FILED_PENDING",
+      value: POSTURE_PENDING_PRIMA_FACIE_ISSUED,
+      supersedes: POSTURE_FILED_PENDING,
       superseded_by: null,
     };
   } else if (i360Receipt) {
     current_posture = {
       posture_id: "I360_CURRENT_POSTURE",
-      value: "FILED_PENDING",
+      value: POSTURE_FILED_PENDING,
       supersedes: null,
       superseded_by: null,
     };

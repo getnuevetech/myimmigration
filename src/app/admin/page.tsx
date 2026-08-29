@@ -23,7 +23,7 @@ export default async function AdminOverviewPage() {
       <PageHeader title="Analytics dashboard" subtitle="The entire platform at a glance — people, money, cases, support, and the AI engine." />
 
       {/* Operational alerts */}
-      {(a.engine.providers === 0 || !liveGateway || a.engine.aiCallsFailed > 0) && (
+      {(a.engine.providers === 0 || !liveGateway || a.engine.aiCallsFailed > 0 || a.engine.ceilingBreaches30 > 0 || (a.engine.logicalSuccessRate !== null && a.engine.logicalSuccessRate < a.engine.logicalSuccessTarget)) && (
         <div className="mb-6 space-y-2">
           {a.engine.providers === 0 && (
             <div className="rounded-xl border border-lime-300 bg-lime-50 px-4 py-2.5 text-sm text-lime-900">
@@ -34,6 +34,16 @@ export default async function AdminOverviewPage() {
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-800">
               {a.engine.aiCallsFailed} failed AI model call{a.engine.aiCallsFailed === 1 ? "" : "s"} recorded — check provider keys/models in{" "}
               <Link href="/admin/ai-providers" className="font-semibold underline">AI providers</Link> and per-case diagnostics.
+            </div>
+          )}
+          {a.engine.ceilingBreaches30 > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+              {a.engine.ceilingBreaches30} aggregate ceiling breach{a.engine.ceilingBreaches30 === 1 ? "" : "es"} in the last 30 days — see System logs (source logical_analysis).
+            </div>
+          )}
+          {a.engine.logicalSuccessRate !== null && a.engine.logicalSuccessRate < a.engine.logicalSuccessTarget && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+              Logical analysis success rate {a.engine.logicalSuccessRate}% is below the 95% Phase F target.
             </div>
           )}
           {!liveGateway && (
@@ -103,6 +113,11 @@ export default async function AdminOverviewPage() {
             <div className="flex justify-between"><dt className="text-slate-600">Logical analyses (complete / total)</dt><dd className="font-semibold text-slate-900">{a.engine.logicalComplete} / {a.engine.logicalTotal}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-600">Logical skipped (concurrent)</dt><dd className={`font-semibold ${a.engine.logicalSkipped > 0 ? "text-lime-700" : "text-slate-900"}`}>{a.engine.logicalSkipped}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-600">Logical running / failed</dt><dd className="font-semibold text-slate-900">{a.engine.logicalRunning} / {a.engine.logicalFailed}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-600">Logical success rate (target 95%)</dt><dd className={`font-semibold ${(a.engine.logicalSuccessRate ?? 100) < a.engine.logicalSuccessTarget ? "text-amber-700" : "text-slate-900"}`}>{a.engine.logicalSuccessRate !== null ? `${a.engine.logicalSuccessRate}%` : "—"}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-600">Model calls (sum / failed sum)</dt><dd className="font-semibold text-slate-900">{a.engine.totalModelCalls} / {a.engine.totalFailedModelCalls}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-600">Wall-clock avg / max</dt><dd className="font-semibold text-slate-900">{a.engine.avgWallClockSec !== null ? `${a.engine.avgWallClockSec}s` : "—"} / {a.engine.maxWallClockSec !== null ? `${a.engine.maxWallClockSec}s` : "—"}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-600">Ceiling breaches (30d)</dt><dd className={`font-semibold ${a.engine.ceilingBreaches30 > 0 ? "text-red-600" : "text-slate-900"}`}>{a.engine.ceilingBreaches30}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-600">Token budget hint</dt><dd className="font-semibold text-slate-500">{a.engine.tokenBudgetHint.toLocaleString("en-US")} (not metered)</dd></div>
             <div className="flex justify-between"><dt className="text-slate-600">Stage runs (AI / total)</dt><dd className="font-semibold text-slate-900">{a.engine.runsWithAi} / {a.engine.runsTotal}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-600">Model calls succeeded</dt><dd className="font-semibold text-emerald-600">{a.engine.aiCallsOk}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-600">Model calls failed</dt><dd className={`font-semibold ${a.engine.aiCallsFailed > 0 ? "text-red-600" : "text-slate-900"}`}>{a.engine.aiCallsFailed}</dd></div>

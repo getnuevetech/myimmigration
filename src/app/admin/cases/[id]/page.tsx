@@ -6,6 +6,7 @@ import { guardAdminPage } from "@/lib/admin-guard";
 import { PageHeader, Card, CardBody, Badge } from "@/components/ui";
 import { CaseAnalysisView } from "@/components/case-analysis-view";
 import { CaseComments } from "@/components/case-comments";
+import { ApprovalGateOverridePanel } from "@/components/admin/approval-gate-override";
 import { recordRefLabel, resolveReportChrome } from "@/lib/goal-chrome";
 import { listCaseVersions } from "@/lib/case-versioning";
 import { parseCanonicalApprovedState, versionReasonLabel } from "@/lib/canonical-case-state";
@@ -59,12 +60,16 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
   const approved = parseCanonicalApprovedState(canonical?.approvedStateJson);
   let gateResult: string | null = null;
   let gateRules: string[] = [];
+  let gateReasons: string[] = [];
+  let gateOverrideBy: string | null = null;
   try {
     const gate = approved?.approval_gate
       ?? (canonical?.gateResultJson ? JSON.parse(canonical.gateResultJson) : null);
     if (gate?.gate_result) {
       gateResult = String(gate.gate_result);
       gateRules = Array.isArray(gate.rule_ids) ? gate.rule_ids.map(String) : [];
+      gateReasons = Array.isArray(gate.reasons) ? gate.reasons.map(String) : [];
+      gateOverrideBy = gate.override_by ? String(gate.override_by) : null;
     }
   } catch {
     gateResult = null;
@@ -115,13 +120,20 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
           <Badge color="red">Approval gate BLOCK{gateRules.length ? `: ${gateRules.slice(0, 3).join(", ")}` : ""}</Badge>
         )}
         {gateResult === "WARN" && (
-          <Badge color="amber">Approval gate WARN{gateRules.length ? `: ${gateRules.slice(0, 3).join(", ")}` : ""}</Badge>
+          <Badge color="amber">
+            Approval gate WARN{gateRules.length ? `: ${gateRules.slice(0, 3).join(", ")}` : ""}
+            {gateOverrideBy ? ` · overridden by ${gateOverrideBy}` : ""}
+          </Badge>
         )}
         {gateResult === "PASS" && <Badge color="green">Approval gate PASS</Badge>}
         {failedCalls.length > 0 && (
           <Badge color="red">{failedCalls.length} failed model call{failedCalls.length === 1 ? "" : "s"} — see diagnostics below</Badge>
         )}
       </div>
+
+      {gateResult === "BLOCK" && (
+        <ApprovalGateOverridePanel caseId={c.id} ruleIds={gateRules} reasons={gateReasons} />
+      )}
 
       <CaseAnalysisView caseId={c.id} viewer={{ role: "admin", userId: admin.id }} />
       <CaseComments caseId={c.id} viewer={{ role: "admin", userId: admin.id }} />

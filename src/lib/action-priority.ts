@@ -15,6 +15,7 @@
 
 import type { FactLedger } from "@/lib/evidence/fact-ledger";
 import { ledgerFact } from "@/lib/evidence/fact-ledger";
+import { isPrimaFacieIssuedPosture } from "@/lib/evidence/case-posture";
 import type { SituationBrief } from "@/lib/situation-brief";
 import { caseTypeLockFromBrief, isVawaI360Lock } from "@/lib/case-type-lock";
 
@@ -129,7 +130,7 @@ export function buildLedgerDrivenActions(input: {
     input.brief?.primaryForm === "I-360" ||
     /\bvawa\b/i.test(input.brief?.caseType ?? "") ||
     // Ledger-only callers (tests / graph without brief): prima facie posture implies VAWA.
-    ledger?.current_posture?.value === "PRIMA_FACIE_PENDING" ||
+    isPrimaFacieIssuedPosture(ledger?.current_posture?.value) ||
     (ledger?.facts ?? []).some((f) => f.fact_id === "FORM_I360_FILED");
   if (!vawaLocked) return [];
 
@@ -225,7 +226,7 @@ export function buildLedgerDrivenActions(input: {
   }
 
   // System consequence — scored for ordering, not shown as a customer CTA by default.
-  if (actions.some((a) => a.actor === "customer") || ledger?.current_posture?.value === "PRIMA_FACIE_PENDING") {
+  if (actions.some((a) => a.actor === "customer") || isPrimaFacieIssuedPosture(ledger?.current_posture?.value)) {
     actions.push(
       scored({
         action_id: "UPDATE_GREEN_CARD_PATH_EXPLANATION",

@@ -40,6 +40,7 @@ export async function getAdminAnalytics() {
     qaMessages, guideThreads, messagesSent, messagesEmailed,
     providers, aiCallsOk, aiCallsFailed, runsTotal, runsWithAi,
     logicalTotal, logicalComplete, logicalFailed, logicalSkipped, logicalRunning,
+    logicalCallAgg, ceilingBreaches30,
   ] = await Promise.all([
     db.user.count({ where: { role: "user", status: { not: "deleted" } } }),
     db.user.count({ where: { role: "user", createdAt: { gte: since30 } } }),
@@ -90,6 +91,24 @@ export async function getAdminAnalytics() {
     db.logicalAnalysis.count({ where: { status: "failed" } }),
     db.logicalAnalysis.count({ where: { status: "skipped_concurrent" } }),
     db.logicalAnalysis.count({ where: { status: "running" } }),
+    db.logicalAnalysis.aggregate({
+      where: { status: { in: ["complete", "failed"] } },
+      _sum: { modelCallCount: true, failedCallCount: true },
+      _avg: { wallClockMs: true },
+      _max: { wallClockMs: true },
+    }),
+    db.systemLog.count({
+      where: {
+        source: "logical_analysis",
+        createdAt: { gte: since30 },
+        OR: [
+          { message: { contains: "Aggregate ceiling blocked" } },
+          { detail: { contains: "max_total_model_calls" } },
+          { detail: { contains: "max_total_failed_model_calls" } },
+          { detail: { contains: "max_wall_clock_seconds" } },
+        ],
+      },
+    }).catch(() => 0),
   ]);
 
   // MRR: monthly-equivalent value of every active subscription.
@@ -165,6 +184,24 @@ export async function getAdminAnalytics() {
       logicalFailed,
       logicalSkipped,
       logicalRunning,
+      /** Analysis-level success among complete+failed (skips excluded). Target: 0.95. */
+      logicalSuccessRate:
+        logicalComplete + logicalFailed > 0
+          ? Math.round((logicalComplete / (logicalComplete + logicalFailed)) * 1000) / 10
+          : null,
+      logicalSuccessTarget: 95,
+      totalModelCalls: logicalCallAgg._sum.modelCallCount ?? 0,
+      totalFailedModelCalls: logicalCallAgg._sum.failedCallCount ?? 0,
+      avgWallClockSec:
+        logicalCallAgg._avg.wallClockMs != null
+          ? Math.round((logicalCallAgg._avg.wallClockMs / 1000) * 10) / 10
+          : null,
+      maxWallClockSec:
+        logicalCallAgg._max.wallClockMs != null
+          ? Math.round(logicalCallAgg._max.wallClockMs / 1000)
+          : null,
+      ceilingBreaches30,
+      tokenBudgetHint: 250_000,
     },
   };
 }

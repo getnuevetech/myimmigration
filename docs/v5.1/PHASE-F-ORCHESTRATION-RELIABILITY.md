@@ -14,7 +14,7 @@ Delivery sequence remains locked: `0 → F → A → B → C → E → D → G` 
 
 ### Carry-forward notes (not Phase 0 blockers)
 
-1. **Posture naming:** Prefer renaming internal current posture `PRIMA_FACIE_PENDING` → something like `PENDING_PRIMA_FACIE_ISSUED` later so it is not misread as “prima facie not yet issued.” Event/posture separation itself is correct.
+1. ~~**Posture naming:** Prefer renaming internal current posture `PRIMA_FACIE_PENDING` → `PENDING_PRIMA_FACIE_ISSUED`~~ **Done** (see `case-posture.ts`).
 2. **Customer vs system actions (Phase D):** `UPDATE_GREEN_CARD_PATH_EXPLANATION` is a **system consequence** (implemented in Phase D).
 
 ---

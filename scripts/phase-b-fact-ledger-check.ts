@@ -67,7 +67,7 @@ function main() {
   assert.ok(ledger.unverified_claims.some((c) => c.subject === "FORM_I485_FILED"));
   assert.ok(ledger.evidence_gaps.some((g) => g.subject === "I485_RECEIPT"));
   assert.ok(ledger.event_timeline.every((e) => e.superseded_by === null));
-  assert.equal(ledger.current_posture?.value, "PRIMA_FACIE_PENDING");
+  assert.equal(ledger.current_posture?.value, "PENDING_PRIMA_FACIE_ISSUED");
   assert.equal(ledger.current_posture?.supersedes, "FILED_PENDING");
 
   const i485 = ledgerFact(ledger, "FORM_I485_FILED");
