@@ -57,7 +57,7 @@ export async function nextClarifyQuestion(caseId: string): Promise<ClarifyQuesti
     if (!intel.answerability.clarify_first_required) {
       const ntk = needToKnowClarifyQuestion(intel, answered);
       if (ntk) {
-        return { key: ntk.key, text: ntk.text, reason: ntk.reason };
+        return { key: ntk.key, text: ntk.text };
       }
       // Answer-first complete and no critical ask left — do not dump schema unknowns.
       if (intel.strategy.mode === "answer" || intel.strategy.ask_now.length === 0) {
