@@ -3,6 +3,23 @@ import { db } from "../db";
 import { callProvider, extractJson, type ChatMessage, type MediaAttachment } from "./adapters";
 import { mergeStructured, computeReadiness, type Conflict } from "./consensus";
 import { fallbackAnalyze } from "./fallback";
+import {
+  attachCaseVersionToLogicalAnalysis,
+  beginLogicalAnalysis,
+  finishLogicalAnalysis,
+  getStageBudget,
+  maybeSpawnCoalesceChild,
+  recordLogicalModelCall,
+  setStageBudget,
+} from "./logical-analysis";
+import {
+  canRetryStructuredOutput,
+  canUseFallback,
+  emptyStageBudget,
+  maxStepsForStageInvocation,
+  recordAttempt,
+  recordFallback,
+} from "./reliability-ceilings";
 import { STAGE_KEYS } from "../constants";
 import { getNumberSetting } from "../settings";
 import { readUpload } from "../uploads";
@@ -96,6 +113,9 @@ function fill(template: string, vars: Record<string, string>): string {
 export type RunCaseAnalysisOptions = {
   persistMode?: "live" | "draft";
   providerIds?: string[];
+  /** Logical-analysis trigger (Phase F). Defaults to user_request / admin_draft. */
+  trigger?: "user_request" | "evidence_coalesce" | "admin_draft";
+  parentLogicalAnalysisId?: string | null;
 };
 
 async function getRunnableSteps(stageKey: string, providerIds?: string[]) {
@@ -181,61 +201,111 @@ const EMPTY_STAGE: StageOutcome = { stepOutputs: [], merged: {}, conflicts: [], 
  * Run one pipeline stage: every enabled step (each an admin-selected provider
  * with an admin-editable prompt and responsibility) runs on the same input,
  * then the consensus engine merges results and flags disagreements.
+ *
+ * Phase F ceilings:
+ * - each step: ≤ maxModelAttemptsPerStage attempts (call + structured-output retry)
+ * - stage: ≤ maxFallbackModelsPerStage extra provider if all steps fail
+ * - stage: step fan-out capped (blocks unbounded admin provider cloning)
+ * - all calls attributed to logicalAnalysisId when provided
  */
 export async function runStage(
   stageKey: string,
   vars: Record<string, string>,
-  opts?: { runId?: string; sequentialContext?: boolean; media?: MediaAttachment[]; roles?: string[]; providerIds?: string[] },
+  opts?: {
+    runId?: string;
+    sequentialContext?: boolean;
+    media?: MediaAttachment[];
+    roles?: string[];
+    providerIds?: string[];
+    logicalAnalysisId?: string;
+    budgetStageKey?: string;
+  },
 ): Promise<StageOutcome> {
   const allowedRoles = opts?.roles ? new Set(opts.roles) : null;
-  const steps = (await getRunnableSteps(stageKey, opts?.providerIds)).filter((step) => !allowedRoles || allowedRoles.has(step.role));
+  const allSteps = (await getRunnableSteps(stageKey, opts?.providerIds)).filter(
+    (step) => !allowedRoles || allowedRoles.has(step.role),
+  );
+  const steps = allSteps.slice(0, maxStepsForStageInvocation(allSteps.length));
   const stepOutputs: StageOutcome["stepOutputs"] = [];
   let prior = "";
+  const budgetKey = opts?.budgetStageKey ?? stageKey;
+  let stageBudget = opts?.logicalAnalysisId
+    ? await getStageBudget(opts.logicalAnalysisId, budgetKey)
+    : emptyStageBudget();
+
+  async function persistStepResult(data: {
+    providerId: string;
+    role: string;
+    status: "complete" | "failed";
+    rawText: string;
+    parsedJson: string;
+    latencyMs: number;
+  }) {
+    if (!opts?.runId) return;
+    await db.analysisStepResult.create({
+      data: {
+        runId: opts.runId,
+        providerId: data.providerId,
+        roleKey: data.role,
+        status: data.status,
+        rawText: data.rawText,
+        parsedJson: data.parsedJson,
+        latencyMs: data.latencyMs,
+      },
+    });
+  }
 
   async function runOneStep(step: (typeof steps)[number], stepPrior: string): Promise<StageOutcome["stepOutputs"][number] | null> {
-    const prompt = fill(step.promptTemplate, { ...vars, prior: stepPrior });
-    const messages: ChatMessage[] = [{ role: "user", content: prompt }];
-    const started = Date.now();
-    try {
-      const result = await callProvider(step.provider, messages, opts?.media ?? []);
-      const data = extractJson(result.text);
-      const output = {
-        source: `${step.provider.name} (${step.role})`,
-        role: step.role,
-        data,
-        rawText: result.text,
-      };
-      if (opts?.runId) {
-        await db.analysisStepResult.create({
-          data: {
-            runId: opts.runId,
-            providerId: step.providerId,
-            roleKey: step.role,
-            status: "complete",
-            rawText: result.text.slice(0, 20000),
-            parsedJson: data ? JSON.stringify(data) : "",
-            latencyMs: result.latencyMs,
-          },
+    let stepAttempts = 0;
+    const maxAttempts = 2; // PHASE0 maxModelAttemptsPerStage, applied per step
+
+    async function attempt(retryHint: string): Promise<{ text: string; latencyMs: number; data: Record<string, unknown> | null } | null> {
+      if (stepAttempts >= maxAttempts) return null;
+      stepAttempts += 1;
+      stageBudget = recordAttempt(stageBudget);
+      const prompt = fill(step.promptTemplate, { ...vars, prior: stepPrior }) + retryHint;
+      const started = Date.now();
+      try {
+        const result = await callProvider(step.provider, [{ role: "user", content: prompt }], opts?.media ?? []);
+        if (opts?.logicalAnalysisId) await recordLogicalModelCall(opts.logicalAnalysisId, false);
+        return { text: result.text, latencyMs: result.latencyMs, data: extractJson(result.text) };
+      } catch (err) {
+        if (opts?.logicalAnalysisId) await recordLogicalModelCall(opts.logicalAnalysisId, true);
+        const { logSystem } = await import("../syslog");
+        await logSystem("error", "ai_call", `${step.provider.name} failed in stage "${stageKey}" (${step.role})`, String(err));
+        await persistStepResult({
+          providerId: step.providerId,
+          role: step.role,
+          status: "failed",
+          rawText: String(err).slice(0, 2000),
+          parsedJson: "",
+          latencyMs: Date.now() - started,
         });
+        return null;
       }
-      return output;
-    } catch (err) {
-      const { logSystem } = await import("../syslog");
-      await logSystem("error", "ai_call", `${step.provider.name} failed in stage "${stageKey}" (${step.role})`, String(err));
-      if (opts?.runId) {
-        await db.analysisStepResult.create({
-          data: {
-            runId: opts.runId,
-            providerId: step.providerId,
-            roleKey: step.role,
-            status: "failed",
-            rawText: String(err).slice(0, 2000),
-            latencyMs: Date.now() - started,
-          },
-        });
-      }
-      return null;
     }
+
+    let result = await attempt("");
+    if (result && !result.data && canRetryStructuredOutput(stageBudget) && stepAttempts < maxAttempts) {
+      stageBudget = { ...stageBudget, structuredRetries: stageBudget.structuredRetries + 1 };
+      result = await attempt("\n\nReturn a single valid JSON object only. Do not include markdown or commentary.");
+    }
+
+    if (!result) return null;
+    await persistStepResult({
+      providerId: step.providerId,
+      role: step.role,
+      status: "complete",
+      rawText: result.text.slice(0, 20000),
+      parsedJson: result.data ? JSON.stringify(result.data) : "",
+      latencyMs: result.latencyMs,
+    });
+    return {
+      source: `${step.provider.name} (${step.role})`,
+      role: step.role,
+      data: result.data,
+      rawText: result.text,
+    };
   }
 
   if (opts?.sequentialContext) {
@@ -249,6 +319,54 @@ export async function runStage(
   } else {
     const outputs = await Promise.all(steps.map((step) => runOneStep(step, "")));
     stepOutputs.push(...outputs.filter((output): output is StageOutcome["stepOutputs"][number] => Boolean(output)));
+  }
+
+  // One fallback model if the stage produced no usable AI output.
+  if (stepOutputs.length === 0 && canUseFallback(stageBudget)) {
+    const usedIds = new Set(steps.map((s) => s.providerId));
+    const fallbackStep =
+      allSteps.find((s) => !usedIds.has(s.providerId)) ??
+      (allSteps.length > steps.length ? allSteps[steps.length] : null);
+    if (fallbackStep) {
+      stageBudget = recordFallback(stageBudget);
+      const started = Date.now();
+      try {
+        const prompt = fill(fallbackStep.promptTemplate, { ...vars, prior: "" });
+        const result = await callProvider(fallbackStep.provider, [{ role: "user", content: prompt }], opts?.media ?? []);
+        if (opts?.logicalAnalysisId) await recordLogicalModelCall(opts.logicalAnalysisId, false);
+        const data = extractJson(result.text);
+        await persistStepResult({
+          providerId: fallbackStep.providerId,
+          role: fallbackStep.role,
+          status: "complete",
+          rawText: result.text.slice(0, 20000),
+          parsedJson: data ? JSON.stringify(data) : "",
+          latencyMs: result.latencyMs,
+        });
+        stepOutputs.push({
+          source: `${fallbackStep.provider.name} (${fallbackStep.role})`,
+          role: fallbackStep.role,
+          data,
+          rawText: result.text,
+        });
+      } catch (err) {
+        if (opts?.logicalAnalysisId) await recordLogicalModelCall(opts.logicalAnalysisId, true);
+        const { logSystem } = await import("../syslog");
+        await logSystem("error", "ai_call", `${fallbackStep.provider.name} fallback failed in stage "${stageKey}"`, String(err));
+        await persistStepResult({
+          providerId: fallbackStep.providerId,
+          role: fallbackStep.role,
+          status: "failed",
+          rawText: String(err).slice(0, 2000),
+          parsedJson: "",
+          latencyMs: Date.now() - started,
+        });
+      }
+    }
+  }
+
+  if (opts?.logicalAnalysisId) {
+    await setStageBudget(opts.logicalAnalysisId, budgetKey, stageBudget);
   }
 
   const structured = stepOutputs.filter((o) => o.data);
@@ -309,11 +427,30 @@ async function getDocumentText(doc: { filePath: string; fileName: string; mimeTy
 export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisOptions): Promise<void> {
   const draft = options?.persistMode === "draft";
   const providerIds = (options?.providerIds ?? []).map(String).filter(Boolean);
+  const trigger =
+    options?.trigger ??
+    (draft ? "admin_draft" : options?.parentLogicalAnalysisId ? "evidence_coalesce" : "user_request");
+
+  const begin = await beginLogicalAnalysis({
+    caseId,
+    trigger,
+    parentId: options?.parentLogicalAnalysisId ?? null,
+    allowConcurrent: draft,
+  });
+  if (begin.kind === "skipped_concurrent") {
+    // Another logical analysis owns this case; coalesce was marked on the runner.
+    return;
+  }
+  const logicalAnalysisId = begin.logicalAnalysisId;
+
   const c = await db.case.findUnique({
     where: { id: caseId },
     include: { documents: { where: { deletedAt: null } } },
   });
-  if (!c) return;
+  if (!c) {
+    await finishLogicalAnalysis(logicalAnalysisId, "failed");
+    return;
+  }
   const previousStatus = c.status === "analyzing" ? "needs_info" : c.status;
   if (!draft) {
     await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
@@ -326,6 +463,7 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
   try {
     caseVersion = await ensureCaseVersion(caseId, draft ? "admin_reanalysis" : "analysis");
     caseVersionId = caseVersion.id;
+    await attachCaseVersionToLogicalAnalysis(logicalAnalysisId, caseVersionId);
     const analysisPlan = await createCaseAnalysisPlan(caseId, caseVersionId);
     analysisPlanId = analysisPlan?.id ?? null;
     parsedPlan = parseAnalysisPlan(analysisPlan?.planJson);
@@ -426,8 +564,20 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
   }
 
   async function stageRun(stageKey: string, vars: Record<string, string>, sequentialContext = false, stageMedia?: MediaAttachment[], roles?: string[]) {
-    const run = await db.analysisRun.create({ data: { caseId, stageKey, status: "running" } });
-    const outcome = await runStage(stageKey, vars, { runId: run.id, sequentialContext, media: stageMedia, roles, providerIds });
+    const run = await db.analysisRun.create({
+      data: { caseId, stageKey, status: "running", logicalAnalysisId },
+    });
+    // Distinct budget key when the same stage runs again with a role filter (e.g. independent review).
+    const budgetStageKey = roles?.length ? `${stageKey}:${[...roles].sort().join("+")}` : stageKey;
+    const outcome = await runStage(stageKey, vars, {
+      runId: run.id,
+      sequentialContext,
+      media: stageMedia,
+      roles,
+      providerIds,
+      logicalAnalysisId,
+      budgetStageKey,
+    });
     await db.analysisRun.update({
       where: { id: run.id },
       data: { status: "complete", finishedAt: new Date() },
@@ -813,7 +963,24 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
       await logSystem("warning", "case_versioning", "Could not finalize case version after analysis", String(err));
     });
   }
+  const finished = await finishLogicalAnalysis(logicalAnalysisId, "complete");
+  if (!draft && (await maybeSpawnCoalesceChild({
+    parentId: logicalAnalysisId,
+    caseId,
+    coalescePending: finished.coalescePending,
+    childCount: finished.childCount,
+  }))) {
+    // Sequential child only — never concurrent with the parent that just finished.
+    void runCaseAnalysis(caseId, {
+      trigger: "evidence_coalesce",
+      parentLogicalAnalysisId: logicalAnalysisId,
+    }).catch(async (err) => {
+      const { logSystem } = await import("../syslog");
+      await logSystem("error", "logical_analysis", `Coalesce child analysis failed for case ${caseId}`, String(err));
+    });
+  }
   } catch (err) {
+    await finishLogicalAnalysis(logicalAnalysisId, "failed").catch(() => null);
     if (caseVersionId) await failCaseVersion(caseVersionId);
     if (!draft) {
       await db.case.update({ where: { id: caseId }, data: { status: previousStatus } }).catch(() => null);

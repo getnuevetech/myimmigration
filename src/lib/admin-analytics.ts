@@ -39,6 +39,7 @@ export async function getAdminAnalytics() {
     assignments, autoAssigned, docsCount, formsCompleted, lettersCount, noticesCount,
     qaMessages, guideThreads, messagesSent, messagesEmailed,
     providers, aiCallsOk, aiCallsFailed, runsTotal, runsWithAi,
+    logicalTotal, logicalComplete, logicalFailed, logicalSkipped, logicalRunning,
   ] = await Promise.all([
     db.user.count({ where: { role: "user", status: { not: "deleted" } } }),
     db.user.count({ where: { role: "user", createdAt: { gte: since30 } } }),
@@ -84,6 +85,11 @@ export async function getAdminAnalytics() {
     db.analysisStepResult.count({ where: { status: "failed" } }),
     db.analysisRun.count(),
     db.analysisRun.count({ where: { stepResults: { some: { status: "complete" } } } }),
+    db.logicalAnalysis.count(),
+    db.logicalAnalysis.count({ where: { status: "complete" } }),
+    db.logicalAnalysis.count({ where: { status: "failed" } }),
+    db.logicalAnalysis.count({ where: { status: "skipped_concurrent" } }),
+    db.logicalAnalysis.count({ where: { status: "running" } }),
   ]);
 
   // MRR: monthly-equivalent value of every active subscription.
@@ -154,6 +160,11 @@ export async function getAdminAnalytics() {
       callSuccessRate: aiCallsOk + aiCallsFailed > 0 ? Math.round((aiCallsOk / (aiCallsOk + aiCallsFailed)) * 100) : null,
       runsTotal,
       runsWithAi,
+      logicalTotal,
+      logicalComplete,
+      logicalFailed,
+      logicalSkipped,
+      logicalRunning,
     },
   };
 }
