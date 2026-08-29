@@ -393,16 +393,19 @@
     "superseded_by_applies_to": "CURRENT_CASE_POSTURE_ONLY",
     "states_in_order": [
       "FILED_PENDING",
-      "PRIMA_FACIE_PENDING",
+      "PENDING_PRIMA_FACIE_ISSUED",
       "RFE_PENDING",
       "UNDER_REVIEW",
       "APPROVED_OR_DENIED_OR_WITHDRAWN"
     ],
-    "current_state_for_fixture": "PRIMA_FACIE_PENDING",
+    "legacy_posture_aliases": {
+      "PRIMA_FACIE_PENDING": "PENDING_PRIMA_FACIE_ISSUED"
+    },
+    "current_state_for_fixture": "PENDING_PRIMA_FACIE_ISSUED",
     "supersedes_prior_current_state": "FILED_PENDING",
     "posture_record_example": {
       "posture_id": "I360_CURRENT_POSTURE",
-      "value": "PRIMA_FACIE_PENDING",
+      "value": "PENDING_PRIMA_FACIE_ISSUED",
       "superseded_by": null,
       "supersedes": "FILED_PENDING"
     }

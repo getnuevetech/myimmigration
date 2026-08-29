@@ -225,6 +225,20 @@ function main() {
   assert.ok(overridden.override_reason);
   assert.notEqual(overridden.gate_result, "BLOCK");
 
+  // After override, customer approve is allowed again
+  const published = buildCanonicalApprovedState({
+    version: 2,
+    reason: "gate_override",
+    pipelineConfigVersion: "test",
+    evidenceSnapshotHash: "x",
+    status: "analyzed",
+    readinessScore: 50,
+    presentation: { hero: { current_posture: "ok" } } as never,
+    approvalGate: overridden,
+  });
+  assert.ok(selectApprovedPresentation({ canonical: published }));
+  assert.ok(approvalGateAllowsCustomerApprove(overridden));
+
   for (const id of APPROVAL_GATE_BLOCK_IDS) {
     assert.ok(id.startsWith("BLOCK-"));
   }

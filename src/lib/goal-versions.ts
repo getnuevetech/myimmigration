@@ -26,6 +26,7 @@ export const FILED_VERSION_REASON_LABELS: Record<string, string> = {
   reprocess: "Evidence reprocessed",
   admin_reanalysis: "Admin comparison review",
   admin_override: "Admin replaced the customer output",
+  gate_override: "Staff overrode approval-gate BLOCK",
 };
 
 export const OPTIONS_VERSION_REASON_LABELS: Record<string, string> = {
@@ -35,6 +36,7 @@ export const OPTIONS_VERSION_REASON_LABELS: Record<string, string> = {
   reprocess: "Evidence reprocessed",
   admin_reanalysis: "Admin comparison review",
   admin_override: "Admin replaced the options output",
+  gate_override: "Staff overrode approval-gate BLOCK",
 };
 
 export const FILED_VERIFIABLE_ACTIONS: Record<string, string> = {

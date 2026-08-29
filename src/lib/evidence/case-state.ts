@@ -14,6 +14,7 @@ import { caseTypeLockFromBrief } from "@/lib/case-type-lock";
 import { computeEvidenceReadinessSplit } from "./readiness";
 import { reconcileEvidenceStates } from "./reconcile";
 import type { CompiledCaseEvent, CompiledEvidenceFact, CompiledEvidenceState, EvidenceConfidence } from "./types";
+import { isPrimaFacieIssuedPosture, postureCustomerLabel } from "./case-posture";
 
 const CONFIDENCE_VALUES: EvidenceConfidence[] = ["confirmed", "likely", "possible", "needs_verification", "not_supported"];
 
@@ -181,7 +182,7 @@ export async function rebuildCaseEvidenceState(
     })),
   });
   // Prefer ledger posture for VAWA current-position when present.
-  if (factLedger.current_posture?.value === "PRIMA_FACIE_PENDING") {
+  if (isPrimaFacieIssuedPosture(factLedger.current_posture?.value)) {
     if (!situationBrief.currentPosition.includes("Prima Facie Determination issued")) {
       situationBrief.currentPosition = ["Prima Facie Determination issued", ...situationBrief.currentPosition].slice(0, 8);
     }
@@ -295,7 +296,7 @@ export async function rebuildCaseEvidenceState(
       update: {
         summary: reconciled.reconstruction.summary,
         currentPosition: factLedger.current_posture?.value
-          ? `${reconciled.reconstruction.currentPosition} · posture ${factLedger.current_posture.value}`.trim()
+          ? `${reconciled.reconstruction.currentPosition} · ${postureCustomerLabel(factLedger.current_posture.value)}`.trim()
           : reconciled.reconstruction.currentPosition,
         timelineJson: JSON.stringify(reconciled.reconstruction.timeline),
         pendingActionsJson: JSON.stringify(reconciled.reconstruction.pendingActions),
@@ -307,7 +308,7 @@ export async function rebuildCaseEvidenceState(
         caseId,
         summary: reconciled.reconstruction.summary,
         currentPosition: factLedger.current_posture?.value
-          ? `${reconciled.reconstruction.currentPosition} · posture ${factLedger.current_posture.value}`.trim()
+          ? `${reconciled.reconstruction.currentPosition} · ${postureCustomerLabel(factLedger.current_posture.value)}`.trim()
           : reconciled.reconstruction.currentPosition,
         timelineJson: JSON.stringify(reconciled.reconstruction.timeline),
         pendingActionsJson: JSON.stringify(reconciled.reconstruction.pendingActions),
