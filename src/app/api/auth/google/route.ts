@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { getSetting } from "@/lib/settings";
 import { secureCookiesEnabled } from "@/lib/auth";
+import { AUTH_NEXT_COOKIE, sanitizeAuthNext } from "@/lib/guest";
 
 // Google OAuth start. Client ID/secret and redirect URL are configured by the
 // admin in Settings (auth.google_client_id, auth.google_client_secret, app.url).
@@ -12,6 +13,7 @@ export async function GET(request: Request) {
 
   // Generate a CSRF state nonce to prevent login CSRF attacks.
   const state = randomBytes(16).toString("hex");
+  const next = sanitizeAuthNext(new URL(request.url).searchParams.get("next"));
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -32,5 +34,14 @@ export async function GET(request: Request) {
     maxAge: 300, // 5 minutes
     path: "/",
   });
+  if (next) {
+    response.cookies.set(AUTH_NEXT_COOKIE, next, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: await secureCookiesEnabled(),
+      maxAge: 60 * 30,
+      path: "/",
+    });
+  }
   return response;
 }

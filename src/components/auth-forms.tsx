@@ -25,9 +25,10 @@ import {
   type RegistrationConsentKey,
 } from "@/lib/legal/consents";
 
-export function LoginForm() {
+export function LoginForm({ next = "" }: { next?: string }) {
   return (
     <ActionForm action={loginAction}>
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <div className="space-y-4">
         <input name="email" type="email" required placeholder="Email address" className={inputClass} />
         <input name="password" type="password" required placeholder="Password" className={inputClass} />
@@ -189,6 +190,7 @@ export function RegisterForm({
   terms,
   privacy,
   consultantAgreement,
+  next = "",
 }: {
   asConsultant: boolean;
   googleEnabled: boolean;
@@ -198,6 +200,8 @@ export function RegisterForm({
   terms: LegalPageLink | null;
   privacy: LegalPageLink | null;
   consultantAgreement: LegalPageLink | null;
+  /** Resume path after auth (e.g. /app/qa/{threadId}). */
+  next?: string;
 }) {
   const [grants, setGrants] = useState<RegistrationConsentGrants>(emptyConsentGrants);
   const [consultantOk, setConsultantOk] = useState(false);
@@ -230,6 +234,7 @@ export function RegisterForm({
   if (googlePending) {
     return (
       <ActionForm action={completeGoogleRegisterAction}>
+        {next ? <input type="hidden" name="next" value={next} /> : null}
         <div className="space-y-4">
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
             Google verified {pendingProfile?.email || "your email"}. Accept the required consents to finish creating your account.
@@ -273,6 +278,7 @@ export function RegisterForm({
     <div className="space-y-4">
       <ActionForm action={registerAction}>
         {asConsultant && <input type="hidden" name="asConsultant" value="1" />}
+        {next ? <input type="hidden" name="next" value={next} /> : null}
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <input name="firstName" required placeholder="First name" className={inputClass} />
@@ -299,6 +305,7 @@ export function RegisterForm({
             <div className="h-px flex-1 bg-slate-200" /> or <div className="h-px flex-1 bg-slate-200" />
           </div>
           <ActionForm action={startGoogleSignupAction}>
+            {next ? <input type="hidden" name="next" value={next} /> : null}
             {REGISTRATION_CONSENTS.map((item) =>
               grants[item.key] ? <input key={item.key} type="hidden" name={item.formName} value="on" /> : null,
             )}
