@@ -240,16 +240,20 @@ export function rankMatchingDocuments(input: DocumentMatchInput = {}): RankedDoc
   if (existing && rfe) {
     ordered = putFirst(putFirst(putFirst(ordered, "case_record"), "notice"), "rfe");
   } else {
-    const preferred = formNumber === "I-130" || formNumber === "I-360"
+    const preferred = formNumber === "I-130"
       ? "identity"
-      : formNumber === "I-765"
-        ? "identity"
-        : formNumber === "I-589"
+      : formNumber === "I-360"
+        ? "notice"
+        : formNumber === "I-765"
           ? "identity"
-          : kinds.find((kind) => !documentKindDef(kind)?.isFiledCase) ?? "identity";
+          : formNumber === "I-589"
+            ? "identity"
+            : kinds.find((kind) => !documentKindDef(kind)?.isFiledCase) ?? "evidence";
     ordered = putFirst(ordered, preferred);
     if (formNumber === "I-130") ordered = putFirst(putFirst(ordered, "relationship"), "identity");
-    if (formNumber === "I-360") ordered = putFirst(putFirst(putFirst(ordered, "declaration"), "relationship"), "identity");
+    if (formNumber === "I-360") {
+      ordered = putFirst(putFirst(putFirst(putFirst(ordered, "identity"), "relationship"), "declaration"), "notice");
+    }
     if (formNumber === "I-765") ordered = putFirst(putFirst(ordered, "status_record"), "identity");
     if (formNumber === "I-589") ordered = putFirst(putFirst(putFirst(ordered, "country_conditions"), "declaration"), "identity");
     if (shouldExcludeCountryConditions(input.caseLock)) {

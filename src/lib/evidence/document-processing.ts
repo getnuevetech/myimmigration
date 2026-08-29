@@ -170,7 +170,8 @@ export async function processDocumentEvidence(documentId: string): Promise<Proce
       await tx.caseEvent.deleteMany({ where: { documentId: doc.id } });
       await tx.evidenceRelationship.deleteMany({ where: { sourceDocumentId: doc.id } });
 
-      if (!text) return;
+      // Duplicate of an earlier document: keep the pointer, do not double-write facts/events.
+      if (duplicateOfId || !text) return;
 
       if (compiled.facts.length > 0) {
         await tx.evidenceFact.createMany({

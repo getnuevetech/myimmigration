@@ -36,6 +36,9 @@ const TYPE_HINTS: TypeHint[] = [
     type: "uscis_i360_receipt_notice",
     patterns: [
       /\bi-?360[-_\s]?receipt\b/i,
+      /\breceipt[-_\s]?notice[-_\s]?i-?360\b/i,
+      /\bi-?360[-_\s]?notice\b/i,
+      /\bform\s*i-?360\b[\s\S]{0,400}\b(?:receipt|received your|we received)\b/i,
       /\breceipt notice\b[\s\S]{0,800}\bi-?360\b/i,
       /\bi-?360\b[\s\S]{0,800}\b(?:receipt notice|received your|we received your)\b/i,
       /\b(?:receipt notice|received your|we received your)\b[\s\S]{0,800}\bi-?360\b/i,
@@ -59,7 +62,7 @@ const TYPE_HINTS: TypeHint[] = [
   { type: "case_status_record", patterns: [/\bcase status\b/i, /\bmy\.uscis\.gov\b/i] },
   { type: "admission_entry_record", patterns: [/\bI-?94\b/, /\barrival\/departure\b/i, /\badmission(?:\/entry)? record\b/i] },
   { type: "relationship_civil_document", patterns: [/\bmarriage[-_\s]?certificate\b/i, /\bcertificate of marriage\b/i, /\bcivil (?:marriage )?document\b/i] },
-  { type: "personal_declaration", patterns: [/\bpersonal[-_\s]?declaration\b/i, /\bpersonal statement\b/i, /\bsworn statement\b/i] },
+  { type: "personal_declaration", patterns: [/\bpersonal[-_\s]?declaration\b/i, /\bpersonal statement\b/i, /\bsworn statement\b/i, /\bmy declaration\b/i] },
   { type: "uscis_form", patterns: [/\bForm\s+(?:I|N|G)-?\d{2,4}[A-Z]?\b/i] },
   { type: "identity_document", patterns: [/\bpassport\b/i, /\bvisa (?:foil|stamp|page)\b/i, /\bnonimmigrant visa\b/i, /\bimmigrant visa\b/i, /\bbiographic page\b/i, /\bnational id\b/i] },
   { type: "fee_receipt", patterns: [/\bfiling fee\b/i, /\bfee receipt\b/i, /\bpayment\b/i] },
@@ -152,11 +155,26 @@ export function resolveImmigrationDocumentType(input: {
   declaredType?: string | null;
   docKind?: string | null;
 }): ImmigrationDocumentType {
-  const fromContent = classifyImmigrationDocument(`${input.fileName ?? ""}\n${input.text ?? ""}`);
+  const blob = `${input.fileName ?? ""}\n${input.text ?? ""}`;
+  const fromContent = classifyImmigrationDocument(blob);
   if (fromContent !== "other") return fromContent;
-  if (isImmigrationDocumentType(input.declaredType) && input.declaredType !== "other") return input.declaredType;
+  if (isImmigrationDocumentType(input.declaredType) && input.declaredType !== "other") {
+    // Declared identity without identity cues must not win over an unclassified upload.
+    if (input.declaredType === "identity_document" && !hasIdentityCues(blob)) {
+      // fall through to docKind / other
+    } else {
+      return input.declaredType;
+    }
+  }
   const fromKind = declaredImmigrationTypeFromDocKind(input.docKind);
+  // Phase A: upload UI often defaults docKind to "identity". That must not become
+  // "Identity & Entry Document" unless the file/text actually looks like identity/travel.
+  if (fromKind === "identity_document" && !hasIdentityCues(blob)) return "other";
   return fromKind || "other";
+}
+
+function hasIdentityCues(blob: string): boolean {
+  return /\bpassport\b|\bvisa (?:foil|stamp|page)\b|\bnonimmigrant visa\b|\bimmigrant visa\b|\bbiographic page\b|\bnational id\b|\bi-?94\b/i.test(blob);
 }
 
 export function classifyUploadedDocument(input: {

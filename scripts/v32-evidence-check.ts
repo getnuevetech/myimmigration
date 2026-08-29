@@ -601,6 +601,29 @@ assert(optionsPlan.authority_queries_needed.includes("I-130"), "open-options fam
 assert(!optionsPlan.tasks_skipped.some((item) => /No USCIS documents were uploaded/i.test(item.reason)), "the analysis plan must not tell the customer that analysis is weaker because no documents were uploaded");
 assert(optionsPlan.tasks_skipped.some((item) => item.task === ANALYSIS_TASKS.PROCESS_DOCUMENTS && /options review/i.test(item.reason)), "open-options plans may skip document processing without a missing-upload disclaimer");
 
+const optionsPlanWithDocs = buildAnalysisPlan({
+  caseStatus: "analyzing",
+  documentCount: 2,
+  documents: [
+    { id: "d1", processingStatus: "extracted" },
+    { id: "d2", processingStatus: "extracted" },
+  ],
+  issues: [],
+  unknowns: [],
+  evidenceAuditStatus: "pass",
+  evidenceFactKeys: [],
+  situation: "I have a VAWA I-360 prima facie notice and want a green card.",
+  goal: "Understand my next steps",
+});
+assert(
+  !optionsPlanWithDocs.tasks_skipped.some((item) => /Document processing is not needed for this options review/i.test(item.reason)),
+  "INV-PLAN-01: plans with immigration documents must not use the options-review processing skip",
+);
+assert(
+  optionsPlanWithDocs.tasks_skipped.some((item) => item.task === ANALYSIS_TASKS.PROCESS_DOCUMENTS && /already processed/i.test(item.reason)),
+  "when documents exist but need no reprocessing, skip reason must be honest",
+);
+
 assert(issuesNeedIndependentReview([{ professional_review: "required" }]) === true, "required professional review should trigger independent review");
 const reviewAdd = runtimeReviewAddition(lowPlan, [{ issue_type: "professional_review" }]);
 assert(reviewAdd?.task === ANALYSIS_TASKS.INDEPENDENT_REVIEW, "pipeline should add independent review when a finding requires it");

@@ -125,6 +125,18 @@ export function issuesNeedIndependentReview(issues: AnalysisIssueHint[]): boolea
   });
 }
 
+/** INV-PLAN-01: never claim options-review skip when immigration documents are already on the case. */
+export function processDocumentsSkipReason(input: {
+  openOptions: boolean;
+  documentCount: number;
+  documentsLength?: number;
+}): string {
+  const hasDocs = input.documentCount > 0 || (input.documentsLength ?? 0) > 0;
+  if (hasDocs) return "Documents already processed and current";
+  if (input.openOptions) return "Document processing is not needed for this options review.";
+  return "No stale or failed documents require processing.";
+}
+
 export function buildAnalysisPlan(input: AnalysisPlanInput): AnalysisPlan {
   const docsToProcess = input.documents
     .filter((doc) => ["uploaded", "failed"].includes(doc.processingStatus))
@@ -181,7 +193,18 @@ export function buildAnalysisPlan(input: AnalysisPlanInput): AnalysisPlan {
       ANALYSIS_TASKS.PRESENT_APPROVED_STATE,
     ]),
     tasks_skipped: [
-      ...(docsToProcess.length ? [] : [{ task: ANALYSIS_TASKS.PROCESS_DOCUMENTS, reason: openOptions ? "Document processing is not needed for this options review." : "No stale or failed documents require processing." }]),
+      ...(docsToProcess.length
+        ? []
+        : [
+            {
+              task: ANALYSIS_TASKS.PROCESS_DOCUMENTS,
+              reason: processDocumentsSkipReason({
+                openOptions,
+                documentCount: input.documentCount,
+                documentsLength: input.documents?.length ?? 0,
+              }),
+            },
+          ]),
       ...(needsReview ? [] : [{ task: ANALYSIS_TASKS.INDEPENDENT_REVIEW, reason: "No high-risk issue, audit block, or material conflict detected." }]),
       ...(questionsNeeded ? [] : [{ task: ANALYSIS_TASKS.QUESTION_PLANNING, reason: "No open unknowns need follow-up questions." }]),
     ],

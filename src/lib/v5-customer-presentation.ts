@@ -1,4 +1,4 @@
-import { immigrationDocumentTypeLabel } from "@/domain/documents";
+import { immigrationDocumentTypeLabel, resolveImmigrationDocumentType } from "@/domain/documents";
 import type { PresentationContract } from "@/lib/case-presentation-contract";
 import type { SituationBrief, SituationFact, SituationFactState } from "@/lib/situation-brief";
 import { caseTypeLockFromBrief } from "@/lib/case-type-lock";
@@ -52,10 +52,13 @@ export type V5CustomerPresentationInput = {
   presentation?: PresentationContract | null;
   pathSteps?: { title: string; description: string; actionKey: string; status?: string }[];
   documents?: {
+    id?: string | null;
     fileName: string;
     documentType?: string | null;
     docKind?: string | null;
     processingStatus?: string | null;
+    contentHash?: string | null;
+    duplicateOfId?: string | null;
   }[];
   neededDocs?: { kind: string; label: string; hint: string }[];
 };
@@ -178,13 +181,15 @@ function documentTakeaway(doc: {
   documentType?: string | null;
   docKind?: string | null;
 }): V5DocumentTakeaway {
-  const type = doc.documentType || doc.docKind || "other";
-  const label = immigrationDocumentTypeLabel(type);
-  const typeKey = String(type).toLowerCase();
+  // Prefer stored content classification. Never treat bare upload docKind "identity"
+  // as Identity & Entry — re-resolve from filename when type is empty/other/identity.
+  const resolvedType = resolveCustomerDocumentType(doc);
+  const label = immigrationDocumentTypeLabel(resolvedType);
+  const typeKey = String(resolvedType).toLowerCase();
   if (typeKey.includes("prima_facie")) {
     return {
       fileName: doc.fileName,
-      documentType: type,
+      documentType: resolvedType,
       label,
       confirms: "USCIS issued a Prima Facie Determination on the VAWA self-petition.",
       whyItMatters: "It shows a preliminary positive finding on the I-360 path, not a final approval or a green card.",
@@ -193,7 +198,7 @@ function documentTakeaway(doc: {
   if (typeKey.includes("i360") || (typeKey.includes("receipt") && /i-?360/i.test(doc.fileName))) {
     return {
       fileName: doc.fileName,
-      documentType: type,
+      documentType: resolvedType,
       label,
       confirms: "USCIS received Form I-360 and issued a filing receipt.",
       whyItMatters: "The receipt locks the VAWA self-petition as an existing filing already on record.",
@@ -202,7 +207,7 @@ function documentTakeaway(doc: {
   if (typeKey === "rfe" || typeKey.includes("rfe")) {
     return {
       fileName: doc.fileName,
-      documentType: type,
+      documentType: resolvedType,
       label,
       confirms: "USCIS issued a Request for Evidence on the pending case.",
       whyItMatters: "The notice controls the response deadline and the exact evidence USCIS still needs.",
@@ -211,7 +216,7 @@ function documentTakeaway(doc: {
   if (typeKey.includes("aos") || typeKey.includes("i485") || (/i-?485/i.test(doc.fileName) && typeKey.includes("receipt"))) {
     return {
       fileName: doc.fileName,
-      documentType: type,
+      documentType: resolvedType,
       label,
       confirms: "USCIS issued a receipt for Form I-485.",
       whyItMatters: "It confirms an adjustment-of-status filing is already part of the record.",
@@ -220,7 +225,7 @@ function documentTakeaway(doc: {
   if (typeKey.includes("relationship") || typeKey.includes("civil") || /marriage/i.test(doc.fileName)) {
     return {
       fileName: doc.fileName,
-      documentType: type,
+      documentType: resolvedType,
       label,
       confirms: "Your civil marriage / relationship record is on file.",
       whyItMatters: "It supports the relationship facts already used in the case reconstruction.",
@@ -229,7 +234,7 @@ function documentTakeaway(doc: {
   if (typeKey.includes("declaration")) {
     return {
       fileName: doc.fileName,
-      documentType: type,
+      documentType: resolvedType,
       label,
       confirms: "You uploaded a personal declaration / supporting statement.",
       whyItMatters: "It is part of the self-petitioner’s own evidence package, not a USCIS decision.",
@@ -238,16 +243,16 @@ function documentTakeaway(doc: {
   if (typeKey.includes("admission") || /i-?94/i.test(doc.fileName)) {
     return {
       fileName: doc.fileName,
-      documentType: type,
+      documentType: resolvedType,
       label,
       confirms: "An admission / entry record (such as an I-94) is on file.",
       whyItMatters: "It helps show how and when you were admitted to the United States.",
     };
   }
-  if (typeKey.includes("identity") || /passport/i.test(doc.fileName)) {
+  if (typeKey === "identity_document" || (typeKey.includes("identity") && /passport|visa|biographic/i.test(doc.fileName))) {
     return {
       fileName: doc.fileName,
-      documentType: type,
+      documentType: resolvedType,
       label,
       confirms: "An identity or travel document is on file.",
       whyItMatters: "It helps confirm identity for the filings already under review.",
@@ -255,11 +260,59 @@ function documentTakeaway(doc: {
   }
   return {
     fileName: doc.fileName,
-    documentType: type,
+    documentType: resolvedType,
     label,
     confirms: `We reviewed this upload as ${label}.`,
     whyItMatters: "It was classified from its contents so it can support the locked case, not a generic identity bucket.",
   };
+}
+
+function resolveCustomerDocumentType(doc: {
+  fileName: string;
+  documentType?: string | null;
+  docKind?: string | null;
+}): string {
+  return resolveImmigrationDocumentType({
+    fileName: doc.fileName,
+    text: "",
+    declaredType: doc.documentType,
+    docKind: doc.docKind,
+  });
+}
+
+/** INV-DEDUP-01: one customer evidence row per document identity / prima facie group. */
+export function dedupeDocumentsForCustomerPresentation<T extends {
+  fileName: string;
+  documentType?: string | null;
+  docKind?: string | null;
+  contentHash?: string | null;
+  duplicateOfId?: string | null;
+  id?: string | null;
+}>(docs: T[]): T[] {
+  const out: T[] = [];
+  const seenHash = new Set<string>();
+  const seenGroup = new Set<string>();
+  for (const doc of docs) {
+    if (doc.duplicateOfId) continue;
+    const hash = String(doc.contentHash ?? "").trim();
+    if (hash) {
+      if (seenHash.has(hash)) continue;
+      seenHash.add(hash);
+    }
+    const type = resolveCustomerDocumentType(doc);
+    const group =
+      type.includes("prima_facie")
+        ? "prima_facie_notice"
+        : type.includes("i360") && type.includes("receipt")
+          ? "i360_receipt"
+          : hash
+            ? `hash:${hash}`
+            : `file:${doc.fileName.toLowerCase()}|${type}`;
+    if (seenGroup.has(group)) continue;
+    seenGroup.add(group);
+    out.push(doc);
+  }
+  return out;
 }
 
 function whyForUnknown(text: string): string {
@@ -477,14 +530,16 @@ function situationBulletsFromBrief(brief: SituationBrief | null): V5SituationBul
 
 export function assembleV5CustomerPresentation(input: V5CustomerPresentationInput): V5CustomerPresentation {
   const brief = input.brief;
-  const docs = (input.documents?.length
-    ? input.documents
-    : (input.presentation?.evidence ?? []).map((item) => ({
-        fileName: item.file_name,
-        documentType: item.document_type,
-        processingStatus: item.processing_status,
-      }))
-  ).filter((doc) => doc.fileName);
+  const docs = dedupeDocumentsForCustomerPresentation(
+    (input.documents?.length
+      ? input.documents
+      : (input.presentation?.evidence ?? []).map((item) => ({
+          fileName: item.file_name,
+          documentType: item.document_type,
+          processingStatus: item.processing_status,
+        }))
+    ).filter((doc) => doc.fileName),
+  );
 
   const stillNeed = uniqByText([
     ...(brief?.unknownFacts ?? []).map((item) => ({ text: item.text, why: whyForUnknown(item.text) })),
