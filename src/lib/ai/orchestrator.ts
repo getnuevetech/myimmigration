@@ -10,6 +10,7 @@ import {
   getStageBudget,
   maybeSpawnCoalesceChild,
   recordLogicalModelCall,
+  assertAggregateBudgetAllowsCall,
   setStageBudget,
 } from "./logical-analysis";
 import {
@@ -261,6 +262,19 @@ export async function runStage(
 
     async function attempt(retryHint: string): Promise<{ text: string; latencyMs: number; data: Record<string, unknown> | null } | null> {
       if (stepAttempts >= maxAttempts) return null;
+      if (opts?.logicalAnalysisId) {
+        const budget = await assertAggregateBudgetAllowsCall(opts.logicalAnalysisId);
+        if (!budget.allowed) {
+          const { logSystem } = await import("../syslog");
+          await logSystem(
+            "warning",
+            "logical_analysis",
+            `Aggregate ceiling blocked model call in stage "${stageKey}"`,
+            budget.breach ?? "unknown",
+          );
+          return null;
+        }
+      }
       stepAttempts += 1;
       stageBudget = recordAttempt(stageBudget);
       const prompt = fill(step.promptTemplate, { ...vars, prior: stepPrior }) + retryHint;
@@ -328,39 +342,55 @@ export async function runStage(
       allSteps.find((s) => !usedIds.has(s.providerId)) ??
       (allSteps.length > steps.length ? allSteps[steps.length] : null);
     if (fallbackStep) {
-      stageBudget = recordFallback(stageBudget);
-      const started = Date.now();
-      try {
-        const prompt = fill(fallbackStep.promptTemplate, { ...vars, prior: "" });
-        const result = await callProvider(fallbackStep.provider, [{ role: "user", content: prompt }], opts?.media ?? []);
-        if (opts?.logicalAnalysisId) await recordLogicalModelCall(opts.logicalAnalysisId, false);
-        const data = extractJson(result.text);
-        await persistStepResult({
-          providerId: fallbackStep.providerId,
-          role: fallbackStep.role,
-          status: "complete",
-          rawText: result.text.slice(0, 20000),
-          parsedJson: data ? JSON.stringify(data) : "",
-          latencyMs: result.latencyMs,
-        });
-        stepOutputs.push({
-          source: `${fallbackStep.provider.name} (${fallbackStep.role})`,
-          role: fallbackStep.role,
-          data,
-          rawText: result.text,
-        });
-      } catch (err) {
-        if (opts?.logicalAnalysisId) await recordLogicalModelCall(opts.logicalAnalysisId, true);
-        const { logSystem } = await import("../syslog");
-        await logSystem("error", "ai_call", `${fallbackStep.provider.name} fallback failed in stage "${stageKey}"`, String(err));
-        await persistStepResult({
-          providerId: fallbackStep.providerId,
-          role: fallbackStep.role,
-          status: "failed",
-          rawText: String(err).slice(0, 2000),
-          parsedJson: "",
-          latencyMs: Date.now() - started,
-        });
+      let aggregateOk = true;
+      if (opts?.logicalAnalysisId) {
+        const budget = await assertAggregateBudgetAllowsCall(opts.logicalAnalysisId);
+        aggregateOk = budget.allowed;
+        if (!aggregateOk) {
+          const { logSystem } = await import("../syslog");
+          await logSystem(
+            "warning",
+            "logical_analysis",
+            `Aggregate ceiling blocked fallback in stage "${stageKey}"`,
+            budget.breach ?? "unknown",
+          );
+        }
+      }
+      if (aggregateOk) {
+        stageBudget = recordFallback(stageBudget);
+        const started = Date.now();
+        try {
+          const prompt = fill(fallbackStep.promptTemplate, { ...vars, prior: "" });
+          const result = await callProvider(fallbackStep.provider, [{ role: "user", content: prompt }], opts?.media ?? []);
+          if (opts?.logicalAnalysisId) await recordLogicalModelCall(opts.logicalAnalysisId, false);
+          const data = extractJson(result.text);
+          await persistStepResult({
+            providerId: fallbackStep.providerId,
+            role: fallbackStep.role,
+            status: "complete",
+            rawText: result.text.slice(0, 20000),
+            parsedJson: data ? JSON.stringify(data) : "",
+            latencyMs: result.latencyMs,
+          });
+          stepOutputs.push({
+            source: `${fallbackStep.provider.name} (${fallbackStep.role})`,
+            role: fallbackStep.role,
+            data,
+            rawText: result.text,
+          });
+        } catch (err) {
+          if (opts?.logicalAnalysisId) await recordLogicalModelCall(opts.logicalAnalysisId, true);
+          const { logSystem } = await import("../syslog");
+          await logSystem("error", "ai_call", `${fallbackStep.provider.name} fallback failed in stage "${stageKey}"`, String(err));
+          await persistStepResult({
+            providerId: fallbackStep.providerId,
+            role: fallbackStep.role,
+            status: "failed",
+            rawText: String(err).slice(0, 2000),
+            parsedJson: "",
+            latencyMs: Date.now() - started,
+          });
+        }
       }
     }
   }

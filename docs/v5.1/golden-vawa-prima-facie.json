@@ -744,7 +744,9 @@
       "duplicate_concurrent_logical_analyses": 0
     },
     "phase_f_aggregate_ceilings_to_establish": {
-      "note": "Per-stage ceilings are Phase 0 numeric. Aggregate latency/call/cost ceilings are Phase F exit criteria after diagnosing the 78-call storm.",
+      "note": "Per-stage ceilings are Phase 0 numeric. Aggregate ceilings were provisional hints; Phase F exit (2026-08-29) promoted them to PHASE_F_AGGREGATE_CEILINGS and enforces hard-stops in orchestration.",
+      "status": "APPROVED_AND_ENFORCED",
+      "approved_at": "2026-08-29",
       "metrics_to_measure_and_approve": [
         "max_total_model_calls_per_analysis",
         "max_total_failed_model_calls",
@@ -753,6 +755,15 @@
         "target_success_rate",
         "token_or_cost_envelope"
       ],
+      "approved_ceilings": {
+        "max_total_model_calls_per_analysis": 24,
+        "max_total_failed_model_calls": 4,
+        "max_retry_children": 3,
+        "coalesce_children_per_parent": 1,
+        "max_wall_clock_seconds": 180,
+        "target_success_rate": 0.95,
+        "max_token_budget_hint": 250000
+      },
       "provisional_measurement_hints_only": {
         "max_total_model_calls_per_analysis": 24,
         "max_total_failed_model_calls": 4,

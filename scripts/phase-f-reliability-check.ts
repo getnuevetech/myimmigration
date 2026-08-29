@@ -5,10 +5,15 @@
 import assert from "node:assert/strict";
 import {
   PHASE0_RELIABILITY_CEILINGS,
+  PHASE_F_AGGREGATE_CEILINGS,
   PHASE_F_AGGREGATE_HINTS,
   canAttemptStep,
+  canMakeAggregateModelCall,
   canRetryStructuredOutput,
+  canSpawnCoalesceChild,
+  canSpawnRetryChild,
   canUseFallback,
+  detectAggregateCeilingBreach,
   emptyStageBudget,
   maxStepsForStageInvocation,
   recordAttempt,
@@ -40,8 +45,39 @@ function main() {
   assert.equal(maxStepsForStageInvocation(10), 3);
   assert.equal(maxStepsForStageInvocation(2), 2);
 
-  assert.ok(PHASE_F_AGGREGATE_HINTS.maxTotalModelCallsPerAnalysis > 0);
-  assert.equal(PHASE_F_AGGREGATE_HINTS.coalesceChildrenPerParent, 1);
+  // Phase F exit — approved aggregates (promoted from golden provisional hints).
+  assert.equal(PHASE_F_AGGREGATE_CEILINGS.maxTotalModelCallsPerAnalysis, 24);
+  assert.equal(PHASE_F_AGGREGATE_CEILINGS.maxTotalFailedModelCalls, 4);
+  assert.equal(PHASE_F_AGGREGATE_CEILINGS.maxRetryChildren, 3);
+  assert.equal(PHASE_F_AGGREGATE_CEILINGS.coalesceChildrenPerParent, 1);
+  assert.equal(PHASE_F_AGGREGATE_CEILINGS.maxWallClockSeconds, 180);
+  assert.equal(PHASE_F_AGGREGATE_CEILINGS.targetSuccessRate, 0.95);
+  assert.equal(PHASE_F_AGGREGATE_HINTS.maxTotalModelCallsPerAnalysis, 24);
+
+  assert.equal(
+    canMakeAggregateModelCall({ modelCallCount: 23, failedCallCount: 0, wallClockMs: 0 }),
+    true,
+  );
+  assert.equal(
+    canMakeAggregateModelCall({ modelCallCount: 24, failedCallCount: 0, wallClockMs: 0 }),
+    false,
+  );
+  assert.equal(
+    detectAggregateCeilingBreach({ modelCallCount: 24, failedCallCount: 0, wallClockMs: 0 }),
+    "max_total_model_calls",
+  );
+  assert.equal(
+    detectAggregateCeilingBreach({ modelCallCount: 1, failedCallCount: 4, wallClockMs: 0 }),
+    "max_total_failed_model_calls",
+  );
+  assert.equal(
+    detectAggregateCeilingBreach({ modelCallCount: 1, failedCallCount: 0, wallClockMs: 180_000 }),
+    "max_wall_clock_seconds",
+  );
+  assert.equal(canSpawnCoalesceChild(0), true);
+  assert.equal(canSpawnCoalesceChild(1), false);
+  assert.equal(canSpawnRetryChild(2), true);
+  assert.equal(canSpawnRetryChild(3), false);
 
   console.log("phase-f-reliability-check: OK");
 }

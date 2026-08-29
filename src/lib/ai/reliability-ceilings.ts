@@ -1,6 +1,8 @@
 /**
- * V5.1 Phase F — Phase 0 frozen per-stage ceilings + measurement helpers.
- * Aggregate call/latency/cost ceilings remain Phase F exit criteria (not frozen).
+ * V5.1 Phase F — Phase 0 per-stage ceilings + approved aggregate ceilings (F exit).
+ *
+ * Aggregate numbers adopted from golden `provisional_measurement_hints_only`
+ * as production hard-stops (Phase F exit / Option B closed).
  */
 
 export const PHASE0_RELIABILITY_CEILINGS = {
@@ -12,23 +14,43 @@ export const PHASE0_RELIABILITY_CEILINGS = {
   duplicateConcurrentLogicalAnalyses: 0,
 } as const;
 
-/** Provisional measurement hints only — not Phase 0 freeze numbers. */
-export const PHASE_F_AGGREGATE_HINTS = {
+/**
+ * Approved aggregate ceilings (Phase F exit — 2026-08-29).
+ * Source: golden-vawa-prima-facie.json → phase_f_aggregate_ceilings_to_establish.provisional_measurement_hints_only
+ * Coalesce children stay at 1 (prefer coalesce over concurrent); lineage retry children ≤ 3.
+ */
+export const PHASE_F_AGGREGATE_CEILINGS = {
   maxTotalModelCallsPerAnalysis: 24,
   maxTotalFailedModelCalls: 4,
   maxRetryChildren: 3,
+  /** Active coalesce: at most one evidence_coalesce child per parent run. */
+  coalesceChildrenPerParent: 1,
   maxWallClockSeconds: 180,
   targetSuccessRate: 0.95,
   maxTokenBudgetHint: 250_000,
-  /** Phase F implements at most one coalesce child per parent until aggregates are approved. */
-  coalesceChildrenPerParent: 1,
+  approvedAt: "2026-08-29",
+  approvedSource: "golden_provisional_hints_promoted",
 } as const;
+
+/** @deprecated Use PHASE_F_AGGREGATE_CEILINGS — kept as alias for older imports. */
+export const PHASE_F_AGGREGATE_HINTS = PHASE_F_AGGREGATE_CEILINGS;
 
 export type StageBudget = {
   attempts: number;
   fallbacksUsed: number;
   structuredRetries: number;
 };
+
+export type AggregateUsage = {
+  modelCallCount: number;
+  failedCallCount: number;
+  wallClockMs: number;
+};
+
+export type AggregateCeilingBreach =
+  | "max_total_model_calls"
+  | "max_total_failed_model_calls"
+  | "max_wall_clock_seconds";
 
 export function emptyStageBudget(): StageBudget {
   return { attempts: 0, fallbacksUsed: 0, structuredRetries: 0 };
@@ -64,7 +86,41 @@ export function recordStructuredRetry(budget: StageBudget): StageBudget {
  * Consensus roles still run, but admin multi-provider cloning cannot exceed this hard cap.
  */
 export function maxStepsForStageInvocation(stepCount: number, ceilings = PHASE0_RELIABILITY_CEILINGS): number {
-  // Allow seeded multi-role consensus (typically ≤3) while blocking unbounded provider cloning.
   const softCap = Math.max(ceilings.maxModelAttemptsPerStage + ceilings.maxFallbackModelsPerStage, 3);
   return Math.min(stepCount, softCap);
+}
+
+/** Whether another model call is allowed under approved aggregate ceilings. */
+export function canMakeAggregateModelCall(
+  usage: AggregateUsage,
+  ceilings = PHASE_F_AGGREGATE_CEILINGS,
+): boolean {
+  if (usage.modelCallCount >= ceilings.maxTotalModelCallsPerAnalysis) return false;
+  if (usage.failedCallCount >= ceilings.maxTotalFailedModelCalls) return false;
+  if (usage.wallClockMs >= ceilings.maxWallClockSeconds * 1000) return false;
+  return true;
+}
+
+export function detectAggregateCeilingBreach(
+  usage: AggregateUsage,
+  ceilings = PHASE_F_AGGREGATE_CEILINGS,
+): AggregateCeilingBreach | null {
+  if (usage.modelCallCount >= ceilings.maxTotalModelCallsPerAnalysis) return "max_total_model_calls";
+  if (usage.failedCallCount >= ceilings.maxTotalFailedModelCalls) return "max_total_failed_model_calls";
+  if (usage.wallClockMs >= ceilings.maxWallClockSeconds * 1000) return "max_wall_clock_seconds";
+  return null;
+}
+
+export function canSpawnCoalesceChild(
+  existingChildCount: number,
+  ceilings = PHASE_F_AGGREGATE_CEILINGS,
+): boolean {
+  return existingChildCount < ceilings.coalesceChildrenPerParent;
+}
+
+export function canSpawnRetryChild(
+  lineageChildCount: number,
+  ceilings = PHASE_F_AGGREGATE_CEILINGS,
+): boolean {
+  return lineageChildCount < ceilings.maxRetryChildren;
 }
