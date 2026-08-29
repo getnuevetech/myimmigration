@@ -10,6 +10,12 @@ import {
   scrubPresentationContamination,
   shouldEmitAntiI130,
 } from "@/lib/case-type-lock";
+import type { FactLedger } from "@/lib/evidence/fact-ledger";
+import { buildFactLedger } from "@/lib/evidence/fact-ledger";
+import {
+  buildLedgerDrivenActions,
+  mergeRankedCustomerActions,
+} from "@/lib/action-priority";
 
 export type V5FactMarker = SituationFactState;
 
@@ -69,6 +75,8 @@ export type V5CustomerPresentationInput = {
     duplicateOfId?: string | null;
   }[];
   neededDocs?: { kind: string; label: string; hint: string }[];
+  /** Phase D — fact ledger drives gap-resolving action ranking. */
+  factLedger?: FactLedger | null;
 };
 
 const MARKER_LABEL: Record<V5FactMarker, string> = {
@@ -426,12 +434,11 @@ function buildNextActions(input: V5CustomerPresentationInput): V5NextAction[] {
 
   const combined = [...seeded, ...fromPresentation, ...fromSteps];
   const seen = new Set<string>();
-  const out: V5NextAction[] = [];
+  const existing: V5NextAction[] = [];
   const lock = caseTypeLockFromBrief(brief);
   for (const item of combined) {
     const key = item.what.trim().toLowerCase();
     if (!key || seen.has(key)) continue;
-    // Phase C recommendation lock — drop competing pathway recommendations.
     const blob = `${item.what}\n${item.why}\n${item.whatChanges}`;
     if (!passesRecommendationLock(blob, lock)) continue;
     if (!passesPresentationLock(blob, lock) && lock?.doNotRecommendNewPathway) {
@@ -440,13 +447,41 @@ function buildNextActions(input: V5CustomerPresentationInput): V5NextAction[] {
       item.why = scrubbedWhy;
     }
     seen.add(key);
-    out.push(item);
-    if (out.length >= 5) break;
+    existing.push(item);
   }
 
-  if (out.length >= 3) return out.slice(0, 5);
+  const ledger =
+    input.factLedger ??
+    buildFactLedger({
+      situation: [
+        brief?.caseType,
+        ...(brief?.situationBullets ?? []).map((b) => b.text),
+        ...(brief?.reportedFacts ?? []).map((b) => b.text),
+        ...(brief?.verifiedFacts ?? []).map((b) => b.text),
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      goal: brief?.customerQuestion,
+      documents: (input.documents ?? []).map((doc, i) => ({
+        id: doc.id ?? `doc_${i}`,
+        fileName: doc.fileName,
+        documentType: doc.documentType,
+        contentHash: doc.contentHash,
+      })),
+    });
+
+  const ranked = buildLedgerDrivenActions({ ledger, brief });
+  const merged = mergeRankedCustomerActions({
+    ranked,
+    existing,
+    limit: 5,
+  });
+
+  if (merged.length >= 3) return merged.slice(0, 5);
 
   // Deterministic fillers from the locked brief so fixtures always get 3–5 actions.
+  // Phase D: gap-ranked actions already occupy the front; fillers fill remaining slots
+  // and generics stay behind material gap resolvers via mergeRankedCustomerActions.
   const fillers: V5NextAction[] = [];
   if (brief?.doNotRecommendNewPathway && brief.primaryForm === "I-360") {
     fillers.push(
@@ -455,18 +490,21 @@ function buildNextActions(input: V5CustomerPresentationInput): V5NextAction[] {
         why: "Existing filings take priority over a new family petition.",
         now: "Can be done now",
         whatChanges: "Recommendations stay on I-360 / related I-485 instead of I-130.",
+        actionKey: "REVIEW_FORM_I360",
       },
       {
         what: "Upload any missing I-485 receipt if adjustment was filed",
         why: "You told us an I-485 may exist; the receipt verifies that related filing.",
         now: "Can be done now",
         whatChanges: "The related adjustment process moves from reported to verified.",
+        actionKey: "UPLOAD_I485_RECEIPT",
       },
       {
         what: "Keep the prima facie notice with your case records",
         why: "It explains the preliminary USCIS finding customers usually ask about first.",
         now: "Can be done now",
         whatChanges: "The notice meaning stays tied to the locked VAWA matter.",
+        actionKey: "KEEP_PRIMA_FACIE_NOTICE",
       },
     );
   } else if (brief?.lockFamilyOpenOptionsI130) {
@@ -530,20 +568,16 @@ function buildNextActions(input: V5CustomerPresentationInput): V5NextAction[] {
         why: "Those gaps are the ones that materially change the analysis.",
         now: "Can be done now",
         whatChanges: "The situation brief can mark those facts verified or still unknown.",
+        actionKey: "ASK_FOLLOW_UP",
       },
     );
   }
 
-  for (const item of fillers) {
-    const key = item.what.trim().toLowerCase();
-    if (seen.has(key)) continue;
-    const blob = `${item.what}\n${item.why}\n${item.whatChanges}`;
-    if (!passesRecommendationLock(blob, lock)) continue;
-    seen.add(key);
-    out.push(item);
-    if (out.length >= 5) break;
-  }
-  return out.slice(0, 5);
+  return mergeRankedCustomerActions({
+    ranked,
+    existing: [...merged, ...fillers],
+    limit: 5,
+  });
 }
 
 function situationBulletsFromBrief(brief: SituationBrief | null): V5SituationBullet[] {

@@ -2792,6 +2792,8 @@ assert(readFileSync(join(process.cwd(), "src/lib/case-type-lock.ts"), "utf8").in
 assert(readFileSync(join(process.cwd(), "src/lib/approval-gate.ts"), "utf8").includes("evaluateApprovalGate"), "phase E approval gate must exist");
 assert(readFileSync(join(process.cwd(), "src/lib/approval-gate.ts"), "utf8").includes("BLOCK-STATE-STALE-DERIVED-OUTPUT"), "phase E stale derived-output BLOCK must exist");
 assert(readFileSync(join(process.cwd(), "src/lib/approval-gate.ts"), "utf8").includes("BLOCK-AUTHORITY-UNSUPPORTED-LEGAL-INTERPRETATION"), "phase E unsupported-authority BLOCK must exist");
+assert(readFileSync(join(process.cwd(), "src/lib/action-priority.ts"), "utf8").includes("computePriorityScore"), "phase D action priority formula must exist");
+assert(readFileSync(join(process.cwd(), "src/lib/action-priority.ts"), "utf8").includes("UPLOAD_I485_RECEIPT"), "phase D VAWA gap action catalog must exist");
 assert(!readFileSync(join(process.cwd(), "src/lib/goal-documents.ts"), "utf8").includes("Form I-130 instructions describe"), "goal-documents must not ship I-130 instructional contamination");
 assert(!readFileSync(join(process.cwd(), "src/lib/goal-documents.ts"), "utf8").includes("Form I-589 and similar packets"), "goal-documents must not ship I-589 instructional contamination");
 assert(PROMPT_VERSION.includes("v32"), "v5 case-type lock must not bump analysis prompt version");
