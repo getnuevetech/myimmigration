@@ -29,4 +29,5 @@
 
 ## Next
 
-Phase E — approval gate (BLOCK/WARNING before customer-facing approve).
+Phase E — approval gate — done (`docs/v5.1/PHASE-E-APPROVAL-GATE.md`).  
+Phase D — action ranking.

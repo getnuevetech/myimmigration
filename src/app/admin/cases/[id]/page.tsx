@@ -54,9 +54,21 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
   const versions = await listCaseVersions(id, 8).catch(() => []);
   const canonical = await db.canonicalCaseState.findUnique({
     where: { caseId: id },
-    select: { approvedStateJson: true, evidenceSnapshotHash: true, updatedAt: true },
+    select: { approvedStateJson: true, evidenceSnapshotHash: true, updatedAt: true, gateResultJson: true },
   }).catch(() => null);
   const approved = parseCanonicalApprovedState(canonical?.approvedStateJson);
+  let gateResult: string | null = null;
+  let gateRules: string[] = [];
+  try {
+    const gate = approved?.approval_gate
+      ?? (canonical?.gateResultJson ? JSON.parse(canonical.gateResultJson) : null);
+    if (gate?.gate_result) {
+      gateResult = String(gate.gate_result);
+      gateRules = Array.isArray(gate.rule_ids) ? gate.rule_ids.map(String) : [];
+    }
+  } catch {
+    gateResult = null;
+  }
 
   const versionMatch = matchInputFromCase(c);
   const reportChrome = resolveReportChrome(versionMatch);
@@ -96,6 +108,13 @@ export default async function AdminCaseDetailPage({ params }: { params: Promise<
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <Badge color={usedAi ? "green" : "lime"}>{usedAi ? "AI pipeline" : "rule-based fallback"}</Badge>
+        {gateResult === "BLOCK" && (
+          <Badge color="red">Approval gate BLOCK{gateRules.length ? `: ${gateRules.slice(0, 3).join(", ")}` : ""}</Badge>
+        )}
+        {gateResult === "WARN" && (
+          <Badge color="amber">Approval gate WARN{gateRules.length ? `: ${gateRules.slice(0, 3).join(", ")}` : ""}</Badge>
+        )}
+        {gateResult === "PASS" && <Badge color="green">Approval gate PASS</Badge>}
         {failedCalls.length > 0 && (
           <Badge color="red">{failedCalls.length} failed model call{failedCalls.length === 1 ? "" : "s"} — see diagnostics below</Badge>
         )}
