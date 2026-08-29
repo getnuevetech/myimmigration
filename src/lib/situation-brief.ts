@@ -247,7 +247,14 @@ export function buildSituationBrief(input: SituationBriefInput = {}): SituationB
   if (inUnitedStates) pushFact(reportedFacts, "You are currently in the United States", "reported");
   if (visitor) pushFact(reportedFacts, "You entered using a visitor visa", "reported");
   if (expired && visitor) pushFact(reportedFacts, "You told us that your visitor status later expired", "reported");
-  if (marriedUsc) pushFact(reportedFacts, "You are married to a U.S. citizen", "reported");
+  if (marriedUsc && marriageCertificateVerified) {
+    pushFact(verifiedFacts, "Your marriage is documented by a civil marriage record", "verified");
+    pushFact(reportedFacts, reportedPrefix("your spouse is a U.S. citizen"), "reported");
+  } else if (marriedUsc) {
+    pushFact(reportedFacts, "You are married to a U.S. citizen", "reported");
+  } else if (marriageCertificateVerified) {
+    pushFact(verifiedFacts, "Your marriage is documented by a civil marriage record", "verified");
+  }
 
   if (hasI360 && (i360ReceiptVerified || (input.facts ?? []).some((fact) => fact.key === "form_type" && /i-?360/i.test(fact.value) && provenanceIsDocument(fact.provenance)))) {
     pushFact(verifiedFacts, "You filed Form I-360 as a VAWA self-petitioner", "verified");
@@ -267,9 +274,6 @@ export function buildSituationBrief(input: SituationBriefInput = {}): SituationB
     currentPosition.push("Prima Facie Determination reported");
   }
 
-  if (marriageCertificateVerified) {
-    pushFact(verifiedFacts, "Your marriage certificate is on file", "verified");
-  }
   if (personalDeclarationVerified) {
     pushFact(verifiedFacts, "You uploaded a personal declaration", "verified");
   }

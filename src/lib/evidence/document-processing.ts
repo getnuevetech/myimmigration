@@ -6,6 +6,7 @@ import { rebuildCaseEvidenceState } from "./case-state";
 import { compileImmigrationEvidence } from "./compiler";
 import { extractUniversalDocumentIntelligence } from "./universal-extraction";
 import { classifyUploadedDocument, declaredImmigrationTypeFromDocKind, type ImmigrationDocumentType } from "@/domain/documents";
+import { buildDocumentFactSource } from "./authority";
 import type { CompiledEvidenceState } from "./types";
 
 export const EVIDENCE_EXTRACTION_SCHEMA_VERSION = "immigration-evidence-v1";
@@ -118,6 +119,7 @@ export async function processDocumentEvidence(documentId: string): Promise<Proce
       filePath: true,
       mimeType: true,
       docKind: true,
+      documentType: true,
     },
   });
   if (!doc) return null;
@@ -144,6 +146,7 @@ export async function processDocumentEvidence(documentId: string): Promise<Proce
     const duplicateOfId = await findDuplicateDocument(doc, contentHash);
     const processingStatus = text ? "extracted" : "needs_review";
 
+    const previousType = doc.documentType;
     await db.$transaction(async (tx) => {
       await tx.document.update({
         where: { id: doc.id },
@@ -186,8 +189,12 @@ export async function processDocumentEvidence(documentId: string): Promise<Proce
             verificationState: item.confidence === "confirmed" ? "VERIFIED" : "EXTRACTED",
             sourceId: doc.id,
             sourceAnchorJson: JSON.stringify({
-              documentId: doc.id,
-              documentType: compiled.documentType,
+              ...buildDocumentFactSource({
+                documentId: doc.id,
+                contentHash,
+                documentType: compiled.documentType,
+                extractedField: item.key,
+              }),
               fileName: doc.fileName,
               label: item.sourceText ?? "",
             }),
@@ -231,7 +238,13 @@ export async function processDocumentEvidence(documentId: string): Promise<Proce
       }
     });
 
-    if (doc.caseId) await rebuildCaseEvidenceState(doc.caseId);
+    if (doc.caseId) {
+      await rebuildCaseEvidenceState(doc.caseId, { skipInvalidationSchedule: true });
+      if (previousType !== classified.documentType) {
+        const { scheduleClassificationInvalidation } = await import("./invalidation");
+        scheduleClassificationInvalidation(doc.caseId);
+      }
+    }
 
     return {
       documentId,
