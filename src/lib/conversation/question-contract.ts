@@ -23,6 +23,7 @@ function firstQuestionSentence(text: string): string {
 /**
  * Build the persistent Question Contract for this turn.
  * Downstream components may only ask for facts that advance decision_target.
+ * When priorContract is set, follow-ups refine it instead of replacing the decision target.
  */
 export function buildQuestionContract(input: ConversationMessageInput): QuestionContract {
   const message = String(input.message ?? "").trim();
@@ -31,10 +32,12 @@ export function buildQuestionContract(input: ConversationMessageInput): Question
   const explicit = firstQuestionSentence(combined) || (goal.match(/\?/) ? goal : "");
 
   const base = emptyQuestionContract();
-  if (!combined) return base;
+  if (!combined) return mergeWithPrior(input.priorContract, base);
+
+  let next: QuestionContract;
 
   if (COMPREHENSIVE_RE.test(combined) || input.forceCase) {
-    return {
+    next = {
       explicit_question: explicit || "Review my full situation and recommend filings.",
       interpreted_question: "Provide a comprehensive case strategy and filing recommendations.",
       decision_target: "comprehensive_case_strategy",
@@ -42,10 +45,8 @@ export function buildQuestionContract(input: ConversationMessageInput): Question
       user_requested_action: true,
       requires_case_development: true,
     };
-  }
-
-  if (NOTICE_MEANING_RE.test(combined) || (input.documentCount && /\b(what|mean|explain|this)\b/i.test(combined))) {
-    return {
+  } else if (NOTICE_MEANING_RE.test(combined) || (input.documentCount && /\b(what|mean|explain|this)\b/i.test(combined))) {
+    next = {
       explicit_question: explicit || "What does this notice/document mean?",
       interpreted_question: "Explain the meaning and immediate implications of the referenced notice or document.",
       decision_target: "explain_document_or_notice",
@@ -53,10 +54,8 @@ export function buildQuestionContract(input: ConversationMessageInput): Question
       user_requested_action: false,
       requires_case_development: false,
     };
-  }
-
-  if (FILE_FOR_ME_RE.test(combined)) {
-    return {
+  } else if (FILE_FOR_ME_RE.test(combined)) {
+    next = {
       explicit_question: explicit || "Can my relative file for me?",
       interpreted_question: "Whether a qualifying relative can file a family petition, and what still controls green-card timing/path.",
       decision_target: "petition_eligibility_overview",
@@ -64,10 +63,8 @@ export function buildQuestionContract(input: ConversationMessageInput): Question
       user_requested_action: false,
       requires_case_development: false,
     };
-  }
-
-  if (DOCS_NEEDED_RE.test(combined)) {
-    return {
+  } else if (DOCS_NEEDED_RE.test(combined)) {
+    next = {
       explicit_question: explicit || "What documents do I need?",
       interpreted_question: "List typical supporting documents for the described filing goal.",
       decision_target: "document_checklist",
@@ -75,10 +72,8 @@ export function buildQuestionContract(input: ConversationMessageInput): Question
       user_requested_action: false,
       requires_case_development: false,
     };
-  }
-
-  if (OPTIONS_RE.test(combined) || (!explicit && message.length >= 40 && /\b(wife|husband|spouse|married|entered|border|usc|citizen)\b/i.test(combined))) {
-    return {
+  } else if (OPTIONS_RE.test(combined) || (!explicit && message.length >= 40 && /\b(wife|husband|spouse|married|entered|border|usc|citizen)\b/i.test(combined))) {
+    next = {
       explicit_question: explicit || "What are my options?",
       interpreted_question:
         "Identify immigration pathways that may be available based on the facts stated, with conditions that change the path.",
@@ -87,10 +82,8 @@ export function buildQuestionContract(input: ConversationMessageInput): Question
       user_requested_action: false,
       requires_case_development: false,
     };
-  }
-
-  if (STATUS_RE.test(combined)) {
-    return {
+  } else if (STATUS_RE.test(combined)) {
+    next = {
       explicit_question: explicit || "What is my status / case update?",
       interpreted_question: "Explain how to read status for the described filing or notice.",
       decision_target: "status_guidance",
@@ -98,10 +91,8 @@ export function buildQuestionContract(input: ConversationMessageInput): Question
       user_requested_action: false,
       requires_case_development: false,
     };
-  }
-
-  if (RISK_RE.test(combined)) {
-    return {
+  } else if (RISK_RE.test(combined)) {
+    next = {
       explicit_question: explicit || "What are the risks?",
       interpreted_question: "Explain material risks implied by the facts, without inventing filings.",
       decision_target: "risk_overview",
@@ -109,10 +100,8 @@ export function buildQuestionContract(input: ConversationMessageInput): Question
       user_requested_action: false,
       requires_case_development: false,
     };
-  }
-
-  if (explicit || EXPLICIT_Q_RE.test(combined)) {
-    return {
+  } else if (explicit || EXPLICIT_Q_RE.test(combined)) {
+    next = {
       explicit_question: explicit || combined.slice(0, 200),
       interpreted_question: explicit || combined.slice(0, 280),
       decision_target: "answer_user_question",
@@ -120,17 +109,49 @@ export function buildQuestionContract(input: ConversationMessageInput): Question
       user_requested_action: false,
       requires_case_development: false,
     };
+  } else {
+    next = {
+      explicit_question: "",
+      interpreted_question: "User provided situation facts without an explicit question; offer useful framing and ask what they want next.",
+      decision_target: "interpret_situation_offer_next_step",
+      current_scope: "information_only",
+      user_requested_action: false,
+      requires_case_development: false,
+    };
   }
 
-  // Facts without a question — offer interpretation, do not invent schema requirements.
-  return {
-    explicit_question: "",
-    interpreted_question: "User provided situation facts without an explicit question; offer useful framing and ask what they want next.",
-    decision_target: "interpret_situation_offer_next_step",
-    current_scope: "information_only",
-    user_requested_action: false,
-    requires_case_development: false,
-  };
+  return mergeWithPrior(input.priorContract, next);
+}
+
+/** Continuity: keep prior decision_target unless the user clearly changes topic or requests case development. */
+export function mergeWithPrior(prior: QuestionContract | null | undefined, next: QuestionContract): QuestionContract {
+  if (!prior?.decision_target) return next;
+  if (next.requires_case_development || next.decision_target === "comprehensive_case_strategy") return next;
+  if (next.decision_target === prior.decision_target) {
+    return {
+      ...prior,
+      ...next,
+      decision_target: prior.decision_target,
+      current_scope: prior.current_scope || next.current_scope,
+      interpreted_question: next.interpreted_question || prior.interpreted_question,
+      explicit_question: next.explicit_question || prior.explicit_question,
+    };
+  }
+  // Short follow-up / answer to a critical ask — keep prior target.
+  const looksLikeFollowUp =
+    !next.explicit_question ||
+    next.decision_target === "interpret_situation_offer_next_step" ||
+    (next.decision_target === "answer_user_question" && next.explicit_question.length < 80);
+  if (looksLikeFollowUp && !NOTICE_MEANING_RE.test(next.explicit_question) && !COMPREHENSIVE_RE.test(next.explicit_question)) {
+    return {
+      ...prior,
+      explicit_question: next.explicit_question || prior.explicit_question,
+      interpreted_question: prior.interpreted_question,
+      user_requested_action: prior.user_requested_action,
+      requires_case_development: false,
+    };
+  }
+  return next;
 }
 
 export function helpsDecisionTarget(factKey: string, contract: QuestionContract): boolean {

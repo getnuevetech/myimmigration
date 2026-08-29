@@ -11,7 +11,9 @@ import { resolveIntakeChrome } from "@/lib/goal-intake";
 function NewCaseForm() {
   // The guide chatbot hands off new immigration situations here with the user's
   // message pre-filled — the user confirms it as a new review.
-  const prefill = useSearchParams().get("prefill") ?? "";
+  const search = useSearchParams();
+  const prefill = search.get("prefill") ?? "";
+  const forceCase = search.get("forceCase") === "1" || search.get("forceCase") === "on";
   const intake = resolveIntakeChrome({
     inquiryMode: classifyImmigrationInquiry({ situation: prefill }).mode,
     query: prefill,
@@ -32,6 +34,19 @@ function NewCaseForm() {
           <Field label="What do you want to achieve?" hint="Your goal shapes the options and plan we build.">
             <textarea name="goal" rows={3} className={inputClass} placeholder="Show me what options I have and what I can do next." />
           </Field>
+          <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              name="forceCase"
+              defaultChecked={forceCase}
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-lime-600"
+            />
+            <span>
+              <span className="font-medium text-slate-800">Run a full case review</span>
+              {" — "}
+              only check this if you want filings, risks, and a complete next-action plan (not just an answer to your question).
+            </span>
+          </label>
           <SubmitButton className="w-full py-3">{intake.submitLabel}</SubmitButton>
         </div>
       </ActionForm>

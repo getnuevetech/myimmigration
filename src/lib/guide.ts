@@ -228,16 +228,6 @@ export async function guideRespond(
 
   // Hard routing rules the AI must not override.
   const intent = detectIntent(lastQuestion);
-  if (intent === "new_case") {
-    const intake = resolveIntakeChrome(snapshot.surface);
-    return withChrome(snapshot, {
-      message: intake.guideNewCaseMessage,
-      actions: [
-        { type: "new_case", label: intake.guideNewCaseLabel, href: `/app/cases/new?prefill=${encodeURIComponent(lastQuestion.slice(0, 500))}` },
-        ...baseActions(),
-      ],
-    });
-  }
   if (intent === "tech") {
     return withChrome(snapshot, {
       message:
@@ -255,6 +245,73 @@ export async function guideRespond(
       actions: [
         { type: "ticket_service", label: "Create customer service ticket", href: `/app/support/new?category=customer_service&subject=${encodeURIComponent(lastQuestion.slice(0, 120))}` },
         { type: "link", label: "Browse the FAQ", href: "/p/faq" },
+      ],
+    });
+  }
+
+  // Phase −1.7: Conversation Router decides Assistant vs Case handoff.
+  try {
+    const { runConversationIntelligence } = await import("@/lib/conversation");
+    const intel = runConversationIntelligence({
+      message: lastQuestion,
+      history: history.slice(-8),
+      forceCase: intent === "new_case",
+    });
+    if (intel.route.pipeline === "case" || intent === "new_case") {
+      const intake = resolveIntakeChrome(snapshot.surface);
+      const qs = new URLSearchParams({ prefill: lastQuestion.slice(0, 500) });
+      if (intel.question_contract.requires_case_development || intent === "new_case") {
+        qs.set("forceCase", "1");
+      }
+      return withChrome(snapshot, {
+        message: intel.question_contract.requires_case_development
+          ? "That needs a full case review — filings, risks, and a next-action plan. I'll open a new case with your message so we can lock facts properly."
+          : intake.guideNewCaseMessage,
+        actions: [
+          {
+            type: "new_case",
+            label: intake.guideNewCaseLabel,
+            href: `/app/cases/new?${qs.toString()}`,
+          },
+          ...baseActions(),
+        ],
+      });
+    }
+    const questionTargets = new Set([
+      "answer_user_question",
+      "petition_eligibility_overview",
+      "explain_document_or_notice",
+      "document_checklist",
+      "identify_available_pathways",
+      "status_guidance",
+      "risk_overview",
+    ]);
+    if (
+      intel.route.pipeline === "assistant" &&
+      (Boolean(intel.question_contract.explicit_question) ||
+        questionTargets.has(intel.question_contract.decision_target))
+    ) {
+      return withChrome(snapshot, {
+        message:
+          "That looks like a question the Immigration Assistant can answer directly — without opening a full case. Continue there for an answer-first reply.",
+        actions: [
+          { type: "link", label: "Ask the assistant", href: "/app/qa" },
+          ...primaryActions(snapshot).slice(0, 1),
+          ...baseActions(),
+        ],
+      });
+    }
+  } catch {
+    /* fall through to legacy / AI coaching */
+  }
+
+  if (intent === "new_case") {
+    const intake = resolveIntakeChrome(snapshot.surface);
+    return withChrome(snapshot, {
+      message: intake.guideNewCaseMessage,
+      actions: [
+        { type: "new_case", label: intake.guideNewCaseLabel, href: `/app/cases/new?prefill=${encodeURIComponent(lastQuestion.slice(0, 500))}&forceCase=1` },
+        ...baseActions(),
       ],
     });
   }

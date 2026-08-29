@@ -20,7 +20,7 @@ function materialityForUnknown(key: string, openOptions: boolean): "HIGH" | "MED
 export async function planCaseQuestions(caseId: string) {
   const caseRow = await db.case.findUnique({
     where: { id: caseId },
-    select: { situation: true, goal: true },
+    select: { situation: true, goal: true, intelligenceJson: true },
   });
   const inquiry = classifyImmigrationInquiry({ situation: caseRow?.situation, goal: caseRow?.goal });
   const openOptions = inquiry.mode === INQUIRY_MODES.OPEN_OPTIONS;
@@ -34,9 +34,23 @@ export async function planCaseQuestions(caseId: string) {
   ]);
   const suppressedKeys = new Set(suppressed.map((item) => item.evidenceFactId || item.questionKey));
   const answeredKeys = new Set(answered.map((item) => item.questionKey));
-  const usable = openOptions
+
+  // Phase −1.7: drop unknowns that do not help the Question Contract decision target.
+  let usable = openOptions
     ? unknowns.filter((item) => !CASE_FILE_QUESTION_KEYS.has(item.key))
     : unknowns;
+  try {
+    const { intelligenceForCase, unknownHelpsContract } = await import("@/lib/conversation");
+    const intel = intelligenceForCase({
+      situation: caseRow?.situation ?? "",
+      goal: caseRow?.goal ?? "",
+      intelligenceJson: caseRow?.intelligenceJson,
+    });
+    usable = usable.filter((item) => unknownHelpsContract(item.key, intel));
+  } catch {
+    /* keep usable */
+  }
+
   const ranked = rankFollowUpQuestions(usable, boosts, { openOptions });
   const rankedKeys = new Set(ranked.map((item) => item.key));
   const plans = [];

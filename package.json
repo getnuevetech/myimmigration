@@ -16,8 +16,8 @@
     "test:phase-e": "tsx scripts/phase-e-approval-gate-check.ts",
     "test:phase-d": "tsx scripts/phase-d-action-ranking-check.ts",
     "test:phase-g": "tsx scripts/phase-g-fixture-pack-check.ts",
-    "test:phase-minus1": "tsx scripts/phase-minus1-conversation-check.ts && tsx scripts/phase-minus1-model-responsibility-check.ts",
-    "test:v51": "tsx scripts/phase-f-reliability-check.ts && tsx scripts/phase-a-classification-check.ts && tsx scripts/phase-b-fact-ledger-check.ts && tsx scripts/phase-c-locks-check.ts && tsx scripts/phase-e-approval-gate-check.ts && tsx scripts/phase-d-action-ranking-check.ts && tsx scripts/phase-g-fixture-pack-check.ts && tsx scripts/phase-minus1-conversation-check.ts && tsx scripts/phase-minus1-model-responsibility-check.ts",
+    "test:phase-minus1": "tsx scripts/phase-minus1-conversation-check.ts && tsx scripts/phase-minus1-model-responsibility-check.ts && tsx scripts/phase-minus1-7-hardening-check.ts",
+    "test:v51": "tsx scripts/phase-f-reliability-check.ts && tsx scripts/phase-a-classification-check.ts && tsx scripts/phase-b-fact-ledger-check.ts && tsx scripts/phase-c-locks-check.ts && tsx scripts/phase-e-approval-gate-check.ts && tsx scripts/phase-d-action-ranking-check.ts && tsx scripts/phase-g-fixture-pack-check.ts && tsx scripts/phase-minus1-conversation-check.ts && tsx scripts/phase-minus1-model-responsibility-check.ts && tsx scripts/phase-minus1-7-hardening-check.ts",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate deploy"

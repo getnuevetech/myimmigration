@@ -113,6 +113,8 @@ export type ConversationMessageInput = {
   documentHints?: string[];
   /** User explicitly asked for case development. */
   forceCase?: boolean;
+  /** Prior turn Question Contract (Pipeline A continuity). */
+  priorContract?: QuestionContract | null;
 };
 
 export function emptyQuestionContract(): QuestionContract {
