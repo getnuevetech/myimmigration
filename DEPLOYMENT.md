@@ -94,8 +94,9 @@ Then on the new server's admin → Settings, set **App URL** to the address user
 maintenance endpoint with a shared secret:
 
 ```bash
-# Prefer env CRON_SECRET (or admin setting cron.secret). Public GETs only return liveness.
-0 6 * * * curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/health > /dev/null
+# Set CRON_SECRET in .env.deploy (passed into the app container). Public GETs only return liveness.
+# Generate with: openssl rand -hex 32
+0 6 * * * curl -s -H "Authorization: Bearer YOUR_CRON_SECRET" http://localhost:3000/api/health > /dev/null
 ```
 
 For internet-facing servers, put Caddy in front for automatic HTTPS:
@@ -112,6 +113,7 @@ sudo systemctl reload caddy
 ## Notes
 
 - **Session secret**: auto-generated on first run and stored in the settings table; set `AUTH_SECRET` to override.
+- **Cron secret**: set `CRON_SECRET` in `.env.deploy` (compose passes it to the app). Host crontab must use the same Bearer value. Fallback: admin setting `cron.secret`.
 - **Uploads**: stored on disk (`var/uploads` or the `myimmigration_uploads` volume) with access-controlled serving; include them in backups.
   - **Single-instance only**: the disk-based upload store is not shared between replicas. If you run more than one app instance (e.g. horizontal scaling in Kubernetes), you must back the volume with network storage (NFS, EFS, GCS Filestore, Azure Files, etc.) or migrate to an object-storage provider (S3, R2, GCS). All instances must resolve the same `var/uploads` path.
 - **Rate limiting**: the authentication endpoints (login, registration, password reset) have no built-in brute-force protection. For internet-facing deployments, add rate limiting at your reverse-proxy layer (e.g. Caddy's `rate_limit` directive, nginx's `limit_req_zone`, Cloudflare's WAF) before routing traffic to port 3000.
