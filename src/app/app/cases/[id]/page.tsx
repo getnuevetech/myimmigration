@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui";
 import { CaseAnalysisView } from "@/components/case-analysis-view";
 import { CaseComments } from "@/components/case-comments";
 import { CaseClarify } from "@/components/case-clarify";
+import { CaseAnswerFirstPanel } from "@/components/case-answer-first";
 import { loadSuggestionAccess, toCaseSuggestionAccess } from "@/lib/suggestion-quota";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { previewBestConsultantForThemes } from "@/lib/matching";
@@ -18,7 +19,17 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
   const user = await requireUser();
   const c = await db.case.findFirst({
     where: { id, userId: user.id },
-    select: { id: true, title: true, number: true, createdAt: true, situation: true, goal: true, notices: { select: { noticeType: true } }, _count: { select: { issues: true } } },
+    select: {
+      id: true,
+      title: true,
+      number: true,
+      createdAt: true,
+      situation: true,
+      goal: true,
+      intelligenceJson: true,
+      notices: { select: { noticeType: true } },
+      _count: { select: { issues: true } },
+    },
   });
   if (!c) notFound();
 
@@ -72,10 +83,12 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
           </div>
         }
       />
-      <div className="mb-6">
+      {/* Phase −1.5 contract: answerable content / provisional pathways MUST appear before clarify. */}
+      <CaseAnswerFirstPanel situation={c.situation} goal={c.goal} intelligenceJson={c.intelligenceJson} />
+      <CaseAnalysisView caseId={c.id} viewer={{ role: "customer", userId: user.id, fullResults, suggestionAccess }} />
+      <div className="mt-6 mb-6">
         <CaseClarify caseId={c.id} access={suggestionAccess} />
       </div>
-      <CaseAnalysisView caseId={c.id} viewer={{ role: "customer", userId: user.id, fullResults, suggestionAccess }} />
       <CaseComments caseId={c.id} viewer={{ role: "customer", userId: user.id }} />
     </div>
   );

@@ -1,0 +1,10 @@
+export type { ConversationIntelligence, ConversationMessageInput, QuestionContract, NeedToKnowItem } from "./types";
+export { runConversationIntelligence, isQuestionShapedCaseNarrative, caseMustAnswerBeforeClarify } from "./intelligence";
+export { buildQuestionContract, helpsDecisionTarget } from "./question-contract";
+export { interpretIntent } from "./intent-interpreter";
+export { evaluateAnswerability } from "./answerability";
+export { buildNeedToKnow, askableNow } from "./need-to-know";
+export { analyzeBranches } from "./branch-analysis";
+export { buildResponseStrategy } from "./response-strategy";
+export { routeConversation, mayPromoteAssistantToCase } from "./conversation-router";
+export { composeAssistantReply } from "./assistant-composer";

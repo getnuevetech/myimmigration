@@ -409,6 +409,8 @@ model Case {
   customerOutputStale Boolean @default(false) // Phase B: true after evidence classification change until rebuild
   invalidationPendingAt DateTime?
   invalidationReason String @default("")
+  /** Phase −1: frozen question contract + routing snapshot (JSON). */
+  intelligenceJson String @default("{}")
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   user           User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -961,6 +963,8 @@ model QaThread {
   caseId         String?
   title          String       @default("Immigration question")
   kind           String       @default("qa") // qa | guide
+  /** Phase −1: question contract + routing snapshot (JSON). */
+  intelligenceJson String     @default("{}")
   createdAt      DateTime     @default(now())
   user           User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
   guestSession   GuestSession? @relation(fields: [guestSessionId], references: [id])

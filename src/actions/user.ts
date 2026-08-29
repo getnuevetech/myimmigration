@@ -82,10 +82,31 @@ export async function askQuestionAction(_prev: ActionState, formData: FormData):
   }
   if (!linkedCase && access.usage.blocked) return { error: access.usage.blockReason };
 
+  const { runConversationIntelligence, composeAssistantReply } = await import("@/lib/conversation");
+  const prior = thread?.messages.map((m) => ({ role: m.role, content: m.content })) ?? [];
+  const intel = runConversationIntelligence({
+    message: question,
+    history: prior,
+    documentCount: 0,
+  });
+
+  // If the router selects case on an explicit comprehensive ask from Q&A, still answer in-thread
+  // unless the user uses the promote CTA — keep A first-class.
   if (!thread) {
     thread = await db.qaThread.create({
-      data: { userId: user?.id ?? null, guestSessionId: guest?.id ?? null, caseId: ownedCaseId, title: question.slice(0, 60) },
+      data: {
+        userId: user?.id ?? null,
+        guestSessionId: guest?.id ?? null,
+        caseId: ownedCaseId,
+        title: question.slice(0, 60),
+        intelligenceJson: JSON.stringify(intel),
+      },
       include: { messages: true },
+    });
+  } else {
+    await db.qaThread.update({
+      where: { id: thread.id },
+      data: { intelligenceJson: JSON.stringify(intel) },
     });
   }
 
@@ -96,11 +117,29 @@ export async function askQuestionAction(_prev: ActionState, formData: FormData):
   const consultant = access.entitlement.consultantReferral
     ? await previewBestConsultantForThemes(inquiry.themes).catch(() => null)
     : null;
-  const answer = await runQaChat(history, {
-    caseId: thread.caseId,
-    entitlement: access.entitlement,
-    consultant,
-  });
+
+  let answer: string;
+  const useScaffold =
+    intel.strategy.branch_before_clarify ||
+    ["petition_eligibility_overview", "explain_document_or_notice", "document_checklist"].includes(
+      intel.question_contract.decision_target,
+    );
+  if (useScaffold) {
+    answer = composeAssistantReply(intel, question);
+  } else {
+    answer = await runQaChat(history, {
+      caseId: thread.caseId,
+      entitlement: access.entitlement,
+      consultant,
+    });
+    if (intel.strategy.ask_now[0] && !/upload (your|the) (notice|document)/i.test(intel.strategy.ask_now[0].question)) {
+      const tip = intel.strategy.ask_now[0].question;
+      if (!answer.toLowerCase().includes(tip.slice(0, 32).toLowerCase())) {
+        answer = `${answer}\n\nTo narrow this: ${tip}`;
+      }
+    }
+  }
+
   await db.qaMessage.create({ data: { threadId: thread.id, role: "assistant", content: answer } });
 
   if (!threadId) redirect(user ? `/app/qa/${thread.id}` : `/start/qa?thread=${thread.id}`);

@@ -33,13 +33,17 @@ export async function CaseClarify({ caseId, access }: { caseId: string; access?:
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-900">
-            {analyzing ? "Updating your analysis…" : question ? "Sharpen your analysis — a few quick questions" : "Interview complete"}
+            {analyzing
+              ? "Updating your analysis…"
+              : question
+                ? "One decision-changing question"
+                : "Interview complete"}
           </h2>
           <p className="mt-0.5 text-sm text-slate-500">
             {analyzing
               ? "Your answer is saved and the analysis is re-running with it — the next question appears here when it finishes."
               : question
-                ? clarify.helperWithQuestion
+                ? "We only ask facts that change which pathway or answer applies — not a full government-form checklist."
                 : "Every answer has been folded into your analysis. Add documents anytime to strengthen it further."}
           </p>
         </div>

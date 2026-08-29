@@ -27,7 +27,8 @@ function matchingKindForNarrative(situation: string, goal: string, noticeTypes?:
   }) ?? "identity";
 }
 
-// Guest-friendly intake: situation + goal + documents, no account required.
+// Guest-friendly intake: Phase −1 routes question-shaped messages to Assistant (Pipeline A),
+// not the Case engine — unless the Conversation Router selects case development.
 export async function startIntakeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const situation = String(formData.get("situation") ?? "").trim();
   const goal = String(formData.get("goal") ?? "").trim();
@@ -47,23 +48,84 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
     const quotaError = await documentQuotaError(user.id, files.length);
     if (quotaError) return { error: quotaError };
   }
-  // Capture the guest session once so all documents reference the same session.
   const guest = user ? null : await getOrCreateGuestSession();
+
+  const { runConversationIntelligence, composeAssistantReply } = await import("@/lib/conversation");
+  const intel = runConversationIntelligence({
+    message: situation,
+    goal,
+    documentCount: files.length,
+    documentHints: files.map((f) => f.name),
+    forceCase: formData.get("forceCase") === "on",
+  });
+
+  // Pipeline A — Assistant (default for questions). Upload alone never forces Case.
+  if (intel.route.pipeline === "assistant") {
+    const opening = [situation, goal ? `Goal: ${goal}` : ""].filter(Boolean).join("\n\n");
+    const thread = await db.qaThread.create({
+      data: {
+        userId: user?.id ?? null,
+        guestSessionId: user ? null : guest!.id,
+        title: (intel.question_contract.explicit_question || situation).slice(0, 60),
+        kind: "qa",
+        intelligenceJson: JSON.stringify(intel),
+      },
+    });
+    const docKind = matchingKindForNarrative(situation, goal);
+    for (const file of files.slice(0, 10)) {
+      const { filePath, sizeBytes } = await saveUpload(file);
+      await db.document.create({
+        data: {
+          userId: user?.id ?? null,
+          guestSessionId: user ? null : guest!.id,
+          fileName: file.name,
+          filePath,
+          mimeType: file.type || "application/octet-stream",
+          sizeBytes,
+          docKind,
+        },
+      });
+    }
+    await db.qaMessage.create({ data: { threadId: thread.id, role: "user", content: opening } });
+    let answer = composeAssistantReply(intel, opening);
+    try {
+      const { runQaChat } = await import("@/lib/ai/orchestrator");
+      const { loadQaAccess } = await import("@/lib/qa-quota");
+      const access = await loadQaAccess({ userId: user?.id, guestSessionId: guest?.id });
+      // Prefer deterministic BRANCH_BEFORE_CLARIFY / petition scaffolds; otherwise model.
+      if (!intel.strategy.branch_before_clarify && !["petition_eligibility_overview", "explain_document_or_notice", "document_checklist"].includes(intel.question_contract.decision_target)) {
+        if (access.entitlement.qaEnabled) {
+          answer = await runQaChat([{ role: "user", content: opening }], {
+            entitlement: access.entitlement,
+          });
+          if (intel.strategy.ask_now[0] && !answer.includes(intel.strategy.ask_now[0].question.slice(0, 40))) {
+            answer = `${answer}\n\nTo determine which path applies: ${intel.strategy.ask_now[0].question}`;
+          }
+        }
+      }
+    } catch {
+      /* keep composed answer */
+    }
+    await db.qaMessage.create({ data: { threadId: thread.id, role: "assistant", content: answer } });
+    redirect(user ? `/app/qa/${thread.id}` : `/start/qa?thread=${thread.id}`);
+  }
+
+  // Pipeline B — Case engine (V5.1)
   let caseId: string;
+  const intelligenceJson = JSON.stringify(intel);
   if (user) {
     const c = await db.case.create({
-      data: { userId: user.id, title: situation.slice(0, 80), situation, goal },
+      data: { userId: user.id, title: situation.slice(0, 80), situation, goal, intelligenceJson },
     });
     caseId = c.id;
   } else {
     await db.guestSession.update({ where: { id: guest!.id }, data: { situation, goal } });
     const c = await db.case.create({
-      data: { guestSessionId: guest!.id, title: situation.slice(0, 80), situation, goal },
+      data: { guestSessionId: guest!.id, title: situation.slice(0, 80), situation, goal, intelligenceJson },
     });
     caseId = c.id;
   }
 
-  // Attach uploaded documents.
   const documentIds: string[] = [];
   const docKind = matchingKindForNarrative(situation, goal);
   for (const file of files.slice(0, 10)) {
@@ -105,8 +167,39 @@ export async function createCaseAction(_prev: ActionState, formData: FormData): 
   const situation = String(formData.get("situation") ?? "").trim();
   const goal = String(formData.get("goal") ?? "").trim();
   if (situation.length < 20) return { error: "Describe your situation in a few sentences." };
+
+  const { runConversationIntelligence, composeAssistantReply } = await import("@/lib/conversation");
+  const intel = runConversationIntelligence({
+    message: situation,
+    goal,
+    forceCase: formData.get("forceCase") === "on",
+  });
+
+  if (intel.route.pipeline === "assistant") {
+    const opening = [situation, goal ? `Goal: ${goal}` : ""].filter(Boolean).join("\n\n");
+    const thread = await db.qaThread.create({
+      data: {
+        userId: user.id,
+        title: (intel.question_contract.explicit_question || situation).slice(0, 60),
+        intelligenceJson: JSON.stringify(intel),
+      },
+    });
+    await db.qaMessage.create({ data: { threadId: thread.id, role: "user", content: opening } });
+    await db.qaMessage.create({
+      data: { threadId: thread.id, role: "assistant", content: composeAssistantReply(intel, opening) },
+    });
+    redirect(`/app/qa/${thread.id}`);
+  }
+
   const c = await db.case.create({
-    data: { userId: user.id, title: situation.slice(0, 80), situation, goal, status: "analyzing" },
+    data: {
+      userId: user.id,
+      title: situation.slice(0, 80),
+      situation,
+      goal,
+      status: "analyzing",
+      intelligenceJson: JSON.stringify(intel),
+    },
   });
   after(() => runCaseAnalysis(c.id).catch(async (err) => {
     const { logSystem } = await import("@/lib/syslog");
@@ -258,6 +351,7 @@ export async function createOptionsCaseFromQaAction(_prev: ActionState, formData
     redirect(user ? `/app/cases/${thread.caseId}` : `/start/result?case=${thread.caseId}`);
   }
 
+  const { mayPromoteAssistantToCase, runConversationIntelligence } = await import("@/lib/conversation");
   const { classifyImmigrationInquiry, INQUIRY_MODES } = await import("@/lib/immigration-inquiry");
   const {
     answeredOfficialPairs,
@@ -267,12 +361,22 @@ export async function createOptionsCaseFromQaAction(_prev: ActionState, formData
     workingQaNarrative,
   } = await import("@/lib/goal-suggestions");
   const history = thread.messages.map((item) => ({ role: item.role, content: item.content }));
-  if (!qaConversationCanSaveAsOptionsCase(history, thread.caseId)) {
+  const userNarrative = conversationNarrative(history);
+  const intel = runConversationIntelligence({ message: userNarrative, history });
+  // This action is only reachable via an explicit "save / develop as case" CTA — never auto-promoted from upload.
+  const promotion = mayPromoteAssistantToCase({
+    contract: { ...intel.question_contract, requires_case_development: true },
+    userExplicitlyRequestsCase: true,
+    documentCount: 0,
+  });
+  if (!promotion.allowed) {
+    return { error: promotion.reason };
+  }
+  if (!qaConversationCanSaveAsOptionsCase(history, thread.caseId) && formData.get("forceCase") !== "on") {
     return { error: "Answer at least one official follow-up first so those facts can go on the options review." };
   }
-  const userNarrative = conversationNarrative(history);
   const inquiry = classifyImmigrationInquiry({ situation: userNarrative, goal: userNarrative });
-  if (inquiry.mode !== INQUIRY_MODES.OPEN_OPTIONS) {
+  if (inquiry.mode !== INQUIRY_MODES.OPEN_OPTIONS && formData.get("forceCase") !== "on") {
     return { error: "This conversation is about a filed case. Start from that notice instead of an options review." };
   }
 
@@ -286,6 +390,7 @@ export async function createOptionsCaseFromQaAction(_prev: ActionState, formData
       situation,
       goal: firstQuestion.slice(0, 500),
       status: "analyzing",
+      intelligenceJson: JSON.stringify({ ...intel, question_contract: { ...intel.question_contract, requires_case_development: true } }),
     },
   });
   const pairs = answeredOfficialPairs(history);
