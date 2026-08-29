@@ -2796,6 +2796,8 @@ assert(readFileSync(join(process.cwd(), "src/lib/action-priority.ts"), "utf8").i
 assert(readFileSync(join(process.cwd(), "src/lib/action-priority.ts"), "utf8").includes("UPLOAD_I485_RECEIPT"), "phase D VAWA gap action catalog must exist");
 assert(readFileSync(join(process.cwd(), "src/lib/v51-fixture-pack.ts"), "utf8").includes("V51_FIXTURE_PACK"), "phase G fixture pack must exist");
 assert(readFileSync(join(process.cwd(), "src/lib/v51-fixture-pack.ts"), "utf8").includes("vawa_neg_i589_country_conditions"), "phase G must include VAWA negative isolation fixture");
+assert(readFileSync(join(process.cwd(), "src/lib/ai/reliability-ceilings.ts"), "utf8").includes("PHASE_F_AGGREGATE_CEILINGS"), "phase F exit aggregate ceilings must exist");
+assert(readFileSync(join(process.cwd(), "src/lib/ai/reliability-ceilings.ts"), "utf8").includes("canMakeAggregateModelCall"), "phase F exit must enforce aggregate model-call ceiling");
 assert(!readFileSync(join(process.cwd(), "src/lib/goal-documents.ts"), "utf8").includes("Form I-130 instructions describe"), "goal-documents must not ship I-130 instructional contamination");
 assert(!readFileSync(join(process.cwd(), "src/lib/goal-documents.ts"), "utf8").includes("Form I-589 and similar packets"), "goal-documents must not ship I-589 instructional contamination");
 assert(PROMPT_VERSION.includes("v32"), "v5 case-type lock must not bump analysis prompt version");

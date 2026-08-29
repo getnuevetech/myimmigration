@@ -1,6 +1,6 @@
 # V5.1 Phase F — Orchestration Reliability
 
-**Status:** Implementation complete — awaiting approval of aggregate ceilings (Phase F exit)  
+**Status:** Complete — aggregate ceilings **approved and enforced** (Phase F exit closed 2026-08-29)  
 **Date:** 2026-08-29  
 **Depends on:** Phase 0 Correction Spec Rev 3 + Golden VAWA Fixture v3 (**FROZEN**)
 
@@ -10,72 +10,68 @@
 
 Phase 0 / V5.1 Correction Specification Rev 3 and Golden VAWA Fixture v3 are **approved and frozen**.
 
-Delivery sequence remains locked: `0 → F → A → B → C → E → D → G`.
+Delivery sequence remains locked: `0 → F → A → B → C → E → D → G` (implemented on `main`).
 
 ### Carry-forward notes (not Phase 0 blockers)
 
 1. **Posture naming:** Prefer renaming internal current posture `PRIMA_FACIE_PENDING` → something like `PENDING_PRIMA_FACIE_ISSUED` later so it is not misread as “prima facie not yet issued.” Event/posture separation itself is correct.
-2. **Customer vs system actions (Phase D):** Treat `UPDATE_GREEN_CARD_PATH_EXPLANATION` as a **system consequence** (regenerate explanation), not a customer upload/confirm action.
+2. **Customer vs system actions (Phase D):** `UPDATE_GREEN_CARD_PATH_EXPLANATION` is a **system consequence** (implemented in Phase D).
 
 ---
 
 ## Root cause of the “78 failed calls / many runs” storm
 
-Code inspection of the live orchestration path (`runCaseAnalysis` via Next.js `after()`, no queue):
-
 | Cause | Effect |
 | --- | --- |
-| **No concurrency lock** | Upload + clarify + comment + intake can all schedule overlapping `runCaseAnalysis` on the same case. Each pass clears issues/path and creates a full set of stage runs. |
-| **`AnalysisRun` = stage, not logical analysis** | Admin “analysis runs” counted stages. One logical pass ≈ 5–6 stage runs; several overlapping passes looked like “many runs.” |
-| **Seeded multi-model fan-out** | Default ~11 model calls/pass (summary 3 + goal 2 + document 2 + situation 3 + presenter 1; independent review can add another situation stage). |
-| **Provider failure multiplier** | Bad/missing API keys → every step fails and is logged. ~11 failures × ~7 overlapping/historical passes ≈ **~77**, matching “78 failed.” |
-| **No structured-output retry ceiling** | Not the primary storm driver (retries were mostly absent); Phase F still enforces max 1 structured retry per step when JSON is missing. |
+| **No concurrency lock** | Overlapping `runCaseAnalysis` on the same case |
+| **`AnalysisRun` = stage, not logical analysis** | Stage counts looked like “many runs” |
+| **Seeded multi-model fan-out** | ~11 model calls/pass typical |
+| **Provider failure multiplier** | Bad keys → every step fails; fan-out × re-entrancy ≈ ~78 |
 
-**Not the primary cause:** exponential backoff retry loops (they did not exist). The storm is structural: **fan-out × re-entrancy × failed providers**.
+**Fix shape:** logical analysis ID + concurrency lock + per-stage ceilings + **approved aggregate hard-stops**.
 
 ---
 
 ## What Phase F implemented
 
-1. **`LogicalAnalysis` model** — owns one logical analysis: counters, stage budgets, coalesce flag, optional parent/child, link to `CaseVersion` and `AnalysisRun`s.
-2. **Concurrency lock** — live analyses: if a logical analysis is already `running` for the case, new triggers are recorded as `skipped_concurrent` and set `coalescePending` on the runner (`duplicate_concurrent_logical_analyses = 0`).
-3. **Coalesce child** — when the runner finishes with `coalescePending`, at most **one** sequential child (`evidence_coalesce`) is spawned (provisional child ceiling until aggregates approved).
-4. **Per-stage / per-step ceilings (Phase 0 frozen):**
-   - ≤ 2 attempts per step (call + structured-output retry)
-   - ≤ 1 fallback model per stage if all steps fail
-   - stage step fan-out hard-capped (blocks unbounded admin provider cloning)
-5. **Call accounting** — `modelCallCount` / `failedCallCount` / `wallClockMs` on each logical analysis.
-6. **Admin diagnostics** — case detail shows logical analyses; platform analytics include logical-analysis counts.
-7. **Check script** — `scripts/phase-f-reliability-check.ts`.
+1. **`LogicalAnalysis` model** — counters, stage budgets, coalesce, parent/child
+2. **Concurrency lock** — `skipped_concurrent` + coalesce pending
+3. **Coalesce child** — ≤ 1 sequential `evidence_coalesce` child per parent
+4. **Per-stage ceilings (Phase 0):** ≤2 attempts/step, ≤1 fallback/stage, ≤1 structured retry, fan-out cap
+5. **Call accounting** — `modelCallCount` / `failedCallCount` / `wallClockMs`
+6. **Admin diagnostics** — logical analyses on case detail / analytics
+7. **Aggregate hard-stops (F exit):** see below
 
 ---
 
-## Proposed aggregate ceilings (Phase F exit — needs written approval)
+## Approved aggregate ceilings (Phase F exit)
 
-After measuring production post-deploy, approve or revise:
+Adopted from golden `provisional_measurement_hints_only` as production hard-stops (`PHASE_F_AGGREGATE_CEILINGS`):
 
-| Metric | Proposed starting point | Notes |
+| Metric | Approved value | Enforcement |
 | --- | --- | --- |
-| Max total model calls / logical analysis | **24** | Hint from golden fixture; one full pass is typically ≤ ~12–14 with review |
-| Max total failed model calls / logical analysis | **4** | Fail closed to deterministic fallback beyond this (future hard stop) |
-| Max coalesce / retry children | **1** (implemented) → up to **3** if needed | Prefer coalesce over concurrent |
-| Max wall-clock / p95 | **180s** wall / measure p95 | Hung calls already time out at 90s each |
-| Target success rate | **0.95** | Logical analyses completing without uncaught customer failure |
-| Token / cost envelope | measure first | Do not invent a hard $ cap before baseline |
-
-Phase F does **not** invent these as production hard-stops yet (Option B from Phase 0). It implements tracking + per-stage ceilings + concurrency lock so the next storm is diagnosable and largely prevented.
-
----
-
-## Exit criteria for Phase F
-
-Approve Phase F when:
-
-- [ ] Root cause write-up accepted  
-- [ ] Logical analysis ID behavior accepted  
-- [ ] Aggregate ceilings approved (or explicitly deferred with interim soft monitoring)  
-- [ ] Then begin Phase A only  
+| Max total model calls / logical analysis | **24** | Pre-check before each provider call; stop further AI calls |
+| Max total failed model calls / logical analysis | **4** | Same; fail closed toward deterministic fallback |
+| Max coalesce children / parent | **1** | `maybeSpawnCoalesceChild` |
+| Max retry children in lineage | **3** | `beginLogicalAnalysis` for `evidence_coalesce` |
+| Max wall-clock seconds | **180** | Pre-check using `startedAt` elapsed |
+| Target success rate | **0.95** | Monitoring target (not a hard abort) |
+| Token / cost envelope | **250_000** hint | Soft budget hint; measure in ops |
 
 ---
 
-*End of Phase F write-up.*
+## Exit criteria — closed
+
+- [x] Root cause write-up accepted (this doc)
+- [x] Logical analysis ID behavior accepted
+- [x] Aggregate ceilings approved **and enforced**
+- [x] Phases A–G delivered on `main`
+
+## Checks
+
+- `npm run test:phase-f`
+- `npm run test:v51`
+
+---
+
+*End of Phase F write-up (exit closed).*
