@@ -528,7 +528,7 @@ function buildNextActions(input: V5CustomerPresentationInput): V5NextAction[] {
         whatChanges: "The follow-up list narrows to the matching official path.",
       },
     );
-  } else if (detectNoticeKind(brief, input.presentation) === "rfe" || brief?.primaryForm === "I-485") {
+  } else if (detectNoticeKind(brief, input.presentation) === "rfe") {
     fillers.push(
       {
         what: "Respond to the Request for Evidence",
@@ -547,6 +547,132 @@ function buildNextActions(input: V5CustomerPresentationInput): V5NextAction[] {
         why: "A complete response answers every requested item, not a generic packet.",
         now: "Can be done now",
         whatChanges: "Gaps move from unknown to addressed before mailing or upload.",
+      },
+    );
+  } else if (detectNoticeKind(brief, input.presentation) === "noid") {
+    fillers.push(
+      {
+        what: "Respond to the Notice of Intent to Deny",
+        why: "USCIS plans to deny unless the grounds on the NOID are addressed before the deadline.",
+        now: "Can be done now",
+        whatChanges: "Each listed ground can be answered from the notice itself.",
+      },
+      {
+        what: "Upload or confirm the NOID and its deadline",
+        why: "The printed deadline and denial grounds must come from the notice.",
+        now: "Can be done now",
+        whatChanges: "The case posture stays on NOID response instead of a new petition.",
+      },
+      {
+        what: "Organize evidence that answers every ground listed",
+        why: "A complete response addresses the notice grounds, not a generic packet.",
+        now: "Can be done now",
+        whatChanges: "Gaps move from unknown to addressed before mailing or upload.",
+      },
+    );
+  } else if (brief?.primaryForm === "I-485") {
+    fillers.push(
+      {
+        what: "Stay with the Form I-485 adjustment filing on record",
+        why: "Adjustment of status is the locked matter for this case.",
+        now: "Can be done now",
+        whatChanges: "Recommendations stay on I-485 instead of starting an unrelated petition.",
+      },
+      {
+        what: "Upload the most recent I-485 receipt or decision notice",
+        why: "Notices turn reported adjustment facts into verified posture.",
+        now: "Can be done now",
+        whatChanges: "Unknowns about pending adjustment action shrink once documents are reviewed.",
+      },
+      {
+        what: "Confirm any biometrics, interview, or RFE notices on the I-485",
+        why: "Later USCIS action changes what to do next on adjustment.",
+        now: "Can be done now",
+        whatChanges: "The adjustment timeline stays tied to notices on file.",
+      },
+    );
+  } else if (brief?.primaryForm === "I-589") {
+    fillers.push(
+      {
+        what: "Stay with the Form I-589 asylum application already on file",
+        why: "The locked matter is the asylum packet, including supporting statements.",
+        now: "Can be done now",
+        whatChanges: "Recommendations stay on I-589 instead of a competing family petition.",
+      },
+      {
+        what: "Gather country-conditions material that supports the asylum claim",
+        why: "Country-conditions evidence is part of the asylum evidence framework when I-589 is locked.",
+        now: "Can be done now",
+        whatChanges: "Supporting reports move from missing to available for the asylum packet.",
+      },
+      {
+        what: "Upload your personal declaration / statement for the asylum record",
+        why: "Your written account is a core part of Form I-589 evidence.",
+        now: "Can be done now",
+        whatChanges: "The declaration can be checked against the locked asylum matter.",
+      },
+    );
+  } else if (brief?.primaryForm === "N-400") {
+    fillers.push(
+      {
+        what: "Stay with the Form N-400 naturalization application on file",
+        why: "Naturalization is the locked pathway for this case.",
+        now: "Can be done now",
+        whatChanges: "Recommendations stay on N-400 instead of a new petition.",
+      },
+      {
+        what: "Upload identity and permanent-resident status records",
+        why: "Those records support the naturalization eligibility review.",
+        now: "Can be done now",
+        whatChanges: "Status evidence moves from unknown to verified.",
+      },
+      {
+        what: "Confirm any upcoming biometrics or interview notices",
+        why: "Later USCIS notices control the next deadlines on N-400.",
+        now: "Can be done now",
+        whatChanges: "The naturalization posture stays tied to notices on file.",
+      },
+    );
+  } else if (brief?.primaryForm === "I-130") {
+    fillers.push(
+      {
+        what: "Stay with the Form I-130 family petition on file",
+        why: "The family petition is the locked pathway for this case.",
+        now: "Can be done now",
+        whatChanges: "Recommendations stay on I-130 instead of switching pathways.",
+      },
+      {
+        what: "Gather identity and marriage / relationship records",
+        why: "Those are the core evidence types listed for a family petition.",
+        now: "Can be done now",
+        whatChanges: "Relationship evidence moves from missing to available.",
+      },
+      {
+        what: "Upload any I-130 receipt or National Visa Center notice you have",
+        why: "Notices confirm the petition is on file and whether consular processing has started.",
+        now: "Can be done now",
+        whatChanges: "The family-petition timeline becomes clearer.",
+      },
+    );
+  } else if (brief?.primaryForm === "I-765") {
+    fillers.push(
+      {
+        what: "Stay with the Form I-765 employment authorization filing",
+        why: "The locked matter is the EAD / work-permit application.",
+        now: "Can be done now",
+        whatChanges: "Recommendations stay on I-765 instead of a new petition path.",
+      },
+      {
+        what: "Upload identity and status records that support the I-765",
+        why: "Those are the core evidence types listed for employment authorization.",
+        now: "Can be done now",
+        whatChanges: "Missing EAD support records can be verified.",
+      },
+      {
+        what: "Upload any I-765 receipt or decision notice you received",
+        why: "Notices turn reported EAD facts into verified posture.",
+        now: "Can be done now",
+        whatChanges: "The employment-authorization timeline becomes clearer.",
       },
     );
   } else {

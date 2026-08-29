@@ -127,7 +127,10 @@ export function buildLedgerDrivenActions(input: {
   const vawaLocked =
     isVawaI360Lock(lock) ||
     input.brief?.primaryForm === "I-360" ||
-    /\bvawa\b/i.test(input.brief?.caseType ?? "");
+    /\bvawa\b/i.test(input.brief?.caseType ?? "") ||
+    // Ledger-only callers (tests / graph without brief): prima facie posture implies VAWA.
+    ledger?.current_posture?.value === "PRIMA_FACIE_PENDING" ||
+    (ledger?.facts ?? []).some((f) => f.fact_id === "FORM_I360_FILED");
   if (!vawaLocked) return [];
 
   const actions: RankedAction[] = [];
