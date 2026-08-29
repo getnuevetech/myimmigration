@@ -145,3 +145,180 @@ export function shouldExcludeCountryConditions(lock: CaseTypeLock | null | undef
   if (locked.includes("I-589")) return false;
   return true;
 }
+
+/* ─── Phase C — three locks (Correction Spec §7 / INV-LOCK-01/02) ─── */
+
+/** Contaminating phrases forbidden in VAWA customer copy (golden exact_must_not_include). */
+export const VAWA_CONTAMINATION_PHRASES = [
+  "Form I-130 instructions describe",
+  "Form I-589 and similar packets",
+] as const;
+
+export const ANTI_I130_MARRIAGE_ALONE =
+  "Do not treat marriage alone as a reason to file a new Form I-130 instead.";
+
+export function isVawaI360Lock(lock: CaseTypeLock | null | undefined): boolean {
+  if (!lock) return false;
+  return lockedFormNumbers(lock).includes("I-360") || /\bvawa\b/i.test(lock.caseType ?? "");
+}
+
+/**
+ * Retrieval lock (hard filter): drop knowledge / authority rows that are
+ * competing pathway material when the brief locks an existing matter.
+ * Soft scoring still applies in knowledge-retrieval; this is the hard gate.
+ */
+export function passesRetrievalLock(
+  text: string,
+  lock: CaseTypeLock | null | undefined,
+): boolean {
+  if (!lock?.doNotRecommendNewPathway) return true;
+  const locked = lockedFormNumbers(lock);
+  const hay = text;
+
+  // I-589 / country-conditions never enter VAWA (or non-asylum) locked context.
+  if (!locked.includes("I-589")) {
+    if (/\bi-?589\b/i.test(hay) && !/\bi-?360\b|\bvawa\b/i.test(hay)) return false;
+    if (/country.?conditions/i.test(hay) && !/\bi-?360\b|\bvawa\b/i.test(hay)) return false;
+  }
+
+  // Competing starter forms as primary evidence framework — keep only if locked.
+  for (const form of COMPETING_PATHWAY_FORMS) {
+    if (locked.includes(form)) continue;
+    const re = new RegExp(`\\b${form.replace("-", "-?")}\\b`, "i");
+    if (!re.test(hay)) continue;
+    // Allow contrast / anti-recommendation mentions of I-130 under VAWA.
+    if (form === "I-130" && isVawaI360Lock(lock)) {
+      if (
+        /do not|instead of|not (?:a |the )?reason to file|anti.?recommend|rather than|competing/i.test(
+          hay,
+        )
+      ) {
+        continue;
+      }
+      // Pure I-130 instructional / petition-framework material — drop.
+      if (/instructions describe|family petition|Form I-130 instructions/i.test(hay)) return false;
+      if (/\bi-?130\b/i.test(hay) && !/\bi-?360\b|\bvawa\b|\bi-?485\b/i.test(hay)) return false;
+      continue;
+    }
+    if (isCompetingPathwayForm(form, lock)) {
+      if (re.test(hay) && !locked.some((f) => new RegExp(f.replace("-", "-?"), "i").test(hay))) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+export function filterByRetrievalLock<T>(
+  items: T[],
+  lock: CaseTypeLock | null | undefined,
+  textOf: (item: T) => string,
+): T[] {
+  if (!lock?.doNotRecommendNewPathway) return items;
+  return items.filter((item) => passesRetrievalLock(textOf(item), lock));
+}
+
+/**
+ * Presentation lock: customer-facing strings must not use foreign form
+ * families as evidence frameworks under a locked VAWA (etc.) matter.
+ */
+export function passesPresentationLock(
+  text: string,
+  lock: CaseTypeLock | null | undefined,
+): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  for (const phrase of VAWA_CONTAMINATION_PHRASES) {
+    if (t.includes(phrase)) return false;
+  }
+  if (!lock?.doNotRecommendNewPathway) return true;
+
+  if (isVawaI360Lock(lock)) {
+    if (/\bForm I-130 instructions\b/i.test(t)) return false;
+    if (/\bForm I-589 and similar packets\b/i.test(t)) return false;
+    if (/\bfile Form I-130 first\b/i.test(t)) return false;
+    // I-589 as requirement / evidence framework
+    if (/\bi-?589\b/i.test(t) && !/do not|instead|not (?:required|needed)/i.test(t)) return false;
+    if (/country.?conditions/i.test(t) && !/do not|not required|not needed/i.test(t)) return false;
+  }
+  return true;
+}
+
+export function scrubPresentationContamination(text: string): string {
+  let out = text;
+  for (const phrase of VAWA_CONTAMINATION_PHRASES) {
+    out = out.split(phrase).join("");
+  }
+  out = out.replace(/\bForm I-130 instructions describe[^.]*\./gi, "");
+  out = out.replace(/\bForm I-589 and similar packets[^.]*\./gi, "");
+  return out.replace(/\s{2,}/g, " ").trim();
+}
+
+/**
+ * Recommendation lock: competing starter petitions must not appear as
+ * recommended next filings when doNotRecommendNewPathway is set.
+ */
+export function passesRecommendationLock(
+  text: string,
+  lock: CaseTypeLock | null | undefined,
+): boolean {
+  if (!lock?.doNotRecommendNewPathway) return true;
+  const t = text.trim();
+  if (!t) return false;
+
+  // Explicit anti-recommendations are allowed (INV-LOCK-02 contrast).
+  if (
+    /do not (?:treat|start|file)|instead of (?:filing|starting)|not (?:a reason to file|recommended as a new)/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+
+  const locked = lockedFormNumbers(lock);
+  for (const form of COMPETING_PATHWAY_FORMS) {
+    if (locked.includes(form)) continue;
+    const re = new RegExp(`\\b${form.replace("-", "-?")}\\b`, "i");
+    if (!re.test(t)) continue;
+    if (
+      /review form|file (?:a |an |form )?|start (?:a |an )?|prepare (?:a |an )?|first (?:us)?cis form|usual first/i.test(
+        t,
+      )
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Anti-I-130 emission gate (Correction Spec §7).
+ * Allowed when locked away from family/I-130 AND there is concrete
+ * I-130-shaped contamination risk. Never a global always-on banner.
+ */
+export function shouldEmitAntiI130(input: {
+  lock: CaseTypeLock | null | undefined;
+  hasI130ShapedContaminationRisk: boolean;
+}): boolean {
+  if (!input.hasI130ShapedContaminationRisk) return false;
+  const lock = input.lock;
+  if (!lock) return false;
+  if (lock.lockFamilyOpenOptionsI130) return false;
+  if (lockedFormNumbers(lock).includes("I-130") && !isVawaI360Lock(lock)) return false;
+  // Emit on VAWA / other non-I-130 locked paths when risk is present.
+  if (isVawaI360Lock(lock)) return true;
+  if (lock.doNotRecommendNewPathway && !lockedFormNumbers(lock).includes("I-130")) return true;
+  return false;
+}
+
+/** Heuristic: marriage→I-130 misconception risk from brief / situation text. */
+export function detectI130ContaminationRisk(texts: string[]): boolean {
+  const blob = texts.join("\n");
+  return (
+    /\bi-?130\b/i.test(blob) ||
+    /Form I-130 instructions/i.test(blob) ||
+    /marriage.*(?:petition|i-?130)|(?:file|start).*(?:family petition|i-?130)/i.test(blob) ||
+    /spouse (?:is )?(?:a )?u\.?s\.? citizen/i.test(blob) ||
+    /married to (?:a )?u\.?s\.? citizen/i.test(blob)
+  );
+}

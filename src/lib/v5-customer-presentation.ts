@@ -1,7 +1,15 @@
 import { immigrationDocumentTypeLabel, resolveImmigrationDocumentType } from "@/domain/documents";
 import type { PresentationContract } from "@/lib/case-presentation-contract";
 import type { SituationBrief, SituationFact, SituationFactState } from "@/lib/situation-brief";
-import { caseTypeLockFromBrief } from "@/lib/case-type-lock";
+import {
+  ANTI_I130_MARRIAGE_ALONE,
+  caseTypeLockFromBrief,
+  detectI130ContaminationRisk,
+  passesPresentationLock,
+  passesRecommendationLock,
+  scrubPresentationContamination,
+  shouldEmitAntiI130,
+} from "@/lib/case-type-lock";
 
 export type V5FactMarker = SituationFactState;
 
@@ -108,19 +116,32 @@ function buildKeyPoint(brief: SituationBrief | null, presentation?: Presentation
   const primary = lock?.primaryForm ?? brief?.primaryForm ?? null;
   const related = brief?.relatedForm ?? null;
   const question = brief?.customerQuestion ?? "What does this immigration situation mean, and what should happen next?";
+  const riskTexts = [
+    brief?.customerQuestion ?? "",
+    brief?.caseType ?? "",
+    ...(brief?.situationBullets ?? []).map((item) => item.text),
+    ...(brief?.reportedFacts ?? []).map((item) => item.text),
+    ...(brief?.verifiedFacts ?? []).map((item) => item.text),
+  ];
+  const emitAntiI130 = shouldEmitAntiI130({
+    lock,
+    hasI130ShapedContaminationRisk: detectI130ContaminationRisk(riskTexts),
+  });
 
   if (notice === "prima_facie") {
+    const body = [
+      "USCIS issued a Prima Facie Determination on your VAWA self-petition. That is a preliminary positive finding that the basic eligibility pieces look present so far.",
+      "It is not a final approval of Form I-360, and it is not a green card.",
+      related
+        ? `Your green-card outcome, if available, is usually decided through the related ${related} adjustment process after the self-petition path is clear — not by starting a new family petition.`
+        : "Any green-card step still depends on later USCIS decisions and on whether adjustment of status is available in your case.",
+      "Keep following the VAWA I-360 case you already have on file.",
+    ];
+    if (emitAntiI130) body.push(ANTI_I130_MARRIAGE_ALONE);
     return {
       kind: "notice_meaning",
       heading: "What this notice means",
-      body: [
-        "USCIS issued a Prima Facie Determination on your VAWA self-petition. That is a preliminary positive finding that the basic eligibility pieces look present so far.",
-        "It is not a final approval of Form I-360, and it is not a green card.",
-        related
-          ? `Your green-card outcome, if available, is usually decided through the related ${related} adjustment process after the self-petition path is clear — not by starting a new family petition.`
-          : "Any green-card step still depends on later USCIS decisions and on whether adjustment of status is available in your case.",
-        "Keep following the VAWA I-360 case you already have on file. Do not treat marriage alone as a reason to file a new Form I-130 instead.",
-      ],
+      body,
     };
   }
 
@@ -406,9 +427,18 @@ function buildNextActions(input: V5CustomerPresentationInput): V5NextAction[] {
   const combined = [...seeded, ...fromPresentation, ...fromSteps];
   const seen = new Set<string>();
   const out: V5NextAction[] = [];
+  const lock = caseTypeLockFromBrief(brief);
   for (const item of combined) {
     const key = item.what.trim().toLowerCase();
     if (!key || seen.has(key)) continue;
+    // Phase C recommendation lock — drop competing pathway recommendations.
+    const blob = `${item.what}\n${item.why}\n${item.whatChanges}`;
+    if (!passesRecommendationLock(blob, lock)) continue;
+    if (!passesPresentationLock(blob, lock) && lock?.doNotRecommendNewPathway) {
+      const scrubbedWhy = scrubPresentationContamination(item.why);
+      if (!passesPresentationLock(`${item.what}\n${scrubbedWhy}`, lock)) continue;
+      item.why = scrubbedWhy;
+    }
     seen.add(key);
     out.push(item);
     if (out.length >= 5) break;
@@ -507,6 +537,8 @@ function buildNextActions(input: V5CustomerPresentationInput): V5NextAction[] {
   for (const item of fillers) {
     const key = item.what.trim().toLowerCase();
     if (seen.has(key)) continue;
+    const blob = `${item.what}\n${item.why}\n${item.whatChanges}`;
+    if (!passesRecommendationLock(blob, lock)) continue;
     seen.add(key);
     out.push(item);
     if (out.length >= 5) break;
@@ -530,6 +562,7 @@ function situationBulletsFromBrief(brief: SituationBrief | null): V5SituationBul
 
 export function assembleV5CustomerPresentation(input: V5CustomerPresentationInput): V5CustomerPresentation {
   const brief = input.brief;
+  const lock = caseTypeLockFromBrief(brief);
   const docs = dedupeDocumentsForCustomerPresentation(
     (input.documents?.length
       ? input.documents
@@ -544,11 +577,20 @@ export function assembleV5CustomerPresentation(input: V5CustomerPresentationInpu
   const stillNeed = uniqByText([
     ...(brief?.unknownFacts ?? []).map((item) => ({ text: item.text, why: whyForUnknown(item.text) })),
     ...(input.presentation?.what_this_means.unknowns ?? []).map((text) => ({ text, why: whyForUnknown(text) })),
-    ...(input.neededDocs ?? []).slice(0, 3).map((doc) => ({
-      text: `Upload or confirm: ${doc.label}`,
-      why: doc.hint || "This matching record is still missing from the locked matter.",
-    })),
-  ]).slice(0, 8);
+    ...(input.neededDocs ?? []).slice(0, 3).map((doc) => {
+      const hint = scrubPresentationContamination(doc.hint || "");
+      const why =
+        hint && passesPresentationLock(hint, lock)
+          ? hint
+          : "This matching record is still missing from the locked matter.";
+      return {
+        text: `Upload or confirm: ${doc.label}`,
+        why,
+      };
+    }),
+  ])
+    .filter((item) => !lock?.doNotRecommendNewPathway || passesPresentationLock(`${item.text}\n${item.why}`, lock))
+    .slice(0, 8);
 
   const process = (brief?.currentPosition?.length
     ? brief.currentPosition

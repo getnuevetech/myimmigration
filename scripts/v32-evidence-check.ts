@@ -2785,6 +2785,12 @@ assert(!rankMatchingForms(rfeMatchInput).some((item) => item.formNumber === "I-1
 assert(caseStateSrc.includes("caseTypeLockFromBrief"), "evidence reconstruction must apply the case-type lock");
 assert(readFileSync(join(process.cwd(), "src/lib/goal-forms.ts"), "utf8").includes("caseLock"), "form ranking must accept the case-type lock");
 assert(readFileSync(join(process.cwd(), "src/lib/case-type-lock.ts"), "utf8").includes("doNotRecommendNewPathway"), "case-type lock helper must exist");
+assert(readFileSync(join(process.cwd(), "src/lib/case-type-lock.ts"), "utf8").includes("passesRetrievalLock"), "phase C retrieval lock must exist");
+assert(readFileSync(join(process.cwd(), "src/lib/case-type-lock.ts"), "utf8").includes("passesPresentationLock"), "phase C presentation lock must exist");
+assert(readFileSync(join(process.cwd(), "src/lib/case-type-lock.ts"), "utf8").includes("passesRecommendationLock"), "phase C recommendation lock must exist");
+assert(readFileSync(join(process.cwd(), "src/lib/case-type-lock.ts"), "utf8").includes("shouldEmitAntiI130"), "phase C anti-I-130 gate must exist");
+assert(!readFileSync(join(process.cwd(), "src/lib/goal-documents.ts"), "utf8").includes("Form I-130 instructions describe"), "goal-documents must not ship I-130 instructional contamination");
+assert(!readFileSync(join(process.cwd(), "src/lib/goal-documents.ts"), "utf8").includes("Form I-589 and similar packets"), "goal-documents must not ship I-589 instructional contamination");
 assert(PROMPT_VERSION.includes("v32"), "v5 case-type lock must not bump analysis prompt version");
 assert(requested.autoAssigned === false, "v5 case-type lock must not auto-assign consultants");
 
