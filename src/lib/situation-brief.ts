@@ -59,6 +59,12 @@ const CLARIFIED_LINE_RE = /^\s*\[Clarified(?: evidence)?\]/i;
 const VAWA_RE = /\bvawa\b|self-petition|prima facie/i;
 const PRIMA_FACIE_RE = /\bprima facie\b/i;
 const RFE_RE = /\brequest for evidence\b|\bRFE\b/i;
+const NOID_RE = /\bnotice of intent to deny\b|\bNOID\b/i;
+const ASYLUM_RE = /\basylum\b|\bi-?589\b/i;
+const NATURALIZATION_RE = /\bnaturaliz|\bcitizenship\b|\bn-?400\b/i;
+const EAD_RE = /\bemployment authorization\b|\bwork permit\b|\bi-?765\b|\bead\b/i;
+const CONSULAR_RE = /\bconsular (?:processing|interview)\b|\bnational visa center\b|\bnvc\b/i;
+const COURT_RE = /\beoir\b|\bimmigration court\b|\bnotice to appear\b|\bnta\b|\bmaster calendar\b/i;
 const MARRIED_USC_RE = /\bmarried to (?:a )?(?:u\.?s\.?|united states) citizen\b|\b(?:u\.?s\.?|united states) citizen (?:spouse|husband|wife)\b|\bmarry a (?:u\.?s\.?|united states) citizen\b/i;
 const IN_US_RE = /\bin (?:the )?(?:united states|u\.s\.a?\.?)\b|\bcurrently inside the united states\b/i;
 const VISITOR_RE = /\bvisitor visa\b|\bb-?2\b|\btourist visa\b/i;
@@ -162,6 +168,7 @@ export function reportedFactsFromAnswer(answer: string): { key: string; value: s
   }
   if (PRIMA_FACIE_RE.test(answer)) facts.push({ key: "notice_type", value: "Prima Facie Determination" });
   if (RFE_RE.test(answer)) facts.push({ key: "notice_type", value: "RFE" });
+  if (NOID_RE.test(answer)) facts.push({ key: "notice_type", value: "NOID" });
   return facts;
 }
 
@@ -187,14 +194,20 @@ export function buildSituationBrief(input: SituationBriefInput = {}): SituationB
     hasDocumentType(input, "relationship_civil_document") || hasDocumentSignal(input, /\bmarriage[-_\s]?certificate\b|\bcertificate of marriage\b/i);
   const personalDeclarationVerified = hasDocumentType(input, "personal_declaration") || hasDocumentSignal(input, /\bpersonal[-_\s]?declaration\b|\bpersonal statement\b/i);
   const rfe = RFE_RE.test(text) || (input.notices ?? []).some((notice) => RFE_RE.test(notice)) || (input.facts ?? []).some((fact) => fact.key === "notice_type" && RFE_RE.test(fact.value));
+  const noid = NOID_RE.test(text) || (input.notices ?? []).some((notice) => NOID_RE.test(notice)) || (input.facts ?? []).some((fact) => fact.key === "notice_type" && NOID_RE.test(fact.value));
   const marriedUsc = MARRIED_USC_RE.test(text);
   const inUnitedStates = IN_US_RE.test(text);
   const visitor = VISITOR_RE.test(text);
   const expired = EXPIRED_RE.test(`${situation}\n${clarifyText}`);
   const medicalMissing = MEDICAL_MISSING_RE.test(text);
   const waiver = WAIVER_RE.test(`${situation}\n${clarifyText}\n${goal}`);
-  const nothingFiled = NOTHING_FILED_RE.test(text) && !hasI360 && !hasI485Form && !hasI130Filing && !rfe;
-  const familyOpenOptions = marriedUsc && nothingFiled && !hasI360 && !rfe;
+  const nothingFiled = NOTHING_FILED_RE.test(text) && !hasI360 && !hasI485Form && !hasI130Filing && !rfe && !noid;
+  const familyOpenOptions = marriedUsc && nothingFiled && !hasI360 && !rfe && !noid;
+  const hasI589 = forms.includes("I-589") || (ASYLUM_RE.test(text) && /\bi-?589\b/i.test(text));
+  const hasN400 = forms.includes("N-400") || /\bn-?400\b/i.test(text);
+  const hasI765 = forms.includes("I-765") || (/\bi-?765\b/i.test(text) && EAD_RE.test(text));
+  const consular = CONSULAR_RE.test(text);
+  const courtNotice = COURT_RE.test(text) || (input.notices ?? []).some((n) => COURT_RE.test(n));
 
   let caseType = "Immigration situation";
   let primaryForm: string | null = forms[0] ?? null;
@@ -211,21 +224,39 @@ export function buildSituationBrief(input: SituationBriefInput = {}): SituationB
       relatedForm = "I-485";
       relatedProcess = "Adjustment of Status";
     }
-  } else if (rfe) {
-    caseType = "USCIS notice response";
+  } else if (rfe || noid) {
+    caseType = noid ? "USCIS notice of intent to deny" : "USCIS notice response";
     primaryForm = hasI485Form ? "I-485" : forms.find((form) => form !== "I-797") ?? "I-485";
     doNotRecommendNewPathway = true;
-  } else if (hasI485Form && !nothingFiled) {
+  } else if (courtNotice) {
+    caseType = "Immigration court matter";
+    primaryForm = forms.find((form) => form === "I-589") ?? forms[0] ?? null;
+    doNotRecommendNewPathway = true;
+  } else if (hasI589 && !nothingFiled) {
+    caseType = "Asylum application";
+    primaryForm = "I-589";
+    doNotRecommendNewPathway = true;
+  } else if (hasN400 || (forms.includes("N-400") && !nothingFiled)) {
+    caseType = "Naturalization";
+    primaryForm = "N-400";
+    doNotRecommendNewPathway = true;
+  } else if (hasI765 && !hasI485Form && !hasI130Filing) {
+    caseType = "Employment authorization";
+    primaryForm = "I-765";
+    doNotRecommendNewPathway = true;
+  } else if (hasI485Form && !nothingFiled && !hasI130Filing) {
     caseType = "Adjustment of Status";
     primaryForm = "I-485";
     doNotRecommendNewPathway = true;
   } else if (hasI130Filing) {
-    caseType = "Family petition";
+    caseType = consular ? "Family petition — consular processing" : "Family petition";
     primaryForm = "I-130";
     doNotRecommendNewPathway = true;
     if (reportsI485) {
       relatedForm = "I-485";
       relatedProcess = "Adjustment of Status";
+    } else if (consular) {
+      relatedProcess = "Consular processing";
     }
   } else if (familyOpenOptions) {
     caseType = "Family petition options";
@@ -233,6 +264,11 @@ export function buildSituationBrief(input: SituationBriefInput = {}): SituationB
     relatedForm = "I-485";
     relatedProcess = "Adjustment of Status, after a family petition if that path is used";
     lockFamilyOpenOptionsI130 = true;
+  } else if (consular && marriedUsc) {
+    caseType = "Family petition — consular processing";
+    primaryForm = "I-130";
+    lockFamilyOpenOptionsI130 = true;
+    relatedProcess = "Consular processing";
   }
 
   const customerGoal = GREEN_CARD_RE.test(goal) || GREEN_CARD_RE.test(situation)
@@ -413,5 +449,88 @@ export const RFE_I485_FIXTURE: SituationBriefInput = {
   ],
   documents: [
     { fileName: "rfe.pdf", documentType: "rfe", text: "Request for Evidence. Form I-485. Respond by July 31, 2026." },
+  ],
+};
+
+export const ASYLUM_I589_FIXTURE: SituationBriefInput = {
+  situation: "I filed Form I-589 for asylum and I am gathering country-conditions evidence.",
+  goal: "Understand my asylum application and what evidence I still need",
+  facts: [{ key: "form_type", value: "I-589", provenance: "DOCUMENT_EXTRACTED" }],
+  documents: [
+    {
+      fileName: "I-589-receipt.pdf",
+      documentType: "receipt_notice",
+      text: "USCIS Receipt Notice. Form I-589, Application for Asylum and for Withholding of Removal.",
+    },
+  ],
+};
+
+export const NOID_I485_FIXTURE: SituationBriefInput = {
+  situation: "USCIS issued a Notice of Intent to Deny on my Form I-485.",
+  goal: "Respond to the NOID before the deadline",
+  notices: ["NOID"],
+  facts: [
+    { key: "form_type", value: "I-485", provenance: "DOCUMENT_EXTRACTED" },
+    { key: "notice_type", value: "NOID", provenance: "DOCUMENT_EXTRACTED" },
+  ],
+  documents: [
+    { fileName: "noid.pdf", documentType: "noid", text: "Notice of Intent to Deny. Form I-485." },
+  ],
+};
+
+export const EAD_I765_FIXTURE: SituationBriefInput = {
+  situation: "I need an Employment Authorization Document and filed Form I-765.",
+  goal: "Track my EAD / work permit application",
+  facts: [{ key: "form_type", value: "I-765", provenance: "DOCUMENT_EXTRACTED" }],
+  documents: [
+    { fileName: "I-765-receipt.pdf", documentType: "receipt_notice", text: "USCIS Receipt Notice. Form I-765." },
+  ],
+};
+
+export const N400_NATURALIZATION_FIXTURE: SituationBriefInput = {
+  situation: "I filed Form N-400 to apply for naturalization / U.S. citizenship.",
+  goal: "Understand my naturalization case next steps",
+  facts: [{ key: "form_type", value: "N-400", provenance: "DOCUMENT_EXTRACTED" }],
+  documents: [
+    { fileName: "N-400-receipt.pdf", documentType: "receipt_notice", text: "USCIS Receipt Notice. Form N-400." },
+  ],
+};
+
+export const CONSULAR_I130_FIXTURE: SituationBriefInput = {
+  situation: "My spouse is a U.S. citizen. We filed Form I-130 and will pursue consular processing abroad through the National Visa Center.",
+  goal: "Understand consular processing after the family petition",
+  facts: [{ key: "form_type", value: "I-130", provenance: "DOCUMENT_EXTRACTED" }],
+  documents: [
+    { fileName: "I-130-receipt.pdf", documentType: "receipt_notice", text: "USCIS Receipt Notice. Form I-130, Petition for Alien Relative." },
+  ],
+};
+
+export const AOS_WITHOUT_PETITION_FIXTURE: SituationBriefInput = {
+  situation: "I filed Form I-485 for adjustment of status. There is no separate family petition discussed here.",
+  goal: "Understand my adjustment of status filing",
+  facts: [{ key: "form_type", value: "I-485", provenance: "DOCUMENT_EXTRACTED" }],
+  documents: [
+    { fileName: "I-485-receipt.pdf", documentType: "aos_filing_record", text: "USCIS Receipt Notice. Form I-485." },
+  ],
+};
+
+export const COURT_NOTICE_EOIR_FIXTURE: SituationBriefInput = {
+  situation: "I received a Notice to Appear and have a master calendar hearing in immigration court (EOIR).",
+  goal: "Understand what the court notice means",
+  notices: ["NTA", "EOIR"],
+  facts: [{ key: "notice_type", value: "NTA", provenance: "DOCUMENT_EXTRACTED" }],
+  documents: [
+    { fileName: "nta.pdf", documentType: "court_notice", text: "U.S. Department of Justice EOIR Notice to Appear. Master calendar hearing." },
+  ],
+};
+
+export const MARRIAGE_I130_FILED_FIXTURE: SituationBriefInput = {
+  situation: "I am married to a U.S. citizen. We already filed Form I-130 and may later file Form I-485.",
+  goal: "Stay on the marriage-based family petition path",
+  facts: [
+    { key: "form_type", value: "I-130", provenance: "DOCUMENT_EXTRACTED" },
+  ],
+  documents: [
+    { fileName: "I-130-receipt.pdf", documentType: "receipt_notice", text: "USCIS Receipt Notice. Form I-130." },
   ],
 };

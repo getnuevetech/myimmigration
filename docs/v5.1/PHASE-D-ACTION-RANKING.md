@@ -18,4 +18,5 @@
 
 ## Next
 
-Phase G — multi-fixture pack with positive and negative isolation tests.
+Phase G — multi-fixture pack — done (`docs/v5.1/PHASE-G-FIXTURE-PACK.md`).  
+V5.1 delivery sequence complete: `0 → F → A → B → C → E → D → G`.

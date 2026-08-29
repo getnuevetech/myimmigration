@@ -80,7 +80,8 @@ function main() {
     goal: VAWA_PRIMA_FACIE_FIXTURE.goal,
     documents: docs,
   });
-  const ranked = buildLedgerDrivenActions({ ledger });
+  const brief = buildSituationBrief(VAWA_PRIMA_FACIE_FIXTURE);
+  const ranked = buildLedgerDrivenActions({ ledger, brief });
   assert.deepEqual(
     ranked.map((a) => a.action_id),
     [...VAWA_PRIMA_FACIE_EXPECTED_ACTION_IDS],
@@ -137,7 +138,6 @@ function main() {
   assert.ok(isGenericActionId("ASK_FOLLOW_UP"));
 
   // Customer presentation order follows scores (customer actions only).
-  const brief = buildSituationBrief(VAWA_PRIMA_FACIE_FIXTURE);
   const view = assembleV5CustomerPresentation({
     brief,
     documents: docs,
