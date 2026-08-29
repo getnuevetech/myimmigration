@@ -1,9 +1,48 @@
 {
-  "$schema_comment": "V5.1 Phase 0 machine-readable golden fixture for VAWA I-360 + Prima Facie + related I-485 (reported). Used by acceptance tests; presentation copy may evolve if this contract holds.",
+  "$schema_comment": "V5.1 Phase 0 golden fixture (rev 2). Friendly aliases for readability; production provenance joins on immutable document_id + content_hash.",
   "fixture_id": "VAWA_PRIMA_FACIE_GOLDEN_V51",
-  "fixture_version": 1,
+  "fixture_version": 2,
   "source_fixture": "VAWA_PRIMA_FACIE_FIXTURE",
   "customer_goal": "Understand prima facie determination and pursue a green card",
+
+  "document_aliases": {
+    "doc_i360_receipt": {
+      "alias_file_name": "I-360-receipt.pdf",
+      "document_id": "doc_fixture_i360_receipt",
+      "content_hash": "sha256:fixture_i360_receipt",
+      "document_type": "uscis_i360_receipt_notice"
+    },
+    "doc_prima_facie": {
+      "alias_file_name": "prima-facie-determination.pdf",
+      "document_id": "doc_fixture_prima_facie",
+      "content_hash": "sha256:fixture_prima_facie",
+      "document_type": "uscis_vawa_prima_facie_notice"
+    },
+    "doc_marriage_cert": {
+      "alias_file_name": "marriage-certificate.pdf",
+      "document_id": "doc_fixture_marriage_cert",
+      "content_hash": "sha256:fixture_marriage_cert",
+      "document_type": "relationship_civil_document"
+    },
+    "doc_declaration": {
+      "alias_file_name": "personal-declaration.pdf",
+      "document_id": "doc_fixture_declaration",
+      "content_hash": "sha256:fixture_declaration",
+      "document_type": "personal_declaration"
+    }
+  },
+
+  "production_provenance_contract": {
+    "join_keys": ["document_id", "content_hash"],
+    "filename_is_display_only": true,
+    "source_shape": {
+      "document_id": "string",
+      "content_hash": "sha256:…",
+      "document_type": "string",
+      "extracted_field": "string",
+      "source_page": "number|null"
+    }
+  },
 
   "primary_matter": {
     "type": "VAWA_SELF_PETITION",
@@ -27,26 +66,30 @@
 
   "documents_expected": [
     {
-      "file_name": "I-360-receipt.pdf",
+      "document_id": "doc_fixture_i360_receipt",
+      "alias_file_name": "I-360-receipt.pdf",
       "document_type": "uscis_i360_receipt_notice",
       "customer_label_must_include": ["I-360", "Receipt"],
       "customer_label_must_not_include": ["Identity", "Travel", "Entry Document"],
-      "takeaway_must_confirm": "USCIS received Form I-360"
+      "takeaway_must_confirm_semantic": "USCIS received Form I-360 / issued a filing receipt"
     },
     {
-      "file_name": "prima-facie-determination.pdf",
+      "document_id": "doc_fixture_prima_facie",
+      "alias_file_name": "prima-facie-determination.pdf",
       "document_type": "uscis_vawa_prima_facie_notice",
       "customer_label_must_include": ["Prima Facie"],
       "dedupe_group": "prima_facie_notice",
       "max_customer_occurrences": 1
     },
     {
-      "file_name": "marriage-certificate.pdf",
+      "document_id": "doc_fixture_marriage_cert",
+      "alias_file_name": "marriage-certificate.pdf",
       "document_type": "relationship_civil_document",
       "customer_label_must_not_include": ["Identity & Entry", "I-589"]
     },
     {
-      "file_name": "personal-declaration.pdf",
+      "document_id": "doc_fixture_declaration",
+      "alias_file_name": "personal-declaration.pdf",
       "document_type": "personal_declaration",
       "customer_label_must_include": ["Declaration"],
       "customer_label_must_not_include": ["Identity", "Travel", "Entry Document", "I-589"]
@@ -61,9 +104,11 @@
       "sources": [
         {
           "source_type": "DOCUMENT",
-          "document_file_name": "I-360-receipt.pdf",
+          "document_id": "doc_fixture_i360_receipt",
+          "content_hash": "sha256:fixture_i360_receipt",
           "document_type": "uscis_i360_receipt_notice",
-          "field": "form_number",
+          "extracted_field": "form_number",
+          "source_page": 1,
           "authority_rank": "USCIS_GOVERNMENT_DOCUMENT"
         }
       ]
@@ -75,9 +120,11 @@
       "sources": [
         {
           "source_type": "DOCUMENT",
-          "document_file_name": "I-360-receipt.pdf",
+          "document_id": "doc_fixture_i360_receipt",
+          "content_hash": "sha256:fixture_i360_receipt",
           "document_type": "uscis_i360_receipt_notice",
-          "field": "notice_type",
+          "extracted_field": "notice_type",
+          "source_page": 1,
           "authority_rank": "USCIS_GOVERNMENT_DOCUMENT"
         }
       ]
@@ -89,28 +136,39 @@
       "sources": [
         {
           "source_type": "DOCUMENT",
-          "document_file_name": "prima-facie-determination.pdf",
+          "document_id": "doc_fixture_prima_facie",
+          "content_hash": "sha256:fixture_prima_facie",
           "document_type": "uscis_vawa_prima_facie_notice",
-          "field": "notice_type",
+          "extracted_field": "notice_type",
+          "source_page": 1,
           "authority_rank": "USCIS_GOVERNMENT_DOCUMENT"
         }
       ]
     },
     {
-      "fact_id": "MARRIAGE_TO_USC",
+      "fact_id": "MARRIAGE_EXISTS",
+      "status": "VERIFIED",
+      "value": true,
+      "sources": [
+        {
+          "source_type": "DOCUMENT",
+          "document_id": "doc_fixture_marriage_cert",
+          "content_hash": "sha256:fixture_marriage_cert",
+          "document_type": "relationship_civil_document",
+          "extracted_field": "document_type",
+          "authority_rank": "CUSTOMER_UPLOADED_SUPPORTING_DOCUMENT"
+        }
+      ],
+      "note": "Civil marriage record verifies marriage existence; does not alone establish spouse citizenship or an I-130 pathway"
+    },
+    {
+      "fact_id": "SPOUSE_US_CITIZEN",
       "status": "REPORTED",
       "value": true,
       "sources": [
         {
           "source_type": "USER_STATEMENT",
           "authority_rank": "CUSTOMER_STATEMENT"
-        },
-        {
-          "source_type": "DOCUMENT",
-          "document_file_name": "marriage-certificate.pdf",
-          "document_type": "relationship_civil_document",
-          "authority_rank": "CUSTOMER_UPLOADED_SUPPORTING_DOCUMENT",
-          "note": "Civil record supports relationship; does not alone convert case to I-130 pathway"
         }
       ]
     },
@@ -123,7 +181,11 @@
           "source_type": "USER_STATEMENT",
           "authority_rank": "CUSTOMER_STATEMENT"
         }
-      ]
+      ],
+      "promotion_on": {
+        "when_evidence": "I485_RECEIPT verified from USCIS receipt document",
+        "becomes": "VERIFIED"
+      }
     },
     {
       "fact_id": "WAIVER_RECEIVED",
@@ -148,9 +210,10 @@
       ]
     },
     {
-      "fact_id": "I360_FINAL_APPROVAL",
+      "fact_id": "I360_FINAL_DECISION",
       "status": "UNKNOWN",
-      "value": null,
+      "value": "UNKNOWN",
+      "allowed_values": ["APPROVED", "DENIED", "WITHDRAWN", "UNKNOWN"],
       "sources": []
     },
     {
@@ -158,6 +221,7 @@
       "status": "UNKNOWN",
       "value": null,
       "sources": [],
+      "kind": "EVIDENCE_GAP",
       "blocks_goal_progress": true
     },
     {
@@ -165,6 +229,7 @@
       "status": "UNKNOWN",
       "value": null,
       "sources": [],
+      "kind": "EVIDENCE_GAP",
       "blocks_goal_progress": true
     },
     {
@@ -172,6 +237,7 @@
       "status": "UNKNOWN",
       "value": null,
       "sources": [],
+      "kind": "EVIDENCE_GAP",
       "blocks_goal_progress": true
     },
     {
@@ -179,108 +245,168 @@
       "status": "UNKNOWN",
       "value": null,
       "sources": [],
+      "kind": "EVIDENCE_GAP",
       "blocks_goal_progress": true
     }
   ],
 
-  "conflicts": [],
-
-  "example_conflict_if_customer_claims_i485_approved": {
-    "conflict_id": "EXAMPLE_I485_STATUS",
-    "subject": "I485_STATUS",
-    "source_a": { "type": "USER_STATEMENT", "value": "APPROVED" },
-    "source_b": { "type": "USCIS_DOCUMENT", "value": "RECEIPT_ONLY_OR_ABSENT" },
-    "severity": "WARNING",
-    "resolution_status": "UNRESOLVED",
-    "required_action": "UPLOAD_I485_DECISION_NOTICE"
+  "evidence_gap_vs_conflict": {
+    "rule": "An absent or incomplete higher-authority record is an EVIDENCE_GAP / UNVERIFIED state, not a CONFLICT. A CONFLICT requires two affirmative incompatible values from comparable subjects.",
+    "this_fixture_conflicts": [],
+    "this_fixture_gaps": [
+      {
+        "subject": "FORM_I485_FILED",
+        "reported": "Customer reports prior I-485 filing",
+        "verified": null,
+        "unverified": "I-485 receipt / filing confirmation",
+        "required_action": "UPLOAD_I485_RECEIPT",
+        "not_a_conflict_because": "Absence of a receipt fails to verify the filing; it does not contradict the customer's statement"
+      },
+      {
+        "subject": "I485_FINAL_DECISION",
+        "illustrative_pattern": {
+          "reported": "Customer says APPROVED (if asserted)",
+          "verified": "I-485 filing receipt exists (when uploaded)",
+          "unverified": "Final decision",
+          "required_action": "UPLOAD_I485_DECISION_NOTICE"
+        },
+        "not_a_conflict_because": "A receipt does not contradict approval; missing decision evidence is a gap, not a conflict"
+      }
+    ],
+    "genuine_conflict_example": {
+      "conflict_id": "EXAMPLE_I485_OUTCOME_CONFLICT",
+      "subject": "I485_FINAL_DECISION",
+      "source_a": { "type": "USER_STATEMENT", "value": "APPROVED" },
+      "source_b": { "type": "USCIS_DOCUMENT", "document_type": "uscis_denial_notice", "value": "DENIED" },
+      "severity": "WARNING",
+      "resolution_status": "UNRESOLVED",
+      "required_action": "UPLOAD_OR_CONFIRM_CONTROLLING_I485_NOTICE"
+    }
   },
 
-  "supersession_chain_i360": [
-    "I360_RECEIPT_ISSUED",
-    "PRIMA_FACIE_DETERMINATION_ISSUED",
-    "LATER_I360_ACTION",
-    "I360_FINAL_DECISION"
-  ],
+  "event_timeline_i360": {
+    "note": "Events accumulate; they are not deleted when later events arrive.",
+    "events_in_order": [
+      { "event_id": "EVT_I360_RECEIPT", "fact_id": "I360_RECEIPT_ISSUED" },
+      { "event_id": "EVT_PRIMA_FACIE", "fact_id": "PRIMA_FACIE_DETERMINATION_ISSUED" },
+      { "event_id": "EVT_LATER_ACTION", "fact_id": "LATER_I360_ACTION", "status": "UNKNOWN_PENDING_EVIDENCE" },
+      { "event_id": "EVT_FINAL_DECISION", "fact_id": "I360_FINAL_DECISION", "status": "UNKNOWN" }
+    ]
+  },
 
-  "conclusions": {
-    "fact": {
-      "text": "USCIS issued a Prima Facie Determination on the VAWA Form I-360 self-petition.",
-      "sources_required": ["PRIMA_FACIE_DETERMINATION_ISSUED"]
+  "current_status_supersession_i360": {
+    "note": "Only current case-state posture is superseded; historical events remain on the timeline.",
+    "states_in_order": [
+      "FILED_PENDING",
+      "PRIMA_FACIE_PENDING",
+      "RFE_PENDING",
+      "UNDER_REVIEW",
+      "APPROVED_OR_DENIED_OR_WITHDRAWN"
+    ],
+    "current_state_for_fixture": "PRIMA_FACIE_PENDING",
+    "supersedes_prior_current_state": "FILED_PENDING"
+  },
+
+  "action_priority_model": {
+    "scale": {
+      "1": "Minimal / not material to goal",
+      "2": "Low",
+      "3": "Moderate",
+      "4": "High",
+      "5": "Critical / blocking understanding or progress"
     },
-    "legal_interpretation": {
-      "text_must_include": ["preliminary", "not a final approval", "not a green card"],
-      "text_must_not_include": ["final approval of Form I-360", "grants a green card", "file Form I-130 first"]
+    "weights": {
+      "legal_case_materiality": 3,
+      "evidence_gap_importance": 3,
+      "deadline_urgency": 2,
+      "goal_relevance": 3,
+      "ability_to_resolve": 2
     },
-    "implication_for_goal": {
-      "text_must_convey": "Green-card outcome still depends on related adjustment eligibility and later USCIS decisions, not on starting a new I-130 solely because of marriage."
-    }
+    "formula": "priority_score = (legal_case_materiality * w_mat) + (evidence_gap_importance * w_gap) + (deadline_urgency * w_dead) + (goal_relevance * w_goal) + (ability_to_resolve * w_abil)",
+    "rank_rule": "Sort descending by priority_score; ties broken by blocks_goal_progress then stable action_id. Fixture next_actions_ordered MUST match this ranking for the scored inputs below.",
+    "ordering_source": "DETERMINISTIC_SCORE"
   },
 
   "next_actions_ordered": [
     {
       "rank": 1,
       "action_id": "UPLOAD_I485_RECEIPT",
-      "resolves": ["I485_RECEIPT", "FORM_I485_FILED"],
-      "what_must_match": "I-485 receipt",
-      "priority_inputs": {
+      "what_must_match_semantic": "Upload I-485 receipt notice",
+      "effects": [
+        { "op": "RESOLVE_UNKNOWN", "fact_id": "I485_RECEIPT" },
+        { "op": "PROMOTE_FACT", "fact_id": "FORM_I485_FILED", "from": "REPORTED", "to": "VERIFIED" }
+      ],
+      "scores": {
         "legal_case_materiality": 5,
         "evidence_gap_importance": 5,
         "deadline_urgency": 2,
         "goal_relevance": 5,
         "ability_to_resolve": 5
-      }
+      },
+      "priority_score": 59
     },
     {
       "rank": 2,
-      "action_id": "UPLOAD_WAIVER_NOTICE",
-      "resolves": ["WAIVER_TYPE"],
-      "what_must_match": "waiver",
-      "priority_inputs": {
-        "legal_case_materiality": 4,
-        "evidence_gap_importance": 4,
-        "deadline_urgency": 2,
-        "goal_relevance": 4,
-        "ability_to_resolve": 5
-      }
-    },
-    {
-      "rank": 3,
       "action_id": "UPLOAD_POST_PRIMA_FACIE_NOTICES",
-      "resolves": ["LATER_I360_ACTION"],
-      "what_must_match": "notice",
-      "priority_inputs": {
+      "what_must_match_semantic": "Upload USCIS notices received after the Prima Facie Determination",
+      "effects": [
+        { "op": "RESOLVE_UNKNOWN", "fact_id": "LATER_I360_ACTION" }
+      ],
+      "scores": {
         "legal_case_materiality": 5,
         "evidence_gap_importance": 4,
         "deadline_urgency": 3,
         "goal_relevance": 4,
         "ability_to_resolve": 5
-      }
+      },
+      "priority_score": 55
+    },
+    {
+      "rank": 3,
+      "action_id": "UPLOAD_WAIVER_NOTICE",
+      "what_must_match_semantic": "Upload waiver approval or receipt showing form/decision",
+      "effects": [
+        { "op": "RESOLVE_UNKNOWN", "fact_id": "WAIVER_TYPE" }
+      ],
+      "scores": {
+        "legal_case_materiality": 4,
+        "evidence_gap_importance": 4,
+        "deadline_urgency": 3,
+        "goal_relevance": 4,
+        "ability_to_resolve": 5
+      },
+      "priority_score": 52
     },
     {
       "rank": 4,
       "action_id": "CONFIRM_I485_PROCEDURAL_STATUS",
-      "resolves": ["CURRENT_I485_STATUS"],
-      "what_must_match": "interview|RFE|EAD|decision|transfer",
-      "priority_inputs": {
+      "what_must_match_semantic": "Confirm interview / RFE / transfer / EAD / decision status on I-485",
+      "effects": [
+        { "op": "RESOLVE_UNKNOWN", "fact_id": "CURRENT_I485_STATUS" }
+      ],
+      "scores": {
         "legal_case_materiality": 4,
         "evidence_gap_importance": 3,
         "deadline_urgency": 3,
         "goal_relevance": 5,
         "ability_to_resolve": 4
-      }
+      },
+      "priority_score": 50
     },
     {
       "rank": 5,
       "action_id": "UPDATE_GREEN_CARD_PATH_EXPLANATION",
+      "what_must_match_semantic": "After records are reviewed, update explanation of the green-card / adjustment path",
       "depends_on_partial_resolution": true,
-      "what_must_match": "update|green.card|adjustment",
-      "priority_inputs": {
+      "effects": [],
+      "scores": {
         "legal_case_materiality": 3,
         "evidence_gap_importance": 2,
         "deadline_urgency": 1,
         "goal_relevance": 5,
         "ability_to_resolve": 3
-      }
+      },
+      "priority_score": 38
     }
   ],
 
@@ -305,32 +431,67 @@
     },
     "recommendation": {
       "prohibited": ["START_I130", "I589_COUNTRY_CONDITIONS", "NEW_COMPETING_PETITION"],
-      "required_anti_recommendations": ["DO_NOT_START_NEW_I130_FOR_MARRIAGE_ALONE"]
+      "allowed_anti_recommendations": ["DO_NOT_START_NEW_I130_FOR_MARRIAGE_ALONE"],
+      "require_anti_i130_when": [
+        "Competing I-130 pathway would otherwise be recommended",
+        "Customer question / analysis is actively correcting a marriage→I-130 misconception"
+      ]
+    }
+  },
+
+  "conclusions": {
+    "fact": {
+      "text_semantic": "USCIS issued a Prima Facie Determination on the VAWA Form I-360 self-petition.",
+      "sources_required": ["PRIMA_FACIE_DETERMINATION_ISSUED"]
+    },
+    "legal_interpretation": {
+      "authority_required": true,
+      "allowed_authority_domains": ["USCIS", "DOJ", "DOS", "EOIR"],
+      "authority_must_support": ["prima_facie_meaning", "not_final_i360_approval"],
+      "meaning_semantic_must_include_any": [
+        ["preliminary positive", "preliminary determination", "not a final decision on I-360", "not final I-360 approval"],
+        ["not a green card", "does not grant permanent residence", "not permanent resident status"]
+      ],
+      "meaning_must_not_claim": ["final I-360 approval", "green card granted", "file I-130 first as the path"]
+    },
+    "implication_for_goal": {
+      "text_semantic": "Green-card outcome still depends on related adjustment eligibility and later USCIS decisions—not on starting a new I-130 solely because of marriage."
     }
   },
 
   "customer_text_contract": {
-    "must_include_phrases": [
-      "VAWA",
-      "I-360",
-      "What this notice means",
-      "preliminary",
-      "not a final approval",
-      "not a green card"
-    ],
-    "must_include_any": [
-      ["Verified from your documents", "verified"]
-    ],
-    "must_not_include_phrases": [
+    "exact_must_include": ["What this notice means"],
+    "exact_must_not_include": [
       "Identity & Entry Document",
       "Form I-130 instructions describe",
       "Form I-589 and similar packets",
       "Document processing is not needed for this options review",
       "file Form I-130 first",
-      "final approval of your I-360",
       "Most likely explanations"
     ],
-    "anti_recommendation_i130_allowed": true
+    "semantic_must_convey": [
+      "Case is VAWA self-petition centered on Form I-360",
+      "Prima facie is preliminary / not final I-360 approval",
+      "Prima facie is not a green card",
+      "Verified vs reported vs unknown are distinguished"
+    ],
+    "anti_recommendation_i130": {
+      "allowed": true,
+      "globally_required": false,
+      "required_in_this_fixture": true,
+      "reason": "Regression against V4 marriage→I-130 contamination for this locked VAWA case"
+    }
+  },
+
+  "invalidation_contract": {
+    "DOCUMENT_CLASSIFICATION_CHANGED": [
+      "FACT_LEDGER",
+      "CASE_BRIEF",
+      "AFFECTED_ANALYSIS",
+      "CUSTOMER_PRESENTATION"
+    ],
+    "coalesce_window_seconds": 30,
+    "stale_customer_output_allowed": false
   },
 
   "approval_gate": {
@@ -341,13 +502,17 @@
       "BLOCK-LOCK-I589-IN-VAWA",
       "BLOCK-LOCK-I130-RECOMMENDED-IN-VAWA",
       "BLOCK-DEDUP-DUPLICATE-EVIDENCE-ROW",
-      "BLOCK-PLAN-DOCS-SKIPPED-WHILE-USED"
+      "BLOCK-PLAN-DOCS-SKIPPED-WHILE-USED",
+      "BLOCK-STATE-STALE-BRIEF-AFTER-EVIDENCE-CHANGE",
+      "BLOCK-STATE-STALE-DERIVED-OUTPUT",
+      "BLOCK-AUTHORITY-LEGAL-INTERPRETATION-UNSUPPORTED"
     ],
     "warnings": [
       "WARN-UNKNOWN-I485-RECEIPT",
       "WARN-UNKNOWN-WAIVER-TYPE",
       "WARN-UNKNOWN-MEDICAL",
-      "WARN-INCOMPLETE-TIMELINE"
+      "WARN-INCOMPLETE-TIMELINE",
+      "WARN-EVIDENCE-GAP-NOT-CONFLICT"
     ]
   },
 
@@ -364,7 +529,13 @@
     "max_model_attempts_per_stage": 2,
     "max_fallback_models_per_stage": 1,
     "max_structured_output_retries": 1,
+    "max_retry_children": 3,
+    "max_total_model_calls_per_analysis": 24,
+    "max_total_failed_model_calls": 4,
+    "max_wall_clock_seconds": 180,
     "uncaught_model_failures_in_customer_output": 0,
-    "duplicate_concurrent_logical_analyses": 0
+    "duplicate_concurrent_logical_analyses": 0,
+    "target_success_rate": 0.95,
+    "max_token_budget_hint": 250000
   }
 }
