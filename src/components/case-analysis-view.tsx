@@ -73,7 +73,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
     include: {
       issues: { orderBy: [{ priority: "asc" }, { createdAt: "asc" }] },
       pathSteps: { orderBy: { sortOrder: "asc" } },
-      documents: { where: { deletedAt: null } },
+      documents: { where: { deletedAt: null, duplicateOfId: null } },
       notices: { select: { noticeType: true } },
       runs: { orderBy: { startedAt: "desc" }, include: { consensus: true }, take: 10 },
       reconstruction: true,
@@ -316,10 +316,13 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
       status: step.status,
     })),
     documents: c.documents.map((doc) => ({
+      id: doc.id,
       fileName: doc.fileName,
       documentType: doc.documentType,
       docKind: doc.docKind,
       processingStatus: doc.processingStatus,
+      contentHash: doc.contentHash,
+      duplicateOfId: doc.duplicateOfId,
     })),
     neededDocs,
   });
