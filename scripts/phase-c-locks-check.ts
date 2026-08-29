@@ -121,7 +121,7 @@ function main() {
   const view = assembleV5CustomerPresentation({
     brief,
     documents: (VAWA_PRIMA_FACIE_FIXTURE.documents ?? []).map((d) => ({
-      fileName: d.fileName,
+      fileName: d.fileName ?? "document",
       documentType: d.documentType,
     })),
     neededDocs: ranked.slice(0, 3).map((d) => ({ kind: d.kind, label: d.label, hint: d.hint })),
