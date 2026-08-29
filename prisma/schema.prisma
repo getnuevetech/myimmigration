@@ -442,6 +442,7 @@ model Case {
   unknowns       CaseUnknown[]
   suppressedQuestions SuppressedQuestion[]
   adminReanalyses AdminCaseReanalysis[]
+  approvalGateAudits CaseApprovalGateAudit[]
 }
 
 model CaseQuestionPlan {
@@ -524,6 +525,7 @@ model CanonicalCaseState {
   evidenceSnapshotHash String @default("")
   stateJson   String   @default("{}")
   approvedStateJson String @default("{}")
+  gateResultJson String @default("{}") // Phase E: latest approval-gate audit
   updatedAt   DateTime @updatedAt
   case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
   version     CaseVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
@@ -849,6 +851,29 @@ model CasePresentation {
 
   @@index([caseId, createdAt])
   @@index([versionId])
+}
+
+// Phase E: approval-gate audit trail (BLOCK / WARN / PASS) before customer approve.
+model CaseApprovalGateAudit {
+  id                 String    @id @default(cuid())
+  caseId             String
+  versionId          String?
+  logicalAnalysisId  String?
+  gateResult         String    @default("PASS") // PASS | BLOCK | WARN
+  ruleIdsJson        String    @default("[]")
+  reasonsJson        String    @default("[]")
+  blocksJson         String    @default("[]")
+  warningsJson       String    @default("[]")
+  auditJson          String    @default("{}")
+  overrideBy         String    @default("")
+  overrideReason     String    @default("")
+  overrideAt         DateTime?
+  previousGateResult String    @default("")
+  createdAt          DateTime  @default(now())
+  case               Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@index([gateResult])
 }
 
 // Staff re-analysis drafts: compare current customer output to a new run

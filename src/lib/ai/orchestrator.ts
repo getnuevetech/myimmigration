@@ -937,10 +937,105 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
   if (caseVersion) {
     const scores = await db.case.findUnique({
       where: { id: caseId },
-      select: { evidenceAvailableScore: true, evidenceProcessedScore: true, actionReadinessScore: true },
+      select: {
+        evidenceAvailableScore: true,
+        evidenceProcessedScore: true,
+        actionReadinessScore: true,
+        customerOutputStale: true,
+        invalidationPendingAt: true,
+        invalidationReason: true,
+      },
     });
     const canonical = await db.canonicalCaseState.findUnique({ where: { caseId }, select: { evidenceSnapshotHash: true } });
-    const reconstruction = await db.caseReconstruction.findUnique({ where: { caseId }, select: { briefJson: true } });
+    const reconstruction = await db.caseReconstruction.findUnique({
+      where: { caseId },
+      select: { briefJson: true, factLedgerJson: true },
+    });
+    const caseDocs = await db.document.findMany({
+      where: { caseId, deletedAt: null },
+      select: {
+        id: true,
+        fileName: true,
+        documentType: true,
+        docKind: true,
+        contentHash: true,
+        duplicateOfId: true,
+      },
+      take: 40,
+    });
+
+    const { parseSituationBrief } = await import("../situation-brief");
+    const { caseTypeLockFromBrief } = await import("../case-type-lock");
+    const {
+      assembleV5CustomerPresentation,
+      v5CustomerPresentationText,
+    } = await import("../v5-customer-presentation");
+    const {
+      evaluateApprovalGate,
+      approvalGateAllowsCustomerApprove,
+      FIXTURE_PRIMA_FACIE_LEGAL_INTERPRETATION,
+    } = await import("../approval-gate");
+    const { persistApprovalGateAudit } = await import("../approval-gate-persist");
+
+    const brief = parseSituationBrief(reconstruction?.briefJson);
+    const lock = caseTypeLockFromBrief(brief);
+    let factLedger = null as import("../evidence/fact-ledger").FactLedger | null;
+    try {
+      const parsed = JSON.parse(reconstruction?.factLedgerJson || "{}");
+      if (parsed && Array.isArray(parsed.facts)) factLedger = parsed;
+    } catch {
+      factLedger = null;
+    }
+    const v5 = assembleV5CustomerPresentation({
+      brief,
+      presentation: presentationContract,
+      documents: caseDocs,
+    });
+    const assertsPrimaFacie =
+      /\bprima facie\b/i.test(v5CustomerPresentationText(v5)) ||
+      /\bprima facie\b/i.test(
+        [brief?.customerQuestion, brief?.caseType, ...(brief?.situationBullets ?? []).map((b) => b.text)]
+          .filter(Boolean)
+          .join("\n"),
+      );
+    const gateAudit = evaluateApprovalGate({
+      caseId,
+      caseVersionId: caseVersion.id,
+      logicalAnalysisId,
+      brief,
+      lock,
+      documents: caseDocs,
+      factLedger,
+      analysisPlan: finishedPlan,
+      customerPresentation: v5,
+      customerText: v5CustomerPresentationText(v5),
+      customerOutputStale: scores?.customerOutputStale,
+      invalidationPendingAt: scores?.invalidationPendingAt,
+      invalidationReason: scores?.invalidationReason,
+      legalInterpretation: assertsPrimaFacie ? FIXTURE_PRIMA_FACIE_LEGAL_INTERPRETATION : null,
+      assertsMaterialLegalMeaning: assertsPrimaFacie,
+    });
+    await persistApprovalGateAudit({
+      caseId,
+      versionId: caseVersion.id,
+      logicalAnalysisId,
+      audit: gateAudit,
+    }).catch(async (err) => {
+      const { logSystem } = await import("../syslog");
+      await logSystem("warning", "approval_gate", "Could not persist approval gate audit", String(err));
+    });
+
+    const allowCustomer = approvalGateAllowsCustomerApprove(gateAudit);
+    if (!allowCustomer) {
+      const { logSystem } = await import("../syslog");
+      await logSystem(
+        "warning",
+        "approval_gate",
+        `Customer approve blocked for case ${caseId}`,
+        gateAudit.rule_ids.join(", "),
+      );
+    }
+
     await finalizeCaseVersion(
       caseVersion.id,
       caseId,
@@ -949,14 +1044,19 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
         reason: caseVersion.reason,
         pipelineConfigVersion: caseVersion.pipelineConfigVersion,
         evidenceSnapshotHash: canonical?.evidenceSnapshotHash ?? "",
-        status: needsConsultant ? "consultant_recommended" : "analyzed",
+        status: !allowCustomer
+          ? "gate_blocked"
+          : needsConsultant
+            ? "consultant_recommended"
+            : "analyzed",
         readinessScore: readiness,
         evidenceAvailableScore: scores?.evidenceAvailableScore,
         evidenceProcessedScore: scores?.evidenceProcessedScore,
         actionReadinessScore: scores?.actionReadinessScore,
-        presentation: presentationContract,
+        presentation: allowCustomer ? presentationContract : null,
         analysisPlan: finishedPlan,
         situationBrief: reconstruction?.briefJson,
+        approvalGate: gateAudit,
       }),
     ).catch(async (err) => {
       const { logSystem } = await import("../syslog");

@@ -3,6 +3,8 @@ import type { AnalysisPlan } from "./case-analysis-plan";
 import { analysisPlanSummary } from "./case-analysis-plan";
 import { resolveVersionChrome, versionReasonLabel as versionReasonLabelForSurface, FILED_VERSION_REASON_LABELS, type VersionMatchInput } from "./goal-versions";
 import { parseSituationBrief, type SituationBrief } from "./situation-brief";
+import type { ApprovalGateAudit } from "./approval-gate";
+import { approvalGateAllowsCustomerApprove } from "./approval-gate";
 
 export type CanonicalApprovedState = {
   version: number;
@@ -17,6 +19,8 @@ export type CanonicalApprovedState = {
   presentation: PresentationContract | null;
   analysis_plan: AnalysisPlan | null;
   situation_brief?: SituationBrief | null;
+  /** Phase E — latest approval-gate audit (BLOCK refuses customer approve). */
+  approval_gate?: ApprovalGateAudit | null;
 };
 
 export const VERSION_REASON_LABELS: Record<string, string> = FILED_VERSION_REASON_LABELS;
@@ -53,6 +57,7 @@ export function buildCanonicalApprovedState(input: {
   presentation?: PresentationContract | null;
   analysisPlan?: AnalysisPlan | null;
   situationBrief?: SituationBrief | string | null;
+  approvalGate?: ApprovalGateAudit | null;
 }): CanonicalApprovedState {
   return {
     version: input.version,
@@ -67,6 +72,7 @@ export function buildCanonicalApprovedState(input: {
     presentation: input.presentation ?? null,
     analysis_plan: input.analysisPlan ?? null,
     situation_brief: parseSituationBrief(input.situationBrief) ?? null,
+    approval_gate: input.approvalGate ?? null,
   };
 }
 
@@ -101,6 +107,10 @@ export function selectApprovedPresentation(input: {
   stored?: PresentationContract | null;
   live?: PresentationContract | null;
 }): { presentation: PresentationContract; source: ApprovedPresentationSource } | null {
+  // Phase E: BLOCK gate refuses customer-facing approve — do not fall back to stale live/stored.
+  if (input.canonical?.approval_gate && !approvalGateAllowsCustomerApprove(input.canonical.approval_gate)) {
+    return null;
+  }
   if (input.canonical?.presentation) {
     return { presentation: input.canonical.presentation, source: "canonical" };
   }
