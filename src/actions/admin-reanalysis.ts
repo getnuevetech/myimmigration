@@ -64,31 +64,6 @@ export async function startAdminReanalysisAction(_prev: ActionState, formData: F
   redirect(`/admin/reanalysis/${row.id}`);
 }
 
-export async function startAdminReanalysisFromCaseAction(caseId: string) {
-  const admin = await requireReanalysisAdmin();
-  const found = await db.case.findUnique({ where: { id: caseId }, select: { id: true } });
-  if (!found) return;
-  const row = await db.adminCaseReanalysis.create({
-    data: {
-      caseId,
-      adminUserId: admin.id,
-      status: "pending",
-      visibleToCustomer: false,
-      visibleToConsultant: false,
-      providerIdsJson: "[]",
-    },
-  });
-  after(() =>
-    runAdminDraftReanalysis(row.id).catch(async (err) => {
-      const { logSystem } = await import("@/lib/syslog");
-      await logSystem("error", "admin_reanalysis", "Admin draft re-analysis failed", String(err));
-    }),
-  );
-  revalidatePath(`/admin/reanalysis/${row.id}`);
-  revalidatePath(`/admin/cases/${caseId}`);
-  redirect(`/admin/reanalysis/${row.id}`);
-}
-
 export async function shareAdminReanalysisAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await requireReanalysisAdmin();
   const id = String(formData.get("id") ?? "").trim();

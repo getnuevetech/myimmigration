@@ -115,12 +115,22 @@ export async function createCaseAction(_prev: ActionState, formData: FormData): 
   redirect(`/app/cases/${c.id}`);
 }
 
+/** Admin-only: live re-analysis of the case (writes customer-facing output). Does not open the compare lab. */
 export async function reanalyzeCaseAction(caseId: string) {
   const user = await requireUser();
   if (!isAdmin(user) || !hasAdminArea(user, "admin.cases")) return;
   const c = await db.case.findUnique({ where: { id: caseId }, select: { id: true } });
   if (!c) return;
-  redirect(`/admin/reanalysis?caseId=${encodeURIComponent(caseId)}`);
+  await db.case.update({ where: { id: caseId }, data: { status: "analyzing" } });
+  after(() =>
+    runCaseAnalysis(caseId).catch(async (err) => {
+      const { logSystem } = await import("@/lib/syslog");
+      await logSystem("error", "analysis", "Admin re-run analysis failed", String(err));
+    }),
+  );
+  revalidatePath(`/admin/cases/${caseId}`);
+  revalidatePath(`/app/cases/${caseId}`);
+  redirect(`/admin/cases/${caseId}`);
 }
 
 export async function clarifyAnswerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

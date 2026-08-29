@@ -2446,7 +2446,9 @@ assert(v2Plan.includes("Do not start"), "ImmigrationonmeV2 must keep USCIS filin
 const adminNavSrc = readFileSync(join(process.cwd(), "src/app/admin/layout.tsx"), "utf8");
 assert(adminNavSrc.includes("/admin/reanalysis"), "admin nav must include the case re-analysis section");
 assert(adminCaseSrc.includes("Re-run analysis"), "admin case page must restore the Re-run analysis CTA");
-assert(adminCaseSrc.includes("startAdminReanalysisFromCaseAction"), "admin Re-run analysis CTA must start the staff draft flow");
+assert(adminCaseSrc.includes("reanalyzeCaseAction"), "admin Re-run analysis CTA must call live reanalyzeCaseAction");
+assert(!adminCaseSrc.includes("startAdminReanalysisFromCaseAction"), "admin Re-run analysis CTA must not start the compare draft flow");
+assert(adminCaseSrc.includes("Re-analyse and compare") || adminCaseSrc.includes("/admin/reanalysis?caseId="), "admin case page must keep a separate compare entry");
 assert(!customerCaseSrc.includes("Re-run analysis"), "customer case page must not show Re-run analysis");
 assert(!customerCaseSrc.includes("reanalyzeCaseAction"), "customer case page must not call reanalyzeCaseAction");
 assert(!customerCaseSrc.includes("startAdminReanalysis"), "customer case page must not start admin re-analysis");
@@ -2460,7 +2462,9 @@ const reanalyzeFnSrc = reanalyzeSrc.slice(
 );
 assert(reanalyzeFnSrc.includes('hasAdminArea(user, "admin.cases")'), "reanalyzeCaseAction must be admin-only");
 assert(!reanalyzeFnSrc.includes("userId !== user.id"), "reanalyzeCaseAction must not stay owner-gated for customers");
-assert(reanalyzeFnSrc.includes("/admin/reanalysis"), "reanalyzeCaseAction must open the admin re-analysis lab");
+assert(reanalyzeFnSrc.includes("runCaseAnalysis(caseId)"), "reanalyzeCaseAction must run live case analysis");
+assert(!reanalyzeFnSrc.includes("/admin/reanalysis"), "reanalyzeCaseAction must not open the admin re-analysis lab");
+assert(!reanalyzeFnSrc.includes('persistMode: "draft"'), "reanalyzeCaseAction must not use draft persist mode");
 const adminReanalysisActionSrc = readFileSync(join(process.cwd(), "src/actions/admin-reanalysis.ts"), "utf8");
 const shareFnSrc = adminReanalysisActionSrc.slice(
   adminReanalysisActionSrc.indexOf("shareAdminReanalysisAction"),
