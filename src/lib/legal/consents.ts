@@ -19,6 +19,7 @@ export type RegistrationConsent = {
   error: string;
 };
 
+/** Stored / audited separately; the register UI collapses required keys into one checkbox. */
 export const REGISTRATION_CONSENTS: readonly RegistrationConsent[] = [
   {
     key: "agreement_bundle",
@@ -73,6 +74,12 @@ export const REQUIRED_REGISTRATION_CONSENT_KEYS = REGISTRATION_CONSENTS.filter((
   (item) => item.key,
 );
 
+export const OPTIONAL_REGISTRATION_CONSENTS = REGISTRATION_CONSENTS.filter((item) => !item.required);
+
+/** Single required UI control that grants all required keys when checked. */
+export const REQUIRED_CONSENT_BUNDLE_LABEL =
+  "I agree to the ImmigrationOnMe Registration Agreement, Terms of Service, and Privacy Policy, and I authorize ImmigrationOnMe to process my information and documents using AI and approved service providers as described in those policies.";
+
 export const CONSULTANT_AGREEMENT_FORM_NAME = "consent_consultant_agreement";
 
 export type RegistrationConsentGrants = Record<RegistrationConsentKey, boolean>;
@@ -95,6 +102,16 @@ export function emptyConsentGrants(): RegistrationConsentGrants {
 export function hasRequiredRegistrationConsents(grants: RegistrationConsentGrants | null | undefined): boolean {
   if (!grants) return false;
   return REQUIRED_REGISTRATION_CONSENT_KEYS.every((key) => grants[key] === true);
+}
+
+export function requiredConsentsGranted(grants: RegistrationConsentGrants): boolean {
+  return REQUIRED_REGISTRATION_CONSENT_KEYS.every((key) => grants[key] === true);
+}
+
+export function withRequiredConsents(grants: RegistrationConsentGrants, granted: boolean): RegistrationConsentGrants {
+  const next = { ...grants };
+  for (const key of REQUIRED_REGISTRATION_CONSENT_KEYS) next[key] = granted;
+  return next;
 }
 
 export function parseRegistrationConsents(

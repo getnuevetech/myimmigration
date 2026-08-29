@@ -2513,11 +2513,14 @@ const seedLegalSrc = readFileSync(join(process.cwd(), "prisma/seed.ts"), "utf8")
 assert(seedLegalSrc.includes("LEGAL_CONTENT_PAGES"), "seed must publish the attached legal documents");
 assert(!seedLegalSrc.includes("Replace this placeholder text with your reviewed terms"), "seed must not keep placeholder terms");
 const registerFormSrc = readFileSync(join(process.cwd(), "src/components/auth-forms.tsx"), "utf8");
-assert(registerFormSrc.includes("REGISTRATION_CONSENTS"), "register form must render the separate registration consents");
+assert(registerFormSrc.includes("REGISTRATION_CONSENTS"), "register form must use registration consent definitions");
+assert(registerFormSrc.includes("withRequiredConsents"), "register form must grant all required keys from one required checkbox");
+assert(registerFormSrc.includes("OPTIONAL_REGISTRATION_CONSENTS"), "register form must keep optional consents separate");
 assert(registerFormSrc.includes("item.formName"), "register form must submit each consent under its own field name");
 assert(REQUIRED_REGISTRATION_CONSENT_KEYS.join(",") === "agreement_bundle,core_processing,ai_processing,service_providers", "registration must require the four attached consents");
 assert(registerFormSrc.includes("electronic signature"), "register form must state that creating an account is the electronic signature");
-assert(!/name=["']agree["']/.test(registerFormSrc), "register form must not collapse consents into one agree checkbox");
+assert(!/name=["']agree["']/.test(registerFormSrc), "register form must not use a legacy single agree field name");
+assert(registerFormSrc.includes("type=\"hidden\""), "compressed required UI must still post each required consent formName");
 assert(registerFormSrc.includes("startGoogleSignupAction"), "Google signup must collect consents before OAuth");
 assert(registerFormSrc.includes("completeGoogleRegisterAction"), "pending Google signup must finish on the consent form");
 const authSrc = readFileSync(join(process.cwd(), "src/actions/auth.ts"), "utf8");

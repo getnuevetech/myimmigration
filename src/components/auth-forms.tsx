@@ -14,9 +14,13 @@ import {
 import { inputClass } from "./ui";
 import {
   CONSULTANT_AGREEMENT_FORM_NAME,
+  OPTIONAL_REGISTRATION_CONSENTS,
   REGISTRATION_CONSENTS,
+  REQUIRED_CONSENT_BUNDLE_LABEL,
   REQUIRED_REGISTRATION_CONSENT_KEYS,
   emptyConsentGrants,
+  requiredConsentsGranted,
+  withRequiredConsents,
   type RegistrationConsentGrants,
   type RegistrationConsentKey,
 } from "@/lib/legal/consents";
@@ -83,7 +87,7 @@ function ConsentCheckbox({
   onChange,
   children,
 }: {
-  name: string;
+  name?: string;
   required: boolean;
   checked: boolean;
   onChange: (checked: boolean) => void;
@@ -110,6 +114,7 @@ function ConsentCheckbox({
 function RegistrationConsentFields({
   grants,
   setGrant,
+  setRequiredBundle,
   asConsultant,
   consultantAgreement,
   setConsultantAgreement,
@@ -120,6 +125,7 @@ function RegistrationConsentFields({
 }: {
   grants: RegistrationConsentGrants;
   setGrant: (key: RegistrationConsentKey, value: boolean) => void;
+  setRequiredBundle: (value: boolean) => void;
   asConsultant: boolean;
   consultantAgreement: boolean;
   setConsultantAgreement: (value: boolean) => void;
@@ -128,29 +134,23 @@ function RegistrationConsentFields({
   privacy: LegalPageLink | null;
   consultantAgreementPage: LegalPageLink | null;
 }) {
+  const requiredChecked = requiredConsentsGranted(grants);
+
   return (
     <fieldset className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-      <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Required consents</legend>
-      {REGISTRATION_CONSENTS.filter((item) => item.required).map((item) => (
-        <ConsentCheckbox
-          key={item.key}
-          name={item.formName}
-          required
-          checked={grants[item.key]}
-          onChange={(value) => setGrant(item.key, value)}
-        >
-          {item.key === "agreement_bundle" ? (
-            <>
-              I agree to the ImmigrationOnMe{" "}
-              <LegalLink page={userAgreement}>Registration Agreement</LegalLink>,{" "}
-              <LegalLink page={terms}>Terms of Service</LegalLink>, and{" "}
-              <LegalLink page={privacy}>Privacy Policy</LegalLink>.
-            </>
-          ) : (
-            item.label
-          )}
-        </ConsentCheckbox>
-      ))}
+      <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Agreements</legend>
+      {/* One UI control; each required consent still posts under its own formName for the audit trail. */}
+      {REGISTRATION_CONSENTS.filter((item) => item.required).map((item) =>
+        grants[item.key] ? <input key={item.key} type="hidden" name={item.formName} value="on" /> : null,
+      )}
+      <ConsentCheckbox required checked={requiredChecked} onChange={setRequiredBundle}>
+        I agree to the ImmigrationOnMe{" "}
+        <LegalLink page={userAgreement}>Registration Agreement</LegalLink>,{" "}
+        <LegalLink page={terms}>Terms of Service</LegalLink>, and{" "}
+        <LegalLink page={privacy}>Privacy Policy</LegalLink>, and I authorize ImmigrationOnMe to process my
+        information and documents using AI and approved service providers as described in those policies.
+      </ConsentCheckbox>
+      <span className="sr-only">{REQUIRED_CONSENT_BUNDLE_LABEL}</span>
       {asConsultant && (
         <ConsentCheckbox
           name={CONSULTANT_AGREEMENT_FORM_NAME}
@@ -165,8 +165,7 @@ function RegistrationConsentFields({
           .
         </ConsentCheckbox>
       )}
-      <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Optional</p>
-      {REGISTRATION_CONSENTS.filter((item) => !item.required).map((item) => (
+      {OPTIONAL_REGISTRATION_CONSENTS.map((item) => (
         <ConsentCheckbox
           key={item.key}
           name={item.formName}
@@ -209,10 +208,15 @@ export function RegisterForm({
     setGrants((current) => ({ ...current, [key]: value }));
   }
 
+  function setRequiredBundle(value: boolean) {
+    setGrants((current) => withRequiredConsents(current, value));
+  }
+
   const consentFields = (
     <RegistrationConsentFields
       grants={grants}
       setGrant={setGrant}
+      setRequiredBundle={setRequiredBundle}
       asConsultant={asConsultant}
       consultantAgreement={consultantOk}
       setConsultantAgreement={setConsultantOk}
@@ -255,9 +259,9 @@ export function RegisterForm({
           />
           {consentFields}
           <p className="text-xs leading-relaxed text-slate-500">
-            Checking the required boxes and creating your account is your electronic signature of the Registration
+            Checking the required box and creating your account is your electronic signature of the Registration
             Agreement, Terms of Service, and Privacy Policy. ImmigrationOnMe records your name, email, agreement
-            version, time, and a consent receipt.
+            version, time, and a consent receipt for each acknowledgment.
           </p>
           <SubmitButton className="w-full py-2.5">Create my account</SubmitButton>
         </div>
@@ -280,9 +284,9 @@ export function RegisterForm({
           <input name="password" type="password" required placeholder="Password (8+ characters)" className={inputClass} />
           {consentFields}
           <p className="text-xs leading-relaxed text-slate-500">
-            Checking the required boxes and creating your account is your electronic signature of the Registration
+            Checking the required box and creating your account is your electronic signature of the Registration
             Agreement, Terms of Service, and Privacy Policy. ImmigrationOnMe records your name, email, agreement
-            version, time, and a consent receipt.
+            version, time, and a consent receipt for each acknowledgment.
           </p>
           <SubmitButton className="w-full py-2.5">
             {asConsultant ? "Create consultant account" : "Create my account"}
@@ -307,7 +311,7 @@ export function RegisterForm({
             </button>
             {!requiredReady && (
               <p className="mt-2 text-center text-xs text-slate-500">
-                Check the required consents above to continue with Google.
+                Check the required agreement above to continue with Google.
               </p>
             )}
           </ActionForm>
