@@ -1,4 +1,9 @@
-import { isCompetingPathwayForm, lockedFormNumbers, type CaseTypeLock } from "./case-type-lock";
+import {
+  filterByRetrievalLock,
+  isCompetingPathwayForm,
+  lockedFormNumbers,
+  type CaseTypeLock,
+} from "./case-type-lock";
 
 export type KnowledgeRecord = {
   title: string;
@@ -146,7 +151,14 @@ export function rankKnowledgeSources(
   hint: KnowledgeRetrievalHint,
   limit = 5,
 ): KnowledgeRecord[] {
-  return sources
+  // Phase C retrieval lock — hard-filter competing pathway material first.
+  const lockedSources = filterByRetrievalLock(
+    sources,
+    hint.caseLock,
+    (source) =>
+      `${source.title} ${source.reference} ${source.tags ?? ""} ${source.content}`,
+  );
+  return lockedSources
     .map((source) => ({ source, score: scoreKnowledgeSource(source, hint) }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)

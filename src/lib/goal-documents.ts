@@ -1,5 +1,10 @@
 import { matchingFormNumber, type FormMatchInput } from "./goal-forms";
-import { shouldExcludeCountryConditions } from "./case-type-lock";
+import {
+  passesPresentationLock,
+  scrubPresentationContamination,
+  shouldExcludeCountryConditions,
+  type CaseTypeLock,
+} from "./case-type-lock";
 
 export type DocumentKindDef = {
   kind: string;
@@ -40,7 +45,7 @@ export const DOCUMENT_CATALOG: DocumentKindDef[] = [
   {
     kind: "relationship",
     name: "Marriage and relationship evidence",
-    hint: "Marriage certificate and proof you share a life together, as Form I-130 instructions describe.",
+    hint: "Marriage certificate and proof you share a life together — joint records, cohabitation, and relationship evidence.",
     isFiledCase: false,
   },
   {
@@ -52,7 +57,7 @@ export const DOCUMENT_CATALOG: DocumentKindDef[] = [
   {
     kind: "declaration",
     name: "Personal declaration / statement",
-    hint: "Your written account of the facts, as Form I-589 and similar packets request.",
+    hint: "Your written account of the facts supporting the immigration matter already on file.",
     isFiledCase: false,
   },
   {
@@ -267,16 +272,37 @@ export function rankMatchingDocuments(input: DocumentMatchInput = {}): RankedDoc
 
   return ordered.map((kind, officialRank) => {
     const def = documentKindDef(kind);
+    const rawHint = def?.hint ?? "";
+    const hint = documentHintForLock(kind, rawHint, input.caseLock);
     return {
       kind,
       label: def?.name ?? kind,
-      hint: def?.hint ?? "",
+      hint,
       officialRank,
       reason: officialRank === 0
         ? `Best match from official material: ${def?.name ?? kind}`
         : `Also listed for this situation: ${def?.name ?? kind}`,
     };
   });
+}
+
+/** Presentation lock: scrub / rewrite catalog hints under a locked matter. */
+export function documentHintForLock(
+  kind: string,
+  hint: string,
+  lock: CaseTypeLock | null | undefined,
+): string {
+  let out = scrubPresentationContamination(hint);
+  if (!passesPresentationLock(out, lock)) {
+    if (kind === "relationship") {
+      out = "Marriage certificate and proof you share a life together — joint records and relationship evidence.";
+    } else if (kind === "declaration") {
+      out = "Your written personal statement supporting the locked immigration matter.";
+    } else {
+      out = scrubPresentationContamination(out) || "Supporting record for the locked immigration matter.";
+    }
+  }
+  return out;
 }
 
 export function matchingDocumentKind(input: DocumentMatchInput = {}): string | null {

@@ -27,6 +27,6 @@
 
 ## Out of scope (later phases)
 
-- Full fact-ledger promotion / invalidation (Phase B)
-- I-130 / I-589 presentation lock copy cleanup in `goal-documents` hints (Phase C)
+- Full fact-ledger promotion / invalidation (Phase B) — done
+- I-130 / I-589 presentation lock copy cleanup in `goal-documents` hints (Phase C) — done
 - Action ranking (Phase D)

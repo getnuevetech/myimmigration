@@ -25,4 +25,5 @@
 
 ## Next
 
-Phase C — three locks (retrieval / presentation / recommendation).
+Phase C — three locks — done (`docs/v5.1/PHASE-C-THREE-LOCKS.md`).  
+Phase E — approval gate.
