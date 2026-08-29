@@ -12,11 +12,15 @@ export const metadata = { title: "Ask an immigration question" };
 export default async function GuestQaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ thread?: string }>;
+  searchParams: Promise<{ thread?: string; q?: string }>;
 }) {
   const user = await getCurrentUser();
-  if (user) redirect("/app/qa");
-  const { thread: threadId } = await searchParams;
+  const { thread: threadId, q: prefillQuestion } = await searchParams;
+  if (user) {
+    const qs = new URLSearchParams();
+    if (prefillQuestion?.trim()) qs.set("q", prefillQuestion.trim());
+    redirect(qs.size ? `/app/qa?${qs}` : "/app/qa");
+  }
   const guest = await getGuestSession();
   const thread =
     threadId && guest
@@ -38,6 +42,7 @@ export default async function GuestQaPage({
         <QaChat
           threadId={thread?.id ?? ""}
           messages={thread?.messages.map((m) => ({ id: m.id, role: m.role, content: m.content })) ?? []}
+          defaultQuestion={prefillQuestion?.trim() ?? ""}
           access={toQaChatAccess(access.entitlement, access.usage)}
         />
       </main>

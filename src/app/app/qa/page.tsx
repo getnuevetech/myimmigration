@@ -20,9 +20,9 @@ export const metadata = { title: "Ask the assistant" };
 export default async function QaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ case?: string }>;
+  searchParams: Promise<{ case?: string; q?: string }>;
 }) {
-  const { case: caseId } = await searchParams;
+  const { case: caseId, q: prefillQuestion } = await searchParams;
   const user = await requireUser();
   const access = await loadQaAccess({ userId: user.id });
   const cases = await db.case.findMany({
@@ -86,7 +86,13 @@ export default async function QaPage({
               <button className="mt-2 text-sm font-medium text-lime-700 hover:text-lime-800">Apply →</button>
             </form>
           )}
-          <QaChat threadId="" caseId={linkedCase?.id ?? ""} messages={[]} access={toQaChatAccess(access.entitlement, access.usage, null, Boolean(linkedCase), linkedFiled)} />
+          <QaChat
+            threadId=""
+            caseId={linkedCase?.id ?? ""}
+            messages={[]}
+            defaultQuestion={prefillQuestion?.trim() ?? ""}
+            access={toQaChatAccess(access.entitlement, access.usage, null, Boolean(linkedCase), linkedFiled)}
+          />
         </div>
         <div>
           <h2 className="mb-3 text-sm font-semibold text-slate-900">Recent conversations</h2>

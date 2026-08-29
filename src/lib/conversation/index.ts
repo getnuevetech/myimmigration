@@ -29,4 +29,5 @@ export {
 export { analyzeBranches } from "./branch-analysis";
 export { buildResponseStrategy } from "./response-strategy";
 export { routeConversation, mayPromoteAssistantToCase } from "./conversation-router";
-export { composeAssistantReply } from "./assistant-composer";
+export { composeAssistantReply, composeAssistantView, decisionFocusLabel } from "./assistant-composer";
+export type { AssistantViewSection } from "./assistant-composer";
