@@ -52,11 +52,32 @@ export type {
   AnonymizedExperienceRecord,
   AnonymizedNegativeLearning,
   AnonymizedCorrection,
+  AnonymizedOutcome,
   PromotionLevel,
 } from "./deidentify";
 export {
+  applyGovernmentOutcome,
+  buildOutcomePatternCandidate,
+  assertIsOutcomeCandidate,
+  checkOutcomeAuthority,
+  normalizeOutcomeInput,
+  authorityKeysRecognized,
+  OUTCOME_KINDS,
+  GOVERNMENT_SYSTEMS,
+  ALLOWED_AUTHORITY_PUBLISHERS,
+  OUTCOME_CANDIDATE_LEVEL,
+} from "./outcomes";
+export type {
+  GovernmentOutcomeInput,
+  OutcomeKind,
+  GovernmentSystem,
+  AuthorityCheckResult,
+  AppliedGovernmentOutcome,
+} from "./outcomes";
+export {
   publishAnonymizedObservation,
   publishPatternCandidateFromCorrection,
+  publishPatternCandidateFromOutcome,
   listSharedObservations,
   listPatternCandidates,
   listProductionPatterns,

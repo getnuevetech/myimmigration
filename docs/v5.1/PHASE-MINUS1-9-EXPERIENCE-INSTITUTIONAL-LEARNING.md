@@ -62,7 +62,7 @@ Retrieval for future Sol reasoning
 | **L1** | De-identification; block cross-user raw retrieval | **Shipped** — `ExperienceObservation` + `deidentify.ts` |
 | **L2** | Decision-changing vs discarded facts; negative learning records | **Shipped** — `what-mattered.ts` + `negative-learning.ts` |
 | **L3** | Consultant correction → pattern candidates | **Shipped** — `corrections.ts` + candidate publish (level 1) |
-| **L4** | Government outcome signals → candidates (authority check) | After S4 helpful |
+| **L4** | Government outcome signals → candidates (authority check) | **Shipped** — `outcomes.ts` + authority-gated candidates (level 1) |
 | **L5** | Pattern Registry admin UI + promotion 0→4 | Before L6 |
 | **L6** | Experience Search into Sol (L4 only) | After L5 |
 | **L7** | Telemetry: help/harm; stale/authority invalidation | With L6 |
@@ -96,6 +96,16 @@ Retrieval for future Sol reasoning
 - L3 **must not** write promotion level 4 or enable Sol Experience Search.
 - Check: `npm run test:phase-minus1-9-l3`
 
+### L4 acceptance
+
+- Government outcome signals use institutional keys (`outcome_kind`, `form_or_notice_key`, `authority_keys`) — no receipts/PII.
+- **Authority check required** before publish: recognized publisher (USCIS/EOIR/ICE/CBP/DOL/DOS) + ≥1 catalog `authority_key` (not receipt-shaped).
+- **Outcome ≠ law:** candidates carry `signal_precedence: historical_experience` and `outranked_by: current_authority`.
+- Publishes pattern candidate at promotion level **1** with `origin: "government_outcome"` (same ladder as L3; not production).
+- Optional catalog match against active `AuthoritySource.key` when available.
+- L4 delivery **must not** write promotion level 4 or enable Sol Experience Search.
+- Check: `npm run test:phase-minus1-9-l4`
+
 ---
 
 ## Seeded negative lesson
@@ -106,8 +116,9 @@ Retrieval for future Sol reasoning
 
 ## Checks
 
-- `npm run test:phase-s` includes L0 + L1 + L2 + L3 checks.  
+- `npm run test:phase-s` includes L0–L4 checks.  
 - `npm run test:phase-minus1-9-l1`  
 - `npm run test:phase-minus1-9-l2`  
 - `npm run test:phase-minus1-9-l3`  
+- `npm run test:phase-minus1-9-l4`  
 - Future: full `test:phase-minus1-9` when L5+ lands.

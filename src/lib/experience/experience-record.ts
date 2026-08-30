@@ -55,7 +55,16 @@ export type ExperienceRecordV0 = {
     preferred_key?: string;
     lesson_id?: string | null;
   };
-  outcome: null | { kind: string; detail: string };
+  outcome: null | {
+    kind: string;
+    detail: string;
+    government_system?: string;
+    form_or_notice_key?: string;
+    authority_keys?: string[];
+    authority_publisher?: string;
+    authority_check?: "passed" | "failed";
+    signal_precedence?: "historical_experience";
+  };
   response_mode: ResponseMode;
   invokes_case_engine: boolean;
   existing_government_case: boolean;

@@ -1,7 +1,7 @@
 /**
- * Phase −1.9 L1–L3 — publish / list de-identified observations and pattern candidates.
+ * Phase −1.9 L1–L4 — publish / list de-identified observations and pattern candidates.
  * Cross-user readers only receive anonymized payloads.
- * Production retrieval (listProductionPatterns) remains L4-only.
+ * Production retrieval (listProductionPatterns) remains promotion-level-4-only.
  */
 
 import { db } from "@/lib/db";
@@ -17,6 +17,14 @@ import {
   buildPatternCandidate,
   type ConsultantCorrectionInput,
 } from "./corrections";
+import {
+  applyGovernmentOutcome,
+  assertIsOutcomeCandidate,
+  authorityKeysRecognized,
+  buildOutcomePatternCandidate,
+  checkOutcomeAuthority,
+  type GovernmentOutcomeInput,
+} from "./outcomes";
 
 export async function publishAnonymizedObservation(opts: {
   record: ExperienceRecordV0;
@@ -69,6 +77,50 @@ export async function publishPatternCandidateFromCorrection(opts: {
 }
 
 /**
+ * L4 — apply government outcome (authority-checked) and publish a pattern candidate (level 1).
+ * Outcome ≠ law; never elevates to production level 4.
+ */
+export async function publishPatternCandidateFromOutcome(opts: {
+  record: ExperienceRecordV0;
+  outcome: GovernmentOutcomeInput;
+  situationId?: string | null;
+  /** When provided, authority_keys must exist in this catalog (active AuthoritySource keys). */
+  authorityCatalogKeys?: string[];
+}): Promise<{ id: string; candidate: AnonymizedExperienceRecord; updated: ExperienceRecordV0 }> {
+  const gate = checkOutcomeAuthority(opts.outcome);
+  if (!gate.ok) {
+    throw new Error(`Authority check failed: ${gate.reason}`);
+  }
+
+  if (opts.authorityCatalogKeys) {
+    const normalized = opts.outcome.authority_keys.map((k) => String(k).trim().toLowerCase());
+    const recognized = authorityKeysRecognized(normalized, opts.authorityCatalogKeys);
+    if (!recognized.ok) {
+      throw new Error(`Unknown authority_keys (not in active catalog): ${recognized.missing.join(", ")}`);
+    }
+  }
+
+  const updated = applyGovernmentOutcome(opts.record, opts.outcome);
+  const candidate = buildOutcomePatternCandidate(updated, {
+    sourceId: opts.situationId || `outcome:${updated.decision_target}:${opts.outcome.outcome_kind}`,
+  });
+  assertIsOutcomeCandidate(candidate);
+
+  const row = await db.experienceObservation.create({
+    data: {
+      sourceDigest: candidate.source_digest,
+      decisionTarget: candidate.decision_target,
+      workspace: candidate.workspace,
+      promotionLevel: 1,
+      anonJson: JSON.stringify(candidate),
+      sourceSituationId: opts.situationId || null,
+    },
+  });
+
+  return { id: row.id, candidate, updated };
+}
+
+/**
  * Cross-user list API — never returns raw L0 / never returns sourceSituationId.
  * Only promotionLevel >= minLevel (default 0 for admin; production retrieval later uses 4).
  */
@@ -103,7 +155,7 @@ export async function listSharedObservations(opts?: {
   return out;
 }
 
-/** L3 — list pattern candidates (promotion level 1) for admin / reviewer tooling. */
+/** L3/L4 — list pattern candidates (promotion level 1) for admin / reviewer tooling. */
 export async function listPatternCandidates(opts?: {
   decisionTarget?: string;
   limit?: number;

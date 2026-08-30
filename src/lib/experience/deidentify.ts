@@ -38,6 +38,18 @@ export type AnonymizedCorrection = {
   lesson_id: string | null;
 };
 
+export type AnonymizedOutcome = {
+  origin: "government_outcome";
+  outcome_kind: string;
+  government_system: string;
+  form_or_notice_key: string;
+  authority_keys: string[];
+  authority_publisher: string;
+  note_key: string;
+  signal_precedence: "historical_experience";
+  outranked_by: "current_authority";
+};
+
 export type AnonymizedExperienceRecord = {
   schema_version: "l1_anon";
   workspace: ExperienceRecordV0["workspace"];
@@ -70,6 +82,7 @@ export type AnonymizedExperienceRecord = {
   /** L3+: how this shared row was created. */
   origin?: "turn" | "consultant_correction" | "government_outcome";
   correction?: AnonymizedCorrection;
+  outcome?: AnonymizedOutcome;
 };
 
 export function textLooksLikePii(text: string): boolean {
