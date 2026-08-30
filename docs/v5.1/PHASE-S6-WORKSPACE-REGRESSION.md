@@ -13,7 +13,8 @@ Single regression entry that locks the customer-visible Phase S invariants after
 3. Pending matter + full strategy → `case_review`.  
 4. Filing Plan buildable from Situation pathways without Case.  
 5. Legacy options narrative would reclassify to Situation.  
-6. Product surfaces: Situation / Filing Plan chrome; no customer `forceCase`.
+6. Product surfaces: Situation / Filing Plan chrome; no customer `forceCase`.  
+7. Phase S5 copy: no “Want me to start it as a new case”; no “full case review” guide CTA; V5 eyebrow is Situation vs USCIS Case.
 
 ## Check
 

@@ -20,7 +20,7 @@ export type VersionChrome = {
 };
 
 export const FILED_VERSION_REASON_LABELS: Record<string, string> = {
-  analysis: "Full case review",
+  analysis: "Case review",
   document: "New documents on file",
   clarify: "Answers added to the case",
   reprocess: "Evidence reprocessed",

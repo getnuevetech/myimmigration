@@ -42,7 +42,8 @@ export function resolveIntakeChrome(input: IntakeMatchInput = {}): IntakeChrome 
     return {
       pageTitle: "Start a new case",
       pageSubtitle: "Tell us what is going on with this USCIS case, letter, or notice. We'll map the next official steps.",
-      prefillBanner: "We carried over what you told the guide — review it, add anything missing, and confirm to open this as a new case.",
+      prefillBanner:
+        "We carried over what you told the guide — review it, add anything missing, and confirm to track this as a government Case.",
       submitLabel: "Analyze my case →",
       listCta: "New case →",
       firstCta: "Start your first case",
@@ -65,11 +66,13 @@ export function resolveIntakeChrome(input: IntakeMatchInput = {}): IntakeChrome 
       verificationHint:
         "Some values in this case couldn't be confirmed against each other — we flag disagreements instead of guessing. More documents (like the USCIS account case record) resolve this.",
       guideNewCaseMessage:
-        "That sounds like a separate immigration situation — it deserves its own case so it gets a full analysis, its own issues, and its own step-by-step plan (chat isn't the right place to handle it). Want me to start it as a new case? Your message will be pre-filled and you just confirm.",
-      guideNewCaseLabel: "Yes — start this as a new case",
+        "That sounds like a separate government immigration matter. Continue so we can track filings, risks, and next actions in its own Case. Your message will be pre-filled — just confirm.",
+      guideNewCaseLabel: "Track this government case",
       guideOpenStep: "Open your case and follow the next matching step.",
-      guideNoCaseYet: "You haven't started a case yet — tell us what's going on, even if you have not filed anything with USCIS, and we'll map options and next steps.",
-      guideFallbackNoCase: "Start by creating a case — describe what happened and your goal, even if you have not filed anything with USCIS, and we'll map options and next steps.",
+      guideNoCaseYet:
+        "You haven't started a situation yet — tell us what's going on, even if you have not filed anything with USCIS, and we'll map options and next steps.",
+      guideFallbackNoCase:
+        "Start by describing your situation and goal, even if you have not filed anything with USCIS, and we'll map options and next steps.",
     };
   }
   return {
@@ -98,8 +101,8 @@ export function resolveIntakeChrome(input: IntakeMatchInput = {}): IntakeChrome 
     verificationHint:
       "Some values in this situation couldn't be confirmed against each other — we flag disagreements instead of guessing. More matching documents resolve this. A USCIS case record is not required.",
     guideNewCaseMessage:
-      "That sounds like a separate immigration situation — it deserves its own review so it gets a full analysis, its own issues, and its own step-by-step plan (chat isn't the right place to handle it). Want me to start it as a new situation? Your message will be pre-filled and you just confirm. A USCIS receipt is not required.",
-    guideNewCaseLabel: "Yes — start this as a new situation",
+      "That sounds like a separate immigration Situation. Continue so we can map options and next steps. Your message will be pre-filled — just confirm. A USCIS receipt is not required.",
+    guideNewCaseLabel: "Continue with my situation",
     guideOpenStep: "Open your situation and follow the next matching step. A USCIS receipt is not required.",
     guideNoCaseYet: "You haven't started a situation yet — tell us what's going on, even if you have not filed anything with USCIS, and we'll map options and next steps.",
     guideFallbackNoCase: "Start by describing your situation and goal, even if you have not filed anything with USCIS, and we'll map options and next steps. A USCIS receipt is not required.",

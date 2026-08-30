@@ -360,6 +360,7 @@ export async function CaseAnalysisView({ caseId, viewer }: { caseId: string; vie
             primaryForm: situationBrief?.primaryForm ?? caseLock?.primaryForm ?? null,
             relatedProcess: situationBrief?.relatedProcess ?? null,
           }}
+          surface={inquiry.mode === "open_options" ? "situation" : "case"}
         />
         {showStaffInternals && presentation ? (
           <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

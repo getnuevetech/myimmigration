@@ -252,7 +252,7 @@ S1  Router + contracts          ← shipped
  ▼
 S2  Situation workspace         ← shipped
  │
- ├────► S5 customer-facing copy/intake cleanup  ← partial (forceCase removed)
+ ├────► S5 customer-facing copy/intake cleanup  ← shipped (`test:phase-s5`)
  │
  ▼
 S3  Filing Plan                 ← shipped (build from Situation; not a Case)
@@ -291,6 +291,15 @@ L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures  ←
 - Legacy IMM rows without government signals → Situation (`legacyCaseId` retained); uncertain defaults to Situation.
 - CLI: `npm run reclassify:legacy-cases` (dry-run) / `--apply` to write.
 - Check: `phase-s4-case-lifecycle-check`.
+
+### S5 acceptance
+
+- No customer `forceCase` checkbox / “open a case?” ask on intake.
+- Options / pre-filing chrome uses Situation language (`Continue with my situation`).
+- Government-matter chrome may say Case (`Track this government case`) without asking permission to open one.
+- V5 presentation eyebrow is surface-aware: Situation vs USCIS Case.
+- Banned phrase “full case review” removed from customer guide handoffs.
+- Check: `npm run test:phase-s5` (also covered by `test:phase-s` / S6 surface asserts).
 
 ### S6 acceptance
 

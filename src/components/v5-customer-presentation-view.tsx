@@ -51,17 +51,22 @@ function Section({
 export function V5CustomerPresentationView({
   presentation,
   caseMeta,
+  /** Phase S5 — Situation vs government Case eyebrow. */
+  surface = "situation",
 }: {
   presentation: V5CustomerPresentation;
   caseMeta?: { primaryForm?: string | null; relatedProcess?: string | null };
+  surface?: "situation" | "case";
 }) {
   const primaryForm = caseMeta?.primaryForm ?? presentation.primaryForm;
   const relatedProcess = caseMeta?.relatedProcess ?? presentation.relatedProcess;
+  const eyebrow =
+    surface === "case" ? "Your USCIS case" : "Your immigration situation";
 
   return (
     <div className="space-y-5" data-v5-customer-presentation="1">
       <header className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5 sm:p-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Your immigration case</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{eyebrow}</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{presentation.caseType}</h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
           {primaryForm ? (
@@ -69,8 +74,10 @@ export function V5CustomerPresentationView({
               Primary matter: Form {primaryForm}
               {relatedProcess ? <> · Related: {relatedProcess}</> : null}
             </>
-          ) : (
+          ) : surface === "case" ? (
             "Organized from your situation, documents, and the filings already on record."
+          ) : (
+            "Organized from your situation and matching documents — a USCIS Case is not required yet."
           )}
         </p>
       </header>
