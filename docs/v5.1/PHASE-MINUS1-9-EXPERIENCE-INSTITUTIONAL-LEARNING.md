@@ -63,7 +63,7 @@ Retrieval for future Sol reasoning
 | **L2** | Decision-changing vs discarded facts; negative learning records | **Shipped** — `what-mattered.ts` + `negative-learning.ts` |
 | **L3** | Consultant correction → pattern candidates | **Shipped** — `corrections.ts` + candidate publish (level 1) |
 | **L4** | Government outcome signals → candidates (authority check) | **Shipped** — `outcomes.ts` + authority-gated candidates (level 1) |
-| **L5** | Pattern Registry admin UI + promotion 0→4 | Before L6 |
+| **L5** | Pattern Registry admin UI + promotion 0→4 | **Shipped** — `/admin/experience` + `registry.ts` |
 | **L6** | Experience Search into Sol (L4 only) | After L5 |
 | **L7** | Telemetry: help/harm; stale/authority invalidation | With L6 |
 | **S8** | Experience regression fixtures | With L6–L7 |
@@ -106,6 +106,16 @@ Retrieval for future Sol reasoning
 - L4 delivery **must not** write promotion level 4 or enable Sol Experience Search.
 - Check: `npm run test:phase-minus1-9-l4`
 
+### L5 acceptance
+
+- Admin Pattern Registry at `/admin/experience` (area `admin.experience`) lists de-identified observations with promotion levels 0–4.
+- Admins can set promotion level **0→4** via `promoteExperiencePatternAction` / `setPatternPromotionLevel`.
+- Column `promotionLevel` and `anonJson.promotion_level` stay in sync.
+- Production (4) requires a reusable signal (correction, outcome, negative lesson, or decision-changing fact) + `decision_target`.
+- `listProductionPatterns` still returns only level **4** (empty until an admin promotes).
+- No live fine-tuning; no customer Experience Search until L6.
+- Check: `npm run test:phase-minus1-9-l5`
+
 ---
 
 ## Seeded negative lesson
@@ -116,9 +126,10 @@ Retrieval for future Sol reasoning
 
 ## Checks
 
-- `npm run test:phase-s` includes L0–L4 checks.  
+- `npm run test:phase-s` includes L0–L5 checks.  
 - `npm run test:phase-minus1-9-l1`  
 - `npm run test:phase-minus1-9-l2`  
 - `npm run test:phase-minus1-9-l3`  
 - `npm run test:phase-minus1-9-l4`  
-- Future: full `test:phase-minus1-9` when L5+ lands.
+- `npm run test:phase-minus1-9-l5`  
+- Future: full `test:phase-minus1-9` when L6+ lands.

@@ -181,7 +181,7 @@ async function seedAdminRoles() {
     {
       name: "AI engineer",
       description: "AI providers, pipelines, and the knowledge base.",
-      areas: ["admin.dashboard", "admin.ai", "admin.pipelines", "admin.knowledge", "admin.cases"],
+      areas: ["admin.dashboard", "admin.ai", "admin.pipelines", "admin.knowledge", "admin.experience", "admin.cases"],
     },
   ];
   for (const r of roles) {

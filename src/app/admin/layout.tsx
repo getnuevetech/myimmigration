@@ -21,6 +21,7 @@ const NAV: { area: string; href: string; label: string; section: string }[] = [
   { area: "admin.pipelines", href: "/admin/pipelines", label: "AI pipelines", section: "Intelligence" },
   { area: "admin.evidence", href: "/admin/evidence", label: "Evidence diagnostics", section: "Intelligence" },
   { area: "admin.knowledge", href: "/admin/knowledge", label: "USCIS knowledge base", section: "Intelligence" },
+  { area: "admin.experience", href: "/admin/experience", label: "Pattern Registry", section: "Intelligence" },
   { area: "admin.plans", href: "/admin/plans", label: "Plans & access", section: "Commerce" },
   { area: "admin.payments", href: "/admin/payments", label: "Payment gateways", section: "Commerce" },
   { area: "admin.transactions", href: "/admin/transactions", label: "Transactions", section: "Commerce" },

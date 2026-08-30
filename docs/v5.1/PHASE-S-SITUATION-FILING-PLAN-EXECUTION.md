@@ -270,7 +270,7 @@ S6  Consolidated workspace regression  ← shipped (`test:phase-s6` / included i
 L0–L2  Capture · De-ID · What-mattered · Negative-learning records  ← L0–L2 shipped
   │
   ▼
-L3–L5  Corrections · Outcomes · Pattern Registry  ← L3–L4 shipped (candidates at level 1)
+L3–L5  Corrections · Outcomes · Pattern Registry  ← L3–L5 shipped (admin promotion 0→4)
   │
   ▼
 L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures

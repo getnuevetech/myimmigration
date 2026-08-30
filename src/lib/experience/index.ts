@@ -82,3 +82,15 @@ export {
   listPatternCandidates,
   listProductionPatterns,
 } from "./publish";
+export {
+  PROMOTION_LABELS,
+  PROMOTION_LEVELS,
+  listRegistryEntries,
+  countRegistryByLevel,
+  setPatternPromotionLevel,
+  canPromoteToProduction,
+  validatePromotionTarget,
+  parsePromotionLevel,
+  isPromotionLevel,
+} from "./registry";
+export type { RegistryEntry } from "./registry";

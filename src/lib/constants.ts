@@ -27,6 +27,7 @@ export const ADMIN_AREAS = [
   { key: "admin.content", name: "Content & agreements" },
   { key: "admin.forms", name: "USCIS form templates" },
   { key: "admin.knowledge", name: "USCIS knowledge base" },
+  { key: "admin.experience", name: "Pattern Registry" },
   { key: "admin.settings", name: "App settings" },
   { key: "admin.notifications", name: "Notifications" },
   { key: "admin.tickets", name: "Support tickets" },
