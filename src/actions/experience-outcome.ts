@@ -103,7 +103,7 @@ export async function recordGovernmentOutcomeAction(
       },
     });
 
-    return { success: "Government outcome recorded as a pattern candidate (historical experience only)." };
+    return { ok: true, info: "Government outcome recorded as a pattern candidate (historical experience only)." };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to publish outcome candidate." };
   }

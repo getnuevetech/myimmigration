@@ -86,7 +86,7 @@ export async function recordConsultantExperienceCorrectionAction(
       },
     });
 
-    return { success: "Correction recorded as a pattern candidate." };
+    return { ok: true, info: "Correction recorded as a pattern candidate." };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to publish pattern candidate." };
   }
