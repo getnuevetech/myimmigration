@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { getOrCreateGuestSession } from "@/lib/guest";
-import { saveUpload, validateUploadFile } from "@/lib/uploads";
+import { saveUpload } from "@/lib/uploads";
 import { situationTitleFromNarrative } from "@/lib/situation";
 import type { ConversationIntelligence } from "@/lib/conversation";
 import type { ActionState } from "@/actions/auth";

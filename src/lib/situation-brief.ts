@@ -61,7 +61,6 @@ const PRIMA_FACIE_RE = /\bprima facie\b/i;
 const RFE_RE = /\brequest for evidence\b|\bRFE\b/i;
 const NOID_RE = /\bnotice of intent to deny\b|\bNOID\b/i;
 const ASYLUM_RE = /\basylum\b|\bi-?589\b/i;
-const NATURALIZATION_RE = /\bnaturaliz|\bcitizenship\b|\bn-?400\b/i;
 const EAD_RE = /\bemployment authorization\b|\bwork permit\b|\bi-?765\b|\bead\b/i;
 const CONSULAR_RE = /\bconsular (?:processing|interview)\b|\bnational visa center\b|\bnvc\b/i;
 const COURT_RE = /\beoir\b|\bimmigration court\b|\bnotice to appear\b|\bnta\b|\bmaster calendar\b/i;
