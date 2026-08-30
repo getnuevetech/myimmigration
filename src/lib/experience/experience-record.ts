@@ -1,6 +1,6 @@
 /**
- * Phase −1.9 / L0 — structured experience capture (no production retrieval yet).
- * Matches the S0-locked L0 shape; de-identification and Pattern Registry come in L1–L5.
+ * Phase −1.9 / L0–L2 — structured experience capture (no production retrieval yet).
+ * L2 enriches capture with what-mattered partitions + negative learning records.
  */
 
 import type {
@@ -13,15 +13,13 @@ import type {
   WorkspaceId,
 } from "../conversation/types";
 import { canonicalizeResponseMode, invokesCaseEngine } from "../conversation/types";
+import {
+  avoidedNegativeLessonIds,
+  buildNegativeLearningRecords,
+  type NegativeLearningRecord,
+} from "./negative-learning";
 import { MEDICAL_EXAM_NEGATIVE_LESSON } from "./negative-lessons";
-
-const LOW_VALUE_EARLY = [
-  "medical_exam",
-  "priority_date",
-  "financial_sponsorship_details",
-  "passport_upload",
-  "marriage_evidence_checklist",
-];
+import { partitionWhatMattered } from "./what-mattered";
 
 export type ClarificationSelected = {
   key: string;
@@ -29,15 +27,19 @@ export type ClarificationSelected = {
   reason: string;
 } | null;
 
-/** Full L0 ExperienceRecord fields (persisted as JSON on Situation / later ExperienceRecord table). */
+/** Full experience capture fields (persisted as JSON on Situation / ExperienceObservation). */
 export type ExperienceRecordV0 = {
   schema_version: "l0";
+  /** L2 enrichment marker — what-mattered + negative learning present. */
+  capture_enrichment?: "l2";
   question_contract: QuestionContract;
   workspace: WorkspaceId;
   decision_target: string;
   facts_considered: string[];
   decision_changing_facts: string[];
   facts_not_needed_yet: string[];
+  /** L2: facts considered for asking but discarded as not decision-changing. */
+  facts_discarded?: string[];
   pathways_considered: string[];
   clarification_selected: ClarificationSelected;
   clarifications_suppressed: string[];
@@ -47,16 +49,17 @@ export type ExperienceRecordV0 = {
   model_correction: null | { note: string };
   reviewer_correction: null | { note: string };
   outcome: null | { kind: string; detail: string };
-  /** Convenience mirrors for Phase S learning_event consumers. */
   response_mode: ResponseMode;
   invokes_case_engine: boolean;
   existing_government_case: boolean;
   interaction_intent: InteractionIntent;
   negative_lesson_ids: string[];
+  /** L2: per-lesson avoided / violated / not_applicable evaluations. */
+  negative_learning_records?: NegativeLearningRecord[];
 };
 
 /**
- * Build L0 experience capture for a turn.
+ * Build L0+L2 experience capture for a turn.
  * Never include raw PII — only contracts, modes, and fact *keys*.
  */
 export function buildExperienceRecord(opts: {
@@ -67,33 +70,65 @@ export function buildExperienceRecord(opts: {
   interactionIntent: InteractionIntent;
   pathways: string[];
   askNow: NeedToKnowItem[];
+  /** Full need-to-know list (including deferred) for discarded-fact partitioning. */
+  needToKnow?: NeedToKnowItem[];
+  /** Raw message used only to extract feature *keys* — never stored. */
+  message?: string;
   factsConsidered?: string[];
   decisionChangingFacts?: string[];
+  factsDiscarded?: string[];
   documentsUsed?: string[];
   authorityIds?: string[];
   answerChangedAfterClarification?: boolean;
 }): ExperienceRecordV0 {
   const mode = canonicalizeResponseMode(opts.responseMode);
   const ask = opts.askNow[0] ?? null;
-  const suppressed = defaultSuppressed(opts.contract);
-  const negativeIds: string[] = [];
+
+  const partitioned = partitionWhatMattered({
+    message: opts.message ?? "",
+    contract: opts.contract,
+    askNow: opts.askNow,
+    needToKnow: opts.needToKnow,
+    pathways: opts.pathways,
+  });
+
+  const negative_learning_records = buildNegativeLearningRecords({
+    message: opts.message ?? "",
+    contract: opts.contract,
+    askNow: opts.askNow,
+  });
+
+  const negativeIds = new Set<string>([
+    ...avoidedNegativeLessonIds(negative_learning_records),
+    ...negative_learning_records.filter((r) => r.evaluation === "violated").map((r) => r.lesson_id),
+  ]);
   if (
     opts.contract.decision_target === "identify_available_pathways" ||
-    opts.contract.decision_target === "petition_eligibility_overview"
+    opts.contract.decision_target === "petition_eligibility_overview" ||
+    opts.contract.decision_target === "identify_possible_pathways"
   ) {
-    negativeIds.push(MEDICAL_EXAM_NEGATIVE_LESSON.id);
+    negativeIds.add(MEDICAL_EXAM_NEGATIVE_LESSON.id);
   }
+
+  const facts_discarded = opts.factsDiscarded ?? partitioned.facts_discarded;
+  const decision_changing_facts =
+    opts.decisionChangingFacts ??
+    (partitioned.decision_changing_facts.length
+      ? partitioned.decision_changing_facts
+      : ask
+        ? [summarizeClarificationKey(ask.question)]
+        : []);
 
   return {
     schema_version: "l0",
+    capture_enrichment: "l2",
     question_contract: opts.contract,
     workspace: opts.workspace,
     decision_target: opts.contract.decision_target,
-    facts_considered: opts.factsConsidered ?? [],
-    decision_changing_facts:
-      opts.decisionChangingFacts ??
-      (ask ? [summarizeClarificationKey(ask.question)] : []),
-    facts_not_needed_yet: suppressed,
+    facts_considered: opts.factsConsidered ?? partitioned.facts_considered,
+    decision_changing_facts,
+    facts_not_needed_yet: facts_discarded,
+    facts_discarded,
     pathways_considered: opts.pathways,
     clarification_selected: ask
       ? {
@@ -102,7 +137,7 @@ export function buildExperienceRecord(opts: {
           reason: ask.reason,
         }
       : null,
-    clarifications_suppressed: suppressed,
+    clarifications_suppressed: facts_discarded,
     documents_used: opts.documentsUsed ?? [],
     authority_ids: opts.authorityIds ?? [],
     answer_changed_after_clarification: opts.answerChangedAfterClarification ?? false,
@@ -113,7 +148,8 @@ export function buildExperienceRecord(opts: {
     invokes_case_engine: invokesCaseEngine(mode),
     existing_government_case: opts.existingGovernmentCase,
     interaction_intent: opts.interactionIntent,
-    negative_lesson_ids: negativeIds,
+    negative_lesson_ids: [...negativeIds],
+    negative_learning_records,
   };
 }
 
@@ -143,6 +179,8 @@ export function buildLearningEvent(opts: {
   pathways: string[];
   askNow: NeedToKnowItem[];
   suppressed?: string[];
+  message?: string;
+  needToKnow?: NeedToKnowItem[];
 }): LearningEvent {
   const record = buildExperienceRecord({
     ...opts,
@@ -151,6 +189,7 @@ export function buildLearningEvent(opts: {
   if (opts.suppressed?.length) {
     record.clarifications_suppressed = opts.suppressed;
     record.facts_not_needed_yet = opts.suppressed;
+    record.facts_discarded = opts.suppressed;
   }
   return learningEventFromExperience(record);
 }
@@ -176,14 +215,4 @@ function summarizeClarificationKey(question: string): string {
   if (/removal|nta|i-?862|proceedings/.test(q)) return "removal_proceedings";
   if (/form|notice number/.test(q)) return "notice_identity";
   return "targeted_clarification";
-}
-
-function defaultSuppressed(contract: QuestionContract): string[] {
-  if (
-    contract.decision_target === "identify_available_pathways" ||
-    contract.decision_target === "petition_eligibility_overview"
-  ) {
-    return [...LOW_VALUE_EARLY];
-  }
-  return ["medical_exam"];
 }

@@ -17,6 +17,15 @@ const PII_PATTERNS: RegExp[] = [
   /\b\d{1,5}\s+\w+\s+(street|st|ave|avenue|rd|road|blvd|lane|ln|dr|drive)\b/i,
 ];
 
+export type AnonymizedNegativeLearning = {
+  lesson_id: string;
+  evaluation: "avoided" | "violated" | "not_applicable";
+  incorrect_ask_detected: boolean;
+  preferred_fact_asked: boolean;
+  situation_features_matched: string[];
+  failure_type: string;
+};
+
 export type AnonymizedExperienceRecord = {
   schema_version: "l1_anon";
   workspace: ExperienceRecordV0["workspace"];
@@ -25,6 +34,7 @@ export type AnonymizedExperienceRecord = {
   facts_considered: string[];
   decision_changing_facts: string[];
   facts_not_needed_yet: string[];
+  facts_discarded: string[];
   pathways_considered: string[];
   clarification_key: string | null;
   clarification_reason_key: string | null;
@@ -40,6 +50,8 @@ export type AnonymizedExperienceRecord = {
   existing_government_case: boolean;
   interaction_intent: ExperienceRecordV0["interaction_intent"];
   negative_lesson_ids: string[];
+  negative_learning: AnonymizedNegativeLearning[];
+  capture_enrichment: "l2" | "l0";
   /** Opaque digest for dedupe — not reversible to Situation id without server secret. */
   source_digest: string;
   promotion_level: 0;
@@ -107,6 +119,16 @@ export function deidentifyExperienceRecord(
   opts?: { sourceId?: string },
 ): AnonymizedExperienceRecord {
   const scope = contractAnon(record.question_contract);
+  const discarded = record.facts_discarded ?? record.facts_not_needed_yet ?? [];
+  const negativeLearning = (record.negative_learning_records ?? []).map((r) => ({
+    lesson_id: r.lesson_id,
+    evaluation: r.evaluation,
+    incorrect_ask_detected: r.incorrect_ask_detected,
+    preferred_fact_asked: r.preferred_fact_asked,
+    situation_features_matched: [...r.situation_features_matched],
+    failure_type: r.failure_type,
+  }));
+
   return {
     schema_version: "l1_anon",
     workspace: record.workspace,
@@ -115,6 +137,7 @@ export function deidentifyExperienceRecord(
     facts_considered: [...record.facts_considered],
     decision_changing_facts: [...record.decision_changing_facts],
     facts_not_needed_yet: [...record.facts_not_needed_yet],
+    facts_discarded: [...discarded],
     pathways_considered: [...record.pathways_considered],
     clarification_key: record.clarification_selected?.key ?? null,
     clarification_reason_key: reasonKey(record.clarification_selected?.reason),
@@ -130,6 +153,8 @@ export function deidentifyExperienceRecord(
     existing_government_case: record.existing_government_case,
     interaction_intent: record.interaction_intent,
     negative_lesson_ids: [...record.negative_lesson_ids],
+    negative_learning: negativeLearning,
+    capture_enrichment: record.capture_enrichment ?? "l0",
     source_digest: sourceDigest(opts?.sourceId || `${record.decision_target}:${record.workspace}`),
     promotion_level: 0,
   };

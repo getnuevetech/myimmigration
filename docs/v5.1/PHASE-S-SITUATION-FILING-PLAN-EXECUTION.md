@@ -267,7 +267,7 @@ S6  Consolidated workspace regression  ← shipped (`test:phase-s6` / included i
 **Parallel (after S0):**
 
 ```
-L0–L2  Capture · De-ID · What-mattered · Negative-learning records  ← L0 seeded
+L0–L2  Capture · De-ID · What-mattered · Negative-learning records  ← L0–L2 shipped
   │
   ▼
 L3–L5  Corrections · Outcomes · Pattern Registry

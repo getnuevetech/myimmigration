@@ -57,6 +57,8 @@ export function runConversationIntelligence(input: ConversationMessageInput): Co
     interactionIntent: intent.interaction_intent,
     pathways: strategy.branches.map((b) => b.id),
     askNow: strategy.ask_now,
+    needToKnow: need_to_know,
+    message,
     documentsUsed: input.documentHints ?? [],
   });
   const learning_event = learningEventFromExperience(experience_record);

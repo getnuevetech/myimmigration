@@ -60,7 +60,7 @@ Retrieval for future Sol reasoning
 | --- | --- | --- |
 | **L0** | ExperienceRecord schema + write on Situation/Q&A/Case turns | **Shipped** |
 | **L1** | De-identification; block cross-user raw retrieval | **Shipped** — `ExperienceObservation` + `deidentify.ts` |
-| **L2** | Decision-changing vs discarded facts; negative learning records | Parallel with S2+ |
+| **L2** | Decision-changing vs discarded facts; negative learning records | **Shipped** — `what-mattered.ts` + `negative-learning.ts` |
 | **L3** | Consultant correction → pattern candidates | After S2 |
 | **L4** | Government outcome signals → candidates (authority check) | After S4 helpful |
 | **L5** | Pattern Registry admin UI + promotion 0→4 | Before L6 |
@@ -76,6 +76,17 @@ Retrieval for future Sol reasoning
 - `listProductionPatterns` requires promotion level **4** (empty until L5).
 - Check: `npm run test:phase-minus1-9-l1`
 
+### L2 acceptance
+
+- Every meaningful Situation turn emits `capture_enrichment: "l2"` with:
+  - `facts_considered` — situation feature keys + ask keys
+  - `decision_changing_facts` — keys that change pathway/answer (e.g. `manner_of_entry`)
+  - `facts_discarded` / `facts_not_needed_yet` — suppressed early schema asks (e.g. `medical_exam`)
+- `negative_learning_records[]` evaluate seeded lessons as `avoided` | `violated` | `not_applicable`
+- Canonical Mexico options fixture: medical-exam lesson **avoided**, preferred fact asked, medical exam **discarded**
+- Shared anon payloads include `facts_discarded` + `negative_learning` (keys only)
+- Check: `npm run test:phase-minus1-9-l2`
+
 ---
 
 ## Seeded negative lesson
@@ -86,6 +97,7 @@ Retrieval for future Sol reasoning
 
 ## Checks
 
-- `npm run test:phase-s` includes L0 + L1 checks.  
+- `npm run test:phase-s` includes L0 + L1 + L2 checks.  
 - `npm run test:phase-minus1-9-l1`  
+- `npm run test:phase-minus1-9-l2`  
 - Future: full `test:phase-minus1-9` when L5+ lands.
