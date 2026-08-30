@@ -13,3 +13,13 @@ export {
   assertNoPrematureSchemaAsk,
 } from "./experience-record";
 export type { ExperienceRecordV0, ClarificationSelected } from "./experience-record";
+export {
+  deidentifyExperienceRecord,
+  assertSafeForSharedExperience,
+  textLooksLikePii,
+  scrubFreeText,
+  filterForCrossUserRead,
+  sourceDigest,
+} from "./deidentify";
+export type { AnonymizedExperienceRecord } from "./deidentify";
+export { publishAnonymizedObservation, listSharedObservations, listProductionPatterns } from "./publish";

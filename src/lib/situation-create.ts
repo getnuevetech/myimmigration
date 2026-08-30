@@ -67,7 +67,23 @@ export async function createSituationFromIntelligence(opts: {
     });
   }
 
+  const experience = opts.intel.experience_record;
+  after(() => publishSituationExperience(row.id, experience));
+
   return { id: row.id, userId: user?.id ?? null };
+}
+
+/** After Situation create — publish L1 anon observation (best-effort; never blocks intake). */
+export async function publishSituationExperience(situationId: string, record: unknown) {
+  try {
+    const { publishAnonymizedObservation } = await import("@/lib/experience/publish");
+    if (!record || typeof record !== "object") return;
+    const r = record as import("@/lib/experience").ExperienceRecordV0;
+    if (r.schema_version !== "l0") return;
+    await publishAnonymizedObservation({ record: r, situationId });
+  } catch {
+    /* L1 publish must not fail customer intake */
+  }
 }
 
 export async function redirectToSituation(id: string, userId: string | null) {

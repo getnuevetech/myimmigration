@@ -58,8 +58,8 @@ Retrieval for future Sol reasoning
 
 | Slice | Deliverable | Gate |
 | --- | --- | --- |
-| **L0** | ExperienceRecord schema + write on Situation/Q&A/Case turns | Parallel with S1+ |
-| **L1** | De-identification; block cross-user raw retrieval | Before any shared store |
+| **L0** | ExperienceRecord schema + write on Situation/Q&A/Case turns | **Shipped** |
+| **L1** | De-identification; block cross-user raw retrieval | **Shipped** — `ExperienceObservation` + `deidentify.ts` |
 | **L2** | Decision-changing vs discarded facts; negative learning records | Parallel with S2+ |
 | **L3** | Consultant correction → pattern candidates | After S2 |
 | **L4** | Government outcome signals → candidates (authority check) | After S4 helpful |
@@ -67,6 +67,14 @@ Retrieval for future Sol reasoning
 | **L6** | Experience Search into Sol (L4 only) | After L5 |
 | **L7** | Telemetry: help/harm; stale/authority invalidation | With L6 |
 | **S8** | Experience regression fixtures | With L6–L7 |
+
+### L1 acceptance
+
+- Raw L0 may live on the owning Situation (`learningEventJson`).
+- Shared store holds only `l1_anon` payloads (keys/ids — no free-text PII).
+- Cross-user list APIs never return raw contracts, filenames, receipts, A-numbers, emails, phones, or addresses.
+- `listProductionPatterns` requires promotion level **4** (empty until L5).
+- Check: `npm run test:phase-minus1-9-l1`
 
 ---
 
@@ -78,5 +86,6 @@ Retrieval for future Sol reasoning
 
 ## Checks
 
-- `npm run test:phase-s` includes learning-event + negative-lesson assertions.  
-- Future: `npm run test:phase-minus1-9` when L5+ lands.
+- `npm run test:phase-s` includes L0 + L1 checks.  
+- `npm run test:phase-minus1-9-l1`  
+- Future: full `test:phase-minus1-9` when L5+ lands.

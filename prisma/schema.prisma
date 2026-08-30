@@ -421,9 +421,28 @@ model Situation {
   filingPlans            FilingPlan[]
   cases                  Case[]
   qaThreads              QaThread[]
+  experienceObservations ExperienceObservation[]
 
   @@index([userId, createdAt])
   @@index([guestSessionId])
+}
+
+/** Phase −1.9 L1 — de-identified observations only (safe for cross-user pattern mining). */
+model ExperienceObservation {
+  id               String   @id @default(cuid())
+  sourceDigest     String
+  decisionTarget   String   @default("")
+  workspace        String   @default("")
+  promotionLevel   Int      @default(0) // 0 observation … 4 production
+  anonJson         String   @default("{}")
+  /** Internal link for audit; never exposed in cross-user list APIs. */
+  sourceSituationId String?
+  createdAt        DateTime @default(now())
+  situation        Situation? @relation(fields: [sourceSituationId], references: [id], onDelete: SetNull)
+
+  @@index([decisionTarget, promotionLevel])
+  @@index([sourceDigest])
+  @@index([sourceSituationId])
 }
 
 model FilingPlan {
