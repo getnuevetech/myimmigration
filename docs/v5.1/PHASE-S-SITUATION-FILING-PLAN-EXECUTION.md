@@ -48,6 +48,8 @@ A Case may reference the originating Situation / Filing Plan for continuity and 
 
 Temporary reads of legacy Case rows during S1/S2 are allowed as a **compatibility bridge only**. Option A must not become the durable domain model.
 
+**Bridge closeout (shipped):** customer nav/dashboard expose first-class `/app/situations` (SIT- refs) separate from `/app/cases` (IMM- / government matters). Check: `npm run test:phase-s-discovery`.
+
 ---
 
 ## Principles (locked)
@@ -262,6 +264,9 @@ S4  Government Case lifecycle + migration  ← shipped (reclassify CLI + keep Ca
  │
  ▼
 S6  Consolidated workspace regression  ← shipped (`test:phase-s6` / included in `test:phase-s`)
+ │
+ ▼
+S-discovery  Situation list/nav/dashboard (close Case-compat bridge)  ← shipped (`test:phase-s-discovery`)
 ```
 
 **Parallel (after S0):**
@@ -311,6 +316,13 @@ L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures  ←
 - Experience fixture pack: `src/lib/experience/fixture-pack.ts` / `npm run test:phase-minus1-9-s8`.
 - Full Experience gate: `npm run test:phase-minus1-9` (L0 + L1–L7 + S8).
 - Spec: `docs/v5.1/PHASE-MINUS1-9-S8-EXPERIENCE-FIXTURES.md`.
+
+### Situation discovery (bridge closeout)
+
+- `/app/situations` lists customer Situations with `SIT-` refs.
+- Account nav includes **My situations** and **My cases** as separate Option B surfaces.
+- Dashboard shows recent Situations (and Cases when present).
+- Check: `npm run test:phase-s-discovery`.
 
 ### L0 capture shape (emit every meaningful turn)
 

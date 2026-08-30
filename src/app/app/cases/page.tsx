@@ -9,20 +9,9 @@ import { resolveCasesListCopy } from "@/lib/goal-chrome";
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { matchInputFromCase } from "@/lib/goal-versions";
 import { resolveIntakeChrome } from "@/lib/goal-intake";
-import { getCurrentUser } from "@/lib/auth";
 
 export async function generateMetadata() {
-  const user = await getCurrentUser();
-  if (!user) return { title: "My situations" };
-  const latest = await db.case.findFirst({
-    where: { userId: user.id },
-    orderBy: { updatedAt: "desc" },
-    select: { situation: true, goal: true },
-  });
-  const inquiry = latest
-    ? classifyImmigrationInquiry({ situation: latest.situation, goal: latest.goal })
-    : { mode: "open_options" as const };
-  return { title: resolveCasesListCopy({ inquiryMode: inquiry.mode }).pageTitle };
+  return { title: resolveCasesListCopy({ inquiryMode: "existing_case" }).pageTitle };
 }
 
 export default async function CasesPage() {
@@ -34,11 +23,9 @@ export default async function CasesPage() {
   });
   const views = await loadApprovedViewsByCaseIds(cases.map((item) => item.id));
 
-  const latestInquiry = cases[0]
-    ? classifyImmigrationInquiry({ situation: cases[0].situation, goal: cases[0].goal })
-    : { mode: "open_options" as const };
-  const listCopy = resolveCasesListCopy({ inquiryMode: latestInquiry.mode });
-  const intake = resolveIntakeChrome({ inquiryMode: latestInquiry.mode });
+  // Cases list is always the government-matter surface (Situation list is /app/situations).
+  const listCopy = resolveCasesListCopy({ inquiryMode: "existing_case" });
+  const intake = resolveIntakeChrome({ inquiryMode: "existing_case" });
 
   return (
     <div>
@@ -51,7 +38,14 @@ export default async function CasesPage() {
         <EmptyState
           title={listCopy.emptyTitle}
           body={listCopy.emptyBody}
-          action={<ButtonLink href="/app/cases/new">{listCopy.startLabel}</ButtonLink>}
+          action={
+            <div className="flex flex-wrap gap-2">
+              <ButtonLink href="/app/cases/new">{listCopy.startLabel}</ButtonLink>
+              <ButtonLink href="/app/situations" variant="secondary">
+                View my situations
+              </ButtonLink>
+            </div>
+          }
         />
       ) : (
         <div className="space-y-4">

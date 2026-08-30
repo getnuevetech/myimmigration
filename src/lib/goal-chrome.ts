@@ -154,10 +154,11 @@ const NAV_TAIL: AccountNavItem[] = [
 
 export function resolveAccountNav(input: ChromeMatchInput = {}): AccountNavItem[] {
   const filed = isFiledCaseSurface(input);
-  const list = resolveCasesListCopy(input);
   const head: AccountNavItem[] = [
     { href: "/app", label: "Overview", optional: false },
-    { href: "/app/cases", label: list.navLabel, optional: false },
+    // Phase S bridge closeout: Situations and Cases are separate Option B surfaces.
+    { href: "/app/situations", label: "My situations", optional: false },
+    { href: "/app/cases", label: "My cases", optional: !filed },
   ];
   const matching: AccountNavItem[] = [
     { href: "/app/documents", label: "Document vault", optional: false },
@@ -256,9 +257,10 @@ export function resolveCasesListCopy(input: ChromeMatchInput = {}): CasesListCop
   if (isFiledCaseSurface(input)) {
     return {
       pageTitle: "My cases",
-      pageSubtitle: "Each case is one immigration situation, with a current posture and next step.",
+      pageSubtitle: "Government immigration matters on file — USCIS, EOIR, or related agency records.",
       emptyTitle: "No cases yet",
-      emptyBody: "Describe your situation and goal, and we'll analyze it into a clear case plan.",
+      emptyBody:
+        "When you have a USCIS letter or other government matter, track it here. Personal options questions live under My situations.",
       startLabel: intake.startLabel,
       recentHeading: "Recent cases",
       navLabel: "My cases",

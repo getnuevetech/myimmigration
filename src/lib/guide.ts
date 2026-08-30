@@ -282,6 +282,11 @@ export async function guideRespond(
             label: "Continue with my situation",
             href: `/app/cases/new?${qs.toString()}`,
           },
+          {
+            type: "link",
+            label: "My situations",
+            href: "/app/situations",
+          },
           ...baseActions(),
         ],
       });
