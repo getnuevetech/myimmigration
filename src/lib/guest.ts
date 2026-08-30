@@ -4,7 +4,6 @@ import crypto from "crypto";
 import { db } from "./db";
 import { secureCookiesEnabled } from "./auth";
 import {
-  continuePathAfterAuth,
   sanitizeAuthNext,
   type ClaimedGuestWork,
 } from "./auth-continue";

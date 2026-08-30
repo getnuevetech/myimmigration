@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "../db";
-import { callProvider, extractJson, type ChatMessage, type MediaAttachment } from "./adapters";
+import { callProvider, extractJson, type MediaAttachment } from "./adapters";
 import { mergeStructured, computeReadiness, type Conflict } from "./consensus";
 import { fallbackAnalyze } from "./fallback";
 import {
