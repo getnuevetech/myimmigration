@@ -427,7 +427,7 @@ model Situation {
   @@index([guestSessionId])
 }
 
-/** Phase −1.9 L1 — de-identified observations only (safe for cross-user pattern mining). */
+/** Phase −1.9 L1–L7 — de-identified observations only (safe for cross-user pattern mining). */
 model ExperienceObservation {
   id               String   @id @default(cuid())
   sourceDigest     String
@@ -437,12 +437,19 @@ model ExperienceObservation {
   anonJson         String   @default("{}")
   /** Internal link for audit; never exposed in cross-user list APIs. */
   sourceSituationId String?
+  /** L7 — when set, pattern is excluded from Sol Experience Search. */
+  staleAt          DateTime?
+  staleReason      String   @default("")
+  helpCount        Int      @default(0)
+  harmCount        Int      @default(0)
+  lastServedAt     DateTime?
   createdAt        DateTime @default(now())
   situation        Situation? @relation(fields: [sourceSituationId], references: [id], onDelete: SetNull)
 
   @@index([decisionTarget, promotionLevel])
   @@index([sourceDigest])
   @@index([sourceSituationId])
+  @@index([promotionLevel, staleAt])
 }
 
 model FilingPlan {

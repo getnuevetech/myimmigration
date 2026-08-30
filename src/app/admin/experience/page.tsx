@@ -2,7 +2,13 @@ import Link from "next/link";
 import { guardAdminPage } from "@/lib/admin-guard";
 import { PageHeader, Card, CardBody, Badge } from "@/components/ui";
 import { ActionForm, SubmitButton } from "@/components/action-form";
-import { promoteExperiencePatternAction } from "@/actions/experience-registry";
+import {
+  clearExperiencePatternStaleAction,
+  invalidateExperiencePatternsForAuthorityAction,
+  markExperiencePatternStaleAction,
+  promoteExperiencePatternAction,
+  recordExperiencePatternFeedbackAction,
+} from "@/actions/experience-registry";
 import {
   countRegistryByLevel,
   listRegistryEntries,
@@ -46,8 +52,29 @@ export default async function AdminExperienceRegistryPage({
     <div>
       <PageHeader
         title="Pattern Registry"
-        subtitle="Promote de-identified experience observations toward Production (level 4). Production patterns feed Sol Experience Search. Outcome ≠ law; current authority still outranks patterns."
+        subtitle="Promote de-identified experience toward Production (level 4). Mark help/harm and stale patterns. Stale production patterns are excluded from Sol Experience Search. Outcome ≠ law."
       />
+
+      <Card className="mb-6">
+        <CardBody className="space-y-2">
+          <p className="text-sm font-semibold text-slate-800">Authority invalidation</p>
+          <p className="text-xs text-slate-500">
+            When an AuthoritySource catalog key changes, mark linked production patterns stale so they leave Experience
+            Search until reviewed.
+          </p>
+          <ActionForm action={invalidateExperiencePatternsForAuthorityAction} className="flex flex-wrap items-end gap-2">
+            <label className="text-xs font-medium text-slate-600">
+              Authority key
+              <input
+                name="authority_key"
+                placeholder="uscis_policy_manual"
+                className="mt-1 block w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </label>
+            <SubmitButton className="!bg-slate-800 hover:!bg-slate-700">Invalidate linked patterns</SubmitButton>
+          </ActionForm>
+        </CardBody>
+      </Card>
 
       <div className="mb-6 flex flex-wrap gap-2">
         <Link
@@ -83,6 +110,7 @@ export default async function AdminExperienceRegistryPage({
           {entries.map((entry) => {
             const anon = entry.anon;
             const origin = anon.origin ?? "turn";
+            const stale = Boolean(entry.staleAt);
             return (
               <Card key={entry.id}>
                 <CardBody className="space-y-3">
@@ -93,9 +121,15 @@ export default async function AdminExperienceRegistryPage({
                         {entry.workspace} · {origin.replace(/_/g, " ")} · {entry.createdAt.toLocaleString("en-US")}
                       </p>
                     </div>
-                    <Badge color={levelColor(entry.promotionLevel)}>
-                      {entry.promotionLevel} · {PROMOTION_LABELS[entry.promotionLevel]}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      <Badge color={levelColor(entry.promotionLevel)}>
+                        {entry.promotionLevel} · {PROMOTION_LABELS[entry.promotionLevel]}
+                      </Badge>
+                      {stale ? <Badge color="red">stale</Badge> : null}
+                      <Badge color="slate">
+                        help {entry.helpCount} · harm {entry.harmCount}
+                      </Badge>
+                    </div>
                   </div>
 
                   <dl className="grid gap-2 text-sm sm:grid-cols-2">
@@ -114,15 +148,13 @@ export default async function AdminExperienceRegistryPage({
                       <dd className="text-slate-700">{(anon.negative_lesson_ids || []).join(", ") || "—"}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Signals</dt>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Telemetry</dt>
                       <dd className="text-slate-700">
-                        {[
-                          anon.has_reviewer_correction ? "consultant correction" : null,
-                          anon.outcome_kind ? `outcome:${anon.outcome_kind}` : null,
-                          anon.clarification_key ? `ask:${anon.clarification_key}` : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ") || "—"}
+                        {stale
+                          ? `stale: ${entry.staleReason || "unspecified"}`
+                          : entry.lastServedAt
+                            ? `last served ${entry.lastServedAt.toLocaleString("en-US")}`
+                            : "not served yet"}
                       </dd>
                     </div>
                   </dl>
@@ -151,6 +183,42 @@ export default async function AdminExperienceRegistryPage({
                         </SubmitButton>
                       </ActionForm>
                     ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500">Feedback:</span>
+                    <ActionForm action={recordExperiencePatternFeedbackAction} className="inline">
+                      <input type="hidden" name="observationId" value={entry.id} />
+                      <input type="hidden" name="verdict" value="help" />
+                      <input type="hidden" name="reason_key" value="helped_answer" />
+                      <SubmitButton className="!bg-emerald-700 !px-2.5 !py-1 !text-xs hover:!bg-emerald-800">
+                        Help
+                      </SubmitButton>
+                    </ActionForm>
+                    <ActionForm action={recordExperiencePatternFeedbackAction} className="inline">
+                      <input type="hidden" name="observationId" value={entry.id} />
+                      <input type="hidden" name="verdict" value="harm" />
+                      <input type="hidden" name="reason_key" value="harmed_answer" />
+                      <SubmitButton className="!bg-red-700 !px-2.5 !py-1 !text-xs hover:!bg-red-800">
+                        Harm
+                      </SubmitButton>
+                    </ActionForm>
+                    {stale ? (
+                      <ActionForm action={clearExperiencePatternStaleAction} className="inline">
+                        <input type="hidden" name="observationId" value={entry.id} />
+                        <SubmitButton className="!bg-slate-700 !px-2.5 !py-1 !text-xs hover:!bg-slate-800">
+                          Clear stale
+                        </SubmitButton>
+                      </ActionForm>
+                    ) : (
+                      <ActionForm action={markExperiencePatternStaleAction} className="inline">
+                        <input type="hidden" name="observationId" value={entry.id} />
+                        <input type="hidden" name="reason_key" value="admin_marked_stale" />
+                        <SubmitButton className="!bg-slate-700 !px-2.5 !py-1 !text-xs hover:!bg-slate-800">
+                          Mark stale
+                        </SubmitButton>
+                      </ActionForm>
+                    )}
                     <span className="ml-auto font-mono text-[10px] text-slate-400">{entry.id}</span>
                   </div>
                 </CardBody>

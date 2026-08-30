@@ -31,6 +31,12 @@ export type RegistryEntry = {
   /** Admin audit only — never exposed via customer cross-user list APIs. */
   sourceSituationId: string | null;
   anon: AnonymizedExperienceRecord;
+  /** L7 telemetry */
+  helpCount: number;
+  harmCount: number;
+  staleAt: Date | null;
+  staleReason: string;
+  lastServedAt: Date | null;
 };
 
 export function isPromotionLevel(value: unknown): value is PromotionLevel {
@@ -110,6 +116,11 @@ export async function listRegistryEntries(opts?: {
       createdAt: true,
       sourceSituationId: true,
       anonJson: true,
+      helpCount: true,
+      harmCount: true,
+      staleAt: true,
+      staleReason: true,
+      lastServedAt: true,
     },
   });
 
@@ -126,6 +137,11 @@ export async function listRegistryEntries(opts?: {
         createdAt: row.createdAt,
         sourceSituationId: row.sourceSituationId,
         anon: { ...anon, promotion_level: promotionLevel },
+        helpCount: row.helpCount,
+        harmCount: row.harmCount,
+        staleAt: row.staleAt,
+        staleReason: row.staleReason,
+        lastServedAt: row.lastServedAt,
       });
     } catch {
       /* skip corrupt / unsafe */
