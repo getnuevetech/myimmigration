@@ -1,6 +1,8 @@
 import { evaluateAnswerability } from "./answerability";
 import { routeConversation } from "./conversation-router";
+import { detectGovernmentMatter } from "./government-matter";
 import { interpretIntent } from "./intent-interpreter";
+import { buildLearningEvent } from "./learning-events";
 import { buildNeedToKnow } from "./need-to-know";
 import { buildQuestionContract } from "./question-contract";
 import { buildResponseStrategy } from "./response-strategy";
@@ -8,12 +10,11 @@ import type { ConversationIntelligence, ConversationMessageInput, QuestionContra
 
 const LOW_CONFIDENCE = 0.8;
 
-/** Full Phase −1 pipeline: contract → intent → answerability → need-to-know → strategy → router. */
+/** Full Phase −1 / Phase S pipeline: contract → intent → answerability → need-to-know → strategy → router → learning event. */
 export function runConversationIntelligence(input: ConversationMessageInput): ConversationIntelligence {
   const message = String(input.message ?? "").trim();
   const question_contract = buildQuestionContract(input);
-  const intent = interpretIntent({ ...input, /* contract already incorporates prior */ });
-  // Keep intent.question aligned to continuous contract.
+  const intent = interpretIntent({ ...input });
   intent.question = question_contract.interpreted_question || intent.question;
   const answerability = evaluateAnswerability({
     contract: question_contract,
@@ -26,20 +27,37 @@ export function runConversationIntelligence(input: ConversationMessageInput): Co
     message,
     answerability,
   });
+  const matter = detectGovernmentMatter([message, input.goal ?? ""].join("\n"), input.documentHints);
   const strategy = buildResponseStrategy({
     contract: question_contract,
     intent,
     answerability,
     needToKnow: need_to_know,
     message,
+    allowCaseReview: matter.existing_government_case,
   });
   const route = routeConversation({
     contract: question_contract,
     intent,
     answerability,
     strategy,
+    message,
     documentCount: input.documentCount,
+    documentHints: input.documentHints,
     forceCase: input.forceCase,
+  });
+
+  // Align strategy.mode with router-canonical response_mode.
+  strategy.mode = route.response_mode;
+
+  const learning_event = buildLearningEvent({
+    contract: question_contract,
+    workspace: route.workspace,
+    responseMode: route.response_mode,
+    existingGovernmentCase: route.existing_government_case,
+    interactionIntent: intent.interaction_intent,
+    pathways: strategy.branches.map((b) => b.id),
+    askNow: strategy.ask_now,
   });
 
   return {
@@ -49,6 +67,7 @@ export function runConversationIntelligence(input: ConversationMessageInput): Co
     need_to_know,
     strategy,
     route,
+    learning_event,
   };
 }
 
@@ -77,7 +96,7 @@ export async function enrichIntelligenceWithReasoningModel(
   input: ConversationMessageInput,
 ): Promise<ConversationIntelligence> {
   if (intel.intent.routing_confidence >= LOW_CONFIDENCE) return intel;
-  if (intel.question_contract.requires_case_development) return intel;
+  if (intel.route.invokes_case_engine) return intel;
 
   try {
     const { resolveCapabilityProvider } = await import("@/lib/ai/model-capabilities");
@@ -87,7 +106,7 @@ export async function enrichIntelligenceWithReasoningModel(
 
     const prompt = `You refine a conversation Question Contract. Return ONLY JSON:
 {"interpreted_question":"","decision_target":"","routing_confidence":0.0,"primary_intent":""}
-Rules: do not invent document facts; do not set requires_case_development true unless the user asked for a full case/strategy; keep decision_target stable if this is a follow-up.
+Rules: do not invent document facts; do not set requires_case_development true unless the user asked for a full case/strategy on an existing government matter; keep decision_target stable if this is a follow-up.
 PRIOR_CONTRACT: ${JSON.stringify(intel.question_contract)}
 MESSAGE: ${input.message}
 GOAL: ${input.goal ?? ""}`;
@@ -123,7 +142,7 @@ GOAL: ${input.goal ?? ""}`;
 export function isQuestionShapedCaseNarrative(situation: string, goal: string): boolean {
   const intel = runConversationIntelligence({ message: situation, goal });
   return (
-    !intel.question_contract.requires_case_development &&
+    !intel.route.invokes_case_engine &&
     !intel.answerability.clarify_first_required &&
     (intel.strategy.provisional_answer_outline.length > 0 || intel.strategy.branches.length > 0)
   );
@@ -132,5 +151,5 @@ export function isQuestionShapedCaseNarrative(situation: string, goal: string): 
 export function caseMustAnswerBeforeClarify(situation: string, goal: string): boolean {
   const intel = runConversationIntelligence({ message: situation, goal });
   if (intel.answerability.clarify_first_required) return false;
-  return isQuestionShapedCaseNarrative(situation, goal) || intel.route.pipeline === "assistant";
+  return isQuestionShapedCaseNarrative(situation, goal) || !intel.route.invokes_case_engine;
 }

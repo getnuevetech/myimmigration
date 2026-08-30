@@ -15,13 +15,16 @@ export function buildResponseStrategy(opts: {
   answerability: Answerability;
   needToKnow: NeedToKnowItem[];
   message: string;
+  /** Only true when government matter exists AND strategy review is requested. */
+  allowCaseReview?: boolean;
 }): ResponseStrategy {
   const mode = responseModeFromAnswerability(
     opts.answerability,
     opts.intent.recommended_response_mode,
-    opts.contract.requires_case_development,
+    Boolean(opts.allowCaseReview && opts.contract.requires_case_development),
   );
-  const ask_now = mode === "clarify_first" || mode === "initiate_case" ? [] : askableNow(opts.needToKnow);
+  const ask_now =
+    mode === "clarify_first" || mode === "case_review" || mode === "initiate_case" ? [] : askableNow(opts.needToKnow);
   const ask_later = deferrable(opts.needToKnow);
   const { branch_before_clarify, branches } = analyzeBranches({
     contract: opts.contract,
@@ -47,10 +50,10 @@ function outlineFor(
   branches: { condition: string; explanation: string }[],
   mode: ResponseStrategy["mode"],
 ): string[] {
-  if (mode === "initiate_case") {
-    return ["Start a full case review to map filings, risks, and next actions."];
+  if (mode === "case_review" || mode === "initiate_case") {
+    return ["Run government-matter case review: filings on record, risks, and next actions."];
   }
-  if (mode === "request_document") {
+  if (mode === "document_needed" || mode === "request_document") {
     return ["Ask for the notice/document (or its form number) before explaining it."];
   }
   if (mode === "clarify_first") {

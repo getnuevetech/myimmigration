@@ -49,7 +49,10 @@ function read(path: string) {
 
   const qa = read("src/components/qa-chat.tsx");
   assert.ok(qa.includes("STARTER_PROMPTS"), "qa empty state must use Phase −1 starters");
-  assert.ok(qa.includes("Start a full case review"), "qa must offer A→B promote CTA");
+  assert.ok(
+    qa.includes("Continue with my situation") || qa.includes("Start a full case review"),
+    "qa must offer Situation/Case continue CTA",
+  );
   assert.ok(qa.includes("Working on") || qa.includes("focusLabel"), "qa must show decision focus chrome");
   assert.ok(qa.includes("defaultQuestion"), "qa must support guide prefill");
 

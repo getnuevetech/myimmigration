@@ -49,7 +49,7 @@ function read(path: string) {
   assert.equal(merged.decision_target, "petition_eligibility_overview");
 }
 
-// 2) Comprehensive still overrides continuity
+// 2) Comprehensive still overrides continuity (unfiled → Situation, not Case engine)
 {
   const prior = runConversationIntelligence({
     message: "What is an I-862?",
@@ -59,7 +59,14 @@ function read(path: string) {
     priorContract: prior,
   });
   assert.equal(next.question_contract.decision_target, "comprehensive_case_strategy");
-  assert.equal(next.route.pipeline, "case");
+  assert.equal(next.route.invokes_case_engine, false);
+  assert.equal(next.route.workspace, "situation");
+  const filed = runConversationIntelligence({
+    message: "Review my entire pending I-130 case receipt MSC2190123456 and tell me what to do.",
+    priorContract: prior,
+  });
+  assert.equal(filed.route.invokes_case_engine, true);
+  assert.equal(filed.route.pipeline, "case");
 }
 
 // 3) Need-to-know clarify prefers critical branch-changing asks
@@ -85,7 +92,7 @@ function read(path: string) {
   const guide = read("src/lib/guide.ts");
   assert.ok(guide.includes("runConversationIntelligence"), "guide must run Conversation Router");
   assert.ok(guide.includes("/app/qa"), "guide must hand off questions to Assistant");
-  assert.ok(guide.includes("forceCase"), "guide case handoff must support forceCase");
+  assert.ok(guide.includes("invokes_case_engine") || guide.includes("Track this government case"), "guide must hand off government Case via response_mode");
 
   const clarify = read("src/lib/clarify.ts");
   assert.ok(clarify.includes("needToKnowClarifyQuestion"), "clarify must prefer need-to-know");
@@ -97,8 +104,12 @@ function read(path: string) {
   assert.ok(admin.includes("parseStoredIntelligence"), "admin must show intelligence diagnostics");
   assert.ok(admin.includes("decision_target"), "admin diagnostics must show decision target");
 
+  const spec = read("docs/v5.1/PHASE-MINUS1-7-ASSISTANT-HARDENING.md");
+  assert.ok(spec.includes("PRIOR_CONTRACT") || spec.includes("priorContract") || spec.includes("continuity"));
+
   const casesNew = read("src/app/app/cases/new/page.tsx");
-  assert.ok(casesNew.includes("forceCase"), "cases/new must accept forceCase from guide");
+  assert.ok(!casesNew.includes('name="forceCase"'), "cases/new must not expose customer forceCase");
+  assert.ok(casesNew.includes("createCaseAction"), "cases/new still posts intake");
 }
 
 console.log("phase-minus1-7-hardening-check: ok");

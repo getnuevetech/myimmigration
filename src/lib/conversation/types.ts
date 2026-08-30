@@ -1,8 +1,21 @@
 /**
- * Phase −1 Conversation Intelligence — domain-neutral types.
- * Immigration / tax reasoning live in adapters; this layer stays product-agnostic.
+ * Phase −1 / Phase S Conversation Intelligence — domain-neutral types.
+ * Workspace state never determines analysis depth; response_mode does.
  */
 
+export const INTERACTION_INTENTS = [
+  "general_question",
+  "personal_question",
+  "document_question",
+  "status_question",
+  "strategy_question",
+  "action_request",
+  "information_only",
+] as const;
+
+export type InteractionIntent = (typeof INTERACTION_INTENTS)[number];
+
+/** @deprecated Prefer InteractionIntent; kept for stored snapshots. */
 export const CONVERSATION_INTENTS = [
   "general_legal",
   "personal_eligibility",
@@ -18,16 +31,27 @@ export const CONVERSATION_INTENTS = [
 
 export type ConversationIntent = (typeof CONVERSATION_INTENTS)[number];
 
+export const CUSTOMER_STATES = ["question_only", "situation", "filing_plan", "existing_case"] as const;
+export type CustomerState = (typeof CUSTOMER_STATES)[number];
+
+export const WORKSPACES = CUSTOMER_STATES;
+export type WorkspaceId = CustomerState;
+
 export const RESPONSE_MODES = [
   "answer",
-  "answer_then_targeted_questions",
+  "answer_then_targeted_question",
+  "answer_then_targeted_questions", // legacy alias
   "clarify_first",
-  "request_document",
-  "initiate_case",
+  "document_needed",
+  "request_document", // legacy alias
+  "filing_plan_build",
+  "case_review",
+  "initiate_case", // legacy alias → case_review
 ] as const;
 
 export type ResponseMode = (typeof RESPONSE_MODES)[number];
 
+/** Legacy binary pipeline — derived from response_mode, not workspace. */
 export const PIPELINE_IDS = ["assistant", "case"] as const;
 export type PipelineId = (typeof PIPELINE_IDS)[number];
 
@@ -68,10 +92,12 @@ export type AnswerBranch = {
 
 export type IntentInterpretation = {
   primary_intent: ConversationIntent;
+  interaction_intent: InteractionIntent;
   domain: string;
   question: string;
   recommended_pipeline: PipelineId;
   recommended_response_mode: ResponseMode;
+  recommended_workspace: WorkspaceId;
   routing_confidence: number;
   can_answer_partially_now: boolean;
   requires_personalized_analysis: boolean;
@@ -87,7 +113,13 @@ export type ResponseStrategy = {
 };
 
 export type ConversationRoute = {
+  /** Derived: case only when response_mode invokes V5.1 — never from workspace alone. */
   pipeline: PipelineId;
+  workspace: WorkspaceId;
+  customer_state: CustomerState;
+  response_mode: ResponseMode;
+  existing_government_case: boolean;
+  invokes_case_engine: boolean;
   reason: string;
   from_recommendation: PipelineId;
   confidence: number;
@@ -100,20 +132,31 @@ export type ConversationIntelligence = {
   need_to_know: NeedToKnowItem[];
   strategy: ResponseStrategy;
   route: ConversationRoute;
+  learning_event: LearningEvent;
+};
+
+export type LearningEvent = {
+  question_contract: QuestionContract;
+  workspace_selected: WorkspaceId;
+  decision_target: string;
+  pathways_considered: string[];
+  clarification_selected: string | null;
+  clarification_reason: string | null;
+  questions_suppressed: string[];
+  response_mode: ResponseMode;
+  invokes_case_engine: boolean;
+  existing_government_case: boolean;
+  interaction_intent: InteractionIntent;
 };
 
 export type ConversationMessageInput = {
   message: string;
   goal?: string | null;
-  /** Prior user+assistant turns for continuity. */
   history?: { role: string; content: string }[];
-  /** Documents attached to *this* turn. */
   documentCount?: number;
-  /** Filename / notice hints (not content). */
   documentHints?: string[];
-  /** User explicitly asked for case development. */
+  /** Internal/admin diagnostic only — never a customer pipeline picker. */
   forceCase?: boolean;
-  /** Prior turn Question Contract (Pipeline A continuity). */
   priorContract?: QuestionContract | null;
 };
 
@@ -126,4 +169,17 @@ export function emptyQuestionContract(): QuestionContract {
     user_requested_action: false,
     requires_case_development: false,
   };
+}
+
+/** Normalize legacy / alias response modes to canonical S0 modes. */
+export function canonicalizeResponseMode(mode: ResponseMode): ResponseMode {
+  if (mode === "initiate_case") return "case_review";
+  if (mode === "request_document") return "document_needed";
+  if (mode === "answer_then_targeted_questions") return "answer_then_targeted_question";
+  return mode;
+}
+
+export function invokesCaseEngine(mode: ResponseMode): boolean {
+  const m = canonicalizeResponseMode(mode);
+  return m === "case_review";
 }

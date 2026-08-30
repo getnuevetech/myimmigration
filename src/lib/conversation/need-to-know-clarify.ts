@@ -16,10 +16,21 @@ export function needToKnowClarifyQuestion(
   intel: ConversationIntelligence,
   answeredKeys: string[],
 ): NeedToKnowClarify | null {
+  // Situation / pathway workspaces: never fall through to Case schema completeness.
+  const target = intel.question_contract.decision_target;
+  const situationLike =
+    intel.route?.workspace === "situation" ||
+    intel.route?.workspace === "filing_plan" ||
+    target === "identify_available_pathways" ||
+    target === "petition_eligibility_overview";
+
   const answered = new Set(answeredKeys);
   const candidates = [...intel.strategy.ask_now, ...askableNow(intel.need_to_know)];
   for (const item of candidates) {
     if (!item.changes_branch || item.tier !== "critical_now") continue;
+    if (situationLike && /medical\s*exam|i-?693|priority\s*date|passport|i-?864/i.test(item.question)) {
+      continue;
+    }
     const key = `need_to_know:${slug(item.question)}`;
     if (answered.has(key) || answered.has(item.question)) continue;
     return {

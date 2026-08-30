@@ -249,28 +249,37 @@ export async function guideRespond(
     });
   }
 
-  // Phase −1.7: Conversation Router decides Assistant vs Case handoff.
+  // Phase S: Conversation Router decides Situation vs Case engine via response_mode.
   try {
     const { runConversationIntelligence } = await import("@/lib/conversation");
     const intel = runConversationIntelligence({
       message: lastQuestion,
       history: history.slice(-8),
-      forceCase: intent === "new_case",
     });
-    if (intel.route.pipeline === "case" || intent === "new_case") {
-      const intake = resolveIntakeChrome(snapshot.surface);
+    if (intel.route.invokes_case_engine) {
       const qs = new URLSearchParams({ prefill: lastQuestion.slice(0, 500) });
-      if (intel.question_contract.requires_case_development || intent === "new_case") {
-        qs.set("forceCase", "1");
-      }
       return withChrome(snapshot, {
-        message: intel.question_contract.requires_case_development
-          ? "That needs a full case review — filings, risks, and a next-action plan. I'll open a new case with your message so we can lock facts properly."
-          : intake.guideNewCaseMessage,
+        message:
+          "That looks like a government matter that needs a full case review — filings on record, risks, and next actions. Continue to track it as a USCIS/immigration case.",
         actions: [
           {
             type: "new_case",
-            label: intake.guideNewCaseLabel,
+            label: "Track this government case",
+            href: `/app/cases/new?${qs.toString()}`,
+          },
+          ...baseActions(),
+        ],
+      });
+    }
+    if (intel.route.workspace === "situation" || intel.route.workspace === "filing_plan") {
+      const qs = new URLSearchParams({ prefill: lastQuestion.slice(0, 500) });
+      return withChrome(snapshot, {
+        message:
+          "That sounds like a personal immigration Situation — options and pathways, not a USCIS Case yet. Continue so we can answer first and ask only what changes the path.",
+        actions: [
+          {
+            type: "new_case",
+            label: "Continue with my situation",
             href: `/app/cases/new?${qs.toString()}`,
           },
           ...baseActions(),
@@ -287,13 +296,13 @@ export async function guideRespond(
       "risk_overview",
     ]);
     if (
-      intel.route.pipeline === "assistant" &&
+      !intel.route.invokes_case_engine &&
       (Boolean(intel.question_contract.explicit_question) ||
         questionTargets.has(intel.question_contract.decision_target))
     ) {
       return withChrome(snapshot, {
         message:
-          "That looks like a question the Immigration Assistant can answer directly — without opening a full case. Continue there for an answer-first reply.",
+          "That looks like a question the Immigration Assistant can answer directly — without opening a Case. Continue there for an answer-first reply.",
         actions: [
           { type: "link", label: "Ask the assistant", href: `/app/qa?q=${encodeURIComponent(lastQuestion.slice(0, 500))}` },
           ...primaryActions(snapshot).slice(0, 1),
@@ -310,7 +319,7 @@ export async function guideRespond(
     return withChrome(snapshot, {
       message: intake.guideNewCaseMessage,
       actions: [
-        { type: "new_case", label: intake.guideNewCaseLabel, href: `/app/cases/new?prefill=${encodeURIComponent(lastQuestion.slice(0, 500))}&forceCase=1` },
+        { type: "new_case", label: intake.guideNewCaseLabel, href: `/app/cases/new?prefill=${encodeURIComponent(lastQuestion.slice(0, 500))}` },
         ...baseActions(),
       ],
     });

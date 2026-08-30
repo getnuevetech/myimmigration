@@ -32,7 +32,7 @@ export function composeAssistantView(
     return sections;
   }
 
-  if (intel.strategy.mode === "request_document") {
+  if (intel.strategy.mode === "document_needed" || intel.strategy.mode === "request_document") {
     sections.push({
       type: "paragraph",
       text: "Please upload or paste the notice (or tell me the form/notice number at the top). I can explain what it means once I can identify it — I do not need a full case file first.",
@@ -40,10 +40,10 @@ export function composeAssistantView(
     return sections;
   }
 
-  if (intel.strategy.mode === "initiate_case") {
+  if (intel.strategy.mode === "case_review" || intel.strategy.mode === "initiate_case") {
     sections.push({
       type: "paragraph",
-      text: "This sounds like you want a full case review — filings, risks, and a concrete next-action plan. I will open a case analysis for that broader work.",
+      text: "You asked for a full review of a matter already before the government. I will use the case analysis tools for filings on record, risks, and next actions.",
     });
     return sections;
   }
@@ -90,7 +90,7 @@ export function composeAssistantView(
   } else if (target === "interpret_situation_offer_next_step") {
     sections.push({
       type: "paragraph",
-      text: "Thanks for sharing that background. I can help in different ways — for example outlining possible pathways, explaining a notice, or running a full case review.",
+      text: "Thanks for sharing that background. I can help outline possible pathways, explain a notice, or — if something is already filed with USCIS or immigration court — help you track that government matter.",
     });
   } else if (!(intel.strategy.branch_before_clarify && intel.strategy.branches.length)) {
     sections.push({
@@ -107,13 +107,18 @@ export function composeAssistantView(
     sections.push({ type: "branches", intro, branches: intel.strategy.branches });
   }
 
-  if (intel.strategy.mode === "answer_then_targeted_questions" && intel.strategy.ask_now[0]) {
-    const ask = intel.strategy.ask_now[0];
-    sections.push({
-      type: "ask",
-      question: `To determine which pathway applies to you: ${ask.question}`,
-      reason: ask.reason,
-    });
+  if (
+    intel.strategy.mode === "answer_then_targeted_question" ||
+    intel.strategy.mode === "answer_then_targeted_questions"
+  ) {
+    if (intel.strategy.ask_now[0]) {
+      const ask = intel.strategy.ask_now[0];
+      sections.push({
+        type: "ask",
+        question: `To determine which pathway applies to you: ${ask.question}`,
+        reason: ask.reason,
+      });
+    }
   }
 
   sections.push({ type: "disclaimer", text: DISCLAIMER });
@@ -152,7 +157,7 @@ export function decisionFocusLabel(decisionTarget: string): string {
     case "risk_overview":
       return "Material risks in your situation";
     case "comprehensive_case_strategy":
-      return "Full case review";
+      return "Review of your government matter";
     case "interpret_situation_offer_next_step":
       return "What you want help with next";
     case "answer_user_question":

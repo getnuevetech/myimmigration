@@ -73,9 +73,23 @@ function assertCase(message: string, goal = "Full review") {
   assert.match(promo.reason, /upload alone/i);
 }
 
-// 5) Comprehensive review → Case
+// 5) Comprehensive unfiled review → Situation (not Case engine)
 {
-  assertCase("Review my entire immigration situation and tell me what I should file.");
+  const intel = runConversationIntelligence({
+    message: "Review my entire immigration situation and tell me what I should file.",
+  });
+  assert.equal(intel.route.invokes_case_engine, false);
+  assert.equal(intel.route.workspace, "situation");
+}
+
+// 5b) Comprehensive pending I-130 review → Case engine
+{
+  const intel = runConversationIntelligence({
+    message:
+      "Review my entire pending I-130/I-485 case receipt MSC2190123456 and tell me what I should do next.",
+  });
+  assert.equal(intel.route.invokes_case_engine, true);
+  assert.equal(intel.route.pipeline, "case");
 }
 
 // 6) Facts, no question — no schema dump / no case
@@ -119,14 +133,14 @@ function assertCase(message: string, goal = "Full review") {
   assert.equal(intel.route.pipeline, "assistant");
 }
 
-// 10) Build IRS strategy — Case
+// 10) Build IRS strategy with no filed matter → Situation (not Case engine)
 {
   const intel = runConversationIntelligence({
     message: "Build a strategy to resolve all my IRS balances for 2022–2025.",
     goal: "Resolve all balances",
   });
-  assert.equal(intel.route.pipeline, "case");
-  assert.equal(intel.question_contract.requires_case_development, true);
+  assert.equal(intel.route.invokes_case_engine, false);
+  assert.ok(intel.route.workspace === "situation" || intel.route.pipeline === "assistant");
 }
 
 // Router ≠ interpreter decree
@@ -167,7 +181,7 @@ function assertCase(message: string, goal = "Full review") {
 {
   const intake = readFileSync(join(process.cwd(), "src/actions/case.ts"), "utf8");
   assert.ok(intake.includes("runConversationIntelligence"), "intake must run Phase −1 intelligence");
-  assert.ok(intake.includes('pipeline === "assistant"'), "intake must branch to assistant");
+  assert.ok(intake.includes("invokes_case_engine"), "intake must branch on response_mode / case engine");
   assert.ok(intake.includes("mayPromoteAssistantToCase"), "promotion gate must exist");
   const casePage = readFileSync(join(process.cwd(), "src/app/app/cases/[id]/page.tsx"), "utf8");
   assert.ok(casePage.includes("CaseAnswerFirstPanel"), "case page must show answer-first panel");

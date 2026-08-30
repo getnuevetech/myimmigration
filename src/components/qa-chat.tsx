@@ -120,7 +120,7 @@ export function QaChat({
     .map((m) => m.content)
     .join("\n\n")
     .slice(0, 500);
-  const caseHref = `/app/cases/new?prefill=${encodeURIComponent(narrativeForCase || draft || "")}&forceCase=1`;
+  const caseHref = `/app/cases/new?prefill=${encodeURIComponent(narrativeForCase || draft || "")}`;
   const registerHref = threadId
     ? `/register?next=${encodeURIComponent(`/app/qa/${threadId}`)}`
     : "/register";
@@ -234,14 +234,14 @@ export function QaChat({
       {showPromoteCase && (
         <div className="border-t border-slate-100 bg-white px-4 py-3">
           <p className="text-sm text-slate-700">
-            Need filings, risks, and a complete next-action plan? Start a full case review — uploads alone never open a case.
+            Ready to pursue a pathway, or track something already filed with the government? Continue from your Situation — uploads alone never create a Case.
           </p>
           <div className="mt-2">
             <Link
               href={caseHref}
               className="inline-flex rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
             >
-              Start a full case review
+              Continue with my situation
             </Link>
           </div>
         </div>

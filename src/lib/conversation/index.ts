@@ -3,6 +3,10 @@ export type {
   ConversationMessageInput,
   QuestionContract,
   NeedToKnowItem,
+  LearningEvent,
+  WorkspaceId,
+  CustomerState,
+  InteractionIntent,
 } from "./types";
 export {
   runConversationIntelligence,
@@ -29,5 +33,8 @@ export {
 export { analyzeBranches } from "./branch-analysis";
 export { buildResponseStrategy } from "./response-strategy";
 export { routeConversation, mayPromoteAssistantToCase } from "./conversation-router";
+export { detectGovernmentMatter } from "./government-matter";
+export { buildLearningEvent, assertNoPrematureSchemaAsk } from "./learning-events";
 export { composeAssistantReply, composeAssistantView, decisionFocusLabel } from "./assistant-composer";
 export type { AssistantViewSection } from "./assistant-composer";
+export { canonicalizeResponseMode, invokesCaseEngine } from "./types";

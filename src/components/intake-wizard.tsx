@@ -111,14 +111,6 @@ export function IntakeWizard({ start }: { start?: PublicStartCopy }) {
           <p className="mt-2 text-xs text-slate-400">
             You can skip this and add documents later. Documents help confirm answers — they do not start a case by themselves.
           </p>
-          <label className="mt-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
-            <input type="checkbox" name="forceCase" className="mt-1 h-4 w-4 rounded border-slate-300 text-lime-600" />
-            <span>
-              <span className="font-medium text-slate-800">Run a full case review</span>
-              {" — "}
-              only check this if you want filings, risks, and a complete next-action plan (not just an answer to your question).
-            </span>
-          </label>
         </div>
 
         <div className="mt-8 flex items-center justify-between">

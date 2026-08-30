@@ -56,11 +56,51 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
     goal,
     documentCount: files.length,
     documentHints: files.map((f) => f.name),
-    forceCase: formData.get("forceCase") === "on" || formData.get("forceCase") === "1",
+    // Customer forceCase removed — admin diagnostic only if explicitly posted by staff tools.
+    forceCase: false,
   });
 
-  // Pipeline A — Assistant (default for questions). Upload alone never forces Case.
-  if (intel.route.pipeline === "assistant") {
+  // Phase S: response_mode controls Case engine; workspace selects persistence.
+  // Situation / question paths never run V5.1.
+  if (!intel.route.invokes_case_engine) {
+    let answer = composeAssistantReply(intel, [situation, goal ? `Goal: ${goal}` : ""].filter(Boolean).join("\n\n"));
+    try {
+      const { runQaChat } = await import("@/lib/ai/orchestrator");
+      const { loadQaAccess } = await import("@/lib/qa-quota");
+      const access = await loadQaAccess({ userId: user?.id, guestSessionId: guest?.id });
+      if (
+        !intel.strategy.branch_before_clarify &&
+        !["petition_eligibility_overview", "explain_document_or_notice", "document_checklist"].includes(
+          intel.question_contract.decision_target,
+        )
+      ) {
+        if (access.entitlement.qaEnabled) {
+          const opening = [situation, goal ? `Goal: ${goal}` : ""].filter(Boolean).join("\n\n");
+          answer = await runQaChat([{ role: "user", content: opening }], {
+            entitlement: access.entitlement,
+          });
+          if (intel.strategy.ask_now[0] && !answer.includes(intel.strategy.ask_now[0].question.slice(0, 40))) {
+            answer = `${answer}\n\nTo determine which path applies: ${intel.strategy.ask_now[0].question}`;
+          }
+        }
+      }
+    } catch {
+      /* keep composed answer */
+    }
+
+    if (intel.route.workspace === "situation" || intel.route.workspace === "filing_plan") {
+      const { createSituationFromIntelligence } = await import("@/lib/situation-create");
+      const created = await createSituationFromIntelligence({
+        situation,
+        goal,
+        intel,
+        assistantReply: answer,
+        files,
+      });
+      redirect(created.userId ? `/app/situations/${created.id}` : `/start/situation?id=${created.id}`);
+    }
+
+    // question_only (and existing_case + answer without case_review) → QaThread
     const opening = [situation, goal ? `Goal: ${goal}` : ""].filter(Boolean).join("\n\n");
     const thread = await db.qaThread.create({
       data: {
@@ -87,41 +127,36 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
       });
     }
     await db.qaMessage.create({ data: { threadId: thread.id, role: "user", content: opening } });
-    let answer = composeAssistantReply(intel, opening);
-    try {
-      const { runQaChat } = await import("@/lib/ai/orchestrator");
-      const { loadQaAccess } = await import("@/lib/qa-quota");
-      const access = await loadQaAccess({ userId: user?.id, guestSessionId: guest?.id });
-      // Prefer deterministic BRANCH_BEFORE_CLARIFY / petition scaffolds; otherwise model.
-      if (!intel.strategy.branch_before_clarify && !["petition_eligibility_overview", "explain_document_or_notice", "document_checklist"].includes(intel.question_contract.decision_target)) {
-        if (access.entitlement.qaEnabled) {
-          answer = await runQaChat([{ role: "user", content: opening }], {
-            entitlement: access.entitlement,
-          });
-          if (intel.strategy.ask_now[0] && !answer.includes(intel.strategy.ask_now[0].question.slice(0, 40))) {
-            answer = `${answer}\n\nTo determine which path applies: ${intel.strategy.ask_now[0].question}`;
-          }
-        }
-      }
-    } catch {
-      /* keep composed answer */
-    }
     await db.qaMessage.create({ data: { threadId: thread.id, role: "assistant", content: answer } });
     redirect(user ? `/app/qa/${thread.id}` : `/start/qa?thread=${thread.id}`);
   }
 
-  // Pipeline B — Case engine (V5.1)
+  // response_mode = case_review → V5.1 Case engine only
   let caseId: string;
   const intelligenceJson = JSON.stringify(intel);
   if (user) {
     const c = await db.case.create({
-      data: { userId: user.id, title: situation.slice(0, 80), situation, goal, intelligenceJson },
+      data: {
+        userId: user.id,
+        title: situation.slice(0, 80),
+        situation,
+        goal,
+        intelligenceJson,
+        governmentSystem: intel.route.existing_government_case ? "uscis" : "",
+      },
     });
     caseId = c.id;
   } else {
     await db.guestSession.update({ where: { id: guest!.id }, data: { situation, goal } });
     const c = await db.case.create({
-      data: { guestSessionId: guest!.id, title: situation.slice(0, 80), situation, goal, intelligenceJson },
+      data: {
+        guestSessionId: guest!.id,
+        title: situation.slice(0, 80),
+        situation,
+        goal,
+        intelligenceJson,
+        governmentSystem: intel.route.existing_government_case ? "uscis" : "",
+      },
     });
     caseId = c.id;
   }
@@ -172,11 +207,22 @@ export async function createCaseAction(_prev: ActionState, formData: FormData): 
   const intel = runConversationIntelligence({
     message: situation,
     goal,
-    forceCase: formData.get("forceCase") === "on" || formData.get("forceCase") === "1",
+    forceCase: false,
   });
 
-  if (intel.route.pipeline === "assistant") {
+  if (!intel.route.invokes_case_engine) {
     const opening = [situation, goal ? `Goal: ${goal}` : ""].filter(Boolean).join("\n\n");
+    const answer = composeAssistantReply(intel, opening);
+    if (intel.route.workspace === "situation" || intel.route.workspace === "filing_plan") {
+      const { createSituationFromIntelligence } = await import("@/lib/situation-create");
+      const created = await createSituationFromIntelligence({
+        situation,
+        goal,
+        intel,
+        assistantReply: answer,
+      });
+      redirect(`/app/situations/${created.id}`);
+    }
     const thread = await db.qaThread.create({
       data: {
         userId: user.id,
@@ -186,7 +232,7 @@ export async function createCaseAction(_prev: ActionState, formData: FormData): 
     });
     await db.qaMessage.create({ data: { threadId: thread.id, role: "user", content: opening } });
     await db.qaMessage.create({
-      data: { threadId: thread.id, role: "assistant", content: composeAssistantReply(intel, opening) },
+      data: { threadId: thread.id, role: "assistant", content: answer },
     });
     redirect(`/app/qa/${thread.id}`);
   }
@@ -199,6 +245,7 @@ export async function createCaseAction(_prev: ActionState, formData: FormData): 
       goal,
       status: "analyzing",
       intelligenceJson: JSON.stringify(intel),
+      governmentSystem: intel.route.existing_government_case ? "uscis" : "",
     },
   });
   after(() => runCaseAnalysis(c.id).catch(async (err) => {

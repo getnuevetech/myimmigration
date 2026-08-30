@@ -66,11 +66,12 @@ export function buildNeedToKnow(opts: {
 
   if (contract.decision_target === "interpret_situation_offer_next_step") {
     items.push({
-      question: "What do you want help with most right now — understanding options, explaining a notice, or a full case review?",
+      question:
+        "What do you want help with most right now — understanding your options, explaining a notice you received, or tracking something already filed with the government?",
       tier: "critical_now",
-      reason: "Sets the decision target when the user has not asked a question.",
+      reason: "Sets the decision target when the user has not asked a question. Never asks the customer to pick an internal pipeline.",
       changes_branch: true,
-      branches_affected: ["assistant_options", "assistant_notice", "case_development"],
+      branches_affected: ["situation_options", "notice_explain", "existing_matter"],
     });
   }
 

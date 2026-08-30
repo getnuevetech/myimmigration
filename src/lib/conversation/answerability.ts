@@ -83,10 +83,14 @@ export function responseModeFromAnswerability(
   recommended: ResponseMode,
   requiresCase: boolean,
 ): ResponseMode {
-  if (requiresCase) return "initiate_case";
+  // requiresCase here means "contract asked for comprehensive development" —
+  // callers must only pass true when a government matter exists (see router).
+  if (requiresCase) return "case_review";
   if (answerability.clarify_first_required) return "clarify_first";
-  if (answerability.requires_document) return "request_document";
+  if (answerability.requires_document) return "document_needed";
   if (answerability.fully_answerable) return "answer";
-  if (answerability.partially_answerable) return "answer_then_targeted_questions";
+  if (answerability.partially_answerable) {
+    return recommended === "answer" ? "answer" : "answer_then_targeted_question";
+  }
   return recommended;
 }
