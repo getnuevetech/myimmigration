@@ -117,3 +117,15 @@ export {
   HARM_AUTO_STALE_RATIO,
 } from "./telemetry";
 export type { TelemetryVerdict, PatternTelemetrySnapshot } from "./telemetry";
+export {
+  EXPERIENCE_CANONICAL_NARRATIVE,
+  EXPERIENCE_FIXTURE_PACK,
+  listExperienceFixtureIds,
+  runExperienceFixture,
+  runExperienceFixturePack,
+} from "./fixture-pack";
+export type {
+  ExperiencePackFixture,
+  ExperienceFixtureKind,
+  ExperienceFixtureResult,
+} from "./fixture-pack";

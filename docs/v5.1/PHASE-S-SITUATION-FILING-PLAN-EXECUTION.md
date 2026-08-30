@@ -273,7 +273,7 @@ L0–L2  Capture · De-ID · What-mattered · Negative-learning records  ← L0�
 L3–L5  Corrections · Outcomes · Pattern Registry  ← L3–L5 shipped (admin promotion 0→4)
   │
   ▼
-L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures  ← L6–L7 shipped
+L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures  ← L6–L7 + S8 shipped
 ```
 
 **Minimum customer fix:** S1 + S2 + customer-facing S5. Do not wait for Filing Plan or Experience Search.
@@ -296,6 +296,12 @@ L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures  ←
 
 - Consolidated gate: `scripts/phase-s6-workspace-regression-check.ts` / `npm run test:phase-s6`.
 - Spec: `docs/v5.1/PHASE-S6-WORKSPACE-REGRESSION.md`.
+
+### S8 acceptance
+
+- Experience fixture pack: `src/lib/experience/fixture-pack.ts` / `npm run test:phase-minus1-9-s8`.
+- Full Experience gate: `npm run test:phase-minus1-9` (L0 + L1–L7 + S8).
+- Spec: `docs/v5.1/PHASE-MINUS1-9-S8-EXPERIENCE-FIXTURES.md`.
 
 ### L0 capture shape (emit every meaningful turn)
 

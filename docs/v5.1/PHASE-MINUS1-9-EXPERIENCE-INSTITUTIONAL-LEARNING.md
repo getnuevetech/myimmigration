@@ -66,7 +66,7 @@ Retrieval for future Sol reasoning
 | **L5** | Pattern Registry admin UI + promotion 0→4 | **Shipped** — `/admin/experience` + `registry.ts` |
 | **L6** | Experience Search into Sol (L4 only) | **Shipped** — `search.ts` + Sol QA / enrichment / case analysis |
 | **L7** | Telemetry: help/harm; stale/authority invalidation | **Shipped** — `telemetry.ts` + registry feedback / stale gates |
-| **S8** | Experience regression fixtures | With L6–L7 |
+| **S8** | Experience regression fixtures | **Shipped** — `fixture-pack.ts` + `test:phase-minus1-9` |
 
 ### L1 acceptance
 
@@ -133,6 +133,15 @@ Retrieval for future Sol reasoning
 - Migration: `20260830090000_experience_telemetry_l7`.
 - Check: `npm run test:phase-minus1-9-l7`
 
+### S8 acceptance
+
+- Consolidated Experience fixture pack (`EXPERIENCE_FIXTURE_PACK`) covers capture → de-ID → correction/outcome → L4 search → stale/telemetry isolation.
+- Canonical Mexico options fixture remains permanent: medical exam discarded, negative lesson avoided, Situation workspace.
+- Negative fixtures: premature medical-exam violation; non-production prompt refusal; stale not servable.
+- Full gate: `npm run test:phase-minus1-9` (L0 + L1–L7 + S8).
+- Spec: `docs/v5.1/PHASE-MINUS1-9-S8-EXPERIENCE-FIXTURES.md`.
+- Check: `npm run test:phase-minus1-9-s8`
+
 ---
 
 ## Seeded negative lesson
@@ -143,7 +152,8 @@ Retrieval for future Sol reasoning
 
 ## Checks
 
-- `npm run test:phase-s` includes L0–L7 checks.  
+- `npm run test:phase-s` includes L0–L7 + S8 checks.  
+- `npm run test:phase-minus1-9` — full Experience gate (L0 + L1–L7 + S8).  
 - `npm run test:phase-minus1-9-l1`  
 - `npm run test:phase-minus1-9-l2`  
 - `npm run test:phase-minus1-9-l3`  
@@ -151,4 +161,4 @@ Retrieval for future Sol reasoning
 - `npm run test:phase-minus1-9-l5`  
 - `npm run test:phase-minus1-9-l6`  
 - `npm run test:phase-minus1-9-l7`  
-- Future: full `test:phase-minus1-9` when S8 lands.
+- `npm run test:phase-minus1-9-s8`
