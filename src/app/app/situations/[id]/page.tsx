@@ -8,18 +8,22 @@ export default async function SituationDetailPage({ params }: { params: Promise<
   const user = await requireUser();
   const row = await db.situation.findFirst({
     where: { id, userId: user.id },
+    include: { filingPlans: { orderBy: { createdAt: "desc" }, take: 1 } },
   });
   if (!row) notFound();
 
   return (
     <SituationWorkspaceView
+      id={row.id}
       number={row.number}
       title={row.title}
       originalNarrative={row.originalNarrative}
       goal={row.goal}
       assistantReply={row.assistantReply}
       intelligenceJson={row.intelligenceJson}
+      currentPathwaysJson={row.currentPathwaysJson}
       createdAt={row.createdAt}
+      existingFilingPlanId={row.filingPlans[0]?.id ?? null}
     />
   );
 }

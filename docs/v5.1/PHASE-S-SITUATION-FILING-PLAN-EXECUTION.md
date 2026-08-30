@@ -255,7 +255,7 @@ S2  Situation workspace         ← shipped
  ├────► S5 customer-facing copy/intake cleanup  ← partial (forceCase removed)
  │
  ▼
-S3  Filing Plan
+S3  Filing Plan                 ← shipped (build from Situation; not a Case)
  │
  ▼
 S4  Government Case lifecycle + migration
@@ -267,7 +267,7 @@ S6  Consolidated workspace regression
 **Parallel (after S0):**
 
 ```
-L0–L2  Capture · De-ID · What-mattered · Negative-learning records
+L0–L2  Capture · De-ID · What-mattered · Negative-learning records  ← L0 seeded
   │
   ▼
 L3–L5  Corrections · Outcomes · Pattern Registry
@@ -277,6 +277,13 @@ L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures
 ```
 
 **Minimum customer fix:** S1 + S2 + customer-facing S5. Do not wait for Filing Plan or Experience Search.
+
+### S3 acceptance
+
+- “Build my filing plan” from Situation creates a `FilingPlan` row linked to the Situation.
+- Plan shows pathway → eligibility → blockers → filings → documents → sequence → consultant / self-file CTAs.
+- Must **not** create Case or run `runCaseAnalysis`.
+- Check: `npm run test:phase-s` includes `phase-s3-filing-plan-check`.
 
 ### L0 capture shape (emit every meaningful turn)
 

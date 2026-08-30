@@ -13,19 +13,24 @@ export default async function GuestSituationPage({
   const guest = await getOrCreateGuestSession();
   const row = await db.situation.findFirst({
     where: { id, guestSessionId: guest.id },
+    include: { filingPlans: { orderBy: { createdAt: "desc" }, take: 1 } },
   });
   if (!row) notFound();
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <SituationWorkspaceView
+        id={row.id}
         number={row.number}
         title={row.title}
         originalNarrative={row.originalNarrative}
         goal={row.goal}
         assistantReply={row.assistantReply}
         intelligenceJson={row.intelligenceJson}
+        currentPathwaysJson={row.currentPathwaysJson}
         createdAt={row.createdAt}
+        existingFilingPlanId={row.filingPlans[0]?.id ?? null}
+        isGuest
       />
       <p className="mt-8 text-center text-sm text-slate-500">
         <a href="/register" className="font-medium text-lime-700 hover:underline">

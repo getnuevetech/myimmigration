@@ -1,5 +1,8 @@
+import { ActionForm, SubmitButton } from "@/components/action-form";
+import { createFilingPlanAction } from "@/actions/filing-plan";
 import { composeAssistantView, parseStoredIntelligence, type AssistantViewSection } from "@/lib/conversation";
 import { situationRefLabel } from "@/lib/situation";
+import { parsePathwaysJson } from "@/lib/filing-plan";
 
 function SectionBlock({ section }: { section: AssistantViewSection }) {
   if (section.type === "paragraph" || section.type === "disclaimer") {
@@ -30,13 +33,17 @@ function SectionBlock({ section }: { section: AssistantViewSection }) {
 }
 
 export function SituationWorkspaceView(props: {
+  id: string;
   number: number;
   title: string;
   originalNarrative: string;
   goal: string;
   assistantReply: string;
   intelligenceJson: string;
+  currentPathwaysJson: string;
   createdAt: Date;
+  existingFilingPlanId?: string | null;
+  isGuest?: boolean;
 }) {
   const intel = parseStoredIntelligence(props.intelligenceJson);
   const sections =
@@ -49,6 +56,9 @@ export function SituationWorkspaceView(props: {
     intel?.question_contract.interpreted_question ||
     props.goal ||
     "What are my options?";
+
+  const pathways = parsePathwaysJson(props.currentPathwaysJson);
+  const defaultPathway = pathways[0]?.id ?? "";
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -77,9 +87,24 @@ export function SituationWorkspaceView(props: {
       <section className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
         <h2 className="text-sm font-semibold text-slate-800">When you&apos;re ready</h2>
         <div className="mt-3 flex flex-wrap gap-2">
-          <span className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
-            Build my filing plan
-          </span>
+          {props.existingFilingPlanId ? (
+            <a
+              href={
+                props.isGuest
+                  ? `/start/filing-plan?id=${props.existingFilingPlanId}`
+                  : `/app/filing-plans/${props.existingFilingPlanId}`
+              }
+              className="rounded-lg bg-lime-600 px-3 py-2 text-sm font-semibold text-white hover:bg-lime-700"
+            >
+              View my filing plan
+            </a>
+          ) : (
+            <ActionForm action={createFilingPlanAction} className="inline">
+              <input type="hidden" name="situationId" value={props.id} />
+              <input type="hidden" name="selectedPathway" value={defaultPathway} />
+              <SubmitButton className="rounded-lg px-3 py-2 text-sm">Build my filing plan</SubmitButton>
+            </ActionForm>
+          )}
           <a
             href="/app/consultants"
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100"
@@ -94,7 +119,7 @@ export function SituationWorkspaceView(props: {
           </a>
         </div>
         <p className="mt-2 text-xs text-slate-500">
-          This is not a USCIS Case. A Case appears only when something is actually before the government.
+          This is not a USCIS Case. A Filing Plan prepares a path; a Case appears only when something is actually before the government.
         </p>
       </section>
     </div>
