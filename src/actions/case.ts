@@ -134,6 +134,10 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
   // response_mode = case_review → V5.1 Case engine only
   let caseId: string;
   const intelligenceJson = JSON.stringify(intel);
+  const { detectGovernmentMatter } = await import("@/lib/conversation");
+  const { primaryGovernmentSystem } = await import("@/lib/situation-reclassify");
+  const matter = detectGovernmentMatter([situation, goal].join("\n"), files.map((f) => f.name));
+  const governmentSystem = primaryGovernmentSystem(matter.systems) || (matter.existing_government_case ? "uscis" : "");
   if (user) {
     const c = await db.case.create({
       data: {
@@ -142,7 +146,7 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
         situation,
         goal,
         intelligenceJson,
-        governmentSystem: intel.route.existing_government_case ? "uscis" : "",
+        governmentSystem,
       },
     });
     caseId = c.id;
@@ -155,7 +159,7 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
         situation,
         goal,
         intelligenceJson,
-        governmentSystem: intel.route.existing_government_case ? "uscis" : "",
+        governmentSystem,
       },
     });
     caseId = c.id;
@@ -237,6 +241,9 @@ export async function createCaseAction(_prev: ActionState, formData: FormData): 
     redirect(`/app/qa/${thread.id}`);
   }
 
+  const { detectGovernmentMatter } = await import("@/lib/conversation");
+  const { primaryGovernmentSystem } = await import("@/lib/situation-reclassify");
+  const matter = detectGovernmentMatter([situation, goal].join("\n"));
   const c = await db.case.create({
     data: {
       userId: user.id,
@@ -245,7 +252,8 @@ export async function createCaseAction(_prev: ActionState, formData: FormData): 
       goal,
       status: "analyzing",
       intelligenceJson: JSON.stringify(intel),
-      governmentSystem: intel.route.existing_government_case ? "uscis" : "",
+      governmentSystem:
+        primaryGovernmentSystem(matter.systems) || (matter.existing_government_case ? "uscis" : ""),
     },
   });
   after(() => runCaseAnalysis(c.id).catch(async (err) => {

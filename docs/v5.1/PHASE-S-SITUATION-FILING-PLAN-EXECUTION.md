@@ -258,7 +258,7 @@ S2  Situation workspace         ← shipped
 S3  Filing Plan                 ← shipped (build from Situation; not a Case)
  │
  ▼
-S4  Government Case lifecycle + migration
+S4  Government Case lifecycle + migration  ← shipped (reclassify CLI + keep Case only for government matter)
  │
  ▼
 S6  Consolidated workspace regression
@@ -284,6 +284,13 @@ L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures
 - Plan shows pathway → eligibility → blockers → filings → documents → sequence → consultant / self-file CTAs.
 - Must **not** create Case or run `runCaseAnalysis`.
 - Check: `npm run test:phase-s` includes `phase-s3-filing-plan-check`.
+
+### S4 acceptance
+
+- Case engine only when `response_mode = case_review` (government matter + strategy review).
+- Legacy IMM rows without government signals → Situation (`legacyCaseId` retained); uncertain defaults to Situation.
+- CLI: `npm run reclassify:legacy-cases` (dry-run) / `--apply` to write.
+- Check: `phase-s4-case-lifecycle-check`.
 
 ### L0 capture shape (emit every meaningful turn)
 
