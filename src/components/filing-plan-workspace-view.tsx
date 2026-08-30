@@ -122,18 +122,18 @@ export function FilingPlanWorkspaceView(props: {
         <p className="text-sm text-slate-700">{fallback.consultantHint}</p>
         <p className="text-sm text-slate-700">{fallback.selfFileHint}</p>
         <div className="flex flex-wrap gap-2 pt-1">
-          <a
+          <Link
             href="/app/consultants"
             className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
           >
             Talk to an immigration professional
-          </a>
-          <a
+          </Link>
+          <Link
             href="/app/forms"
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100"
           >
             Prepare forms toward USCIS
-          </a>
+          </Link>
         </div>
         <p className="text-xs text-slate-500">
           A Filing Plan is not a Case. Only an existing filed/government matter should be tracked as Your USCIS Case.
