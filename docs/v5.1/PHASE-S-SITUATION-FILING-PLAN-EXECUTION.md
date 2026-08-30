@@ -261,7 +261,7 @@ S3  Filing Plan                 ← shipped (build from Situation; not a Case)
 S4  Government Case lifecycle + migration  ← shipped (reclassify CLI + keep Case only for government matter)
  │
  ▼
-S6  Consolidated workspace regression
+S6  Consolidated workspace regression  ← shipped (`test:phase-s6` / included in `test:phase-s`)
 ```
 
 **Parallel (after S0):**
@@ -291,6 +291,11 @@ L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures
 - Legacy IMM rows without government signals → Situation (`legacyCaseId` retained); uncertain defaults to Situation.
 - CLI: `npm run reclassify:legacy-cases` (dry-run) / `--apply` to write.
 - Check: `phase-s4-case-lifecycle-check`.
+
+### S6 acceptance
+
+- Consolidated gate: `scripts/phase-s6-workspace-regression-check.ts` / `npm run test:phase-s6`.
+- Spec: `docs/v5.1/PHASE-S6-WORKSPACE-REGRESSION.md`.
 
 ### L0 capture shape (emit every meaningful turn)
 
