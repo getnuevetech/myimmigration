@@ -26,6 +26,21 @@ export {
 } from "./negative-learning";
 export type { NegativeLearningRecord, NegativeLearningEvaluation } from "./negative-learning";
 export {
+  applyConsultantCorrection,
+  buildPatternCandidate,
+  assertIsPatternCandidate,
+  normalizeCorrectionInput,
+  inferLessonId,
+  isInstitutionalKey,
+  PATTERN_CANDIDATE_LEVEL,
+  CORRECTION_FAILURE_TYPES,
+} from "./corrections";
+export type {
+  ConsultantCorrectionInput,
+  CorrectionFailureType,
+  ReviewerCorrection,
+} from "./corrections";
+export {
   deidentifyExperienceRecord,
   assertSafeForSharedExperience,
   textLooksLikePii,
@@ -33,5 +48,16 @@ export {
   filterForCrossUserRead,
   sourceDigest,
 } from "./deidentify";
-export type { AnonymizedExperienceRecord, AnonymizedNegativeLearning } from "./deidentify";
-export { publishAnonymizedObservation, listSharedObservations, listProductionPatterns } from "./publish";
+export type {
+  AnonymizedExperienceRecord,
+  AnonymizedNegativeLearning,
+  AnonymizedCorrection,
+  PromotionLevel,
+} from "./deidentify";
+export {
+  publishAnonymizedObservation,
+  publishPatternCandidateFromCorrection,
+  listSharedObservations,
+  listPatternCandidates,
+  listProductionPatterns,
+} from "./publish";

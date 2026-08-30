@@ -47,7 +47,14 @@ export type ExperienceRecordV0 = {
   authority_ids: string[];
   answer_changed_after_clarification: boolean;
   model_correction: null | { note: string };
-  reviewer_correction: null | { note: string };
+  reviewer_correction: null | {
+    origin?: "consultant_correction";
+    note: string;
+    failure_type?: string;
+    incorrect_key?: string;
+    preferred_key?: string;
+    lesson_id?: string | null;
+  };
   outcome: null | { kind: string; detail: string };
   response_mode: ResponseMode;
   invokes_case_engine: boolean;

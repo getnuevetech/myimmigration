@@ -26,6 +26,18 @@ export type AnonymizedNegativeLearning = {
   failure_type: string;
 };
 
+/** Promotion ladder: 0 observation → 1 candidate → 2 supported → 3 reviewed → 4 production. */
+export type PromotionLevel = 0 | 1 | 2 | 3 | 4;
+
+export type AnonymizedCorrection = {
+  origin: "consultant_correction";
+  failure_type: string;
+  incorrect_key: string;
+  preferred_key: string;
+  note_key: string;
+  lesson_id: string | null;
+};
+
 export type AnonymizedExperienceRecord = {
   schema_version: "l1_anon";
   workspace: ExperienceRecordV0["workspace"];
@@ -54,7 +66,10 @@ export type AnonymizedExperienceRecord = {
   capture_enrichment: "l2" | "l0";
   /** Opaque digest for dedupe — not reversible to Situation id without server secret. */
   source_digest: string;
-  promotion_level: 0;
+  promotion_level: PromotionLevel;
+  /** L3+: how this shared row was created. */
+  origin?: "turn" | "consultant_correction" | "government_outcome";
+  correction?: AnonymizedCorrection;
 };
 
 export function textLooksLikePii(text: string): boolean {
@@ -157,6 +172,7 @@ export function deidentifyExperienceRecord(
     capture_enrichment: record.capture_enrichment ?? "l0",
     source_digest: sourceDigest(opts?.sourceId || `${record.decision_target}:${record.workspace}`),
     promotion_level: 0,
+    origin: "turn",
   };
 }
 

@@ -61,7 +61,7 @@ Retrieval for future Sol reasoning
 | **L0** | ExperienceRecord schema + write on Situation/Q&A/Case turns | **Shipped** |
 | **L1** | De-identification; block cross-user raw retrieval | **Shipped** — `ExperienceObservation` + `deidentify.ts` |
 | **L2** | Decision-changing vs discarded facts; negative learning records | **Shipped** — `what-mattered.ts` + `negative-learning.ts` |
-| **L3** | Consultant correction → pattern candidates | After S2 |
+| **L3** | Consultant correction → pattern candidates | **Shipped** — `corrections.ts` + candidate publish (level 1) |
 | **L4** | Government outcome signals → candidates (authority check) | After S4 helpful |
 | **L5** | Pattern Registry admin UI + promotion 0→4 | Before L6 |
 | **L6** | Experience Search into Sol (L4 only) | After L5 |
@@ -87,6 +87,15 @@ Retrieval for future Sol reasoning
 - Shared anon payloads include `facts_discarded` + `negative_learning` (keys only)
 - Check: `npm run test:phase-minus1-9-l2`
 
+### L3 acceptance
+
+- Consultant/admin can submit a structured correction (`incorrect_key`, `preferred_key`, `note_key`, `failure_type`) — institutional keys only, no PII.
+- Correction updates owner-scoped experience (`reviewer_correction`) and publishes a **pattern candidate** at promotion level **1**.
+- Shared candidate includes `origin: "consultant_correction"` + `correction` summary; never consultant identity or raw narrative.
+- Medical-exam → manner-of-entry corrections auto-link `NEG-FAM-ENTRY-MEDICAL-001`.
+- L3 **must not** write promotion level 4 or enable Sol Experience Search.
+- Check: `npm run test:phase-minus1-9-l3`
+
 ---
 
 ## Seeded negative lesson
@@ -97,7 +106,8 @@ Retrieval for future Sol reasoning
 
 ## Checks
 
-- `npm run test:phase-s` includes L0 + L1 + L2 checks.  
+- `npm run test:phase-s` includes L0 + L1 + L2 + L3 checks.  
 - `npm run test:phase-minus1-9-l1`  
 - `npm run test:phase-minus1-9-l2`  
+- `npm run test:phase-minus1-9-l3`  
 - Future: full `test:phase-minus1-9` when L5+ lands.

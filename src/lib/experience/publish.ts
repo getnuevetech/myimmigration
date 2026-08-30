@@ -1,6 +1,7 @@
 /**
- * Phase −1.9 L1 — publish / list de-identified observations.
- * Cross-user readers only receive anonymized payloads (promotion_level 0 until L5+).
+ * Phase −1.9 L1–L3 — publish / list de-identified observations and pattern candidates.
+ * Cross-user readers only receive anonymized payloads.
+ * Production retrieval (listProductionPatterns) remains L4-only.
  */
 
 import { db } from "@/lib/db";
@@ -10,6 +11,12 @@ import {
   deidentifyExperienceRecord,
   type AnonymizedExperienceRecord,
 } from "./deidentify";
+import {
+  applyConsultantCorrection,
+  assertIsPatternCandidate,
+  buildPatternCandidate,
+  type ConsultantCorrectionInput,
+} from "./corrections";
 
 export async function publishAnonymizedObservation(opts: {
   record: ExperienceRecordV0;
@@ -30,6 +37,35 @@ export async function publishAnonymizedObservation(opts: {
   });
 
   return { id: row.id, anon };
+}
+
+/**
+ * L3 — apply consultant correction and publish a pattern candidate (promotion level 1).
+ * Never elevates to L4. Never stores consultant identity in the shared payload.
+ */
+export async function publishPatternCandidateFromCorrection(opts: {
+  record: ExperienceRecordV0;
+  correction: ConsultantCorrectionInput;
+  situationId?: string | null;
+}): Promise<{ id: string; candidate: AnonymizedExperienceRecord; corrected: ExperienceRecordV0 }> {
+  const corrected = applyConsultantCorrection(opts.record, opts.correction);
+  const candidate = buildPatternCandidate(corrected, {
+    sourceId: opts.situationId || `correction:${corrected.decision_target}`,
+  });
+  assertIsPatternCandidate(candidate);
+
+  const row = await db.experienceObservation.create({
+    data: {
+      sourceDigest: candidate.source_digest,
+      decisionTarget: candidate.decision_target,
+      workspace: candidate.workspace,
+      promotionLevel: 1,
+      anonJson: JSON.stringify(candidate),
+      sourceSituationId: opts.situationId || null,
+    },
+  });
+
+  return { id: row.id, candidate, corrected };
 }
 
 /**
@@ -65,6 +101,19 @@ export async function listSharedObservations(opts?: {
     }
   }
   return out;
+}
+
+/** L3 — list pattern candidates (promotion level 1) for admin / reviewer tooling. */
+export async function listPatternCandidates(opts?: {
+  decisionTarget?: string;
+  limit?: number;
+}): Promise<AnonymizedExperienceRecord[]> {
+  return listSharedObservations({
+    decisionTarget: opts?.decisionTarget,
+    minPromotionLevel: 1,
+    maxPromotionLevel: 1,
+    limit: opts?.limit ?? 50,
+  });
 }
 
 /** Explicit guard used by future Sol retrieval — refuses anything below L4. */
