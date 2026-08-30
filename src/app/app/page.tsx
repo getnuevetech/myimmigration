@@ -2,7 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getActivePlan } from "@/lib/access";
-import { PageHeader, Card, CardBody, Stat, ButtonLink, StateMark, ProgressBar, EmptyState } from "@/components/ui";
+import { PageHeader, Card, CardBody, Stat, ButtonLink, StateMark, ProgressBar, EmptyState, Badge } from "@/components/ui";
 import { markNotificationReadAction } from "@/actions/user";
 import { CaseListCard } from "@/components/case-list-card";
 import { loadApprovedViewsByCaseIds } from "@/lib/case-presentation";
@@ -13,10 +13,11 @@ import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { matchInputFromCase } from "@/lib/goal-versions";
 import { resolveIntakeChrome } from "@/lib/goal-intake";
 import { resolveCasesListCopy } from "@/lib/goal-chrome";
+import { formatSituationNumber } from "@/lib/situation";
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const [cases, issues, deadlines, notifications, plan] = await Promise.all([
+  const [cases, situations, issues, deadlines, notifications, plan] = await Promise.all([
     db.case.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
@@ -25,6 +26,20 @@ export default async function DashboardPage() {
         reconstruction: { select: { currentPosition: true } },
         issues: { select: { title: true, uscisBasis: true, conclusion: true } },
         notices: { select: { noticeType: true } },
+      },
+    }),
+    db.situation.findMany({
+      where: { userId: user.id },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        number: true,
+        title: true,
+        status: true,
+        goal: true,
+        originalNarrative: true,
+        updatedAt: true,
       },
     }),
     db.issue.findMany({ where: { case: { userId: user.id }, state: { not: "resolved" } } }),
@@ -68,16 +83,13 @@ export default async function DashboardPage() {
   });
   const intake = resolveIntakeChrome({
     themes: inquiry?.themes,
-    inquiryMode: inquiry?.mode,
+    inquiryMode: inquiry?.mode ?? "open_options",
     query: `${latest?.situation ?? ""} ${latest?.goal ?? ""}`,
     noticeTypes: (latest?.notices ?? []).map((notice) => notice.noticeType),
   });
-  const listCopy = resolveCasesListCopy({
-    themes: inquiry?.themes,
-    inquiryMode: inquiry?.mode,
-    query: `${latest?.situation ?? ""} ${latest?.goal ?? ""}`,
-    noticeTypes: (latest?.notices ?? []).map((notice) => notice.noticeType),
-  });
+  const situationListCopy = resolveCasesListCopy({ inquiryMode: "open_options" });
+  const caseListCopy = resolveCasesListCopy({ inquiryMode: "existing_case" });
+  const hasWorkspace = situations.length > 0 || cases.length > 0;
 
   return (
     <div>
@@ -131,41 +143,83 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-3 text-base font-semibold text-slate-900">{listCopy.recentHeading}</h2>
-          {cases.length === 0 ? (
-            <EmptyState
-              title={listCopy.emptyTitle}
-              body={listCopy.emptyBody}
-              action={<ButtonLink href="/app/cases/new">{intake.firstCta}</ButtonLink>}
-            />
-          ) : (
-            <div className="space-y-3">
-              {cases.map((c) => (
-                <CaseListCard
-                  key={c.id}
-                  href={`/app/cases/${c.id}`}
-                  number={c.number}
-                  title={c.title}
-                  status={c.status}
-                  readinessScore={c.readinessScore}
-                  compact
-                  readinessLabel={resolveReadinessCopy({
-                    inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
-                    query: `${c.situation} ${c.goal}`,
-                    noticeTypes: c.notices.map((notice) => notice.noticeType),
-                  }).overallLabel}
-                  summary={caseListSummaryFromView(
-                    {
-                      status: c.status,
-                      actionReadinessScore: c.actionReadinessScore,
-                      reconstructionPosition: c.reconstruction?.currentPosition,
-                    },
-                    views.get(c.id),
-                    matchInputFromCase(c),
-                  )}
-                />
-              ))}
+        <div className="space-y-6">
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-base font-semibold text-slate-900">{situationListCopy.recentHeading}</h2>
+              <Link href="/app/situations" className="text-xs font-medium text-lime-700 underline">
+                View all
+              </Link>
+            </div>
+            {situations.length === 0 ? (
+              <EmptyState
+                title={situationListCopy.emptyTitle}
+                body={situationListCopy.emptyBody}
+                action={<ButtonLink href="/app/cases/new">{intake.firstCta}</ButtonLink>}
+              />
+            ) : (
+              <div className="space-y-3">
+                {situations.map((s) => (
+                  <Link key={s.id} href={`/app/situations/${s.id}`} className="block">
+                    <Card className="transition hover:border-lime-300">
+                      <CardBody className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">
+                            <span className="mr-2 font-mono text-xs text-lime-600">{formatSituationNumber(s.number)}</span>
+                            {s.title}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+                            {s.goal || s.originalNarrative || "Immigration situation"}
+                          </p>
+                        </div>
+                        <Badge color="slate">{s.status.replace(/_/g, " ")}</Badge>
+                      </CardBody>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {(cases.length > 0 || hasWorkspace) && (
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="text-base font-semibold text-slate-900">{caseListCopy.recentHeading}</h2>
+                <Link href="/app/cases" className="text-xs font-medium text-lime-700 underline">
+                  View all
+                </Link>
+              </div>
+              {cases.length === 0 ? (
+                <EmptyState title={caseListCopy.emptyTitle} body={caseListCopy.emptyBody} />
+              ) : (
+                <div className="space-y-3">
+                  {cases.map((c) => (
+                    <CaseListCard
+                      key={c.id}
+                      href={`/app/cases/${c.id}`}
+                      number={c.number}
+                      title={c.title}
+                      status={c.status}
+                      readinessScore={c.readinessScore}
+                      compact
+                      readinessLabel={resolveReadinessCopy({
+                        inquiryMode: classifyImmigrationInquiry({ situation: c.situation, goal: c.goal }).mode,
+                        query: `${c.situation} ${c.goal}`,
+                        noticeTypes: c.notices.map((notice) => notice.noticeType),
+                      }).overallLabel}
+                      summary={caseListSummaryFromView(
+                        {
+                          status: c.status,
+                          actionReadinessScore: c.actionReadinessScore,
+                          reconstructionPosition: c.reconstruction?.currentPosition,
+                        },
+                        views.get(c.id),
+                        matchInputFromCase(c),
+                      )}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

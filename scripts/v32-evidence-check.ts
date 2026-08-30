@@ -663,7 +663,7 @@ assert(roundTrip?.analysis_plan?.execution?.blocked === false, "canonical approv
 assert(canonicalStateSummary(approvedState).versionLabel === "Case record version 2", "canonical summary should include the version label");
 assert(canonicalStateSummary(approvedState).posture === "RFE notice needs review", "canonical summary should use the approved posture");
 assert(canonicalStateSummary(approvedState).nextAction === presentation.hero.next_best_action?.title, "canonical summary should include the next action");
-assert(versionReasonLabel("analysis") === "Full case review", "analysis versions should use a customer-facing reason label");
+assert(versionReasonLabel("analysis") === "Case review", "analysis versions should use a customer-facing reason label");
 assert(versionReasonLabel("document") === "New documents on file", "document versions should use a customer-facing reason label");
 assert(versionReasonLabel("clarify") === "Answers added to the case", "clarify versions should use a customer-facing reason label");
 assert(versionReasonLabel("reprocess") === "Evidence reprocessed", "reprocess versions should use a customer-facing reason label");
@@ -685,7 +685,7 @@ const listFromCanonical = caseListSummaryFromView(
 );
 assert(listFromCanonical.posture === "RFE notice needs review", "case lists must use the canonical approved posture");
 assert(listFromCanonical.version === 2, "case lists must show the approved case record version");
-assert(caseListVersionLine(listFromCanonical) === "Version 2 · Full case review", "case lists must use a customer-facing version line");
+assert(caseListVersionLine(listFromCanonical) === "Version 2 · Case review", "case lists must use a customer-facing version line");
 assert(!/STALE reconstruction/i.test(listFromCanonical.posture), "case lists must not show a stale reconstruction posture when canonical state exists");
 assert(!/STALE stored/i.test(listFromCanonical.posture), "case lists must not show a stale stored presentation when canonical state exists");
 
@@ -1878,22 +1878,22 @@ assert(rfeVersion.fitsHeading === "How this fits your case", "filed RFE notices 
 assert(/USCIS records/.test(rfeVersion.emptyEvidenceSummary), "filed RFE empty evidence still asks for USCIS records");
 assert(rfeVersion.defaultPosture === "Case posture needs verification", "filed RFE default posture stays case verification");
 assert(unlabeledVersion.recordHeading === "Case record version", "unlabeled version chrome must stay filed so A11 labels do not flip");
-assert(versionReasonLabel("analysis") === "Full case review", "unlabeled analysis reason must stay Full case review");
+assert(versionReasonLabel("analysis") === "Case review", "unlabeled analysis reason must stay Case review");
 assert(versionReasonLabel("analysis", familyGuideInput) === "Options review", "open-options analysis reason must be Options review");
 assert(versionReasonLabel("clarify", familyGuideInput) === "Answers added to this situation", "open-options clarify reason must not say the case");
 assert(versionReasonLabel("document", familyGuideInput) === "New matching documents on file", "open-options document reason must name matching documents");
-assert(versionReasonLabel("analysis", rfeGuideInput) === "Full case review", "filed RFE analysis reason stays Full case review");
+assert(versionReasonLabel("analysis", rfeGuideInput) === "Case review", "filed RFE analysis reason stays Case review");
 assert(versionReasonLabel("clarify", rfeGuideInput) === "Answers added to the case", "filed RFE clarify reason stays Answers added to the case");
 assert(canonicalStateSummary(approvedState, familyGuideInput).versionLabel === "Approved record version 2", "open-options canonical summary must not say Case record version");
 assert(canonicalStateSummary(approvedState, rfeGuideInput).versionLabel === "Case record version 2", "filed RFE canonical summary stays Case record version");
-assert(canonicalStateSummary(approvedState).reasonLabel === "Full case review", "unlabeled canonical reason must stay Full case review");
+assert(canonicalStateSummary(approvedState).reasonLabel === "Case review", "unlabeled canonical reason must stay Case review");
 const listFromOptionsVersion = caseListSummaryFromView(
   { status: "analyzed", reconstructionPosition: "STALE reconstruction posture" },
   approvedView,
   familyGuideInput,
 );
-assert(caseListVersionLine(listFromOptionsVersion) === "Version 2 · Options review", "open-options lists must not say Full case review");
-assert(caseListVersionLine(listFromCanonical) === "Version 2 · Full case review", "unlabeled lists stay Full case review");
+assert(caseListVersionLine(listFromOptionsVersion) === "Version 2 · Options review", "open-options lists must not say Case review");
+assert(caseListVersionLine(listFromCanonical) === "Version 2 · Case review", "unlabeled lists stay Case review");
 assert(/receipt is not required/.test(analysisDocumentWalkthrough(0, familyGuideInput)), "open-options empty walkthrough must not require a receipt");
 assert(/matching evidence/.test(analysisDocumentWalkthrough(2, familyGuideInput)), "open-options document walkthrough must name matching evidence");
 assert(!/receipt numbers/.test(analysisDocumentWalkthrough(2, familyGuideInput)), "open-options document walkthrough must not compare receipt numbers");
@@ -1958,13 +1958,13 @@ const rfeGuideItem = guideAccountItemLine({
   inquiryMode: "existing_case",
   actionLine: "Next: upload the RFE",
   evidenceLine: "Evidence: notice on file",
-  versionLine: "Version 2 · Full case review",
+  versionLine: "Version 2 · Case review",
   surface: rfeGuideInput,
 });
 assert(openGuideItem.startsWith('Situation "Priya Shah marriage options"'), "open-options guide snapshot must not stay Case \"…\"");
 assert(!openGuideItem.startsWith("Case "), "open-options guide snapshot must not prefix Case");
 assert(rfeGuideItem.startsWith('Case "I-485 RFE response"'), "filed RFE guide snapshot stays Case \"…\"");
-assert(rfeGuideItem.includes("Version 2 · Full case review"), "filed RFE guide snapshot keeps the version line");
+assert(rfeGuideItem.includes("Version 2 · Case review"), "filed RFE guide snapshot keeps the version line");
 assert(guideAccountEmptyLine(familyGuideInput) === "No situations yet — the user hasn't started a situation.", "open-options empty guide snapshot must not stay hasn't started a case");
 assert(guideAccountEmptyLine(rfeGuideInput) === "No cases yet — the user hasn't started a case.", "filed empty guide snapshot stays hasn't started a case");
 assert(guideAccountEmptyLine() === "No situations yet — the user hasn't started a situation.", "unlabeled empty guide snapshot defaults to a situation");
@@ -2107,7 +2107,7 @@ assert(/this situation/.test(openIntake.letterGroundHint), "open-options letter 
 assert(openIntake.officialMaterialLead === "Official material for this situation points to", "open-options matching lead must not say this case");
 assert(openIntake.professionalReview.includes("this situation"), "open-options professional review must not say this case");
 assert(/case record is not required/.test(openIntake.verificationHint), "open-options verification must not chase a USCIS case record");
-assert(openIntake.guideNewCaseLabel === "Yes — start this as a new situation", "open-options guide handoff must not say start this as a new case");
+assert(openIntake.guideNewCaseLabel === "Continue with my situation", "open-options guide handoff must not say start this as a new case");
 assert(/receipt is not required/.test(openIntake.guideNewCaseMessage), "open-options guide handoff must not require a receipt");
 assert(/Open your situation/.test(openIntake.guideOpenStep), "open-options guide must not say Open your case");
 assert(rfeIntake.pageTitle === "Start a new case", "filed RFE intake title stays Start a new case");
@@ -2119,7 +2119,9 @@ assert(rfeIntake.consultantConsent.includes("case details"), "filed RFE consulta
 assert(rfeIntake.documentsTitle === "Documents matched to your case", "filed RFE documents header stays your case");
 assert(rfeIntake.lettersTitle === "USCIS letters, matched to your case", "filed RFE letters header stays your case");
 assert(rfeIntake.officialMaterialLead === "Official material for this case points to", "filed RFE matching lead stays this case");
-assert(rfeIntake.guideNewCaseLabel === "Yes — start this as a new case", "filed RFE guide handoff stays start this as a new case");
+assert(rfeIntake.guideNewCaseLabel === "Track this government case", "filed RFE guide handoff tracks government case without open-a-case ask");
+assert(!/Want me to/i.test(rfeIntake.guideNewCaseMessage), "filed RFE guide must not ask Want me to open a case");
+assert(/government Case/i.test(rfeIntake.prefillBanner), "filed RFE prefill tracks government Case");
 assert(unlabeledIntake.pageTitle === "Start a new situation", "unlabeled intake defaults to options so empty accounts are not sold a filed case");
 assert(!/Start a case review/.test(openIntake.pageTitle + openIntake.listCta), "intake chrome must not revive Start a case review");
 const newCaseSrc = readFileSync(join(process.cwd(), "src/app/app/cases/new/page.tsx"), "utf8");
@@ -2197,15 +2199,27 @@ assert(letterStart.submitLabel === "Analyze my case →", "guest letter start su
 assert(optionsStart.submitLabel === "Analyze my situation →", "guest options start submit stays Analyze my situation");
 assert(/situation or a filed case/.test(PUBLIC_HOW_IT_WORKS_PAGE), "how-it-works must not only say If your case needs");
 assert(!/immigration case assistant/.test(PUBLIC_FAQ_BODY), "FAQ must not introduce the product as a case assistant only");
-assert(GUIDE_PROMPT_RULES.includes("start this as a new situation"), "guide prompt must name the options handoff button");
+assert(GUIDE_PROMPT_RULES.includes("Continue with my situation"), "guide prompt must name the options handoff button");
+assert(GUIDE_PROMPT_RULES.includes("Track this government case"), "guide prompt must name the government-matter handoff");
+assert(GUIDE_PROMPT_RULES.includes("Never ask whether they want to open a case"), "guide prompt must forbid open-a-case asks");
 assert(!GUIDE_PROMPT_RULES.includes('"Start as a new case"'), "guide prompt must not only name Start as a new case");
+assert(!GUIDE_PROMPT_RULES.includes("Yes — start this as a new case"), "guide prompt must not ask to start a new case");
 assert(PROMPT_SUPERSEDES.guide.includes("62391e307e8264d1a2ddbfed134edb06dfe52285e60dbbd7f8ad4fa565951832"), "seed must supersede the case-only guide handoff prompt");
 assert(!layoutSrc.includes('"My cases"'), "app layout must not hardcode My cases");
 assert(!dashboardSrc.includes("Recent cases"), "dashboard must not hardcode Recent cases");
 assert(!dashboardSrc.includes("No cases yet"), "dashboard empty state must not hardcode No cases yet");
 const casesPageSrcC22 = readFileSync(join(process.cwd(), "src/app/app/cases/page.tsx"), "utf8");
 assert(casesPageSrcC22.includes("generateMetadata"), "cases list tab title must use goal-driven list chrome");
+assert(casesPageSrcC22.includes("resolveCasesListCopy"), "cases list metadata must use list chrome helper");
 assert(!casesPageSrcC22.includes('title: "My cases"'), "cases list must not hardcode My cases metadata");
+assert(casesPageSrcC22.includes("/app/situations"), "cases empty state should point customers to Situations");
+const situationsPageSrc = readFileSync(join(process.cwd(), "src/app/app/situations/page.tsx"), "utf8");
+assert(situationsPageSrc.includes("formatSituationNumber"), "situations list must use SIT- refs");
+assert(situationsPageSrc.includes("/app/situations/"), "situations list links to situation workspace");
+assert(openNav.some((item) => item.href === "/app/situations" && item.label === "My situations"), "open-options nav must include My situations");
+assert(openNav.some((item) => item.href === "/app/cases" && item.label === "My cases"), "nav still exposes My cases as separate surface");
+assert(rfeNav.some((item) => item.href === "/app/situations"), "filed nav still includes Situations");
+assert(dashboardSrc.includes("situationListCopy") || dashboardSrc.includes("/app/situations"), "dashboard must surface Situations");
 const lettersNewSrc = readFileSync(join(process.cwd(), "src/app/app/letters/new/page.tsx"), "utf8");
 assert(lettersNewSrc.includes("letterGroundSelectLabel"), "letter composer must use dual-path ground labels");
 assert(!lettersNewSrc.includes("Ground this letter in a case"), "letter composer must not hardcode Ground this letter in a case");
@@ -2480,7 +2494,7 @@ assert(orchSrc.includes("providerIds"), "draft re-analysis must accept selected 
 assert(presentationStepCta("RERUN_ANALYSIS", "case-1") === null, "path-step CTAs must not restore re-run analysis for customers");
 assert(versionReasonLabel("admin_override", rfeGuideInput) === "Admin replaced the customer output", "filed override version reason is labeled");
 assert(versionReasonLabel("admin_override", familyGuideInput) === "Admin replaced the options output", "open-options override version reason is labeled");
-assert(versionReasonLabel("analysis") === "Full case review", "admin re-analysis must not change unlabeled analysis version labels");
+assert(versionReasonLabel("analysis") === "Case review", "admin re-analysis must not change unlabeled analysis version labels");
 assert(familyForms[0]?.formNumber === "I-130", "admin re-analysis must not rerank I-485 ahead of I-130");
 assert(presentation.hero.current_posture === "RFE notice needs review", "admin re-analysis must not convert the RFE fixture into open-options");
 assert(requested.autoAssigned === false, "admin re-analysis must not auto-assign consultants");
@@ -2540,7 +2554,7 @@ assert(parsedRequired.ok === true, "registration with the four required consents
 assert(parseRegistrationConsents(requiredConsents, { asConsultant: true }).ok === false, "consultant registration must also require the consultant agreement");
 assert(parseOauthConsentsCookie(JSON.stringify({ version: "2026-08-26", grants: parsedRequired.ok ? parsedRequired.grants : {} })) !== null, "oauth consent cookie must accept required grants");
 assert(parseOauthConsentsCookie(JSON.stringify({ version: "2026-08-26", grants: { agreement_bundle: true } })) === null, "oauth consent cookie must reject incomplete grants");
-assert(versionReasonLabel("analysis") === "Full case review", "legal consent work must not change unlabeled analysis version labels");
+assert(versionReasonLabel("analysis") === "Case review", "legal consent work must not change unlabeled analysis version labels");
 assert(familyForms[0]?.formNumber === "I-130", "legal consent work must not rerank I-485 ahead of I-130");
 assert(presentation.hero.current_posture === "RFE notice needs review", "legal consent work must not convert the RFE fixture into open-options");
 assert(requested.autoAssigned === false, "legal consent work must not auto-assign consultants");
