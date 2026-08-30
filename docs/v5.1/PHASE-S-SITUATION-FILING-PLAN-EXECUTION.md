@@ -273,7 +273,7 @@ L0–L2  Capture · De-ID · What-mattered · Negative-learning records  ← L0�
 L3–L5  Corrections · Outcomes · Pattern Registry  ← L3–L5 shipped (admin promotion 0→4)
   │
   ▼
-L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures  ← L6 shipped
+L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures  ← L6–L7 shipped
 ```
 
 **Minimum customer fix:** S1 + S2 + customer-facing S5. Do not wait for Filing Plan or Experience Search.

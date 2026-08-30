@@ -65,7 +65,7 @@ Retrieval for future Sol reasoning
 | **L4** | Government outcome signals → candidates (authority check) | **Shipped** — `outcomes.ts` + authority-gated candidates (level 1) |
 | **L5** | Pattern Registry admin UI + promotion 0→4 | **Shipped** — `/admin/experience` + `registry.ts` |
 | **L6** | Experience Search into Sol (L4 only) | **Shipped** — `search.ts` + Sol QA / enrichment / case analysis |
-| **L7** | Telemetry: help/harm; stale/authority invalidation | With L6 |
+| **L7** | Telemetry: help/harm; stale/authority invalidation | **Shipped** — `telemetry.ts` + registry feedback / stale gates |
 | **S8** | Experience regression fixtures | With L6–L7 |
 
 ### L1 acceptance
@@ -124,6 +124,15 @@ Retrieval for future Sol reasoning
 - Empty registry → empty block (no failure); no fine-tuning.
 - Check: `npm run test:phase-minus1-9-l6`
 
+### L7 acceptance
+
+- Production patterns track `helpCount` / `harmCount` / `lastServedAt`; Experience Search records served digests.
+- Admin can mark **help** / **harm**; harm above threshold auto-stales (`harm >= 3` and `harm >= help * 2`).
+- `staleAt` excludes patterns from `listProductionPatterns` / Sol Experience Search.
+- Authority key invalidation marks linked production patterns stale (`invalidatePatternsForAuthorityKey`).
+- Migration: `20260830090000_experience_telemetry_l7`.
+- Check: `npm run test:phase-minus1-9-l7`
+
 ---
 
 ## Seeded negative lesson
@@ -134,11 +143,12 @@ Retrieval for future Sol reasoning
 
 ## Checks
 
-- `npm run test:phase-s` includes L0–L6 checks.  
+- `npm run test:phase-s` includes L0–L7 checks.  
 - `npm run test:phase-minus1-9-l1`  
 - `npm run test:phase-minus1-9-l2`  
 - `npm run test:phase-minus1-9-l3`  
 - `npm run test:phase-minus1-9-l4`  
 - `npm run test:phase-minus1-9-l5`  
 - `npm run test:phase-minus1-9-l6`  
-- Future: full `test:phase-minus1-9` when L7+ lands.
+- `npm run test:phase-minus1-9-l7`  
+- Future: full `test:phase-minus1-9` when S8 lands.

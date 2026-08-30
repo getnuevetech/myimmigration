@@ -104,3 +104,16 @@ export {
   EXPERIENCE_SEARCH_PRECEDENCE,
 } from "./search";
 export type { ExperienceSearchQuery, ExperienceSearchHit } from "./search";
+export {
+  recordPatternServed,
+  recordPatternFeedback,
+  markPatternStale,
+  clearPatternStale,
+  invalidatePatternsForAuthorityKey,
+  shouldAutoStaleFromTelemetry,
+  isActivelyServable,
+  filterServableProductionRows,
+  HARM_AUTO_STALE_MIN,
+  HARM_AUTO_STALE_RATIO,
+} from "./telemetry";
+export type { TelemetryVerdict, PatternTelemetrySnapshot } from "./telemetry";

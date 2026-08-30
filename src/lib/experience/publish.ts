@@ -123,19 +123,24 @@ export async function publishPatternCandidateFromOutcome(opts: {
 /**
  * Cross-user list API — never returns raw L0 / never returns sourceSituationId.
  * Only promotionLevel >= minLevel (default 0 for admin; production retrieval later uses 4).
+ * L7: production retrieval excludes stale patterns.
  */
 export async function listSharedObservations(opts?: {
   decisionTarget?: string;
   minPromotionLevel?: number;
   maxPromotionLevel?: number;
   limit?: number;
+  /** When true (default for production-only lists), exclude staleAt != null. */
+  excludeStale?: boolean;
 }): Promise<AnonymizedExperienceRecord[]> {
   const min = opts?.minPromotionLevel ?? 0;
   const max = opts?.maxPromotionLevel ?? 0; // L1 default: observations only; L4 retrieval comes later
+  const excludeStale = opts?.excludeStale ?? (max >= 4 && min >= 4);
   const rows = await db.experienceObservation.findMany({
     where: {
       promotionLevel: { gte: min, lte: max },
       ...(opts?.decisionTarget ? { decisionTarget: opts.decisionTarget } : {}),
+      ...(excludeStale ? { staleAt: null } : {}),
     },
     orderBy: { createdAt: "desc" },
     take: opts?.limit ?? 50,
@@ -168,7 +173,12 @@ export async function listPatternCandidates(opts?: {
   });
 }
 
-/** Explicit guard used by future Sol retrieval — refuses anything below L4. */
+/** Explicit guard used by future Sol retrieval — refuses anything below promotion level 4; excludes stale (L7). */
 export async function listProductionPatterns(limit = 20): Promise<AnonymizedExperienceRecord[]> {
-  return listSharedObservations({ minPromotionLevel: 4, maxPromotionLevel: 4, limit });
+  return listSharedObservations({
+    minPromotionLevel: 4,
+    maxPromotionLevel: 4,
+    limit,
+    excludeStale: true,
+  });
 }

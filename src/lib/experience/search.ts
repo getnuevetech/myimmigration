@@ -168,15 +168,25 @@ export function formatExperienceSearchBlock(hits: ExperienceSearchHit[]): string
 
 /**
  * Load production patterns and rank for Sol. Never returns levels below 4.
+ * L7: excludes stale; records served digests for telemetry.
  */
 export async function searchProductionExperience(
   query: ExperienceSearchQuery,
 ): Promise<ExperienceSearchHit[]> {
   const limit = query.limit ?? 5;
-  // Over-fetch then rank — listProductionPatterns is already level-4-only.
+  // Over-fetch then rank — listProductionPatterns is already level-4-only and non-stale.
   const patterns = await listProductionPatterns(Math.max(20, limit * 4));
   assertAllProductionLevel(patterns);
-  return rankProductionPatterns(patterns, { ...query, limit });
+  const hits = rankProductionPatterns(patterns, { ...query, limit });
+  if (hits.length) {
+    try {
+      const { recordPatternServed } = await import("./telemetry");
+      await recordPatternServed({ sourceDigests: hits.map((h) => h.pattern.source_digest) });
+    } catch {
+      /* telemetry must not block Sol */
+    }
+  }
+  return hits;
 }
 
 /**
