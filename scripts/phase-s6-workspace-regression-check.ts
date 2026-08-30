@@ -104,6 +104,17 @@ function assertProductSurfaces() {
   const intake = readFileSync(join(root, "src/components/intake-wizard.tsx"), "utf8");
   assert.ok(!intake.includes('name="forceCase"'));
 
+  const goalIntake = readFileSync(join(root, "src/lib/goal-intake.ts"), "utf8");
+  assert.doesNotMatch(goalIntake, /Want me to start it as a new case/i);
+  assert.doesNotMatch(goalIntake, /Yes — start this as a new case/);
+
+  const guide = readFileSync(join(root, "src/lib/guide.ts"), "utf8");
+  assert.doesNotMatch(guide, /full case review/i);
+
+  const v5 = readFileSync(join(root, "src/components/v5-customer-presentation-view.tsx"), "utf8");
+  assert.ok(v5.includes("Your immigration situation"));
+  assert.ok(!/Your immigration case/.test(v5));
+
   const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8");
   assert.ok(schema.includes("model Situation"));
   assert.ok(schema.includes("model FilingPlan"));

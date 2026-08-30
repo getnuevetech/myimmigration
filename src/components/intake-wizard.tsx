@@ -109,7 +109,7 @@ export function IntakeWizard({ start }: { start?: PublicStartCopy }) {
             />
           </label>
           <p className="mt-2 text-xs text-slate-400">
-            You can skip this and add documents later. Documents help confirm answers — they do not start a case by themselves.
+            You can skip this and add documents later. Documents help confirm answers — they do not open a Case by themselves.
           </p>
         </div>
 

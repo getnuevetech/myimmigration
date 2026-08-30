@@ -260,7 +260,7 @@ export async function guideRespond(
       const qs = new URLSearchParams({ prefill: lastQuestion.slice(0, 500) });
       return withChrome(snapshot, {
         message:
-          "That looks like a government matter that needs a full case review — filings on record, risks, and next actions. Continue to track it as a USCIS/immigration case.",
+          "That looks like a government immigration matter already before USCIS or another agency — filings on record, risks, and next actions. Continue to track it as a Case.",
         actions: [
           {
             type: "new_case",
