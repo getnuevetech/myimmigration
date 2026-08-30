@@ -38,3 +38,9 @@ export { buildLearningEvent, assertNoPrematureSchemaAsk } from "./learning-event
 export { composeAssistantReply, composeAssistantView, decisionFocusLabel } from "./assistant-composer";
 export type { AssistantViewSection } from "./assistant-composer";
 export { canonicalizeResponseMode, invokesCaseEngine } from "./types";
+export {
+  MEDICAL_EXAM_NEGATIVE_LESSON,
+  SEEDED_NEGATIVE_LESSONS,
+  buildExperienceRecord,
+} from "@/lib/experience";
+

@@ -133,6 +133,8 @@ export type ConversationIntelligence = {
   strategy: ResponseStrategy;
   route: ConversationRoute;
   learning_event: LearningEvent;
+  /** L0 full experience capture (Phase −1.9); retrieval gated until L4. */
+  experience_record?: Record<string, unknown>;
 };
 
 export type LearningEvent = {

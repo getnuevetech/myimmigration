@@ -44,7 +44,7 @@ export async function createSituationFromIntelligence(opts: {
       currentRisksJson: "[]",
       status: "guiding",
       intelligenceJson: JSON.stringify(opts.intel),
-      learningEventJson: JSON.stringify(opts.intel.learning_event),
+      learningEventJson: JSON.stringify(opts.intel.experience_record ?? opts.intel.learning_event),
       assistantReply: opts.assistantReply,
       updatedAt: new Date(),
     },

@@ -49,6 +49,8 @@ const CANONICAL =
   assert.ok(intel.learning_event.questions_suppressed.includes("medical_exam"));
   assert.equal(intel.learning_event.invokes_case_engine, false);
   assert.equal(intel.learning_event.workspace_selected, "situation");
+  assert.ok(intel.experience_record, "must emit L0 experience_record");
+  assert.equal((intel.experience_record as { schema_version: string }).schema_version, "l0");
 }
 
 // existing_case + document question → answer, NOT case engine
@@ -129,10 +131,11 @@ const CANONICAL =
 // Spec lock
 {
   const spec = readFileSync(join(process.cwd(), "docs/v5.1/PHASE-S-SITUATION-FILING-PLAN-EXECUTION.md"), "utf8");
-  assert.ok(/S0 APPROVED/i.test(spec));
-  assert.ok(/Workspace state never determines analysis depth/i.test(spec));
+  assert.ok(/S0 LOCKED|S0 APPROVED/i.test(spec));
+  assert.ok(/Workspace state never determines analysis depth|Workspace determines where the customer is/i.test(spec));
   assert.ok(/Option B/i.test(spec));
-  assert.ok(/Response mode controls engine invocation/i.test(spec));
+  assert.ok(/Response mode controls engine invocation|response mode determines what AI work/i.test(spec));
+  assert.ok(!/A \(recommended\):\s*`?workspaceKind/i.test(spec), "Option A must not be recommended target");
 }
 
 console.log("phase-s1-situation-router-check: ok");

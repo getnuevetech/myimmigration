@@ -1,253 +1,315 @@
-# Phase S — Question → Situation → Filing Plan → Case  
-# (+ Phase −1.9 / S7 Experience & Continuous Learning)
+# Phase S — Final Locked Execution Program
 
-**Status:** **S0 APPROVED** (2026-08-30) with mandatory amendments — proceed S0 → S1 → S2  
-**Revision:** 3 — locked approval decisions + two architectural amendments  
-**Depends on:** Phase −1 Conversation Intelligence, Model Responsibility Contract, V5.1 Case engine + governance  
+**Status:** **S0 LOCKED / AUTHORIZED** (2026-08-30)  
+**Revision:** 4 — final §13 approval (Option B target architecture)  
+**Proceed:** S0 → S1 → S2 + customer S5; L0–L2 parallel (capture only)  
+**Experience umbrella:** Phase −1.9 — Experience & Institutional Learning  
 
 ---
 
-## S0 lock — approval decisions
+## §13 Approval (locked)
 
-| Ask | Decision |
+| Decision | Approval |
 | --- | --- |
-| Principles as Phase −1 addendum | **YES** — lock. Government matter may be **USCIS, EOIR, ICE/CBP/removal-related**, not only a filed USCIS form. |
-| Option A vs Situation model | **Option B — first-class Situation entity** (permanent architecture). Do **not** store Situations as disguised Case rows. |
-| Ship S1 + S2 before Filing Plan | **YES** |
-| Remove customer forceCase / full case review | **YES** — admin/diagnostic override only if needed. Customer language reflects actual state. |
-| Existing IMM situation rows | **Reclassify** to Situation when no government matter; genuine matters remain Cases. Preserve `legacyCaseId` / audit fields. |
+| Workspace principles | **YES — LOCK** |
+| Workspace data model | **Option B:** first-class Situation + FilingPlan models |
+| S1 + S2 first | **YES** |
+| Remove customer-facing forceCase / “full case review” | **YES** |
+| Historical reclassification | **YES** — reclassify situation-only records |
+| Filing Plan naming | **YES** |
+| Experience principles | **YES — LOCK** |
+| Experience architecture phase ID | **YES — −1.9** |
+| L0–L2 parallel with S work | **YES** |
+| Production retrieval | **L4 Production patterns only** |
+| Seed medical-exam negative lesson | **YES** |
 
-### Mandatory amendment 1 — workspace ≠ analysis depth
+### Option B (not Option A)
 
-**Workspace state never determines analysis depth by itself. Response mode determines which reasoning engine is invoked.**
+**Rejected as target:** `Case.workspaceKind = situation | filing_plan | government_case`.
 
-`customer_state = existing_case` must **NOT** automatically invoke full V5.1.
-
-Axes stay separate:
-
-| Axis | Answers |
-| --- | --- |
-| `customer_state` / workspace | What does the user have? |
-| Interaction intent | What are they asking? |
-| `response_mode` | What should we do **now**? |
-
-Examples:
-
-```json
-{
-  "intent": "document_question",
-  "customer_state": "existing_case",
-  "existing_government_case": true,
-  "response_mode": "answer",
-  "recommended_workspace": "existing_case"
-}
-```
-→ Read the notice; **do not** run full Case analysis.
-
-```json
-{
-  "intent": "status_question",
-  "customer_state": "existing_case",
-  "response_mode": "answer"
-}
-```
-→ e.g. “When is my interview?”
-
-```json
-{
-  "intent": "strategy_question",
-  "customer_state": "existing_case",
-  "response_mode": "case_review"
-}
-```
-→ Only then: chronology / fact ledger / risks / full V5.1 strategy.
-
-Government-matter detection (receipt, I-797, filed forms, RFE, NOID, interview, denial, appeal, EOIR, ICE/CBP/removal cues) may set `existing_government_case` / workspace — it does **not** by itself mean `case_review`.
-
-CTA language when persistence is needed: **“Track this USCIS case”** (not “Open a case”). Classification is the app’s job; the CTA is persistence/action, not architecture choice.
-
-### Mandatory amendment 2 — first-class Situation (Option B)
+**Approved target:**
 
 ```
-QaThread (Question interaction)
+QaThread
     │
     ▼
 Situation
     │
-    ├────────► FilingPlan
-    │
-    └────────► Case (government matter; optional situationId link)
+    ├──────────────► FilingPlan
+    │                    │
+    │                 preparation
+    │                    │
+    │                   filed
+    │                    │
+    └────────────────────┴────► Case
 ```
 
-Conceptual shapes:
+A Case may reference the originating Situation / Filing Plan for continuity and audit.
 
-- **Situation** — narrative, question contract, decision target, known facts, pathways, risks, status  
-- **FilingPlan** — pathway, eligibility, blockers, filings, evidence, sequence, preparation  
-- **Case** — governmentSystem, caseType, receipt, form, filedDate, status, V5.1 machinery  
-
-Question is **not** a heavy DB workspace: it remains `QaThread`. Personal circumstances + decision target mature into **Situation**.
-
-### Architecture sentence (locked)
-
-> Question tells us what the person wants. Situation tells us what is happening. Filing Plan tells us what they intend to pursue. Case tells us what is actually before the government. Response Mode tells the AI what work to perform right now.
+Temporary reads of legacy Case rows during S1/S2 are allowed as a **compatibility bridge only**. Option A must not become the durable domain model.
 
 ---
 
 ## Principles (locked)
 
-### Workspace / Case
+### Workspace
 
-1. Immigration problem ≠ automatic Case.  
-2. Distinguish Question, Situation, Filing Plan, Existing Government Case.  
-3. Do not create Case merely for individualized analysis.  
-4. Options / status understanding → Situation.  
-5. App routes; customer never picks an internal pipeline.  
-6. Never ask “open a case?”  
-7. No government matter + pursue path → Filing Plan / consultant / filing guidance.  
-8. Only existing government matter (USCIS / EOIR / ICE/CBP/removal-related) → customer-facing Case.  
-9. Case-schema completeness must never convert Situation → Case.
+1. Problem ≠ Case.  
+2. Distinguish **Question → Situation → Filing Plan → Existing Government Case**.  
+3. The application determines the workspace **silently** from what the customer is asking and what government matter exists.  
+4. Never ask “Do you want to open a case?”  
+5. A personal immigration question requiring individualized reasoning is still **not** a Case.  
+6. Wanting to pursue an identified path → **Filing Plan**.  
+7. Customer-facing Case only when an **actual government immigration matter** exists (USCIS, EOIR, ICE/CBP/removal-related — not only a filed USCIS form).  
+8. Case-schema completeness must **never** cause Situation → Case promotion.
 
-### Experience & Learning
+### Analysis depth invariant
 
-10. Learn patterns/decision logic/corrections/outcomes — **not identities**.  
-11. No live Sol/Opus fine-tuning from traffic.  
-12. Authority > reviewed rule > validated pattern > history > model inference.  
-13. Outcome ≠ law; promotion requires authority + multi-case + review.  
-14. Negative learning required.
+> **Workspace determines where the customer is. Response mode determines what AI work happens now.**
 
-### Analysis depth (new)
+Therefore: `existing_case ≠ automatically run V5.1`.
 
-15. **Response mode controls engine invocation; workspace alone never triggers full V5.1.**
+Example: existing USCIS matter + “What does this notice mean?” →
+
+```json
+{
+  "workspace": "existing_case",
+  "intent": "document",
+  "response_mode": "answer"
+}
+```
+
+Full V5.1 runs only when the current request calls for `case_review`.
+
+### Experience
+
+9. Every interaction should make ImmigrationOnMe more capable **without** exposing one customer’s identity or private records to another.  
+10. No automatic live fine-tuning of Sol or Opus from production traffic.  
+11. Precedence: CURRENT AUTHORITY > REVIEWED INTERNAL RULE > VALIDATED PRODUCTION PATTERN > HISTORICAL EXPERIENCE > MODEL INFERENCE.  
+12. Outcome ≠ law.  
+13. Negative learning required; medical-exam premature ask is the first seeded failure pattern.  
+14. Only **L4 Production** patterns influence ordinary production retrieval.
 
 ---
 
 ## Lifecycle
 
 ```
-QUESTION (QaThread; may terminate here)
+QUESTION
    │
    ▼
 SITUATION
    │
-   ├─ continue understanding
-   ├─ FILING PLAN → preparation → filed ─┐
-   └─ government matter detected ────────┴──► CASE
+   ├──── Existing government matter ─────────────► CASE
+   │
+   └──── Wants to pursue pathway
+                    │
+                    ▼
+               FILING PLAN
+                    │
+                    ▼
+               PREPARATION
+                    │
+                    ▼
+                  FILED
+                    │
+                    ▼
+                   CASE
 ```
 
----
-
-## Four-layer architecture
-
-Sol → Experience Search → Sol reasoning → Opus (docs) + Authorities → Governance → Presentation (Sol) → User → Experience & Learning Layer.
-
-Capture **learning events from day one** (S1); Pattern Registry / retrieval is **S7 / Phase −1.9** (does not block S1/S2).
+Not every customer moves through every state. Question may terminate as QaThread.
 
 ---
 
-## Canonical S0 fixture (product invariant)
+## Three independent routing axes
 
-**INPUT**
+| Axis | Values |
+| --- | --- |
+| Interaction intent | `general` · `personal` · `document` · `status` · `strategy` · `action` · `info_only` |
+| Workspace | `question_only` · `situation` · `filing_plan` · `existing_case` |
+| Response mode | `answer` · `answer_then_targeted_question` · `clarify_first` · `document_needed` · `filing_plan_build` · `case_review` |
 
-> I came in from Mexico through the border and been living in the US for 3 years, my wife is a US citizen and our daughter was born in the US, I am yet to file for any document, what are my options?
+---
 
-**Expected intelligence**
+## Four-layer intelligence architecture
+
+```
+                           USER
+                            │
+                            ▼
+                      OPENAI SOL
+              Question / Conversation Brain
+                            │
+                   Workspace + Intent
+                            │
+                            ▼
+                    EXPERIENCE SEARCH
+                  "Seen this pattern?"
+                            │
+                            ▼
+                      SOL REASONING
+       Question + facts + authorities + patterns
+                      /              \
+                     /                \
+                    ▼                  ▼
+             CLAUDE OPUS          AUTHORITIES
+          Document Evidence
+                    \                  /
+                     └────────┬────────┘
+                              ▼
+                         GOVERNANCE
+                              │
+                              ▼
+                     SOL PRESENTATION
+                              │
+                              ▼
+                            USER
+                              │
+                              ▼
+                    EXPERIENCE CAPTURE
+```
+
+| Role | Owns |
+| --- | --- |
+| **Sol** | Conversation, question contract, reasoning, need-to-know, strategy, synthesis, presentation |
+| **Opus** | Document classification, extraction, interpretation, evidence, provenance |
+| **Governance** | Routing enforcement, schemas, evidence ledger, authority precedence, locks, stale/invalidation, pattern promotion, audit |
+| **Experience (−1.9)** | Capture → de-ID → patterns → L4 retrieval (retrieval gated) |
+
+Learning path:
+
+```
+Interaction → ExperienceRecord → De-identification → Observation/Candidate
+  → Validation → Review → Production Pattern → Retrieval
+```
+
+Pattern promotion: **L0 → L1 → L2 → L3 → L4**. Only L4 in production retrieval.
+
+---
+
+## Canonical negative-learning fixture (seeded)
+
+```
+FAILURE PATTERN
+
+Situation:
+USC spouse + border entry + no filing
++ asks "what are my options?"
+
+Bad behavior:
+Ask about medical exam first.
+
+Failure reason:
+Medical-exam completeness did not determine
+the user's immediate pathway.
+
+Correct behavior:
+Explain primary pathways first.
+Identify inspection/admission/parole as
+the controlling unknown.
+Ask targeted border-processing question.
+
+Rule:
+Case-schema completeness must never outrank
+the current Question Contract.
+```
+
+Code seed: `src/lib/experience/negative-lessons.ts` · pattern id `NEG-FAM-ENTRY-MEDICAL-001`.
+
+---
+
+## Canonical regression fixture (permanent)
+
+**Input:**  
+“I came in from Mexico through the border and been living in the US for 3 years, my wife is a US citizen and our daughter was born in the US, I am yet to file for any document, what are my options?”
+
+**Required:**
 
 ```json
 {
-  "intent": "personal_question",
-  "customer_state": "situation",
+  "intent": "personal",
+  "workspace": "situation",
   "existing_government_case": false,
-  "recommended_workspace": "situation",
   "response_mode": "answer_then_targeted_question",
   "decision_target": "identify_possible_pathways"
 }
 ```
 
-**Prohibited**
+**Must:** answer first · explain branches · manner of entry controlling · ≤1 targeted entry ask · remain Situation · Filing Plan only when pursuing a path.
 
-- create Case / run full V5.1  
-- ask medical exam / priority date  
-- request passport before answering  
-- ask customer to choose whether to open Case  
-- begin marriage evidence checklist  
-
-**Required**
-
-- answer options; explain branches  
-- manner of entry as controlling unknown; one targeted entry question  
-- stay in Situation; offer Filing Plan later  
-
-**S1 build fails if** `recommended_workspace = existing_case` or medical-exam ask before entry resolved.  
-**S2 build fails if** customer sees “YOUR IMMIGRATION CASE” for this fixture.
+**Must not:** create Case · run full V5.1 · medical exam · priority date · passport before answer · “open a case?” · marriage evidence checklist · promote for schema incompleteness.
 
 ---
 
-## Ship order (approved)
+## Ship sequence (authorized)
 
 ```
 S0 (locked)
- ↓
-S1  — router axes; response_mode → engine; learning-event hooks; canonical fixture tests
- ↓
-S2 + customer-facing S5  — Situation entity; Situation UI; remove forceCase UX; no Case chrome on Situation
- ↓
-S3  — Filing Plan
- ↓
-S4  — Case = government matter; migrate legacy IMM rows (default uncertain → Situation)
- ↓
-remaining S5
- ↓
-S6  — consolidated regression gate
- ↓
-S7 / −1.9 — Experience engine consuming historical learning events
+ │
+ ▼
+S1  Router + contracts          ← shipped
+ │
+ ▼
+S2  Situation workspace         ← shipped
+ │
+ ├────► S5 customer-facing copy/intake cleanup  ← partial (forceCase removed)
+ │
+ ▼
+S3  Filing Plan
+ │
+ ▼
+S4  Government Case lifecycle + migration
+ │
+ ▼
+S6  Consolidated workspace regression
 ```
 
-Each phase ships with its own tests. S6 is the final consolidated gate.
+**Parallel (after S0):**
 
-Learning-event shape (emit from S1; engine later):
+```
+L0–L2  Capture · De-ID · What-mattered · Negative-learning records
+  │
+  ▼
+L3–L5  Corrections · Outcomes · Pattern Registry
+  │
+  ▼
+L6–L7 + S8  Production Experience Search (L4-only) · Experience fixtures
+```
+
+**Minimum customer fix:** S1 + S2 + customer-facing S5. Do not wait for Filing Plan or Experience Search.
+
+### L0 capture shape (emit every meaningful turn)
 
 ```json
 {
-  "question_contract": "...",
-  "workspace_selected": "situation",
+  "question_contract": {},
+  "workspace": "situation",
   "decision_target": "identify_possible_pathways",
-  "pathways_considered": ["A", "B"],
-  "clarification_selected": "manner_of_entry",
-  "clarification_reason": "...",
-  "questions_suppressed": ["medical_exam", "priority_date"],
-  "response_mode": "answer_then_targeted_question",
-  "invokes_case_engine": false
+  "facts_considered": [],
+  "decision_changing_facts": [],
+  "facts_not_needed_yet": [],
+  "pathways_considered": [],
+  "clarification_selected": {},
+  "clarifications_suppressed": [],
+  "documents_used": [],
+  "authority_ids": [],
+  "answer_changed_after_clarification": false,
+  "model_correction": null,
+  "reviewer_correction": null,
+  "outcome": null
 }
 ```
 
----
-
-## Data model (Option B — locked)
-
-```
-Situation { id, userId?, guestSessionId?, title, originalNarrative, goal, questionContractJson,
-  currentDecisionTarget, knownFactsJson, currentPathwaysJson, currentRisksJson, status,
-  intelligenceJson, learningEventJson, legacyCaseId?, legacyRecordType?, migrationTimestamp?, ... }
-
-FilingPlan { id, situationId, selectedPathway, ... }   // S3
-
-Case { ..., situationId?, governmentSystem, ... }     // V5.1; only government matters
-```
-
-Migration: government matter established? YES→Case, NO/UNKNOWN→Situation (default Situation). Retain legacy IDs.
+Capture now; learn later. No customer retrieval until L4.
 
 ---
 
-## Non-goals
+## Authorization
 
-- Option A permanent architecture  
-- `existing_case` ⇒ auto V5.1  
-- Customer pipeline picker / forceCase  
-- Live model fine-tuning  
-- Blocking S1/S2 on full S7 learning engine  
+**S0 is approved.**
 
----
+Proceed: S0 spec lock → S1 → S2 + relevant S5.  
+In parallel: L0–L2 capture + de-identification only.  
+Do **not** enable experience retrieval in customer reasoning until L4 Production.
 
-## Proceed
-
-**S0 approved with amendments. Implement S1 → S2 (+ customer S5).**
+Phase −1.9 is the umbrella specification for the L-series (`docs/v5.1/PHASE-MINUS1-9-EXPERIENCE-INSTITUTIONAL-LEARNING.md`).

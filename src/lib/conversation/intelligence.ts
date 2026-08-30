@@ -2,7 +2,7 @@ import { evaluateAnswerability } from "./answerability";
 import { routeConversation } from "./conversation-router";
 import { detectGovernmentMatter } from "./government-matter";
 import { interpretIntent } from "./intent-interpreter";
-import { buildLearningEvent } from "./learning-events";
+import { buildExperienceRecord, learningEventFromExperience } from "@/lib/experience/experience-record";
 import { buildNeedToKnow } from "./need-to-know";
 import { buildQuestionContract } from "./question-contract";
 import { buildResponseStrategy } from "./response-strategy";
@@ -47,10 +47,9 @@ export function runConversationIntelligence(input: ConversationMessageInput): Co
     forceCase: input.forceCase,
   });
 
-  // Align strategy.mode with router-canonical response_mode.
   strategy.mode = route.response_mode;
 
-  const learning_event = buildLearningEvent({
+  const experience_record = buildExperienceRecord({
     contract: question_contract,
     workspace: route.workspace,
     responseMode: route.response_mode,
@@ -58,7 +57,9 @@ export function runConversationIntelligence(input: ConversationMessageInput): Co
     interactionIntent: intent.interaction_intent,
     pathways: strategy.branches.map((b) => b.id),
     askNow: strategy.ask_now,
+    documentsUsed: input.documentHints ?? [],
   });
+  const learning_event = learningEventFromExperience(experience_record);
 
   return {
     question_contract,
@@ -68,6 +69,7 @@ export function runConversationIntelligence(input: ConversationMessageInput): Co
     strategy,
     route,
     learning_event,
+    experience_record,
   };
 }
 
