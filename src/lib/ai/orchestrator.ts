@@ -738,10 +738,26 @@ export async function runCaseAnalysis(caseId: string, options?: RunCaseAnalysisO
       })
     : null;
 
-  // Layer 4: situation analysis grounded in the USCIS knowledge base.
-  const knowledge = decisions.retrieveAuthority
-    ? formatKnowledgeBlock(await retrieveKnowledgeRecords(`${c.situation} ${c.goal} ${docText}`, 5, caseId))
-    : "";
+  // Layer 4: situation analysis grounded in the USCIS knowledge base + L4 production patterns.
+  const knowledgeRecords = decisions.retrieveAuthority
+    ? await retrieveKnowledgeRecords(`${c.situation} ${c.goal} ${docText}`, 5, caseId)
+    : [];
+  const knowledgeBase = decisions.retrieveAuthority ? formatKnowledgeBlock(knowledgeRecords) : "";
+  let experienceBlock = "";
+  if (decisions.retrieveAuthority) {
+    try {
+      const { buildExperienceSearchBlock } = await import("@/lib/experience/search");
+      experienceBlock = await buildExperienceSearchBlock({
+        decisionTarget: "case_review",
+        workspace: "existing_case",
+        factKeys: [c.goal, c.situation].filter(Boolean).join(" ").toLowerCase().split(/\s+/).slice(0, 12),
+        limit: 5,
+      });
+    } catch {
+      experienceBlock = "";
+    }
+  }
+  const knowledge = [knowledgeBase, experienceBlock].filter(Boolean).join("\n\n");
   let situationMerged: Json = {};
   let situationConflicts: Conflict[] = [];
   if (usedAi && decisions.primaryReasoning) {
@@ -1203,7 +1219,21 @@ export async function runQaChat(history: { role: string; content: string }[], op
     .filter(Boolean)
     .join(" ");
   const knowledgeSources = await retrieveKnowledgeRecords(knowledgeQuery, 5, opts?.caseId);
-  const knowledge = formatKnowledgeBlock(knowledgeSources);
+  const knowledgeBase = formatKnowledgeBlock(knowledgeSources);
+  let experienceBlock = "";
+  try {
+    const { buildExperienceSearchBlock } = await import("@/lib/experience/search");
+    experienceBlock = await buildExperienceSearchBlock({
+      decisionTarget: inquiry.mode === "open_options" ? "identify_available_pathways" : undefined,
+      workspace: opts?.caseId ? "existing_case" : "situation",
+      factKeys: inquiry.themes,
+      pathways: inquiry.themes,
+      limit: 5,
+    });
+  } catch {
+    experienceBlock = "";
+  }
+  const knowledge = [knowledgeBase, experienceBlock].filter(Boolean).join("\n\n");
   const grounding = await loadCaseGrounding(opts?.caseId);
   const { queryKeys, boosts } = await loadBoostsForNarrative(narrative, narrative);
   const baseOptions = buildOpenOptionsAnalysis({ situation: narrative, goal: narrative }, inquiry, knowledgeSources, boosts);

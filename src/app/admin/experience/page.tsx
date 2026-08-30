@@ -46,7 +46,7 @@ export default async function AdminExperienceRegistryPage({
     <div>
       <PageHeader
         title="Pattern Registry"
-        subtitle="Promote de-identified experience observations toward Production (level 4). Only Production may enter Sol Experience Search later. Outcome ≠ law; current authority still outranks patterns."
+        subtitle="Promote de-identified experience observations toward Production (level 4). Production patterns feed Sol Experience Search. Outcome ≠ law; current authority still outranks patterns."
       />
 
       <div className="mb-6 flex flex-wrap gap-2">

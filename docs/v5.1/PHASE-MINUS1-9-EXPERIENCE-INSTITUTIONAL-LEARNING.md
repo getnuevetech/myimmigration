@@ -64,7 +64,7 @@ Retrieval for future Sol reasoning
 | **L3** | Consultant correction → pattern candidates | **Shipped** — `corrections.ts` + candidate publish (level 1) |
 | **L4** | Government outcome signals → candidates (authority check) | **Shipped** — `outcomes.ts` + authority-gated candidates (level 1) |
 | **L5** | Pattern Registry admin UI + promotion 0→4 | **Shipped** — `/admin/experience` + `registry.ts` |
-| **L6** | Experience Search into Sol (L4 only) | After L5 |
+| **L6** | Experience Search into Sol (L4 only) | **Shipped** — `search.ts` + Sol QA / enrichment / case analysis |
 | **L7** | Telemetry: help/harm; stale/authority invalidation | With L6 |
 | **S8** | Experience regression fixtures | With L6–L7 |
 
@@ -116,6 +116,14 @@ Retrieval for future Sol reasoning
 - No live fine-tuning; no customer Experience Search until L6.
 - Check: `npm run test:phase-minus1-9-l5`
 
+### L6 acceptance
+
+- `searchProductionExperience` / `rankProductionPatterns` retrieve **only** promotion level **4**.
+- Non-production patterns are refused (`assertAllProductionLevel`).
+- Sol prompt block states precedence and **Outcome ≠ law**; injected into Q&A (`runQaChat`), Sol contract enrichment, and case situation analysis knowledge.
+- Empty registry → empty block (no failure); no fine-tuning.
+- Check: `npm run test:phase-minus1-9-l6`
+
 ---
 
 ## Seeded negative lesson
@@ -126,10 +134,11 @@ Retrieval for future Sol reasoning
 
 ## Checks
 
-- `npm run test:phase-s` includes L0–L5 checks.  
+- `npm run test:phase-s` includes L0–L6 checks.  
 - `npm run test:phase-minus1-9-l1`  
 - `npm run test:phase-minus1-9-l2`  
 - `npm run test:phase-minus1-9-l3`  
 - `npm run test:phase-minus1-9-l4`  
 - `npm run test:phase-minus1-9-l5`  
-- Future: full `test:phase-minus1-9` when L6+ lands.
+- `npm run test:phase-minus1-9-l6`  
+- Future: full `test:phase-minus1-9` when L7+ lands.

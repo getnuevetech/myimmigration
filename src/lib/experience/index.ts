@@ -94,3 +94,13 @@ export {
   isPromotionLevel,
 } from "./registry";
 export type { RegistryEntry } from "./registry";
+export {
+  searchProductionExperience,
+  rankProductionPatterns,
+  formatExperienceSearchBlock,
+  buildExperienceSearchBlock,
+  assertAllProductionLevel,
+  productionPatternAskHints,
+  EXPERIENCE_SEARCH_PRECEDENCE,
+} from "./search";
+export type { ExperienceSearchQuery, ExperienceSearchHit } from "./search";

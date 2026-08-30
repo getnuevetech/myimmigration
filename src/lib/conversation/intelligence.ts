@@ -108,12 +108,37 @@ export async function enrichIntelligenceWithReasoningModel(
     const provider = await resolveCapabilityProvider("primary_reasoning");
     if (!provider?.apiKey) return intel;
 
+    let experienceBlock = "";
+    try {
+      const { buildExperienceSearchBlock } = await import("@/lib/experience/search");
+      experienceBlock = await buildExperienceSearchBlock({
+        decisionTarget: intel.question_contract.decision_target,
+        workspace: intel.route.workspace,
+        factKeys: [
+          ...intel.strategy.ask_now.map((a) => a.question.slice(0, 40)),
+          ...(intel.experience_record && typeof intel.experience_record === "object"
+            ? ((intel.experience_record as { decision_changing_facts?: string[] }).decision_changing_facts ?? [])
+            : []),
+        ],
+        pathways: intel.strategy.branches.map((b) => b.id),
+        negativeLessonIds:
+          intel.experience_record && typeof intel.experience_record === "object"
+            ? ((intel.experience_record as { negative_lesson_ids?: string[] }).negative_lesson_ids ?? [])
+            : [],
+        limit: 5,
+      });
+    } catch {
+      experienceBlock = "";
+    }
+
     const prompt = `You refine a conversation Question Contract. Return ONLY JSON:
 {"interpreted_question":"","decision_target":"","routing_confidence":0.0,"primary_intent":""}
 Rules: do not invent document facts; do not set requires_case_development true unless the user asked for a full case/strategy on an existing government matter; keep decision_target stable if this is a follow-up.
+Prefer CURRENT AUTHORITY over production patterns. Patterns are not law.
 PRIOR_CONTRACT: ${JSON.stringify(intel.question_contract)}
 MESSAGE: ${input.message}
-GOAL: ${input.goal ?? ""}`;
+GOAL: ${input.goal ?? ""}
+${experienceBlock ? `EXPERIENCE_PATTERNS:\n${experienceBlock}` : ""}`;
 
     const result = await callProvider(provider, [{ role: "user", content: prompt }]);
     const data = extractJson(result.text) as Record<string, unknown> | null;
