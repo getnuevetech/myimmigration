@@ -32,9 +32,10 @@ import { resolveAccountNav, resolveCasesListCopy } from "../src/lib/goal-chrome"
   assert.ok(sitList.includes("db.situation.findMany"));
 
   const dash = readFileSync(join(root, "src/app/app/page.tsx"), "utf8");
-  assert.ok(dash.includes("db.situation.findMany"));
+  assert.ok(dash.includes("db.situation") && dash.includes("findMany"), "dashboard must load Situations");
   assert.ok(dash.includes("/app/situations"));
   assert.ok(dash.includes("formatSituationNumber"));
+  assert.ok(dash.includes(".catch(") || dash.includes("situationsUnavailable"), "dashboard must harden Situation query failures");
 
   const cases = readFileSync(join(root, "src/app/app/cases/page.tsx"), "utf8");
   assert.ok(cases.includes('inquiryMode: "existing_case"'));
