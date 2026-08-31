@@ -46,6 +46,7 @@ async function seedSettings() {
     ["app.tagline", PUBLIC_TAGLINE, "branding", "Tagline", "Short slogan shown on the landing page."],
     ["app.url", "http://localhost:3000", "general", "App URL", "Public base URL, used for OAuth callbacks and payment redirects."],
     ["app.disclaimer", "ImmigrationOnMe is an immigration case assistant that helps you understand your immigration situation and USCIS documents in plain English. We are not USCIS and we are not a law firm. We provide informational guidance only, not legal advice. For high-stakes decisions, consult a licensed immigration attorney or accredited representative.", "branding", "Footer disclaimer", "Compliance disclaimer shown in the site footer."],
+    ["analytics.tiktok_pixel_id", "DAASLUJC77U47UVQELH0", "analytics", "TikTok Pixel ID", "Sitewide TikTok Ads base pixel. Leave empty to disable."],
     ["home.hero_title", PUBLIC_HERO.title, "branding", "Homepage hero title", ""],
     ["home.hero_subtitle", PUBLIC_HERO.subtitle, "branding", "Homepage hero subtitle", ""],
     ["home.cta_primary", PUBLIC_HERO.primaryCta.label, "branding", "Primary call to action", ""],
