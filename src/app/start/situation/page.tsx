@@ -31,6 +31,8 @@ export default async function GuestSituationPage({
         createdAt={row.createdAt}
         existingFilingPlanId={row.filingPlans[0]?.id ?? null}
         isGuest
+        canBuildFilingPlan={false}
+        filingPlanBlockedReason="guest"
       />
       <p className="mt-8 text-center text-sm text-slate-500">
         <a href="/register" className="font-medium text-lime-700 hover:underline">

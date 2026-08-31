@@ -45,6 +45,9 @@ export function SituationWorkspaceView(props: {
   createdAt: Date;
   existingFilingPlanId?: string | null;
   isGuest?: boolean;
+  /** Phase Billing — false on Free / guests without Plus; when over monthly Plus cap. */
+  canBuildFilingPlan?: boolean;
+  filingPlanBlockedReason?: "upgrade" | "limit" | "guest" | null;
 }) {
   const intel = parseStoredIntelligence(props.intelligenceJson);
   const sections =
@@ -98,6 +101,23 @@ export function SituationWorkspaceView(props: {
               className="rounded-lg bg-lime-600 px-3 py-2 text-sm font-semibold text-white hover:bg-lime-700"
             >
               View my filing plan
+            </Link>
+          ) : props.canBuildFilingPlan === false || props.filingPlanBlockedReason ? (
+            <Link
+              href={
+                props.filingPlanBlockedReason === "guest"
+                  ? "/register?next=/app/billing"
+                  : props.filingPlanBlockedReason === "limit"
+                    ? "/app/billing?upgrade=filing_plan_limit"
+                    : "/app/billing?upgrade=filing_plan"
+              }
+              className="rounded-lg bg-lime-600 px-3 py-2 text-sm font-semibold text-white hover:bg-lime-700"
+            >
+              {props.filingPlanBlockedReason === "guest"
+                ? "Create an account to build a Filing Plan"
+                : props.filingPlanBlockedReason === "limit"
+                  ? "Upgrade to Pro for more Filing Plans"
+                  : "Upgrade to Plus to build a Filing Plan"}
             </Link>
           ) : (
             <ActionForm action={createFilingPlanAction} className="inline">

@@ -55,6 +55,8 @@ export const FEATURE_KEYS = {
   CASE_REPORT: "case.report",
   USCIS_UPDATES_ANALYSIS: "uscis.updates_analysis",
   FORMS_DOWNLOAD: "forms.download",
+  /** Phase Billing — Filing Plan build from Situation (not a Case). */
+  FILING_PLAN_BUILD: "filing_plan.build",
 } as const;
 
 export const STAGE_KEYS = {

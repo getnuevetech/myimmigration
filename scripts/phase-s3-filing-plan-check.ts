@@ -42,11 +42,12 @@ const CANONICAL =
 
   const action = readFileSync(join(process.cwd(), "src/actions/filing-plan.ts"), "utf8");
   assert.ok(action.includes("createFilingPlanAction"));
+  assert.ok(action.includes("getFilingPlanQuota"), "Filing Plan create must enforce billing quota");
   assert.ok(!action.includes("runCaseAnalysis"), "Filing Plan must not run V5.1 Case analysis");
 
   const sitView = readFileSync(join(process.cwd(), "src/components/situation-workspace-view.tsx"), "utf8");
-  assert.ok(sitView.includes("Build my filing plan"));
-  assert.ok(sitView.includes("createFilingPlanAction"));
+  assert.ok(sitView.includes("Build my filing plan") || sitView.includes("Upgrade to Plus to build a Filing Plan"));
+  assert.ok(sitView.includes("createFilingPlanAction") || sitView.includes("billing?upgrade=filing_plan"));
 
   const planView = readFileSync(join(process.cwd(), "src/components/filing-plan-workspace-view.tsx"), "utf8");
   assert.ok(planView.includes("Filing Plan"));

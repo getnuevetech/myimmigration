@@ -18,6 +18,22 @@ export async function createFilingPlanAction(_prev: ActionState, formData: FormD
   const user = await getCurrentUser();
   const guest = user ? null : await getOrCreateGuestSession();
 
+  if (user) {
+    const { getFilingPlanQuota } = await import("@/lib/billing-quotas");
+    const quota = await getFilingPlanQuota(user.id);
+    if (!quota.hasAccess) {
+      return { error: "Filing Plans require Plus or Pro. Upgrade to build a preparation plan from this Situation." };
+    }
+    if (quota.overLimit) {
+      return {
+        error: `Plus allows ${quota.limit} Filing Plan${quota.limit === 1 ? "" : "s"} per month. Upgrade to Pro for unlimited plans.`,
+      };
+    }
+  } else if (guest) {
+    // Guests may preview Situation answers but must register to build a Filing Plan.
+    return { error: "Create a free account, then upgrade to Plus to build a Filing Plan." };
+  }
+
   const situation = await db.situation.findFirst({
     where: user
       ? { id: situationId, userId: user.id }
@@ -57,6 +73,10 @@ export async function createFilingPlanAction(_prev: ActionState, formData: FormD
 /** Authenticated helper for tests / programmatic create. */
 export async function createFilingPlanForSituation(situationId: string, selectedPathway?: string) {
   const user = await requireUser();
+  const { getFilingPlanQuota } = await import("@/lib/billing-quotas");
+  const quota = await getFilingPlanQuota(user.id);
+  if (!quota.hasAccess) throw new Error("Filing Plans require Plus or Pro.");
+  if (quota.overLimit) throw new Error("Monthly Filing Plan limit reached.");
   const situation = await db.situation.findFirst({ where: { id: situationId, userId: user.id } });
   if (!situation) throw new Error("Situation not found");
   const pathways = parsePathwaysJson(situation.currentPathwaysJson);

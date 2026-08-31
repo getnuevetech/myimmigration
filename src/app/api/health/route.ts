@@ -7,6 +7,10 @@ import { timingSafeEqualString } from "@/lib/rate-limit";
  * Public liveness probe. No side effects, no session PII.
  * Maintenance jobs run only when Authorization: Bearer <CRON_SECRET>
  * (or ?secret=) matches process.env.CRON_SECRET or setting cron.secret.
+ *
+ * Schema readiness (Situation / Experience L7 columns) is reported for host
+ * diagnosis of Digest white-screens after Phase S / −1.9 deploys — does not
+ * fail the default liveness response.
  */
 async function resolveCronSecret(): Promise<string> {
   if (process.env.CRON_SECRET?.trim()) return process.env.CRON_SECRET.trim();
@@ -20,6 +24,31 @@ function authorizedCron(request: Request, secret: string): boolean {
   const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
   const urlSecret = new URL(request.url).searchParams.get("secret") || "";
   return timingSafeEqualString(bearer || urlSecret, secret);
+}
+
+async function schemaChecks(): Promise<{
+  situation_table: "ok" | "missing" | "error";
+  experience_observation: "ok" | "missing" | "error";
+}> {
+  const checks = {
+    situation_table: "error" as "ok" | "missing" | "error",
+    experience_observation: "error" as "ok" | "missing" | "error",
+  };
+  try {
+    await db.situation.findFirst({ select: { id: true } });
+    checks.situation_table = "ok";
+  } catch {
+    checks.situation_table = "missing";
+  }
+  try {
+    await db.experienceObservation.findFirst({
+      select: { id: true, staleAt: true, helpCount: true },
+    });
+    checks.experience_observation = "ok";
+  } catch {
+    checks.experience_observation = "missing";
+  }
+  return checks;
 }
 
 export async function GET(request: Request) {
@@ -63,6 +92,10 @@ export async function GET(request: Request) {
 
   // Session presence only (no email/role) for authenticated probes.
   const user = await getCurrentUser().catch(() => null);
+  const schema = dbOk
+    ? await schemaChecks()
+    : { situation_table: "error" as const, experience_observation: "error" as const };
+  const schemaReady = Object.values(schema).every((v) => v === "ok");
 
   return NextResponse.json({
     ok: true,
@@ -72,5 +105,10 @@ export async function GET(request: Request) {
     signedIn: Boolean(user),
     maintenance,
     buildHasCookieFix: true,
+    schema,
+    schemaReady,
+    hint: schemaReady
+      ? null
+      : "Schema not ready — run `npx prisma migrate deploy` (or rebuild Docker so the entrypoint migrates), then restart. Missing Situation/Experience tables can white-screen /app for signed-in users.",
   });
 }

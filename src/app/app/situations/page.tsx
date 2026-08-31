@@ -9,12 +9,27 @@ export const metadata = { title: "My situations" };
 
 export default async function SituationsListPage() {
   const user = await requireUser();
-  const situations = await db.situation.findMany({
-    where: { userId: user.id },
-    orderBy: { updatedAt: "desc" },
-    include: { filingPlans: { select: { id: true }, take: 1 } },
-  });
   const intake = resolveIntakeChrome({});
+  let situations: Array<{
+    id: string;
+    number: number;
+    title: string;
+    status: string;
+    goal: string;
+    originalNarrative: string;
+    updatedAt: Date;
+    filingPlans: { id: string }[];
+  }> = [];
+  let loadError = false;
+  try {
+    situations = await db.situation.findMany({
+      where: { userId: user.id },
+      orderBy: { updatedAt: "desc" },
+      include: { filingPlans: { select: { id: true }, take: 1 } },
+    });
+  } catch {
+    loadError = true;
+  }
 
   return (
     <div>
@@ -23,7 +38,13 @@ export default async function SituationsListPage() {
         subtitle="Personal immigration questions and pathway reviews — not USCIS Cases until a government matter exists."
         actions={<ButtonLink href="/app/cases/new">{intake.listCta}</ButtonLink>}
       />
-      {situations.length === 0 ? (
+      {loadError ? (
+        <EmptyState
+          title="Situations temporarily unavailable"
+          body="We could not load your Situations. If this continues after a refresh, the host may need to run database migrations (Situation table)."
+          action={<ButtonLink href="/app">Back to overview</ButtonLink>}
+        />
+      ) : situations.length === 0 ? (
         <EmptyState
           title="No situations yet"
           body="Describe your situation and goal, even if you have not filed anything with USCIS, and we'll map options and next steps."

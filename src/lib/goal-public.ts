@@ -41,18 +41,19 @@ export const PUBLIC_FEATURE_SORT_ORDER: Record<string, number> = {
   "documents.explain": 4,
   "forms.wizard": 5,
   "forms.download": 6,
-  "qa.chat": 7,
-  "qa.personalized": 8,
-  "suggestions.personalized": 9,
-  "letters.generate": 10,
-  "notice.upload": 11,
-  "notice.explain": 12,
-  "deadlines.reminders": 13,
-  "vault.storage": 14,
-  "guide.chatbot": 15,
-  "case.report": 16,
-  "uscis.updates_analysis": 17,
-  "consultant.referral": 18,
+  "filing_plan.build": 7,
+  "qa.chat": 8,
+  "qa.personalized": 9,
+  "suggestions.personalized": 10,
+  "letters.generate": 11,
+  "notice.upload": 12,
+  "notice.explain": 13,
+  "deadlines.reminders": 14,
+  "vault.storage": 15,
+  "guide.chatbot": 16,
+  "case.report": 17,
+  "uscis.updates_analysis": 18,
+  "consultant.referral": 19,
 };
 
 export const STALE_PUBLIC_TAGLINES = ["Immigration paperwork, organized"];
@@ -156,14 +157,22 @@ export const PUBLIC_BILLING_SUBTITLE =
   "Start without a filing, or bring a USCIS letter. Upgrade or downgrade anytime. Access changes immediately.";
 
 export const PUBLIC_PLAN_DESCRIPTIONS: Record<string, string> = {
-  free: "Explore immigration options before you file — no credit card needed.",
-  plus: "The full toolkit for one immigration situation — whether you have not filed yet or already have a USCIS letter.",
-  pro: "Everything, unlimited — plus professional referrals.",
+  free: "Explore immigration options before you file — Situations and Q&A, no Filing Plans or form wizards. No credit card needed.",
+  plus:
+    "Prepare one immigration situation with capped Filing Plans and form wizards — whether you have not filed yet or already have a USCIS letter.",
+  pro: "Unlimited Filing Plans and form wizards — plus professional referrals.",
 };
 
 export const STALE_PLAN_DESCRIPTIONS: Record<string, string[]> = {
-  free: ["Understand what's going on — no credit card needed."],
-  plus: ["The full toolkit for handling one immigration situation end to end."],
+  free: [
+    "Understand what's going on — no credit card needed.",
+    "Explore immigration options before you file — no credit card needed.",
+  ],
+  plus: [
+    "The full toolkit for handling one immigration situation end to end.",
+    "The full toolkit for one immigration situation — whether you have not filed yet or already have a USCIS letter.",
+  ],
+  pro: ["Everything, unlimited — plus professional referrals."],
 };
 
 export const PUBLIC_HERO_CAROUSEL = {

@@ -38,8 +38,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   // Admin-controlled fee gate (applies to the customer; staff and connected
   // consultants download without the customer's plan gate).
   const paid = await getBoolSetting("forms.paid_downloads", true);
-  if (isOwner && paid && !(await hasFeature(user.id, FEATURE_KEYS.FORMS_DOWNLOAD))) {
-    return NextResponse.redirect(new URL("/app/billing?upgrade=forms-download", request.url));
+  if (isOwner && paid) {
+    if (!(await hasFeature(user.id, FEATURE_KEYS.FORMS_DOWNLOAD))) {
+      return NextResponse.redirect(new URL("/app/billing?upgrade=forms-download", request.url));
+    }
+    const { getFormDownloadQuota } = await import("@/lib/billing-quotas");
+    const quota = await getFormDownloadQuota(user.id);
+    if (quota.overLimit) {
+      return NextResponse.redirect(new URL("/app/billing?upgrade=forms_download_limit", request.url));
+    }
   }
 
   // Preferred output: the OFFICIAL USCIS PDF with the customer's answers infused

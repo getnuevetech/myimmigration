@@ -267,9 +267,12 @@ S6  Consolidated workspace regression  ← shipped (`test:phase-s6` / included i
  │
  ▼
 S-discovery  Situation list/nav/dashboard (close Case-compat bridge)  ← shipped (`test:phase-s-discovery`)
+ │
+ ▼
+Phase Billing  Free/Plus/Pro Filing Plan + forms caps  ← shipped (`test:phase-billing`)
 ```
 
-**Parallel (after S0):**
+**Related (commercial, not workspace architecture):** `docs/v5.1/PHASE-BILLING-TIER-MATRIX.md` — Plus is capped on Filing Plan / wizards / downloads; Pro unlimited.
 
 ```
 L0–L2  Capture · De-ID · What-mattered · Negative-learning records  ← L0–L2 shipped
