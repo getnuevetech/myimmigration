@@ -103,11 +103,34 @@ For internet-facing servers, put Caddy in front for automatic HTTPS:
 
 ```bash
 sudo apt install -y caddy
-# /etc/caddy/Caddyfile:
-#   yourdomain.com {
-#     reverse_proxy localhost:3000
-#   }
+# Prefer the Lightsail-ready example (HTTP /healthz, HTTPS for everything else):
+sudo cp deploy/Caddyfile.example /etc/caddy/Caddyfile
+# edit the domain, then:
 sudo systemctl reload caddy
+```
+
+### Lightsail load balancer health check (HTTP only)
+
+Lightsail instance health checks **cannot use HTTPS**. Do not point them at
+`https://immigrationonme.com/...`.
+
+Use the app liveness route instead:
+
+| Setting | Value |
+|---------|--------|
+| Protocol | **HTTP** |
+| Path | **`/healthz`** |
+| Port | **3000** (LB → app directly) **or** **80** (LB → Caddy with `/healthz` not redirected) |
+| Success codes | **200** |
+
+- `/healthz` — process liveness only (plain `ok`, no DB, no redirects). Safe for LB.
+- `/api/health` — deeper readiness (`schemaReady`, cron maintenance). Use from the host/cron over HTTP to localhost, not as the Lightsail HTTPS health URL.
+
+Verify on the instance:
+
+```bash
+curl -sS -i http://127.0.0.1:3000/healthz
+# HTTP/1.1 200 … body: ok
 ```
 
 ## Notes

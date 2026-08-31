@@ -4,7 +4,8 @@ import { getCurrentUser, secureCookiesEnabled } from "@/lib/auth";
 import { timingSafeEqualString } from "@/lib/rate-limit";
 
 /**
- * Public liveness probe. No side effects, no session PII.
+ * Deep readiness probe for host ops (not for Lightsail LB — use GET /healthz over HTTP).
+ * GET /api/health — does not require auth for liveness fields.
  * Maintenance jobs run only when Authorization: Bearer <CRON_SECRET>
  * (or ?secret=) matches process.env.CRON_SECRET or setting cron.secret.
  *
