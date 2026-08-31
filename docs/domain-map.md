@@ -5,6 +5,9 @@ Generic evidence modules may keep shared concepts such as facts, events,
 relationships, unknowns, audits, and reconstruction. Anything customer-facing or
 domain-specific must pass through this map.
 
+**Reverse direction (optimize TaxOnMe from current ImmigrationOnMe):**  
+see `docs/TAXONME-OPTIMIZATION-EXECUTION-PLAN.md`.
+
 ## Product boundary
 
 | TaxOnMe primitive | ImmigrationOnMe equivalent |
