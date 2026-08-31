@@ -30,6 +30,8 @@ export default async function FormsPage({
     planKey: plan?.key,
     hasWizard,
   });
+  const { getFormWizardQuota } = await import("@/lib/billing-quotas");
+  const wizardQuota = staff ? null : await getFormWizardQuota(user.id);
 
   const [templates, submissions, scopedCase] = await Promise.all([
     db.uscisFormTemplate.findMany({ where: { isPublished: true }, orderBy: { sortOrder: "asc" } }),
@@ -85,6 +87,20 @@ export default async function FormsPage({
         <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-900">
           The matching form is highlighted. Filling it with the guided wizard is included in Plus.{" "}
           <Link href="/app/billing?upgrade=forms" className="font-semibold underline">Upgrade to Plus →</Link>
+        </div>
+      )}
+
+      {wizardQuota?.hasAccess && wizardQuota.limit !== null && (
+        <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          Plus includes {wizardQuota.limit} form wizard{wizardQuota.limit === 1 ? "" : "s"} this month
+          {wizardQuota.overLimit
+            ? " — limit reached."
+            : ` · ${wizardQuota.remaining} remaining.`}{" "}
+          {wizardQuota.overLimit ? (
+            <Link href="/app/billing?upgrade=forms_limit" className="font-semibold text-lime-800 underline">
+              Upgrade to Pro for unlimited →
+            </Link>
+          ) : null}
         </div>
       )}
 

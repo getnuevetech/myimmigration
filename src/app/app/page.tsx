@@ -17,7 +17,7 @@ import { formatSituationNumber } from "@/lib/situation";
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const [cases, situations, issues, deadlines, notifications, plan] = await Promise.all([
+  const [cases, issues, deadlines, notifications, plan, situationsResult] = await Promise.all([
     db.case.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
@@ -28,25 +28,39 @@ export default async function DashboardPage() {
         notices: { select: { noticeType: true } },
       },
     }),
-    db.situation.findMany({
-      where: { userId: user.id },
-      orderBy: { updatedAt: "desc" },
-      take: 5,
-      select: {
-        id: true,
-        number: true,
-        title: true,
-        status: true,
-        goal: true,
-        originalNarrative: true,
-        updatedAt: true,
-      },
-    }),
     db.issue.findMany({ where: { case: { userId: user.id }, state: { not: "resolved" } } }),
     db.deadline.findMany({ where: { userId: user.id, status: "open", dueDate: { gte: new Date() } }, orderBy: { dueDate: "asc" }, take: 5 }),
     db.notification.findMany({ where: { userId: user.id, readAt: null }, orderBy: { createdAt: "desc" }, take: 5 }),
     getActivePlan(user.id),
+    // Isolate Situation queries — a missing migration must not white-screen /app.
+    db.situation
+      .findMany({
+        where: { userId: user.id },
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          number: true,
+          title: true,
+          status: true,
+          goal: true,
+          originalNarrative: true,
+          updatedAt: true,
+        },
+      })
+      .then((rows) => ({ ok: true as const, rows }))
+      .catch(() => ({ ok: false as const, rows: [] as Array<{
+        id: string;
+        number: number;
+        title: string;
+        status: string;
+        goal: string;
+        originalNarrative: string;
+        updatedAt: Date;
+      }> })),
   ]);
+  const situations = situationsResult.rows;
+  const situationsUnavailable = !situationsResult.ok;
   const views = await loadApprovedViewsByCaseIds(cases.map((item) => item.id));
   const latest = cases[0] ?? null;
   const inquiry = latest
@@ -151,7 +165,12 @@ export default async function DashboardPage() {
                 View all
               </Link>
             </div>
-            {situations.length === 0 ? (
+            {situationsUnavailable ? (
+              <EmptyState
+                title="Situations temporarily unavailable"
+                body="We could not load Situations right now. Cases below still work — try again after a refresh, or contact support if this continues."
+              />
+            ) : situations.length === 0 ? (
               <EmptyState
                 title={situationListCopy.emptyTitle}
                 body={situationListCopy.emptyBody}

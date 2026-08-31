@@ -213,6 +213,7 @@ async function seedPlansAndFeatures() {
     ["forms.download", "Downloadable completed USCIS forms", "forms", 16],
     ["qa.personalized", "Personalized Q&A follow-ups from official material", "assistant", 17],
     ["suggestions.personalized", "Personalized suggested next steps from official material", "assistant", 18],
+    ["filing_plan.build", "Build a Filing Plan from a Situation", "filing", 19],
   ];
   for (const [key, name, category, sortOrder] of features) {
     await db.featureDef.upsert({
@@ -282,11 +283,12 @@ async function seedPlansAndFeatures() {
         "letters.generate": { enabled: true, limit: 3 },
         "deadlines.reminders": { enabled: true, limit: null },
         "vault.storage": { enabled: true, limit: null },
-        "forms.wizard": { enabled: true, limit: null },
+        "filing_plan.build": { enabled: true, limit: 2 },
+        "forms.wizard": { enabled: true, limit: 2 },
         "guide.chatbot": { enabled: true, limit: null },
         "case.report": { enabled: true, limit: 3 },
         "uscis.updates_analysis": { enabled: true, limit: null },
-        "forms.download": { enabled: true, limit: null },
+        "forms.download": { enabled: true, limit: 1 },
       },
     },
     {
@@ -310,6 +312,7 @@ async function seedPlansAndFeatures() {
         "letters.generate": { enabled: true, limit: null },
         "deadlines.reminders": { enabled: true, limit: null },
         "vault.storage": { enabled: true, limit: null },
+        "filing_plan.build": { enabled: true, limit: null },
         "forms.wizard": { enabled: true, limit: null },
         "consultant.referral": { enabled: true, limit: null },
         "guide.chatbot": { enabled: true, limit: null },
@@ -371,6 +374,38 @@ async function seedPlansAndFeatures() {
     await db.subscriptionPlan.updateMany({
       where: { key, description: { in: stale } },
       data: { description },
+    });
+  }
+
+  // Phase Billing — Free explores only; Plus caps Filing Plan / forms; Pro unlimited.
+  const billingMatrix: Array<{
+    planKey: string;
+    featureKey: string;
+    enabled: boolean;
+    limit: number | null;
+  }> = [
+    { planKey: "free", featureKey: "filing_plan.build", enabled: false, limit: null },
+    { planKey: "free", featureKey: "forms.wizard", enabled: false, limit: null },
+    { planKey: "free", featureKey: "forms.download", enabled: false, limit: null },
+    { planKey: "plus", featureKey: "filing_plan.build", enabled: true, limit: 2 },
+    { planKey: "plus", featureKey: "forms.wizard", enabled: true, limit: 2 },
+    { planKey: "plus", featureKey: "forms.download", enabled: true, limit: 1 },
+    { planKey: "pro", featureKey: "filing_plan.build", enabled: true, limit: null },
+    { planKey: "pro", featureKey: "forms.wizard", enabled: true, limit: null },
+    { planKey: "pro", featureKey: "forms.download", enabled: true, limit: null },
+  ];
+  for (const row of billingMatrix) {
+    const plan = await db.subscriptionPlan.findUnique({ where: { key: row.planKey } });
+    if (!plan) continue;
+    await db.planFeature.upsert({
+      where: { planId_featureKey: { planId: plan.id, featureKey: row.featureKey } },
+      update: { enabled: row.enabled, limitValue: row.limit },
+      create: {
+        planId: plan.id,
+        featureKey: row.featureKey,
+        enabled: row.enabled,
+        limitValue: row.limit,
+      },
     });
   }
 }

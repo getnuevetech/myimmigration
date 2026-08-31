@@ -31,8 +31,13 @@ export default async function FillFormPage({
     const { getBoolSetting } = await import("@/lib/settings");
     const { hasFeature } = await import("@/lib/access");
     const { FEATURE_KEYS } = await import("@/lib/constants");
+    const { getFormDownloadQuota } = await import("@/lib/billing-quotas");
     const paidDownloads = await getBoolSetting("forms.paid_downloads", true);
-    const canDownload = !paidDownloads || (await hasFeature(user.id, FEATURE_KEYS.FORMS_DOWNLOAD));
+    const downloadQuota = await getFormDownloadQuota(user.id);
+    const hasDownloadFeature = await hasFeature(user.id, FEATURE_KEYS.FORMS_DOWNLOAD);
+    const canDownload =
+      !paidDownloads || (hasDownloadFeature && !downloadQuota.overLimit);
+    const downloadBlockedByLimit = paidDownloads && hasDownloadFeature && downloadQuota.overLimit;
     const hasOfficialPdf =
       (submission.template.pdfPath || submission.template.pdfSourceUrl) &&
       submission.template.pdfMapJson &&
@@ -56,10 +61,14 @@ export default async function FillFormPage({
               </a>
             ) : (
               <Link
-                href="/app/billing?upgrade=forms-download"
+                href={
+                  downloadBlockedByLimit
+                    ? "/app/billing?upgrade=forms_download_limit"
+                    : "/app/billing?upgrade=forms-download"
+                }
                 className="rounded-lg bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700"
               >
-                🔒 Unlock download
+                {downloadBlockedByLimit ? "Upgrade to Pro for more downloads" : "Unlock download"}
               </Link>
             )
           }
@@ -69,8 +78,24 @@ export default async function FillFormPage({
         </div>
         {!canDownload && (
           <div className="mb-4 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
-            Your completed form is saved. Downloading a print-ready copy is included in higher plans —{" "}
-            <Link href="/app/billing?upgrade=forms-download" className="font-semibold underline">see plans</Link>.
+            {downloadBlockedByLimit ? (
+              <>
+                Plus includes {downloadQuota.limit} completed-form download
+                {downloadQuota.limit === 1 ? "" : "s"} per month.{" "}
+                <Link href="/app/billing?upgrade=forms_download_limit" className="font-semibold underline">
+                  Upgrade to Pro
+                </Link>{" "}
+                for unlimited downloads.
+              </>
+            ) : (
+              <>
+                Your completed form is saved. Downloading a print-ready copy is included in Plus —{" "}
+                <Link href="/app/billing?upgrade=forms-download" className="font-semibold underline">
+                  see plans
+                </Link>
+                .
+              </>
+            )}
           </div>
         )}
         <Card>
