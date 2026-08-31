@@ -2,18 +2,22 @@ import { NextResponse } from "next/server";
 import { trackTikTokEvent, type TikTokStandardEvent } from "@/lib/tiktok-events";
 
 const ALLOWED = new Set<TikTokStandardEvent>([
+  "Pageview",
   "ViewContent",
   "Search",
   "Contact",
   "ClickButton",
   "AddToWishlist",
+  "AddToCart",
+  "InitiateCheckout",
+  "CompletePayment",
   "CompleteRegistration",
   "Lead",
   "SubmitForm",
 ]);
 
 /**
- * Browser → server bridge for Events API (ViewContent / ClickButton).
+ * Browser → server bridge for Events API (page/commerce funnel + CTAs).
  * Does not accept email/phone from the client (server actions hash those).
  */
 export async function POST(request: Request) {
@@ -34,6 +38,8 @@ export async function POST(request: Request) {
     contentType: typeof body.contentType === "string" ? body.contentType.slice(0, 40) : undefined,
     contentName: typeof body.contentName === "string" ? body.contentName.slice(0, 200) : undefined,
     searchString: typeof body.searchString === "string" ? body.searchString.slice(0, 500) : undefined,
+    value: typeof body.value === "number" ? body.value : undefined,
+    currency: typeof body.currency === "string" ? body.currency.slice(0, 8) : undefined,
   });
 
   return NextResponse.json({ ok: true });

@@ -3,6 +3,7 @@
 import { useState, useActionState } from "react";
 import { subscribeAction } from "@/actions/billing";
 import { SubmitButton } from "./action-form";
+import { trackTikTokCommerceBrowser } from "@/components/tiktok-click-id";
 
 type Plan = {
   id: string;
@@ -90,7 +91,28 @@ export function PlanPicker({
                   </li>
                 ))}
               </ul>
-              <form action={formAction} className="mt-5">
+              <form
+                action={formAction}
+                className="mt-5"
+                onSubmit={() => {
+                  if (price <= 0) return;
+                  const value = price / 100;
+                  trackTikTokCommerceBrowser("AddToCart", {
+                    contentId: `plan_${plan.id}`,
+                    contentName: plan.name,
+                    value,
+                    currency: "USD",
+                    eventId: `cart-${plan.id}-${interval}`,
+                  });
+                  trackTikTokCommerceBrowser("InitiateCheckout", {
+                    contentId: `plan_${plan.id}`,
+                    contentName: plan.name,
+                    value,
+                    currency: "USD",
+                    eventId: `checkout-${plan.id}-${interval}`,
+                  });
+                }}
+              >
                 <input type="hidden" name="planId" value={plan.id} />
                 <input type="hidden" name="interval" value={interval} />
                 {isCurrent ? (

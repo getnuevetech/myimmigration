@@ -59,12 +59,16 @@ export async function POST(request: Request) {
         data: { status: "succeeded" },
       });
       const { activateSubscription } = await import("@/lib/payments");
+      const amountCents =
+        typeof session.amount_total === "number" ? session.amount_total : undefined;
       await activateSubscription({
         userId,
         planId,
         interval: interval === "yearly" ? "yearly" : "monthly",
         gateway: "stripe",
         gatewayRef: String(session.subscription ?? session.id),
+        amountCents,
+        currency: String(session.currency || "usd").toUpperCase(),
       });
     }
   }
