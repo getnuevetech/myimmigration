@@ -152,6 +152,18 @@ export async function askQuestionAction(_prev: ActionState, formData: FormData):
 
   await db.qaMessage.create({ data: { threadId: thread.id, role: "assistant", content: answer } });
 
+  const { trackTikTokEvent } = await import("@/lib/tiktok-events");
+  void trackTikTokEvent({
+    event: "Search",
+    eventId: `qa-${thread.id}-${Date.now()}`,
+    email: user?.email,
+    externalId: user?.id,
+    searchString: question,
+    contentId: "qa_search",
+    contentName: "Immigration Q&A",
+    contentType: "product",
+  });
+
   if (!threadId) redirect(user ? `/app/qa/${thread.id}` : `/start/qa?thread=${thread.id}`);
   revalidatePath(`/app/qa/${thread.id}`);
   revalidatePath("/app/qa");

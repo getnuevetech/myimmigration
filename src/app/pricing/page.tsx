@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { SiteHeader, SiteFooter } from "@/components/site-nav";
 import { Card, CardBody, ButtonLink, Badge } from "@/components/ui";
 import { PUBLIC_PRICING_INTRO } from "@/lib/goal-public";
+import { TikTokViewContent } from "@/components/tiktok-view-content";
 
 export const metadata = { title: "Pricing" };
 
@@ -17,6 +18,7 @@ export default async function PricingPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <TikTokViewContent contentId="pricing" contentName="Pricing" />
       <SiteHeader />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-16">
         <div className="text-center">

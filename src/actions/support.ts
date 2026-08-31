@@ -114,6 +114,16 @@ export async function createTicketAction(_prev: ActionState, formData: FormData)
     `[${formatTicketNumber(ticket.number)}] We received your ticket: ${ticket.subject}`,
     `Hi ${user.firstName || ""},\n\nYour ${ticket.category === "tech_support" ? "tech support" : "customer service"} ticket ${formatTicketNumber(ticket.number)} has been created:\n\n"${body.slice(0, 500)}"\n\nWe'll reply as soon as possible. Track it here: ${await ticketUrl(`/app/support/${ticket.id}`)}`,
   );
+  const { trackTikTokEventBeforeRedirect } = await import("@/lib/tiktok-events");
+  await trackTikTokEventBeforeRedirect({
+    event: "Contact",
+    eventId: `ticket-${ticket.id}`,
+    email: user.email,
+    externalId: user.id,
+    contentId: "support_ticket",
+    contentName: "Support ticket",
+    contentType: "product",
+  });
   redirect(`/app/support/${ticket.id}?created=1`);
 }
 
