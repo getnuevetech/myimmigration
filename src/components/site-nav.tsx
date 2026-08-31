@@ -3,6 +3,7 @@ import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { getSetting } from "@/lib/settings";
 import { db } from "@/lib/db";
 import { ButtonLink } from "./ui";
+import { TikTokCtaLink } from "./tiktok-cta-link";
 
 export async function SiteHeader() {
   const [appName, user] = await Promise.all([getSetting("app.name", "ImmigrationOnMe"), getCurrentUser()]);
@@ -32,7 +33,14 @@ export async function SiteHeader() {
           ) : (
             <>
               <ButtonLink href="/login" variant="ghost" className="rounded-full">Sign in</ButtonLink>
-              <ButtonLink href="/start" className="rounded-full">Start free →</ButtonLink>
+              <TikTokCtaLink
+                href="/start"
+                contentName="Start free"
+                contentId="header_start_free"
+                className="inline-flex items-center justify-center rounded-full bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700"
+              >
+                Start free →
+              </TikTokCtaLink>
             </>
           )}
         </div>

@@ -106,6 +106,16 @@ export async function GET(request: Request) {
     });
     const { sendSystemMessage } = await import("@/lib/messaging");
     await sendSystemMessage("account_created", user, { link: "/app" });
+    const { trackTikTokEventBeforeRedirect } = await import("@/lib/tiktok-events");
+    await trackTikTokEventBeforeRedirect({
+      event: "CompleteRegistration",
+      eventId: `reg-google-${user.id}`,
+      email: user.email,
+      externalId: user.id,
+      contentId: "google_register",
+      contentName: "Google account registration",
+      contentType: "product",
+    });
   } else if (!user.googleId) {
     await db.user.update({ where: { id: user.id }, data: { googleId: info.id } });
   }

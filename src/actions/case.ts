@@ -97,6 +97,16 @@ export async function startIntakeAction(_prev: ActionState, formData: FormData):
         assistantReply: answer,
         files,
       });
+      const { trackTikTokEventBeforeRedirect } = await import("@/lib/tiktok-events");
+      await trackTikTokEventBeforeRedirect({
+        event: "Lead",
+        eventId: `sit-${created.id}`,
+        email: user?.email,
+        externalId: user?.id,
+        contentId: "situation_start",
+        contentName: "Situation intake",
+        contentType: "product",
+      });
       redirect(created.userId ? `/app/situations/${created.id}` : `/start/situation?id=${created.id}`);
     }
 
@@ -472,6 +482,16 @@ export async function createOptionsCaseFromQaAction(_prev: ActionState, formData
       await logSystem("error", "analysis", "Background options-review analysis from Q&A failed", String(err));
       await db.case.update({ where: { id: c.id }, data: { status: "analyzed" } }).catch(() => null);
     }
+  });
+  const { trackTikTokEventBeforeRedirect } = await import("@/lib/tiktok-events");
+  await trackTikTokEventBeforeRedirect({
+    event: "AddToWishlist",
+    eventId: `opts-${c.id}`,
+    email: user.email,
+    externalId: user.id,
+    contentId: "options_review_save",
+    contentName: "Saved options review",
+    contentType: "product",
   });
   redirect(user ? `/app/cases/${c.id}` : `/start/result?case=${c.id}`);
 }

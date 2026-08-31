@@ -132,5 +132,15 @@ export async function requestConsultantMatchAction(_prev: ActionState, formData:
 
   revalidatePath("/app/consultants");
   revalidatePath("/consultant");
+  const { trackTikTokEventBeforeRedirect } = await import("@/lib/tiktok-events");
+  await trackTikTokEventBeforeRedirect({
+    event: "Lead",
+    eventId: `match-${assignment.id}`,
+    email: user.email,
+    externalId: user.id,
+    contentId: "consultant_match",
+    contentName: "Professional match request",
+    contentType: "product",
+  });
   redirect(`/app/consultants?requested=${assignment.id}`);
 }

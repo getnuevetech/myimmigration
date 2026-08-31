@@ -84,6 +84,17 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
 
   const { sendSystemMessage } = await import("@/lib/messaging");
   await sendSystemMessage("account_created", user, { link: dest.startsWith("/app") ? dest : "/app" });
+  const { trackTikTokEventBeforeRedirect } = await import("@/lib/tiktok-events");
+  await trackTikTokEventBeforeRedirect({
+    event: "CompleteRegistration",
+    eventId: `reg-${user.id}`,
+    email: user.email,
+    phone: user.phone || undefined,
+    externalId: user.id,
+    contentId: asConsultant ? "consultant_register" : "user_register",
+    contentName: asConsultant ? "Consultant registration" : "Account registration",
+    contentType: "product",
+  });
   redirect(dest);
 }
 

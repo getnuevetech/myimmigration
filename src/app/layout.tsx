@@ -4,6 +4,7 @@ import { Plus_Jakarta_Sans, Playfair_Display, Geist_Mono } from "next/font/googl
 import "./globals.css";
 import { getSetting, getSettingsMap } from "@/lib/settings";
 import { TikTokPixel } from "@/components/tiktok-pixel";
+import { TikTokClickIdCapture } from "@/components/tiktok-click-id";
 
 const sans = Plus_Jakarta_Sans({ variable: "--font-geist-sans", subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 const serif = Playfair_Display({ variable: "--font-playfair", subsets: ["latin"], style: ["normal", "italic"], weight: ["400", "500", "600", "700", "800", "900"] });
@@ -39,6 +40,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     <html lang="en">
       <body className={`${sans.variable} ${serif.variable} ${geistMono.variable} font-sans`} style={fontStyle}>
         <TikTokPixel pixelId={tiktokPixelId} />
+        <TikTokClickIdCapture />
         {children}
       </body>
     </html>
