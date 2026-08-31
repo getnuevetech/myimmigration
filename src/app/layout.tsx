@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { Plus_Jakarta_Sans, Playfair_Display, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { getSetting, getSettingsMap } from "@/lib/settings";
+import { TikTokPixel } from "@/components/tiktok-pixel";
 
 const sans = Plus_Jakarta_Sans({ variable: "--font-geist-sans", subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 const serif = Playfair_Display({ variable: "--font-playfair", subsets: ["latin"], style: ["normal", "italic"], weight: ["400", "500", "600", "700", "800", "900"] });
@@ -24,7 +25,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const fonts = await getSettingsMap(["font.body", "font.heading", "font.mono"]);
+  const [fonts, tiktokPixelId] = await Promise.all([
+    getSettingsMap(["font.body", "font.heading", "font.mono"]),
+    getSetting("analytics.tiktok_pixel_id", "DAASLUJC77U47UVQELH0"),
+  ]);
   const fontStyle = {
     "--font-body": fonts["font.body"] || defaultBodyFont,
     "--font-heading": fonts["font.heading"] || defaultHeadingFont,
@@ -33,7 +37,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     <html lang="en">
-      <body className={`${sans.variable} ${serif.variable} ${geistMono.variable} font-sans`} style={fontStyle}>{children}</body>
+      <body className={`${sans.variable} ${serif.variable} ${geistMono.variable} font-sans`} style={fontStyle}>
+        <TikTokPixel pixelId={tiktokPixelId} />
+        {children}
+      </body>
     </html>
   );
 }
