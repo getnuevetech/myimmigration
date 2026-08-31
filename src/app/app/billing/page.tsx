@@ -7,6 +7,7 @@ import { PlanPicker } from "@/components/plan-picker";
 import { PUBLIC_BILLING_SUBTITLE } from "@/lib/goal-public";
 import { BILLING_REPORT_OVERAGE, billingReportReturn } from "@/lib/goal-chrome";
 import { matchInputFromCase } from "@/lib/goal-versions";
+import { TikTokPaymentSuccess } from "@/components/tiktok-commerce-cta";
 
 export const metadata = { title: "Plan & billing" };
 
@@ -50,9 +51,22 @@ export default async function BillingPage({
     <div>
       <PageHeader title="Plan & billing" subtitle={PUBLIC_BILLING_SUBTITLE} />
       {(subscribed || justActivated) && (
-        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Your plan is active. Enjoy your new features!
-        </div>
+        <>
+          {currentPlan && (
+            <TikTokPaymentSuccess
+              planId={currentPlan.id}
+              planName={currentPlan.name}
+              valueUsd={
+                ((subscription?.interval === "yearly"
+                  ? plans.find((p) => p.id === currentPlan.id)?.priceYearlyCents
+                  : plans.find((p) => p.id === currentPlan.id)?.priceMonthlyCents) ?? 0) / 100
+              }
+            />
+          )}
+          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Your plan is active. Enjoy your new features!
+          </div>
+        </>
       )}
       {pending && !justActivated && (
         <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">

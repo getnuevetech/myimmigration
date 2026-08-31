@@ -3,6 +3,7 @@ import { SiteHeader, SiteFooter } from "@/components/site-nav";
 import { Card, CardBody, ButtonLink, Badge } from "@/components/ui";
 import { PUBLIC_PRICING_INTRO } from "@/lib/goal-public";
 import { TikTokViewContent } from "@/components/tiktok-view-content";
+import { TikTokChoosePlanLink } from "@/components/tiktok-commerce-cta";
 
 export const metadata = { title: "Pricing" };
 
@@ -75,13 +76,21 @@ export default async function PricingPage() {
                     ))}
                 </ul>
                 <div className="mt-6">
-                  <ButtonLink
-                    href={plan.priceMonthlyCents === 0 ? "/start" : `/app/billing?plan=${plan.id}`}
-                    variant={plan.badge ? "primary" : "secondary"}
-                    className="w-full"
-                  >
-                    {plan.priceMonthlyCents === 0 ? "Start free" : `Choose ${plan.name}`}
-                  </ButtonLink>
+                  {plan.priceMonthlyCents === 0 ? (
+                    <ButtonLink href="/start" variant={plan.badge ? "primary" : "secondary"} className="w-full">
+                      Start free
+                    </ButtonLink>
+                  ) : (
+                    <TikTokChoosePlanLink
+                      href={`/app/billing?plan=${plan.id}`}
+                      planId={plan.id}
+                      planName={plan.name}
+                      valueUsd={monthly / 100}
+                      variant={plan.badge ? "primary" : "secondary"}
+                    >
+                      Choose {plan.name}
+                    </TikTokChoosePlanLink>
+                  )}
                 </div>
               </CardBody>
             </Card>

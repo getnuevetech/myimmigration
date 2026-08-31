@@ -8,11 +8,15 @@ export const TIKTOK_TOKEN_SETTING = "analytics.tiktok_access_token";
 export const TTCLID_COOKIE = "ttclid";
 
 export type TikTokStandardEvent =
+  | "Pageview"
   | "ViewContent"
   | "Search"
   | "Contact"
   | "ClickButton"
   | "AddToWishlist"
+  | "AddToCart"
+  | "InitiateCheckout"
+  | "CompletePayment"
   | "CompleteRegistration"
   | "Lead"
   | "SubmitForm";

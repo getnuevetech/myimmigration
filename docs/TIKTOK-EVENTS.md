@@ -24,6 +24,7 @@ Implementation: `src/lib/tiktok-events.ts`
 
 | TikTok event | When we fire it |
 | --- | --- |
+| **Pageview** | Every page (`ttq.page()` + Events API mirror) |
 | **ViewContent** | `/pricing`, `/start` (browser + server bridge) |
 | **ClickButton** | Header “Start free →” (and same event_id to Events API) |
 | **Search** | Q&A ask (`askQuestionAction`) |
@@ -31,13 +32,25 @@ Implementation: `src/lib/tiktok-events.ts`
 | **Lead** | Situation intake created; consultant match requested |
 | **AddToWishlist** | “Keep these answers as my options review” |
 | **CompleteRegistration** | Email or Google signup |
+| **AddToCart** | Pricing “Choose {plan}”; PlanPicker submit (paid plans) |
+| **InitiateCheckout** | PlanPicker submit + `subscribeAction` before Stripe/manual charge |
+| **CompletePayment** | `activateSubscription` (TikTok’s Purchase analogue) + billing success page pixel |
 
 Emails / phones / external ids are **SHA-256 hashed** before send. Raw PII is never posted to TikTok.
+
+Browser + server share the same `event_id` for AddToCart / InitiateCheckout so TikTok can dedupe.
+
+### Commerce funnel note
+
+TikTok Events Manager labels the purchase step **Purchase**. The Events API / Pixel standard name is **`CompletePayment`** — that is what we send. Do not send a literal `Purchase` event name.
+
+Without an access token, server events are **skipped** (pixel page views and browser `ttq.track` still work).
 
 ## Verify
 
 - TikTok Events Manager → Test events / diagnostics  
 - Browser network: pixel `ttq` + optional `POST /api/tiktok/event`  
 - Server logs: `[tiktok-events]` warnings if the token is missing or TikTok returns an error  
+- Walk the funnel once after deploy: open `/pricing` → Choose plan → Get plan → confirm success banner  
 
-Without an access token, server events are **skipped** (pixel page views still work).
+Check script: `npx tsx scripts/tiktok-events-api-check.ts`

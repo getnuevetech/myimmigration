@@ -4,6 +4,7 @@ import { PageHeader, Card, CardBody, EmptyState } from "@/components/ui";
 import { PlanPicker } from "@/components/plan-picker";
 import { cancelSubscriptionAction } from "@/actions/billing";
 import { consultantSubscriptionsEnabled, reconcilePendingStripeTransactions } from "@/lib/payments";
+import { TikTokPaymentSuccess } from "@/components/tiktok-commerce-cta";
 
 export const metadata = { title: "Partner plan & billing" };
 
@@ -55,9 +56,22 @@ export default async function ConsultantBillingPage({
         subtitle="An active partner plan is required to accept new client assignments."
       />
       {(subscribed || justActivated) && (
-        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Your partner plan is active — you can accept client assignments.
-        </div>
+        <>
+          {subscription?.plan && subscription.plan.priceMonthlyCents > 0 && (
+            <TikTokPaymentSuccess
+              planId={subscription.planId}
+              planName={subscription.plan.name}
+              valueUsd={
+                (subscription.interval === "yearly"
+                  ? subscription.plan.priceYearlyCents
+                  : subscription.plan.priceMonthlyCents) / 100
+              }
+            />
+          )}
+          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Your partner plan is active — you can accept client assignments.
+          </div>
+        </>
       )}
       {pending && !justActivated && (
         <div className="mb-6 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">

@@ -13,6 +13,8 @@ export async function activateSubscription(opts: {
   gateway: string;
   gatewayRef: string;
   extraDays?: number; // proration credit converted to time
+  amountCents?: number;
+  currency?: string;
 }) {
   const periodEnd = new Date();
   periodEnd.setMonth(periodEnd.getMonth() + (opts.interval === "yearly" ? 12 : 1));
@@ -56,6 +58,23 @@ export async function activateSubscription(opts: {
           body: "Thanks! Your subscription features are unlocked.",
           link: "/app/billing",
         },
+      });
+    }
+    const valueCents =
+      opts.amountCents ??
+      (opts.interval === "yearly" ? plan.priceYearlyCents : plan.priceMonthlyCents);
+    if (valueCents > 0) {
+      const { trackTikTokEvent } = await import("./tiktok-events");
+      void trackTikTokEvent({
+        event: "CompletePayment",
+        eventId: `pay-${opts.userId}-${opts.planId}-${opts.gatewayRef || "manual"}`,
+        email: user.email,
+        externalId: user.id,
+        contentId: `plan_${plan.id}`,
+        contentName: plan.name,
+        contentType: "product",
+        value: valueCents / 100,
+        currency: (opts.currency || "USD").toUpperCase(),
       });
     }
   }
@@ -158,6 +177,8 @@ export async function reconcilePendingStripeTransactions(userId: string): Promis
             interval,
             gateway: "stripe",
             gatewayRef: String(session.subscription ?? session.id),
+            amountCents: tx.amountCents,
+            currency: "USD",
           });
           activated = true;
         }

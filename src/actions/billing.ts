@@ -70,12 +70,39 @@ export async function subscribeAction(_prev: ActionState, formData: FormData): P
     // Manual/dev gateway or free plan: activate immediately, charging only the
     // prorated difference when a credit applies.
     const charge = amountCents === 0 ? 0 : proration.applied ? proration.chargeCents : amountCents;
+    if (amountCents > 0) {
+      const { trackTikTokEventBeforeRedirect } = await import("@/lib/tiktok-events");
+      await trackTikTokEventBeforeRedirect({
+        event: "AddToCart",
+        eventId: `cart-${plan.id}-${interval}`,
+        email: user.email,
+        externalId: user.id,
+        contentId: `plan_${plan.id}`,
+        contentName: plan.name,
+        contentType: "product",
+        value: amountCents / 100,
+        currency: "USD",
+      });
+      await trackTikTokEventBeforeRedirect({
+        event: "InitiateCheckout",
+        eventId: `checkout-${plan.id}-${interval}`,
+        email: user.email,
+        externalId: user.id,
+        contentId: `plan_${plan.id}`,
+        contentName: plan.name,
+        contentType: "product",
+        value: (charge || amountCents) / 100,
+        currency: "USD",
+      });
+    }
     await activateSubscription({
       userId: user.id,
       planId: plan.id,
       interval: interval === "yearly" ? "yearly" : "monthly",
       gateway: gateway?.kind ?? "manual",
       gatewayRef: "",
+      amountCents: charge > 0 ? charge : amountCents,
+      currency: "USD",
     });
     if (charge > 0) {
       await db.paymentTransaction.create({
@@ -162,6 +189,29 @@ export async function subscribeAction(_prev: ActionState, formData: FormData): P
     }
     const session = await res.json();
     await db.paymentTransaction.update({ where: { id: tx.id }, data: { gatewayRef: session.id ?? "" } });
+    const { trackTikTokEventBeforeRedirect } = await import("@/lib/tiktok-events");
+    await trackTikTokEventBeforeRedirect({
+      event: "AddToCart",
+      eventId: `cart-${plan.id}-${interval}`,
+      email: user.email,
+      externalId: user.id,
+      contentId: `plan_${plan.id}`,
+      contentName: plan.name,
+      contentType: "product",
+      value: amountCents / 100,
+      currency: (cfg.currency || "usd").toUpperCase(),
+    });
+    await trackTikTokEventBeforeRedirect({
+      event: "InitiateCheckout",
+      eventId: `checkout-${plan.id}-${interval}`,
+      email: user.email,
+      externalId: user.id,
+      contentId: `plan_${plan.id}`,
+      contentName: plan.name,
+      contentType: "product",
+      value: amountCents / 100,
+      currency: (cfg.currency || "usd").toUpperCase(),
+    });
     redirect(session.url);
   }
 
