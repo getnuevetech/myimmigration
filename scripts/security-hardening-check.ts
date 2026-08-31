@@ -56,6 +56,10 @@ const tickets = read("src/app/api/tickets/files/[id]/route.ts");
 assert(tickets.includes("safeContentType") && tickets.includes("nosniff"), "ticket files must use safe content type");
 const nextCfg = read("next.config.ts");
 assert(nextCfg.includes("Content-Security-Policy") && nextCfg.includes("X-Content-Type-Options"), "security headers required");
+assert(
+  nextCfg.includes("https://analytics.tiktok.com") && nextCfg.includes("https://analytics.tiktokw.us"),
+  "CSP must allow TikTok Pixel script/connect hosts",
+);
 const access = read("src/lib/case-access.ts");
 assert(access.includes("consultantCanAccessClient") && access.includes("resolveOwnedCaseId"), "case ACL helper required");
 const orch = read("src/lib/ai/orchestrator.ts");

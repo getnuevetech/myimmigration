@@ -9,6 +9,8 @@ Already loaded sitewide via `src/components/tiktok-pixel.tsx` (setting `analytic
 
 Landing URLs from TikTok ads should keep `?ttclid=…` — captured into a cookie by `TikTokClickIdCapture`.
 
+**CSP:** `next.config.ts` allows `https://analytics.tiktok.com` and `https://analytics.tiktokw.us` in `script-src`, `connect-src`, and `img-src`. Without that, Pixel Helper reports “No TikTok Pixel detected” even though the base code is present.
+
 ## Events API (server)
 
 1. In TikTok Events Manager → Imm1 → **Generate access token** (copy once; TikTok will not show it again).
