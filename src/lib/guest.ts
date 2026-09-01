@@ -73,11 +73,12 @@ export async function consumeAuthNextCookie(): Promise<string | null> {
   return value;
 }
 
-// Attach all guest data (cases, documents, Q&A) to the newly registered user.
+// Attach all guest data (cases, documents, Q&A, Situations) to the newly registered user.
 export async function claimGuestSession(userId: string): Promise<ClaimedGuestWork | null> {
   const session = await getGuestSession();
   if (!session) return null;
   await db.$transaction([
+    db.situation.updateMany({ where: { guestSessionId: session.id }, data: { userId } }),
     db.case.updateMany({ where: { guestSessionId: session.id }, data: { userId } }),
     db.document.updateMany({ where: { guestSessionId: session.id }, data: { userId } }),
     db.qaThread.updateMany({ where: { guestSessionId: session.id }, data: { userId } }),
@@ -89,7 +90,7 @@ export async function claimGuestSession(userId: string): Promise<ClaimedGuestWor
   const jar = await cookies();
   jar.delete(GUEST_COOKIE);
 
-  const [thread, caseRow] = await Promise.all([
+  const [thread, caseRow, situation] = await Promise.all([
     db.qaThread.findFirst({
       where: { userId, guestSessionId: session.id },
       orderBy: { createdAt: "desc" },
@@ -100,11 +101,17 @@ export async function claimGuestSession(userId: string): Promise<ClaimedGuestWor
       orderBy: { updatedAt: "desc" },
       select: { id: true },
     }),
+    db.situation.findFirst({
+      where: { userId, guestSessionId: session.id },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
+    }),
   ]);
 
   return {
     sessionId: session.id,
     threadId: thread?.id ?? null,
     caseId: caseRow?.id ?? null,
+    situationId: situation?.id ?? null,
   };
 }

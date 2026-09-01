@@ -15,28 +15,35 @@ function read(path: string) {
 {
   assert.equal(sanitizeAuthNext("/app/qa/abc123"), "/app/qa/abc123");
   assert.equal(sanitizeAuthNext("/start/qa?thread=x"), "/start/qa?thread=x");
+  assert.equal(sanitizeAuthNext("/app/billing"), "/app/billing");
   assert.equal(sanitizeAuthNext("https://evil.example/phish"), null);
   assert.equal(sanitizeAuthNext("//evil.example"), null);
   assert.equal(sanitizeAuthNext("/admin"), null);
 
   assert.equal(
     continuePathAfterAuth({
-      claimed: { sessionId: "s", threadId: "t1", caseId: "c1" },
+      claimed: { sessionId: "s", threadId: "t1", caseId: "c1", situationId: "sit1" },
     }),
     "/app/qa/t1",
   );
   assert.equal(
     continuePathAfterAuth({
       next: "/app/cases/c9",
-      claimed: { sessionId: "s", threadId: "t1", caseId: "c1" },
+      claimed: { sessionId: "s", threadId: "t1", caseId: "c1", situationId: null },
     }),
     "/app/cases/c9",
   );
   assert.equal(
     continuePathAfterAuth({
-      claimed: { sessionId: "s", threadId: null, caseId: "c1" },
+      claimed: { sessionId: "s", threadId: null, caseId: "c1", situationId: null },
     }),
     "/app/cases/c1",
+  );
+  assert.equal(
+    continuePathAfterAuth({
+      claimed: { sessionId: "s", threadId: null, caseId: null, situationId: "sit9" },
+    }),
+    "/app/situations/sit9",
   );
 }
 
@@ -48,6 +55,8 @@ function read(path: string) {
   const guest = read("src/lib/guest.ts");
   assert.ok(guest.includes("ClaimedGuestWork"));
   assert.ok(guest.includes("threadId"));
+  assert.ok(guest.includes("situationId"));
+  assert.ok(guest.includes("db.situation.updateMany"));
 
   const startQa = read("src/app/start/qa/page.tsx");
   assert.ok(startQa.includes("/app/qa/"), "signed-in /start/qa must keep thread when owned");
@@ -57,7 +66,9 @@ function read(path: string) {
   assert.ok(qa.includes("register?next="), "register CTA must carry conversation next");
 
   const register = read("src/app/register/page.tsx");
-  assert.ok(register.includes("setAuthNextCookie"));
+  // Must NOT set cookies during RSC render — that crashes /register?next=…
+  assert.ok(!register.includes("setAuthNextCookie"));
+  assert.ok(register.includes("next={next}") || register.includes('next='));
   assert.ok(register.includes("start over") || register.includes("back to this conversation"));
 }
 
