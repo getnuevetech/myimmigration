@@ -29,3 +29,25 @@ Admin analytics AI engine card adds:
 ## Checks
 
 `npm run test:ops-carry` / included in `npm run test:v51` via ops script + phase-b/e updates
+
+---
+
+## 4. Situation Intelligence (Phase SI-6)
+
+**Dashboard / log keys** (institutional only — no narrative PII):
+
+| Event | Target |
+| --- | --- |
+| `full_personalized_analysis_before_fact_orientation` | **0** for underspecified Situations still in interview |
+| `situation_intelligence_interview_ask_count` | Track distribution (target 3–5; max 6) |
+| `situation_intelligence_learning_suppress` | Medical-exam / correction suppressions |
+| `situation_intelligence_learning_boost` | Prefer-key boosts from lessons/corrections |
+| `situation_intelligence_interview_quality_captured` | Fired when interview ready for analysis |
+
+**Regression bans** (enforced by `npm run test:phase-si-6`):
+
+- No I-130 / USC-spouse pathway without Fact Set family basis (Zimbabwe + novel)
+- No medical-exam as next ask
+- No `ready_for_analysis` while a next orientation question remains
+- Complete narratives may stop at 0 asks (`already_sufficient`)
+

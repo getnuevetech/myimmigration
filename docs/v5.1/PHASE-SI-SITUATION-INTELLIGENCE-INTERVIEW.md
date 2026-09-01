@@ -1,11 +1,11 @@
 # Phase SI — Situation Intelligence Interview
 
-**Status:** Phase 0–5 shipped; Phase 6 next  
+**Status:** Phase 0–6 shipped (Situation Intelligence Interview complete)  
 **Date:** 2026-09-01  
-**Revision:** 6 — Phase 5 learning + consultant corrections → director weights  
+**Revision:** 7 — Phase 6 hardening + regression gate + ops telemetry notes  
 **Sequence:** After Phase S Situation workspace; sits in front of Situation pathway presentation and full research  
 **Domain:** Situation / Pipeline A (exploratory personal immigration situations). Case/V5.1 remains government-matter only.  
-**Checks:** `npm run test:phase-si` (includes `test:phase-si-2` … `test:phase-si-5`)
+**Checks:** `npm run test:phase-si` (includes `test:phase-si-2` … `test:phase-si-6`)
 
 ---
 
@@ -405,9 +405,11 @@ Hard ban: customer-facing I-130 / USC-spouse language without a family fact in t
 
 ### Phase 6 — Hardening & regression
 
-- `test:phase-si` gates all fixtures including **novel Situation**  
-- Telemetry dashboards / ops notes  
+- `test:phase-si` / `test:phase-si-6` gates all fixtures including **novel Situation**  
+- Telemetry helpers + ops notes (`docs/v5.1/OPS-CARRY-FORWARDS.md` §4)  
 - Ban regressions: analysis-before-orientation for underspecified Situations; spouse hallucination  
+
+**Exit:** Zimbabwe/Mexico/complete/novel all pass consolidated gate; premature-analysis telemetry stays 0 while orienting.
 
 ---
 
