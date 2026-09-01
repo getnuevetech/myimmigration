@@ -126,6 +126,7 @@ async function seedSettings() {
   // Repair common TaxOnMe leftovers on existing installs without overwriting
   // administrator-customized values that are already immigration-specific.
   await db.setting.updateMany({ where: { key: "app.name", value: { in: ["TaxOnMe", "MyImmigration"] } }, data: { value: "ImmigrationOnMe" } });
+  await db.$executeRaw`UPDATE "Setting" SET value = 'ImmigrationOnMe' WHERE key = 'app.name' AND lower(trim(value)) IN ('taxonme', 'myimmigration')`;
   await db.setting.updateMany({ where: { key: "app.tagline", value: { in: STALE_PUBLIC_TAGLINES } }, data: { value: PUBLIC_TAGLINE } });
   await db.setting.updateMany({ where: { key: "app.tagline", value: { contains: "tax" } }, data: { value: PUBLIC_TAGLINE } });
   await db.setting.updateMany({ where: { key: "home.hero_title", value: { in: STALE_PUBLIC_HERO_TITLES } }, data: { value: PUBLIC_HERO.title } });

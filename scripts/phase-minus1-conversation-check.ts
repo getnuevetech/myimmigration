@@ -115,29 +115,31 @@ function assertCase(message: string, goal = "Full review") {
   assert.equal(intel.answerability.requires_document, false);
 }
 
-// 8) Tax shared contract — options first
+// 8) Out-of-scope tax question — Assistant, not Case engine; no IRS advice
 {
   const intel = runConversationIntelligence({
     message: "I got an IRS letter and can't pay. What can I do?",
     goal: "Understand options",
   });
   assert.equal(intel.route.pipeline, "assistant");
-  assert.ok(intel.intent.domain === "tax_collection" || intel.route.pipeline === "assistant");
+  assert.equal(intel.route.invokes_case_engine, false);
+  assert.equal(intel.intent.domain, "out_of_scope_non_immigration");
 }
 
-// 9) CP503 upload + what is this — Assistant
+// 9) I-797C notice meaning — Assistant (immigration, not tax)
 {
-  const intel = assertAssistant("What is this CP503?", "Explain", 1);
-  const reply = composeAssistantReply(intel, "What is this CP503?");
-  assert.match(reply, /CP503|collection/i);
+  const intel = assertAssistant("What is this I-797C?", "Explain", 1);
+  const reply = composeAssistantReply(intel, "What is this I-797C?");
+  assert.match(reply, /I-797|USCIS/i);
+  assert.doesNotMatch(reply, /\bIRS\b|tax collection|CP503/i);
   assert.equal(intel.route.pipeline, "assistant");
 }
 
-// 10) Build IRS strategy with no filed matter → Situation (not Case engine)
+// 10) Build strategy with no filed matter → Situation (not Case engine)
 {
   const intel = runConversationIntelligence({
-    message: "Build a strategy to resolve all my IRS balances for 2022–2025.",
-    goal: "Resolve all balances",
+    message: "Build a strategy to resolve my immigration situation for the next few years.",
+    goal: "Plan next steps",
   });
   assert.equal(intel.route.invokes_case_engine, false);
   assert.ok(intel.route.workspace === "situation" || intel.route.pipeline === "assistant");

@@ -21,6 +21,23 @@ export function composeAssistantView(
   const sections: AssistantViewSection[] = [];
   const target = intel.question_contract.decision_target;
 
+  // Redirect pure tax/IRS questions (legacy fork topics — not in-product).
+  if (
+    intel.intent.domain === "out_of_scope_non_immigration" ||
+    /\b(irs|cp\s?\d+|tax return|offer in compromise|installment agreement|tax court)\b/i.test(rawMessage)
+  ) {
+    sections.push({
+      type: "paragraph",
+      text: "ImmigrationOnMe helps with U.S. immigration situations, USCIS filings, and immigration-court notices — not IRS tax collection or tax returns.",
+    });
+    sections.push({
+      type: "paragraph",
+      text: "If your question is about immigration status, a USCIS notice, a petition, or living/working in the United States, tell me that immigration detail and I can help from there.",
+    });
+    sections.push({ type: "disclaimer", text: DISCLAIMER });
+    return sections;
+  }
+
   if (intel.strategy.mode === "clarify_first") {
     const ask = intel.need_to_know.find((item) => item.tier === "critical_now");
     sections.push({
@@ -75,10 +92,19 @@ export function composeAssistantView(
         type: "paragraph",
         text: "It is a charging document, not a final removal order by itself. Deadlines, hearing dates, and the allegations listed on the NTA control what happens next.",
       });
-    } else if (/\bcp\s?503\b/i.test(rawMessage)) {
+    } else if (/\bi-?797c?\b/i.test(rawMessage)) {
       sections.push({
         type: "paragraph",
-        text: "An IRS CP503 is a collection reminder notice. It generally means the IRS believes you still owe a balance and is continuing collection contact — it is not the final levy notice by itself.",
+        text: "Form I-797 (including I-797C) is a USCIS notice. Depending on the variant, it can acknowledge a filing, schedule biometrics, request more evidence, or communicate an approval or denial.",
+      });
+      sections.push({
+        type: "paragraph",
+        text: "The notice type, receipt number, and any deadline or appointment date on the letter control what usually comes next.",
+      });
+    } else if (/\b(irs|cp\s?\d+|tax return|levy|offer in compromise)\b/i.test(rawMessage)) {
+      sections.push({
+        type: "paragraph",
+        text: "ImmigrationOnMe helps with U.S. immigration situations and USCIS/immigration-court notices — not IRS tax collection letters. If you have a tax notice, a tax professional or the IRS resources for that notice type are the better place to start.",
       });
     } else {
       sections.push({

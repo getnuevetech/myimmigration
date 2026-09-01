@@ -6,10 +6,10 @@ const EXPLICIT_Q_RE =
 const OPTIONS_RE = /\b(options?|pathways?|paths?|what can i (do|file)|available)\b/i;
 const FILE_FOR_ME_RE = /\b(file|petition|sponsor)\b.*\b(for me|on my behalf)\b|\bcan (my|a) .+\b(file|petition|sponsor)\b/i;
 const NOTICE_MEANING_RE =
-  /\b(what (does|is)|mean|explain)\b.*\b(i-?\d{3}|nta|notice to appear|rfe|noid|cp\d+|irs)\b|\b(i-?862|i-?797|notice to appear)\b.*\b(what|mean)\b/i;
+  /\b(what (does|is)|mean|explain)\b.*\b(i-?\d{3}|nta|notice to appear|rfe|noid|i-?797|uscis)\b|\b(i-?862|i-?797|notice to appear)\b.*\b(what|mean)\b/i;
 const DOCS_NEEDED_RE = /\b(what documents?|which documents?|documents? (do i|needed|required))\b/i;
 const COMPREHENSIVE_RE =
-  /\b(review my entire|entire (immigration|tax) situation|tell me what I should file|build a strategy|complete (case|strategy)|comprehensive (review|analysis)|resolve all my)\b/i;
+  /\b(review my entire|entire immigration situation|tell me what I should file|build a strategy|complete (case|strategy)|comprehensive (review|analysis)|resolve all my)\b/i;
 const STATUS_RE = /\b(status|where is my case|case status|receipt number|biometrics)\b/i;
 const RISK_RE = /\b(risk|deport|removal|arrest|ice|safe to)\b/i;
 

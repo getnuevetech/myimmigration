@@ -12,7 +12,10 @@ import type {
 import { canonicalizeResponseMode } from "./types";
 
 function detectDomain(text: string): string {
-  if (/\b(irs|tax|cp\d+|offer in compromise|installment agreement)\b/i.test(text)) return "tax_collection";
+  // Non-immigration tax/collection topics — detectable but out of product scope.
+  if (/\b(irs|tax return|cp\d+|offer in compromise|installment agreement|tax court)\b/i.test(text)) {
+    return "out_of_scope_non_immigration";
+  }
   if (/\b(i-?862|nta|removal|deport)\b/i.test(text)) return "removal_defense";
   if (/\b(wife|husband|spouse|marriage|i-?130|family)\b/i.test(text)) return "family_based_immigration";
   if (/\b(rfe|noid|i-?797|receipt|uscis)\b/i.test(text)) return "uscis_notice";

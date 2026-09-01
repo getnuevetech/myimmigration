@@ -185,7 +185,7 @@ Execute in order. Each wave: charter doc → implement → `scripts/*-check.ts` 
 
 **Check:** `guest-continuity-check` analogue; assert register CTA paths.
 
-**TaxOnMe note:** If TaxOnMe adds first-class Situations, extend `claimGuestSession` to claim them (ImmigrationOnMe still primarily claims Case / Document / QaThread).
+**TaxOnMe note:** ImmigrationOnMe `claimGuestSession` now claims Situations as well as Case / Document / QaThread — mirror that when TaxOnMe adds first-class Situations.
 
 ---
 

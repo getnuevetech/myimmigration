@@ -59,9 +59,9 @@ export function buildNeedToKnow(opts: {
     });
   }
 
-  if (contract.decision_target === "explain_document_or_notice" && !/\b(i-?\d{3}|cp\d+|nta)\b/i.test(text)) {
+  if (contract.decision_target === "explain_document_or_notice" && !/\b(i-?\d{3}|nta|rfe|noid)\b/i.test(text)) {
     items.push({
-      question: "What is the form or notice number printed at the top (for example I-862 or CP503)?",
+      question: "What is the form or notice number printed at the top (for example I-862 or I-797C)?",
       tier: "critical_now",
       reason: "Identifies which official notice is being explained.",
       changes_branch: true,
