@@ -1,9 +1,13 @@
 import { helpsDecisionTarget } from "./question-contract";
 import type { Answerability, NeedToKnowItem, QuestionContract } from "./types";
+import { narrativeHasUscSpouse } from "@/lib/situation-intelligence";
 
 /**
  * Need-to-Know engine with impact requirement.
  * Only items with changes_branch=true and tier critical_now may be asked now.
+ *
+ * Entry-manner AOS vs consular asks require a family (USC/LPR spouse) basis —
+ * otherwise the question assumes a pathway the customer never described.
  */
 export function buildNeedToKnow(opts: {
   contract: QuestionContract;
@@ -13,13 +17,14 @@ export function buildNeedToKnow(opts: {
   const { contract, message } = opts;
   const text = message.toLowerCase();
   const items: NeedToKnowItem[] = [];
+  const hasFamilySpouse = narrativeHasUscSpouse(message);
 
   const knownEntry =
     /\b(parole|paroled|inspected|admitted|i-?94|without inspection|ewi|entered illegally|crossed)\b/i.test(text);
   const knownRemoval = /\b(removal|deport|nta|i-?862|immigration court|proceedings)\b/i.test(text);
 
   if (contract.decision_target === "identify_available_pathways" || contract.decision_target === "petition_eligibility_overview") {
-    if (!knownEntry && helpsDecisionTarget("entry_manner", contract)) {
+    if (hasFamilySpouse && !knownEntry && helpsDecisionTarget("entry_manner", contract)) {
       items.push({
         question:
           "When you entered, were you inspected by Border Patrol/CBP and released (or paroled/admitted), or did you enter without inspection?",

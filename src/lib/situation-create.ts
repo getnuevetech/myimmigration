@@ -9,10 +9,12 @@ import { saveUpload } from "@/lib/uploads";
 import { situationTitleFromNarrative } from "@/lib/situation";
 import type { ConversationIntelligence } from "@/lib/conversation";
 import type { ActionState } from "@/actions/auth";
+import { reconcileSituationFacts, serializeFactSet } from "@/lib/situation-intelligence";
 
 /**
  * Persist a Situation workspace (Phase S Option B).
  * Never runs V5.1 Case analysis.
+ * Phase SI-1: persists reconciled Situation Fact Set into knownFactsJson.
  */
 export async function createSituationFromIntelligence(opts: {
   situation: string;
@@ -24,6 +26,8 @@ export async function createSituationFromIntelligence(opts: {
   const user = await getCurrentUser();
   const guest = user ? null : await getOrCreateGuestSession();
   const files = opts.files ?? [];
+
+  const factSet = reconcileSituationFacts(opts.situation, opts.goal);
 
   const row = await db.situation.create({
     data: {
@@ -37,7 +41,7 @@ export async function createSituationFromIntelligence(opts: {
       goal: opts.goal,
       questionContractJson: JSON.stringify(opts.intel.question_contract),
       currentDecisionTarget: opts.intel.question_contract.decision_target,
-      knownFactsJson: "[]",
+      knownFactsJson: serializeFactSet(factSet),
       currentPathwaysJson: JSON.stringify(
         opts.intel.strategy.branches.map((b) => ({ id: b.id, condition: b.condition, explanation: b.explanation })),
       ),

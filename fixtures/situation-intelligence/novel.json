@@ -1,0 +1,10 @@
+{
+  "id": "si-novel-untemplated",
+  "narrative": "I inherited a small vineyard in Portugal last year and a U.S. investor friend suggested I look into immigration options that involve investment, but I am not sure that fits me. I also briefly studied in Boston on an F-1 ten years ago.",
+  "goal": "See whether any path fits",
+  "expect": {
+    "no_family_basis": true,
+    "must_not_require_fixture_template": true,
+    "activated_may_include": ["investment", "education", "employment"]
+  }
+}

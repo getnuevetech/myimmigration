@@ -1,8 +1,12 @@
 import type { AnswerBranch, NeedToKnowItem, QuestionContract } from "./types";
+import { narrativeHasUscSpouse } from "@/lib/situation-intelligence";
 
 /**
  * BRANCH_BEFORE_CLARIFY: when a material unknown creates a manageable set of
  * legally meaningful branches, explain them before asking.
+ *
+ * Family I-130 / AOS vs consular branches require a USC/LPR spouse fact in the
+ * narrative — never invent a spouse from a live/work or humanitarian story.
  */
 export function analyzeBranches(opts: {
   contract: QuestionContract;
@@ -11,9 +15,11 @@ export function analyzeBranches(opts: {
 }): { branch_before_clarify: boolean; branches: AnswerBranch[] } {
   const { contract, message, askNow } = opts;
   const text = message.toLowerCase();
+  const hasFamilySpouse = narrativeHasUscSpouse(message);
   const entryUnknown = askNow.some((item) => item.branches_affected.includes("adjustment_of_status"));
 
   if (
+    hasFamilySpouse &&
     (contract.decision_target === "identify_available_pathways" ||
       contract.decision_target === "petition_eligibility_overview") &&
     entryUnknown &&
@@ -38,7 +44,7 @@ export function analyzeBranches(opts: {
     };
   }
 
-  if (contract.decision_target === "petition_eligibility_overview" && /\busc|u\.?s\.?\s*citizen|citizen wife|citizen husband|citizen spouse\b/i.test(text)) {
+  if (contract.decision_target === "petition_eligibility_overview" && hasFamilySpouse) {
     return {
       branch_before_clarify: true,
       branches: [
