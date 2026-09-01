@@ -56,3 +56,17 @@ export {
   type SituationAnalysisResult,
 } from "./analysis";
 export { ensureSituationAnalysisPersisted } from "./persist-analysis";
+export {
+  canonicalizeLearningKey,
+  emptyLearningHints,
+  mergeLearningHints,
+  hintsFromConsultantCorrection,
+  hintsFromProductionAskHints,
+  seededSituationLearningHints,
+  applyLearningHints,
+  buildInterviewQualityCapture,
+  mergeInterviewQualityIntoLearningJson,
+  type SituationLearningHints,
+  type ConsultantCorrectionHintInput,
+  type InterviewQualityCapture,
+} from "./learning";

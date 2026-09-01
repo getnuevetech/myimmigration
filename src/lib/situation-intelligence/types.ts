@@ -100,6 +100,8 @@ export type QuestionCandidate = {
   urgency_impact: number;
   customer_burden: number;
   pre_screen_boost: number;
+  /** Phase SI-5 — boost from corrections / negative lessons (prefer_keys). */
+  learning_boost?: number;
   ask: boolean;
   level: 1 | 2;
   customer_wording: string;
@@ -121,6 +123,9 @@ export const SI_TELEMETRY = {
   interviewAskCount: "situation_intelligence_interview_ask_count",
   skipAsResolved: "situation_intelligence_skip_as_resolved",
   preScreenBoost: "situation_intelligence_pre_screen_boost",
+  learningBoost: "situation_intelligence_learning_boost",
+  learningSuppress: "situation_intelligence_learning_suppress",
+  interviewQualityCaptured: "situation_intelligence_interview_quality_captured",
 } as const;
 
 export type DecomposeClaim = {
