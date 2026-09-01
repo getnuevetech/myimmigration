@@ -35,8 +35,9 @@ export { buildResponseStrategy } from "./response-strategy";
 export { routeConversation, mayPromoteAssistantToCase } from "./conversation-router";
 export { detectGovernmentMatter } from "./government-matter";
 export { buildLearningEvent, assertNoPrematureSchemaAsk } from "./learning-events";
-export { composeAssistantReply, composeAssistantView, decisionFocusLabel } from "./assistant-composer";
+export { composeAssistantReply, composeAssistantView } from "./assistant-composer";
 export type { AssistantViewSection } from "./assistant-composer";
+export { decisionFocusLabel } from "./decision-focus";
 export { canonicalizeResponseMode, invokesCaseEngine } from "./types";
 export {
   MEDICAL_EXAM_NEGATIVE_LESSON,
