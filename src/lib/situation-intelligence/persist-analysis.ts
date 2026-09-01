@@ -8,6 +8,10 @@ import {
 } from "./analysis";
 import { parseFactSet, reconcileSituationFacts, serializeFactSet } from "./reconcile";
 import { emptyInterviewState, runQuestionDirector } from "./question-director";
+import {
+  buildInterviewQualityCapture,
+  mergeInterviewQualityIntoLearningJson,
+} from "./learning";
 import type { SituationFactSet } from "./types";
 
 function interviewFrom(set: SituationFactSet) {
@@ -58,11 +62,21 @@ export async function ensureSituationAnalysisPersisted(
     },
   };
 
+  const quality = buildInterviewQualityCapture({
+    asked_candidates: director.interview.asked_candidates,
+    ask_count: director.interview.asked_count,
+    stop_reason: director.interview.stop_reason,
+    ready_for_analysis: true,
+    hints: director.learning_hints,
+    ranked: director.ranked,
+  });
+
   await db.situation.update({
     where: { id: situationId },
     data: {
       knownFactsJson: serializeFactSet(stoppedInterview),
       intelligenceJson: mergeAnalysisIntoIntelligenceJson(row.intelligenceJson, analysis),
+      learningEventJson: mergeInterviewQualityIntoLearningJson(row.learningEventJson, quality),
       assistantReply: analysisToAssistantReply(analysis),
       currentPathwaysJson: analysisToPathwaysJson(analysis),
       currentRisksJson: JSON.stringify({

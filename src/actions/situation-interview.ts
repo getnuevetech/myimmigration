@@ -5,7 +5,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { getOrCreateGuestSession } from "@/lib/guest";
 import {
   applyInterviewAnswer,
+  buildInterviewQualityCapture,
   emptyInterviewState,
+  mergeInterviewQualityIntoLearningJson,
   parseFactSet,
   reconcileSituationFacts,
   runQuestionDirector,
@@ -99,9 +101,26 @@ export async function answerSituationInterviewAction(
   const result = runQuestionDirector(applied.factSet, applied.interview);
   const persisted = withInterview(applied.factSet, result.interview);
 
+  const quality = result.ready_for_analysis
+    ? buildInterviewQualityCapture({
+        asked_candidates: result.interview.asked_candidates,
+        ask_count: result.interview.asked_count,
+        stop_reason: result.interview.stop_reason,
+        ready_for_analysis: true,
+        hints: result.learning_hints,
+        ranked: result.ranked,
+      })
+    : null;
+
   await db.situation.update({
     where: { id: row.id },
-    data: { knownFactsJson: serializeFactSet(persisted), updatedAt: new Date() },
+    data: {
+      knownFactsJson: serializeFactSet(persisted),
+      ...(quality
+        ? { learningEventJson: mergeInterviewQualityIntoLearningJson(row.learningEventJson, quality) }
+        : {}),
+      updatedAt: new Date(),
+    },
   });
 
   if (result.ready_for_analysis) {

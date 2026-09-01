@@ -14,6 +14,12 @@ import {
   hasUscOrLprSpouseBasis,
 } from "./reconcile";
 import { runLightCountryPreScreen } from "./pre-screen";
+import {
+  applyLearningHints,
+  mergeLearningHints,
+  seededSituationLearningHints,
+  type SituationLearningHints,
+} from "./learning";
 
 export type InterviewState = {
   asked_count: number;
@@ -28,6 +34,8 @@ export type DirectorResult = {
   interview: InterviewState;
   signals: PreScreenSignal[];
   ready_for_analysis: boolean;
+  /** Phase SI-5 — hints applied this pass (seeded + optional production/correction). */
+  learning_hints: SituationLearningHints;
 };
 
 function isResolved(set: SituationFactSet, key: string): boolean {
@@ -45,7 +53,7 @@ export function scoreQuestionValue(c: QuestionCandidate): number {
   if (c.known || !c.dependency_satisfied) return 0;
   const base =
     (c.pathway_discrimination + c.jurisdiction_impact + c.eligibility_impact + c.urgency_impact) / 4;
-  const pos = Math.min(1, base + c.pre_screen_boost);
+  const pos = Math.min(1, base + c.pre_screen_boost + (c.learning_boost ?? 0));
   const neg = c.customer_burden * 0.6;
   return Math.max(0, Math.min(1, pos - neg));
 }
@@ -57,7 +65,7 @@ function boostFor(signals: PreScreenSignal[], factNeeded: string): number {
 }
 
 function candidate(partial: Omit<QuestionCandidate, "ask"> & { ask?: boolean }): QuestionCandidate {
-  const c: QuestionCandidate = { ask: true, ...partial };
+  const c: QuestionCandidate = { ask: true, learning_boost: 0, ...partial };
   const value = scoreQuestionValue(c);
   c.ask = c.ask && !c.known && c.dependency_satisfied && value >= FIRST_ANALYSIS_QUESTION_VALUE_THRESHOLD;
   return c;
@@ -315,14 +323,31 @@ export function rankQuestionCandidates(candidates: QuestionCandidate[]): Questio
 
 /**
  * Deterministic Question Director — next ask or stop.
+ * Phase SI-5: always applies seeded learning hints; optional correction/production hints via opts.
  */
 export function runQuestionDirector(
   factSet: SituationFactSet,
   interview: InterviewState,
-  opts?: { mockSignals?: PreScreenSignal[] },
+  opts?: { mockSignals?: PreScreenSignal[]; learningHints?: SituationLearningHints },
 ): DirectorResult {
   const signals = runLightCountryPreScreen(factSet, { mockSignals: opts?.mockSignals });
-  const candidates = buildQuestionCandidates(factSet, signals, interview.asked_candidates);
+  const learning_hints = mergeLearningHints(
+    seededSituationLearningHints(factSet),
+    opts?.learningHints ?? { suppress_keys: [], prefer_keys: [], negative_lesson_ids: [] },
+  );
+  const candidates = applyLearningHints(
+    buildQuestionCandidates(factSet, signals, interview.asked_candidates),
+    learning_hints,
+  );
+  // Re-evaluate ask gate after learning suppress/prefer
+  for (const c of candidates) {
+    if (learning_hints.suppress_keys.includes(c.candidate) || /suppressed by negative lesson/i.test(c.reason)) {
+      c.ask = false;
+      continue;
+    }
+    const value = scoreQuestionValue(c);
+    c.ask = !c.known && c.dependency_satisfied && value >= FIRST_ANALYSIS_QUESTION_VALUE_THRESHOLD;
+  }
   const ranked = rankQuestionCandidates(candidates);
   const askable = ranked.filter((c) => c.ask && scoreQuestionValue(c) >= FIRST_ANALYSIS_QUESTION_VALUE_THRESHOLD);
 
@@ -332,7 +357,7 @@ export function runQuestionDirector(
       stopped: true,
       stop_reason: "max_questions",
     };
-    return { next: null, ranked, interview: stopped, signals, ready_for_analysis: true };
+    return { next: null, ranked, interview: stopped, signals, ready_for_analysis: true, learning_hints };
   }
 
   if (askable.length === 0) {
@@ -341,7 +366,7 @@ export function runQuestionDirector(
       stopped: true,
       stop_reason: interview.asked_count === 0 ? "already_sufficient" : "threshold",
     };
-    return { next: null, ranked, interview: stopped, signals, ready_for_analysis: true };
+    return { next: null, ranked, interview: stopped, signals, ready_for_analysis: true, learning_hints };
   }
 
   const next = askable[0]!;
@@ -351,6 +376,7 @@ export function runQuestionDirector(
     interview: { ...interview, stopped: false },
     signals,
     ready_for_analysis: false,
+    learning_hints,
   };
 }
 

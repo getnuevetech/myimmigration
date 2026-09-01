@@ -1,11 +1,11 @@
 # Phase SI — Situation Intelligence Interview
 
-**Status:** Phase 0–4 shipped; Phase 5–6 next  
+**Status:** Phase 0–5 shipped; Phase 6 next  
 **Date:** 2026-09-01  
-**Revision:** 5 — Phase 4 research + dual reasoners + SOL + consultant brief  
+**Revision:** 6 — Phase 5 learning + consultant corrections → director weights  
 **Sequence:** After Phase S Situation workspace; sits in front of Situation pathway presentation and full research  
 **Domain:** Situation / Pipeline A (exploratory personal immigration situations). Case/V5.1 remains government-matter only.  
-**Checks:** `npm run test:phase-si` (includes `test:phase-si-2` … `test:phase-si-4`)
+**Checks:** `npm run test:phase-si` (includes `test:phase-si-2` … `test:phase-si-5`)
 
 ---
 
@@ -398,8 +398,10 @@ Hard ban: customer-facing I-130 / USC-spouse language without a family fact in t
 
 ### Phase 5 — Learning + consultant corrections
 
-- Map corrections → director weights / negative lessons  
-- Experience capture for interview quality  
+- Map corrections → director weights / negative lessons (`applyLearningHints`, seeded `NEG-FAM-ENTRY-MEDICAL-001`)  
+- Experience capture for interview quality (`si_interview_quality` on `learningEventJson`)  
+
+**Exit:** medical-exam stays suppressed; Mexico spouse prefers entry manner via institutional learning; interview quality capture merges without wiping L0 Experience.
 
 ### Phase 6 — Hardening & regression
 
