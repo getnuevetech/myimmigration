@@ -30,6 +30,7 @@ export default async function SituationDetailPage({ params }: { params: Promise<
       assistantReply={row.assistantReply}
       intelligenceJson={row.intelligenceJson}
       currentPathwaysJson={row.currentPathwaysJson}
+      knownFactsJson={row.knownFactsJson}
       createdAt={row.createdAt}
       existingFilingPlanId={row.filingPlans[0]?.id ?? null}
       canBuildFilingPlan={!filingPlanBlockedReason}

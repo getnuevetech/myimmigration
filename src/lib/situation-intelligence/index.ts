@@ -43,3 +43,4 @@ export {
   type InterviewState,
   type DirectorResult,
 } from "./question-director";
+export { echoFactsFromSet, factSetForSituationRow, peekSituationInterview } from "./echo";

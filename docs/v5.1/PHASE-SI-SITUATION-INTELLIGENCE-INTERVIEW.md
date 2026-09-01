@@ -1,11 +1,11 @@
 # Phase SI — Situation Intelligence Interview
 
-**Status:** Phase 0–1 shipped; Phase 2 shipping  
+**Status:** Phase 0–2 shipped; Phase 3 shipping  
 **Date:** 2026-09-01  
-**Revision:** 2 — Phase 2 Question Director + light pre-screen  
+**Revision:** 3 — Phase 3 Situation Intelligence Interview UI  
 **Sequence:** After Phase S Situation workspace; sits in front of Situation pathway presentation and full research  
 **Domain:** Situation / Pipeline A (exploratory personal immigration situations). Case/V5.1 remains government-matter only.  
-**Checks:** `npm run test:phase-si` (includes `test:phase-si-2`)
+**Checks:** `npm run test:phase-si` (includes `test:phase-si-2`, `test:phase-si-3`)
 
 ---
 
