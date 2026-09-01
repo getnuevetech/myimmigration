@@ -8,7 +8,7 @@ import { createOptionsCaseFromQaAction } from "@/actions/case";
 import { qaConversationCanSaveAsOptionsCase } from "@/lib/goal-suggestions";
 import type { QaChatAccess } from "@/lib/qa-access";
 import { AssistantMessageText } from "@/components/assistant-reply";
-import { decisionFocusLabel } from "@/lib/conversation/assistant-composer";
+import { decisionFocusLabel } from "@/lib/conversation/decision-focus";
 
 export type { QaChatAccess } from "@/lib/qa-access";
 

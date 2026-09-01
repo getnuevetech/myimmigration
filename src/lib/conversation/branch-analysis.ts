@@ -1,5 +1,5 @@
 import type { AnswerBranch, NeedToKnowItem, QuestionContract } from "./types";
-import { narrativeHasUscSpouse } from "@/lib/situation-intelligence";
+import { narrativeHasUscSpouse } from "@/lib/situation-intelligence/reconcile";
 
 /**
  * BRANCH_BEFORE_CLARIFY: when a material unknown creates a manageable set of

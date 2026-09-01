@@ -1,6 +1,6 @@
 import { helpsDecisionTarget } from "./question-contract";
 import type { Answerability, NeedToKnowItem, QuestionContract } from "./types";
-import { narrativeHasUscSpouse } from "@/lib/situation-intelligence";
+import { narrativeHasUscSpouse } from "@/lib/situation-intelligence/reconcile";
 
 /**
  * Need-to-Know engine with impact requirement.
