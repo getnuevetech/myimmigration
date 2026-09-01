@@ -32,3 +32,14 @@ export {
   hasHumanitarianReturnConcern,
   narrativeHasUscSpouse,
 } from "./reconcile";
+export { runLightCountryPreScreen } from "./pre-screen";
+export {
+  buildQuestionCandidates,
+  rankQuestionCandidates,
+  runQuestionDirector,
+  applyInterviewAnswer,
+  emptyInterviewState,
+  scoreQuestionValue,
+  type InterviewState,
+  type DirectorResult,
+} from "./question-director";

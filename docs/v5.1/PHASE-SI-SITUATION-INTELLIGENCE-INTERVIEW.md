@@ -1,11 +1,11 @@
 # Phase SI — Situation Intelligence Interview
 
-**Status:** Phase 0–1 IN PROGRESS / shipping  
+**Status:** Phase 0–1 shipped; Phase 2 shipping  
 **Date:** 2026-09-01  
-**Revision:** 1 — locked after Zimbabwe-failure review + authority pre-screen amendment  
+**Revision:** 2 — Phase 2 Question Director + light pre-screen  
 **Sequence:** After Phase S Situation workspace; sits in front of Situation pathway presentation and full research  
 **Domain:** Situation / Pipeline A (exploratory personal immigration situations). Case/V5.1 remains government-matter only.  
-**Checks:** `npm run test:phase-si`
+**Checks:** `npm run test:phase-si` (includes `test:phase-si-2`)
 
 ---
 
