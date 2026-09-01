@@ -106,3 +106,18 @@ export async function answerSituationInterviewAction(
 
   return { ok: true, result };
 }
+
+export type SituationInterviewFormState = { ok?: boolean; error?: string } | null;
+
+/** Form-friendly wrapper for the interview UI (useActionState). */
+export async function answerSituationInterviewFormAction(
+  _prev: SituationInterviewFormState,
+  formData: FormData,
+): Promise<SituationInterviewFormState> {
+  const situationId = String(formData.get("situationId") ?? "");
+  const candidateId = String(formData.get("candidateId") ?? "");
+  const answer = String(formData.get("answer") ?? "");
+  const res = await answerSituationInterviewAction(situationId, candidateId, answer);
+  if (!res.ok) return { error: res.error };
+  return { ok: true };
+}

@@ -4,6 +4,8 @@ import { createFilingPlanAction } from "@/actions/filing-plan";
 import { composeAssistantView, parseStoredIntelligence, type AssistantViewSection } from "@/lib/conversation";
 import { situationRefLabel } from "@/lib/situation";
 import { parsePathwaysJson } from "@/lib/filing-plan";
+import { SituationIntelligenceInterview } from "@/components/situation-intelligence-interview";
+import { echoFactsFromSet, factSetForSituationRow, peekSituationInterview } from "@/lib/situation-intelligence";
 
 function SectionBlock({ section }: { section: AssistantViewSection }) {
   if (section.type === "paragraph" || section.type === "disclaimer") {
@@ -42,6 +44,7 @@ export function SituationWorkspaceView(props: {
   assistantReply: string;
   intelligenceJson: string;
   currentPathwaysJson: string;
+  knownFactsJson: string;
   createdAt: Date;
   existingFilingPlanId?: string | null;
   isGuest?: boolean;
@@ -50,10 +53,28 @@ export function SituationWorkspaceView(props: {
   filingPlanBlockedReason?: "upgrade" | "limit" | "guest" | null;
 }) {
   const intel = parseStoredIntelligence(props.intelligenceJson);
-  const sections =
+  const allSections =
     intel != null
       ? composeAssistantView(intel, props.originalNarrative)
       : [{ type: "paragraph" as const, text: props.assistantReply }];
+
+  const factSet = factSetForSituationRow({
+    knownFactsJson: props.knownFactsJson,
+    originalNarrative: props.originalNarrative,
+    goal: props.goal,
+  });
+  const director = peekSituationInterview({
+    knownFactsJson: props.knownFactsJson,
+    originalNarrative: props.originalNarrative,
+    goal: props.goal,
+  });
+  const interviewActive = Boolean(director.next) && !director.ready_for_analysis;
+  const readyForAnalysis = director.ready_for_analysis || !director.next;
+
+  // Phase SI-3: do not present pathway branches / legacy single-ask before fact orientation.
+  const sections = interviewActive
+    ? allSections.filter((s) => s.type === "paragraph" || s.type === "disclaimer")
+    : allSections;
 
   const asked =
     intel?.question_contract.explicit_question ||
@@ -63,6 +84,15 @@ export function SituationWorkspaceView(props: {
 
   const pathways = parsePathwaysJson(props.currentPathwaysJson);
   const defaultPathway = pathways[0]?.id ?? "";
+  const echoFacts = echoFactsFromSet(factSet);
+  const initialQuestion = director.next
+    ? {
+        candidate: director.next.candidate,
+        customer_wording: director.next.customer_wording,
+        reason: director.next.reason,
+        level: director.next.level,
+      }
+    : null;
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -81,11 +111,25 @@ export function SituationWorkspaceView(props: {
         <p className="text-sm italic text-slate-500">{asked}</p>
       </section>
 
+      <SituationIntelligenceInterview
+        situationId={props.id}
+        echoFacts={echoFacts}
+        initialQuestion={initialQuestion}
+        askedCount={director.interview.asked_count}
+        readyForAnalysis={readyForAnalysis && !interviewActive}
+      />
+
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">What this may mean</h2>
-        {sections.map((section, i) => (
-          <SectionBlock key={i} section={section} />
-        ))}
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          {interviewActive ? "While we orient the facts" : "What this may mean"}
+        </h2>
+        {interviewActive ? (
+          <p className="text-slate-700 leading-relaxed">
+            We heard your story. After a few orientation details, we can research options that fit — without jumping to a pathway you did not describe.
+          </p>
+        ) : (
+          sections.map((section, i) => <SectionBlock key={i} section={section} />)
+        )}
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
@@ -119,6 +163,10 @@ export function SituationWorkspaceView(props: {
                   ? "Upgrade to Pro for more Filing Plans"
                   : "Upgrade to Plus to build a Filing Plan"}
             </Link>
+          ) : interviewActive ? (
+            <span className="rounded-lg bg-slate-200 px-3 py-2 text-sm font-medium text-slate-500">
+              Finish a few orientation details first
+            </span>
           ) : (
             <ActionForm action={createFilingPlanAction} className="inline">
               <input type="hidden" name="situationId" value={props.id} />

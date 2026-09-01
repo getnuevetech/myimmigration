@@ -28,6 +28,7 @@ export default async function GuestSituationPage({
         assistantReply={row.assistantReply}
         intelligenceJson={row.intelligenceJson}
         currentPathwaysJson={row.currentPathwaysJson}
+        knownFactsJson={row.knownFactsJson}
         createdAt={row.createdAt}
         existingFilingPlanId={row.filingPlans[0]?.id ?? null}
         isGuest
