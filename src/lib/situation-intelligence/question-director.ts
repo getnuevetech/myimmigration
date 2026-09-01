@@ -20,6 +20,7 @@ import {
   seededSituationLearningHints,
   type SituationLearningHints,
 } from "./learning";
+import { recordDirectorTelemetry } from "./telemetry";
 
 export type InterviewState = {
   asked_count: number;
@@ -192,11 +193,17 @@ export function buildQuestionCandidates(
     }),
   );
 
+  // Skip multi-select when a primary basis is already established from the narrative.
+  const basesAlreadyOriented =
+    isResolved(factSet, "possible_bases_answered") ||
+    hasUscOrLprSpouseBasis(factSet) ||
+    hasHumanitarianReturnConcern(factSet);
+
   push(
     candidate({
       candidate: "possible_bases_multiselect",
       source: "foundational_frame",
-      known: isResolved(factSet, "possible_bases_answered"),
+      known: basesAlreadyOriented,
       dependency_satisfied: true,
       pathway_discrimination: 0.93,
       jurisdiction_impact: 0.5,
@@ -351,13 +358,18 @@ export function runQuestionDirector(
   const ranked = rankQuestionCandidates(candidates);
   const askable = ranked.filter((c) => c.ask && scoreQuestionValue(c) >= FIRST_ANALYSIS_QUESTION_VALUE_THRESHOLD);
 
+  const finish = (result: DirectorResult): DirectorResult => {
+    recordDirectorTelemetry(factSet, result);
+    return result;
+  };
+
   if (interview.asked_count >= MAX_INITIAL_INTERVIEW_QUESTIONS) {
     const stopped: InterviewState = {
       ...interview,
       stopped: true,
       stop_reason: "max_questions",
     };
-    return { next: null, ranked, interview: stopped, signals, ready_for_analysis: true, learning_hints };
+    return finish({ next: null, ranked, interview: stopped, signals, ready_for_analysis: true, learning_hints });
   }
 
   if (askable.length === 0) {
@@ -366,18 +378,18 @@ export function runQuestionDirector(
       stopped: true,
       stop_reason: interview.asked_count === 0 ? "already_sufficient" : "threshold",
     };
-    return { next: null, ranked, interview: stopped, signals, ready_for_analysis: true, learning_hints };
+    return finish({ next: null, ranked, interview: stopped, signals, ready_for_analysis: true, learning_hints });
   }
 
   const next = askable[0]!;
-  return {
+  return finish({
     next,
     ranked,
     interview: { ...interview, stopped: false },
     signals,
     ready_for_analysis: false,
     learning_hints,
-  };
+  });
 }
 
 export function emptyInterviewState(): InterviewState {

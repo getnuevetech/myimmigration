@@ -70,3 +70,17 @@ export {
   type ConsultantCorrectionHintInput,
   type InterviewQualityCapture,
 } from "./learning";
+export {
+  emitSiTelemetry,
+  recordDirectorTelemetry,
+  resetSiTelemetryBuffer,
+  getSiTelemetryBuffer,
+  setSiTelemetrySink,
+  type SiTelemetryEvent,
+} from "./telemetry";
+export {
+  assertNoSpouseHallucination,
+  assertNoPrematureAnalysis,
+  assertMedicalExamNotAsked,
+  type SiRegressionFailure,
+} from "./regression";
