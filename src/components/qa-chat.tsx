@@ -185,10 +185,11 @@ export function QaChat({
       </div>
       {access && (
         <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
-          <p className="text-sm text-slate-700">
-            {blocked
-              ? access.blockReason
-              : access.remaining === null
+          {blocked ? (
+            <AssistantMessageText content={access.blockReason} className="text-sm leading-relaxed text-slate-700" />
+          ) : (
+            <p className="text-sm text-slate-700">
+              {access.remaining === null
                 ? access.audience === "pro"
                   ? access.consultantName
                     ? `Personalized answers are included on your plan. A matching professional on ImmigrationOnMe: ${access.consultantName}.`
@@ -201,7 +202,8 @@ export function QaChat({
                 : access.remaining === 1
                   ? "1 general question left at this access level."
                   : `${access.remaining} general questions left at this access level.`}
-          </p>
+            </p>
+          )}
           <ConversionLinks access={access} caseId={caseId} registerHref={registerHref} upgradeHref={upgradeHref} />
         </div>
       )}

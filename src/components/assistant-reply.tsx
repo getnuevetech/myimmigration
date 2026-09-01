@@ -53,11 +53,33 @@ export function AssistantReplyBlocks({ sections }: { sections: AssistantViewSect
   );
 }
 
-/** Soft-format stored assistant text: strip leftover markdown emphasis markers. */
-export function AssistantMessageText({ content }: { content: string }) {
-  const cleaned = content
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/_([^_]+)_/g, "$1")
-    .trim();
-  return <div className="whitespace-pre-wrap text-sm leading-relaxed">{cleaned}</div>;
+/**
+ * Soft-format stored assistant text.
+ * - `**phrase**` → bold + teal (account / professional CTAs)
+ * - leftover `_italic_` markers are stripped (models sometimes emit them)
+ */
+export function AssistantMessageText({
+  content,
+  className = "whitespace-pre-wrap text-sm leading-relaxed",
+}: {
+  content: string;
+  className?: string;
+}) {
+  const cleaned = content.replace(/_([^_]+)_/g, "$1").trim();
+  const parts = cleaned.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <div className={className}>
+      {parts.map((part, index) => {
+        const bold = /^\*\*([^*]+)\*\*$/.exec(part);
+        if (bold) {
+          return (
+            <strong key={index} className="font-semibold text-teal-800">
+              {bold[1]}
+            </strong>
+          );
+        }
+        return <span key={index}>{part}</span>;
+      })}
+    </div>
+  );
 }

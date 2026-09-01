@@ -15,6 +15,7 @@ import { documentCatalogHref, documentKindDef, documentStartLabel } from "@/lib/
 import { resolveReadinessCopy } from "@/lib/goal-readiness";
 import { resolveVersionChrome, verifiableActionCopy } from "@/lib/goal-versions";
 import { resolveIntakeChrome } from "@/lib/goal-intake";
+import { AssistantMessageText } from "@/components/assistant-reply";
 
 type CaseViewer = { role: "customer" | "consultant" | "admin"; userId: string; fullResults?: boolean };
 
@@ -189,7 +190,7 @@ export function CasePresentationView({
         )}
         {consultantCopy && (
           <div className="mt-3 rounded-xl border border-lime-300 bg-white px-4 py-3 text-sm text-lime-900">
-            <p>{consultantCopy}</p>
+            <AssistantMessageText content={consultantCopy} className="text-sm leading-relaxed" />
             {interactive && suggestionAccess && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {suggestionAccess.showRegisterCta && (

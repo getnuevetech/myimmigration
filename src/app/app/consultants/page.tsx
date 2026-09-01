@@ -16,6 +16,7 @@ import {
 } from "@/lib/consultant-match";
 import { CONSULTANT_EMPTY_BODY } from "@/lib/goal-chrome";
 import { resolveIntakeChrome } from "@/lib/goal-intake";
+import { AssistantMessageText } from "@/components/assistant-reply";
 
 export const metadata = { title: "My consultant" };
 
@@ -109,7 +110,12 @@ export default async function MyConsultantsPage({
             ) : (
               <EmptyState
                 title="No consultant proposed yet"
-                body={matchRequestBlockReason(entitlement)}
+                body={
+                  <AssistantMessageText
+                    content={matchRequestBlockReason(entitlement)}
+                    className="text-sm leading-relaxed text-slate-500"
+                  />
+                }
               />
             )}
             {entitlement.showUpgradeCta && (
