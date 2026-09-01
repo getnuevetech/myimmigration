@@ -168,8 +168,8 @@ export function qaUsageFromCount(used: number, entitlement: QaEntitlement): QaUs
   const remaining = Math.max(0, entitlement.questionLimit - used);
   if (remaining <= 0) {
     const blockReason = entitlement.audience === "guest"
-      ? "Create a free account to keep asking. Paid plans keep a personalized options review, and Pro can match you with a licensed attorney or accredited representative on ImmigrationOnMe."
-      : "You have used this month's Q&A questions on the Free plan. Upgrade to Plus for personalized official follow-ups, or Pro to add a matched immigration lawyer or accredited representative.";
+      ? "**Create a free account** to keep asking. Paid plans keep a personalized options review, and Pro can match you with a **licensed attorney or accredited representative** on ImmigrationOnMe."
+      : "You have used this month's Q&A questions on the Free plan. Upgrade to Plus for personalized official follow-ups, or Pro to add a matched **immigration lawyer or accredited representative**.";
     return { used, remaining: 0, blocked: true, blockReason };
   }
   return { used, remaining, blocked: false, blockReason: "" };
@@ -181,18 +181,30 @@ export function qaMonetizationFooter(
 ): string {
   const lines: string[] = [];
   if (entitlement.audience === "guest") {
-    lines.push("This is a short overview for visitors. Create a free account to ask a few more questions. Paid plans keep a personalized options review from the official material you already matched, and Pro can match you with a licensed immigration attorney or accredited representative on this platform.");
+    lines.push(
+      "This is a short overview for visitors. **Create a free account** to ask a few more questions. Paid plans keep a personalized options review from the official material you already matched, and Pro can match you with a **licensed immigration attorney or accredited representative** on this platform.",
+    );
   } else if (entitlement.audience === "free") {
-    lines.push("Free accounts get a short official overview. Plus keeps personalized follow-ups from the matching USCIS/DOJ material. Pro adds a matched licensed attorney or accredited representative on ImmigrationOnMe — nothing is shared until you approve.");
+    lines.push(
+      "Free accounts get a short official overview. Plus keeps personalized follow-ups from the matching USCIS/DOJ material. **Pro adds a matched licensed attorney or accredited representative** on ImmigrationOnMe — nothing is shared until you approve.",
+    );
   } else if (entitlement.audience === "plus") {
-    lines.push("A licensed immigration attorney or accredited representative on this platform can go deeper than this overview. Upgrade to Pro to get a matched professional. Nothing is shared until you approve.");
+    lines.push(
+      "**A licensed immigration attorney or accredited representative** on this platform can go deeper than this overview. Upgrade to Pro to get a matched professional. Nothing is shared until you approve.",
+    );
   }
   if (entitlement.consultantReferral && consultant) {
-    lines.push(`A licensed professional on ImmigrationOnMe who works this kind of matter: ${consultant.name}, ${consultant.credentialLabel}. Open Consultants to request a match — nothing is shared until you approve.`);
+    lines.push(
+      `**A licensed professional** on ImmigrationOnMe who works this kind of matter: ${consultant.name}, ${consultant.credentialLabel}. Open Consultants to request a match — nothing is shared until you approve.`,
+    );
   } else if (entitlement.consultantReferral) {
-    lines.push("Pro includes matching with a licensed immigration attorney or accredited representative on this platform. Open Consultants to request a match when one is available — nothing is shared until you approve.");
+    lines.push(
+      "Pro includes matching with a **licensed immigration attorney or accredited representative** on this platform. Open Consultants to request a match when one is available — nothing is shared until you approve.",
+    );
   } else if (entitlement.audience === "guest" || entitlement.audience === "free") {
-    lines.push("Licensed professionals on ImmigrationOnMe can help with a deeper review of your situation once you have an account and a Pro plan.");
+    lines.push(
+      "**Licensed professionals on ImmigrationOnMe** can help with a deeper review of your situation once you **have an account** and a **Pro plan**.",
+    );
   }
   return lines.join("\n\n");
 }

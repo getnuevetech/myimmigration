@@ -211,11 +211,11 @@ export function Money({ cents, className = "" }: { cents: number | null | undefi
   );
 }
 
-export function EmptyState({ title, body, action }: { title: string; body?: string; action?: ReactNode }) {
+export function EmptyState({ title, body, action }: { title: string; body?: ReactNode; action?: ReactNode }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
       <p className="text-base font-semibold text-slate-800">{title}</p>
-      {body && <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{body}</p>}
+      {body && <div className="mx-auto mt-1 max-w-md text-sm text-slate-500">{body}</div>}
       {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>
   );

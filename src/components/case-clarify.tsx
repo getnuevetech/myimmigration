@@ -7,6 +7,7 @@ import Link from "next/link";
 import type { SuggestionChatAccess } from "@/lib/suggestion-access";
 import { resolveClarifyChrome } from "@/lib/goal-intake";
 import { matchInputFromCase } from "@/lib/goal-versions";
+import { AssistantMessageText } from "@/components/assistant-reply";
 
 export async function CaseClarify({ caseId, access }: { caseId: string; access?: SuggestionChatAccess }) {
   const [c, messages] = await Promise.all([
@@ -83,7 +84,7 @@ export async function CaseClarify({ caseId, access }: { caseId: string; access?:
       ) : question && access?.blocked ? (
         <div className="mt-4 rounded-xl border border-lime-200 bg-white px-4 py-3">
           <p className="text-sm text-slate-800">{question.text}</p>
-          <p className="mt-2 text-sm text-lime-900">{access.blockReason}</p>
+          <AssistantMessageText content={access.blockReason} className="mt-2 text-sm leading-relaxed text-lime-900" />
           <div className="mt-2 flex flex-wrap gap-2">
             {access.showUpgradeCta && (
               <Link href="/pricing" className="rounded-lg bg-lime-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-lime-700">

@@ -87,7 +87,7 @@ export function consultantSeesCaseDetails(status: string): boolean {
 export function matchRequestBlockReason(entitlement: MatchRequestEntitlement): string {
   if (entitlement.canRequest) return "";
   if (entitlement.audience === "guest") {
-    return "Create a free account to keep your review. Pro can match you with a licensed immigration attorney or accredited representative — nothing is shared until you approve.";
+    return "**Create a free account** to keep your review. Pro can match you with a **licensed immigration attorney or accredited representative** — nothing is shared until you approve.";
   }
-  return "Upgrade to Pro to request a matched licensed immigration attorney or accredited representative on ImmigrationOnMe. Nothing is shared until you approve, and the professional still has to accept.";
+  return "Upgrade to Pro to request a matched **licensed immigration attorney or accredited representative** on ImmigrationOnMe. Nothing is shared until you approve, and the professional still has to accept.";
 }

@@ -10,6 +10,7 @@ import { loadSuggestionAccess } from "@/lib/suggestion-quota";
 import { suggestionConsultantCopy } from "@/lib/suggestion-access";
 import { classifyImmigrationInquiry } from "@/lib/immigration-inquiry";
 import { isFiledCaseSurface } from "@/lib/goal-notices";
+import { AssistantMessageText } from "@/components/assistant-reply";
 
 export const metadata = { title: "Your first results" };
 
@@ -99,7 +100,7 @@ export default async function GuestResultPage({
             <CardBody>
               <p className="text-xs font-bold uppercase tracking-wide text-lime-600">Suggested next step</p>
               <p className="mt-1 text-base font-semibold text-slate-900">{nextStep}</p>
-              <p className="mt-2 text-sm text-slate-600">{consultantCopy}</p>
+              <AssistantMessageText content={consultantCopy} className="mt-2 text-sm leading-relaxed text-slate-600" />
               <div className="mt-3 flex flex-wrap gap-2">
                 <ButtonLink href={`/register?next=${encodeURIComponent(`/app/cases/${c.id}`)}`} className="px-4 py-2 text-sm">Create a free account</ButtonLink>
                 <Link href={`/register?next=${encodeURIComponent(`/app/cases/${c.id}`)}`} className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
