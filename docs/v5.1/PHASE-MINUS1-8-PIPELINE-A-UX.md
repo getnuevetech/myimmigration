@@ -18,7 +18,7 @@ Make Pipeline A (Assistant) feel like a first-class product surface — structur
 
 ## Non-goals
 
-- TaxOnMe UI  
+- Sibling-product UI (TaxOnMe)  
 - Approval-gate override UI  
 - Posture rename (`PRIMA_FACIE_PENDING`)  
 - New immigration form workflows  

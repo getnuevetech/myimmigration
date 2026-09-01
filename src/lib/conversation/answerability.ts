@@ -24,7 +24,7 @@ export function evaluateAnswerability(opts: {
     };
   }
 
-  if (contract.decision_target === "explain_document_or_notice" && documentCount === 0 && !/\b(i-?\d{3}|nta|cp\d+|rfe|noid)\b/i.test(text)) {
+  if (contract.decision_target === "explain_document_or_notice" && documentCount === 0 && !/\b(i-?\d{3}|nta|rfe|noid)\b/i.test(text)) {
     return {
       fully_answerable: false,
       partially_answerable: false,

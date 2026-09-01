@@ -18,7 +18,7 @@ Make Phase −1 contracts **live** under Sol and stop residual schema-fill behav
 
 ## Non-goals
 
-- TaxOnMe UI  
+- Sibling-product UI (TaxOnMe)  
 - New immigration form workflows  
 - Staff approval-gate override UI  
 
