@@ -73,6 +73,14 @@ export async function createSituationFromIntelligence(opts: {
 
   const experience = opts.intel.experience_record;
   after(() => publishSituationExperience(row.id, experience));
+  after(async () => {
+    try {
+      const { ensureSituationAnalysisPersisted } = await import("@/lib/situation-intelligence");
+      await ensureSituationAnalysisPersisted(row.id);
+    } catch {
+      /* analysis must not fail intake */
+    }
+  });
 
   return { id: row.id, userId: user?.id ?? null };
 }
