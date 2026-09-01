@@ -3,10 +3,12 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { SituationWorkspaceView } from "@/components/situation-workspace-view";
 import { getFilingPlanQuota } from "@/lib/billing-quotas";
+import { ensureSituationAnalysisPersisted } from "@/lib/situation-intelligence";
 
 export default async function SituationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
+  await ensureSituationAnalysisPersisted(id).catch(() => null);
   const row = await db.situation.findFirst({
     where: { id, userId: user.id },
     include: { filingPlans: { orderBy: { createdAt: "desc" }, take: 1 } },

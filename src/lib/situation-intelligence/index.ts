@@ -44,3 +44,15 @@ export {
   type DirectorResult,
 } from "./question-director";
 export { echoFactsFromSet, factSetForSituationRow, peekSituationInterview } from "./echo";
+export { buildResearchAgenda, enrichResearchWithAuthority } from "./research";
+export { runReasonerA, runReasonerB, reconcileReasoners } from "./reasoners";
+export {
+  runSituationAnalysis,
+  applyFactFirewall,
+  analysisToAssistantReply,
+  analysisToPathwaysJson,
+  parseSituationAnalysis,
+  mergeAnalysisIntoIntelligenceJson,
+  type SituationAnalysisResult,
+} from "./analysis";
+export { ensureSituationAnalysisPersisted } from "./persist-analysis";

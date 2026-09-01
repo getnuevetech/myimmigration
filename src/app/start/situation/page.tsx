@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getOrCreateGuestSession } from "@/lib/guest";
 import { SituationWorkspaceView } from "@/components/situation-workspace-view";
+import { ensureSituationAnalysisPersisted } from "@/lib/situation-intelligence";
 
 export default async function GuestSituationPage({
   searchParams,
@@ -11,6 +12,7 @@ export default async function GuestSituationPage({
   const { id } = await searchParams;
   if (!id) notFound();
   const guest = await getOrCreateGuestSession();
+  await ensureSituationAnalysisPersisted(id).catch(() => null);
   const row = await db.situation.findFirst({
     where: { id, guestSessionId: guest.id },
     include: { filingPlans: { orderBy: { createdAt: "desc" }, take: 1 } },

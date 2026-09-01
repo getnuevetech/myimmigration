@@ -104,6 +104,11 @@ export async function answerSituationInterviewAction(
     data: { knownFactsJson: serializeFactSet(persisted), updatedAt: new Date() },
   });
 
+  if (result.ready_for_analysis) {
+    const { ensureSituationAnalysisPersisted } = await import("@/lib/situation-intelligence");
+    await ensureSituationAnalysisPersisted(row.id);
+  }
+
   return { ok: true, result };
 }
 

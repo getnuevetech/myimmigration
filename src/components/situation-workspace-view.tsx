@@ -5,7 +5,13 @@ import { composeAssistantView, parseStoredIntelligence, type AssistantViewSectio
 import { situationRefLabel } from "@/lib/situation";
 import { parsePathwaysJson } from "@/lib/filing-plan";
 import { SituationIntelligenceInterview } from "@/components/situation-intelligence-interview";
-import { echoFactsFromSet, factSetForSituationRow, peekSituationInterview } from "@/lib/situation-intelligence";
+import {
+  echoFactsFromSet,
+  factSetForSituationRow,
+  parseSituationAnalysis,
+  peekSituationInterview,
+  type SituationAnalysisResult,
+} from "@/lib/situation-intelligence";
 
 function SectionBlock({ section }: { section: AssistantViewSection }) {
   if (section.type === "paragraph" || section.type === "disclaimer") {
@@ -35,6 +41,105 @@ function SectionBlock({ section }: { section: AssistantViewSection }) {
   );
 }
 
+function SolPresentation({ analysis }: { analysis: SituationAnalysisResult }) {
+  return (
+    <div className="space-y-4">
+      {analysis.presentation.paragraphs.map((p, i) => (
+        <p key={i} className="text-slate-700 leading-relaxed">
+          {p}
+        </p>
+      ))}
+      {analysis.presentation.pathways.length > 0 ? (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pathways that may matter</p>
+          <ul className="mt-3 space-y-3">
+            {analysis.presentation.pathways.map((b) => (
+              <li key={b.id} className="border-l-2 border-lime-500 pl-3">
+                <p className="font-medium text-slate-900">{b.condition}</p>
+                <p className="text-sm text-slate-600">{b.explanation}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {analysis.presentation.not_recommended.length > 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Not from current facts</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+            {analysis.presentation.not_recommended.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <p className="text-sm text-slate-500">{analysis.presentation.disclaimer}</p>
+    </div>
+  );
+}
+
+function ConsultantBriefPanel({ analysis }: { analysis: SituationAnalysisResult }) {
+  const b = analysis.brief;
+  return (
+    <section className="rounded-2xl border border-slate-300 bg-white px-4 py-4 shadow-sm">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Situation brief</h2>
+      <p className="mt-1 text-xs text-slate-500">Prepared for professional handoff — facts stay separated from analysis.</p>
+      <p className="mt-3 text-sm">
+        <span className="font-semibold text-slate-800">Goal:</span> {b.goal}
+      </p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-lime-800">1. Reported facts</p>
+          <ul className="mt-1 space-y-1 text-sm text-slate-700">
+            {b.reported_facts.length ? (
+              b.reported_facts.map((f) => (
+                <li key={f.key}>
+                  {f.key}: {String(f.value)}
+                </li>
+              ))
+            ) : (
+              <li className="text-slate-400">None stored</li>
+            )}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-lime-800">2. Verified facts</p>
+          <ul className="mt-1 space-y-1 text-sm text-slate-700">
+            {b.verified_facts.length ? (
+              b.verified_facts.map((f) => (
+                <li key={f.key}>
+                  {f.key}: {String(f.value)}
+                </li>
+              ))
+            ) : (
+              <li className="text-slate-400">None yet (documents not verified)</li>
+            )}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-lime-800">3. AI findings / options</p>
+          <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-slate-700">
+            {b.ai_findings.slice(0, 6).map((x) => (
+              <li key={x}>{x}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-lime-800">4. Unresolved</p>
+          <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-slate-700">
+            {b.unresolved.length ? (
+              b.unresolved.map((x) => <li key={x}>{x}</li>)
+            ) : (
+              <li className="text-slate-400">None flagged</li>
+            )}
+          </ul>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-slate-500">{b.government_history_summary}</p>
+      <p className="mt-1 text-xs text-slate-500">{b.reasoner_agreement}</p>
+    </section>
+  );
+}
+
 export function SituationWorkspaceView(props: {
   id: string;
   number: number;
@@ -48,11 +153,11 @@ export function SituationWorkspaceView(props: {
   createdAt: Date;
   existingFilingPlanId?: string | null;
   isGuest?: boolean;
-  /** Phase Billing — false on Free / guests without Plus; when over monthly Plus cap. */
   canBuildFilingPlan?: boolean;
   filingPlanBlockedReason?: "upgrade" | "limit" | "guest" | null;
 }) {
   const intel = parseStoredIntelligence(props.intelligenceJson);
+  const analysis = parseSituationAnalysis(props.intelligenceJson);
   const allSections =
     intel != null
       ? composeAssistantView(intel, props.originalNarrative)
@@ -71,7 +176,6 @@ export function SituationWorkspaceView(props: {
   const interviewActive = Boolean(director.next) && !director.ready_for_analysis;
   const readyForAnalysis = director.ready_for_analysis || !director.next;
 
-  // Phase SI-3: do not present pathway branches / legacy single-ask before fact orientation.
   const sections = interviewActive
     ? allSections.filter((s) => s.type === "paragraph" || s.type === "disclaimer")
     : allSections;
@@ -127,10 +231,14 @@ export function SituationWorkspaceView(props: {
           <p className="text-slate-700 leading-relaxed">
             We heard your story. After a few orientation details, we can research options that fit — without jumping to a pathway you did not describe.
           </p>
+        ) : analysis ? (
+          <SolPresentation analysis={analysis} />
         ) : (
           sections.map((section, i) => <SectionBlock key={i} section={section} />)
         )}
       </section>
+
+      {!interviewActive && analysis ? <ConsultantBriefPanel analysis={analysis} /> : null}
 
       <section className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
         <h2 className="text-sm font-semibold text-slate-800">When you&apos;re ready</h2>
