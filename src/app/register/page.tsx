@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { SiteHeader } from "@/components/site-nav";
 import { RegisterForm } from "@/components/auth-forms";
 import { getSetting } from "@/lib/settings";
-import { getGuestSession, sanitizeAuthNext, setAuthNextCookie } from "@/lib/guest";
+import { getGuestSession, sanitizeAuthNext } from "@/lib/guest";
 import { readPendingGoogleProfile } from "@/lib/legal/record-registration";
 import {
   PRIVACY_POLICY_SLUG,
@@ -20,11 +20,12 @@ export default async function RegisterPage({
 }) {
   const { type, google, next: nextRaw, thread } = await searchParams;
   const asConsultant = type === "consultant";
+  // Pass `next` through the form / Google query only — do NOT set cookies here.
+  // Next.js forbids cookies().set() during RSC render (Digest crashes on /register?next=…).
   const next =
     sanitizeAuthNext(nextRaw) ||
     (thread && /^[a-z0-9]+$/i.test(thread) ? `/app/qa/${thread}` : null) ||
     "";
-  if (next) await setAuthNextCookie(next);
 
   const [googleClientId, guest, pendingProfile] = await Promise.all([
     getSetting("auth.google_client_id", ""),
@@ -34,6 +35,9 @@ export default async function RegisterPage({
   const googlePending = !asConsultant && google === "pending" && !!pendingProfile;
   const guestQaCount = guest ? await db.qaThread.count({ where: { guestSessionId: guest.id } }) : 0;
   const guestCaseCount = guest ? await db.case.count({ where: { guestSessionId: guest.id } }) : 0;
+  const guestSituationCount = guest
+    ? await db.situation.count({ where: { guestSessionId: guest.id } })
+    : 0;
   const pages = await db.contentPage.findMany({
     where: {
       isPublished: true,
@@ -45,7 +49,12 @@ export default async function RegisterPage({
   });
   const pageBySlug = Object.fromEntries(pages.map((page) => [page.slug, page]));
   const hasGuestData =
-    !!guest && (guest.situation.length > 0 || guest.goal.length > 0 || guestQaCount > 0 || guestCaseCount > 0);
+    !!guest &&
+    (guest.situation.length > 0 ||
+      guest.goal.length > 0 ||
+      guestQaCount > 0 ||
+      guestCaseCount > 0 ||
+      guestSituationCount > 0);
 
   return (
     <div className="min-h-screen">
@@ -70,7 +79,9 @@ export default async function RegisterPage({
             Your questions, answers, and uploads from before will stay with your new account — you will not have to start over.
             {next.startsWith("/app/qa/")
               ? " After you create the account we will take you back to this conversation."
-              : " Paid plans keep a more personalized review, and Pro can match you with a licensed professional on ImmigrationOnMe."}
+              : next.startsWith("/app/situations/")
+                ? " After you create the account we will take you back to your Situation."
+                : " Paid plans keep a more personalized review, and Pro can match you with a licensed professional on ImmigrationOnMe."}
           </div>
         )}
         {google === "pending" && !pendingProfile && !asConsultant && (

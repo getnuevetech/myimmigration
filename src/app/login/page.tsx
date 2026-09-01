@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-nav";
 import { LoginForm } from "@/components/auth-forms";
 import { getSetting } from "@/lib/settings";
-import { sanitizeAuthNext, setAuthNextCookie } from "@/lib/guest";
+import { sanitizeAuthNext } from "@/lib/guest";
 
 export const metadata = { title: "Sign in" };
 
@@ -12,8 +12,8 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next: nextRaw } = await searchParams;
+  // Pass `next` via form / Google query — do not set cookies during RSC render.
   const next = sanitizeAuthNext(nextRaw) || "";
-  if (next) await setAuthNextCookie(next);
   const googleClientId = await getSetting("auth.google_client_id", "");
   const googleHref = next
     ? `/api/auth/google?next=${encodeURIComponent(next)}`
