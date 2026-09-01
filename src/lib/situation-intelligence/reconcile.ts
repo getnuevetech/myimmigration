@@ -88,7 +88,7 @@ export function reconcileSituationFacts(message: string, goal = ""): SituationFa
   ) as FoundationalDimension[];
 
   return {
-    schema_version: "si-0",
+    schema_version: "si-1",
     facts,
     activated_dimensions: [...activated],
     unresolved_foundational,
@@ -103,7 +103,12 @@ export function parseFactSet(raw: string | null | undefined): SituationFactSet |
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as SituationFactSet;
-    if (parsed?.schema_version !== "si-0" || !Array.isArray(parsed.facts)) return null;
+    if (
+      (parsed?.schema_version !== "si-0" && parsed?.schema_version !== "si-1") ||
+      !Array.isArray(parsed.facts)
+    ) {
+      return null;
+    }
     return parsed;
   } catch {
     return null;

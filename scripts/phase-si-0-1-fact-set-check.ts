@@ -62,7 +62,7 @@ function read(rel: string) {
   const serialized = serializeFactSet(set);
   const parsed = parseFactSet(serialized);
   assert.ok(parsed);
-  assert.equal(parsed!.schema_version, "si-0");
+  assert.equal(parsed!.schema_version === "si-0" || parsed!.schema_version === "si-1", true);
 }
 
 // --- Mexico: family basis + I-130 branches still allowed ---

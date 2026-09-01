@@ -60,10 +60,17 @@ export type SituationFact = {
 };
 
 export type SituationFactSet = {
-  schema_version: "si-0";
+  schema_version: "si-0" | "si-1";
   facts: SituationFact[];
   activated_dimensions: ActivatedDimension[];
   unresolved_foundational: FoundationalDimension[];
+  /** Phase SI-2 iterative interview progress */
+  interview?: {
+    asked_count: number;
+    asked_candidates: string[];
+    stopped: boolean;
+    stop_reason?: string;
+  };
 };
 
 /** Light pre-screen signal (Phase 2 consumes; contract locked in Phase 0). */
