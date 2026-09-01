@@ -1,0 +1,13 @@
+{
+  "id": "si-mexico-usc-spouse-border",
+  "narrative": "I came in from Mexico through the border and been living in the US for 3 years, my wife is a US citizen and our daughter was born in the US, I am yet to file for any document, what are my options?",
+  "goal": "Understand my options",
+  "expect": {
+    "current_location": "inside_us",
+    "family_basis": "usc_or_lpr_spouse",
+    "usc_child": true,
+    "prior_filing": "none_reported",
+    "activated_includes": ["family"],
+    "allows_i130_branches": true
+  }
+}

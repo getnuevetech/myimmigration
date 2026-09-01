@@ -1,0 +1,15 @@
+{
+  "id": "si-zimbabwe-humanitarian",
+  "narrative": "I am from Zimbabwe and been dealing with insurgency in our country and i cannot go back, i need to find options to how i can live and work in the United state.",
+  "goal": "Work and Live in US",
+  "expect": {
+    "country_of_origin": "Zimbabwe",
+    "goal": "live_and_work_in_us",
+    "inability_or_concern_about_return": true,
+    "no_family_basis": true,
+    "no_fear_of_persecution_fact": true,
+    "activated_includes": ["humanitarian"],
+    "no_i130_in_reply": true,
+    "no_usc_spouse_in_reply": true
+  }
+}

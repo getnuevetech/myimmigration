@@ -1,4 +1,5 @@
 import type { AnswerBranch, ConversationIntelligence } from "./types";
+import { narrativeHasUscSpouse } from "@/lib/situation-intelligence";
 
 export type AssistantViewSection =
   | { type: "paragraph"; text: string }
@@ -49,14 +50,21 @@ export function composeAssistantView(
   }
 
   if (target === "petition_eligibility_overview") {
-    sections.push({
-      type: "paragraph",
-      text: "Yes. A U.S.-citizen spouse can generally file Form I-130 for their spouse. That starts the family petition.",
-    });
-    sections.push({
-      type: "paragraph",
-      text: "Whether you can obtain a green card inside the United States still depends on additional facts — especially how you entered the country.",
-    });
+    if (/\b(wife|husband|spouse)\b/i.test(rawMessage) && /\b(u\.?s\.?\s*citizen|usc)\b/i.test(rawMessage)) {
+      sections.push({
+        type: "paragraph",
+        text: "Yes. A U.S.-citizen spouse can generally file Form I-130 for their spouse. That starts the family petition.",
+      });
+      sections.push({
+        type: "paragraph",
+        text: "Whether you can obtain a green card inside the United States still depends on additional facts — especially how you entered the country.",
+      });
+    } else {
+      sections.push({
+        type: "paragraph",
+        text: "I can help you understand whether a relative petition may apply — first I need to confirm who would file and their immigration status.",
+      });
+    }
   } else if (target === "explain_document_or_notice") {
     if (/\bi-?862\b|notice to appear|\bnta\b/i.test(rawMessage)) {
       sections.push({
@@ -91,6 +99,11 @@ export function composeAssistantView(
     sections.push({
       type: "paragraph",
       text: "Thanks for sharing that background. I can help outline possible pathways, explain a notice, or — if something is already filed with USCIS or immigration court — help you track that government matter.",
+    });
+  } else if (target === "identify_available_pathways" && !narrativeHasUscSpouse(rawMessage)) {
+    sections.push({
+      type: "paragraph",
+      text: "Thanks for sharing your situation. A few facts about where you are, how you entered any U.S. process, and what connections or circumstances may apply will help identify options that fit what you described — without assuming a path you did not mention.",
     });
   } else if (!(intel.strategy.branch_before_clarify && intel.strategy.branches.length)) {
     sections.push({

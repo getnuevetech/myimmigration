@@ -1,0 +1,11 @@
+{
+  "id": "si-complete-narrative",
+  "narrative": "I am currently outside the United States in Canada. I am a citizen of Canada. I have never been to the US and have never filed anything with USCIS. My U.S. citizen spouse wants to file for me so I can live and work in the United States.",
+  "goal": "Join my spouse in the US",
+  "expect": {
+    "current_location": "outside_us",
+    "country_of_origin": "Canada",
+    "family_basis": "usc_or_lpr_spouse",
+    "prior_filing": "none_reported"
+  }
+}
